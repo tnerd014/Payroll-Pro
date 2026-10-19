@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="./icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payroll Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans antialiased overflow-hidden select-none">
+    <div id="root"></div>
+    <script>
+      function renderEmergencyFallback(errorText) {
+        var root = document.getElementById('root');
+        if (root && (!root.children || root.children.length === 0 || root.querySelector('#emergency-fallback'))) {
+          var isDark = document.documentElement.classList.contains('dark') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          root.innerHTML = '<div id="emergency-fallback" style="min-height:100vh;width:100vw;display:flex;align-items:center;justify-content:center;background:' + (isDark ? '#09090b' : '#fbfbfb') + ';color:' + (isDark ? '#f4f4f5' : '#18181b') + ';font-family:system-ui,-apple-system,sans-serif;padding:24px;box-sizing:border-box;">' +
+            '<div style="max-width:480px;width:100%;background:' + (isDark ? '#121215' : '#ffffff') + ';border:1px solid ' + (isDark ? '#27272a' : '#e4e4e7') + ';border-radius:16px;padding:32px;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);">' +
+            '<div style="width:52px;height:52px;border-radius:12px;background:' + (isDark ? '#450a0a' : '#ffe4e6') + ';color:' + (isDark ? '#f87171' : '#e11d48') + ';display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;">⚠️</div>' +
+            '<h2 style="font-size:18px;font-weight:700;margin:0 0 8px;letter-spacing:-0.02em;">Application Launch Safeguard</h2>' +
+            '<p style="font-size:12px;color:' + (isDark ? '#a1a1aa' : '#71717a') + ';margin:0 0 16px;line-height:1.5;">A script execution interrupted startup. You can safely reload the desktop client or restore clean default settings below.</p>' +
+            '<pre style="text-align:left;background:' + (isDark ? '#18181b' : '#f4f4f5') + ';border:1px solid ' + (isDark ? '#27272a' : '#e4e4e7') + ';border-radius:8px;padding:12px;font-size:11px;font-family:monospace;color:#e11d48;overflow:auto;max-height:120px;margin-bottom:20px;word-break:break-all;">' + (errorText || 'Unknown runtime interruption') + '</pre>' +
+            '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
+            '<button onclick="window.location.reload()" style="background:#18181b;color:#f4f4f5;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;">Reload Window</button>' +
+            '<button onclick="if(confirm(\'Clear local cache and restart?\')){localStorage.clear();window.location.reload();}" style="background:transparent;color:#e11d48;border:1px solid ' + (isDark ? '#7f1d1d' : '#fecdd3') + ';border-radius:8px;padding:8px 16px;font-size:12px;cursor:pointer;">Clear Storage &amp; Restart</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+        }
+      }
+
+      window.addEventListener('error', function(event) {
+        var msg = event.message || (event.error && event.error.message) || 'Script loading error';
+        renderEmergencyFallback(msg);
+      });
+
+      window.addEventListener('unhandledrejection', function(event) {
+        var msg = (event.reason && (event.reason.message || String(event.reason))) || 'Unhandled asynchronous rejection';
+        console.warn('Unhandled promise rejection caught:', msg);
+      });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
