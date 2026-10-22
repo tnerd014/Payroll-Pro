@@ -185,16 +185,6 @@ export class ErrorBoundary extends Component<Props, State> {
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reload Window</span>
               </button>
-
-              <button
-                type="button"
-                onClick={this.handleResetData}
-                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-lg font-medium text-xs transition cursor-pointer"
-                title="Clears corrupted localStorage cache and restarts with initial dataset"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Purge Cache &amp; Restart</span>
-              </button>
             </div>
 
             {/* Footer Notice */}

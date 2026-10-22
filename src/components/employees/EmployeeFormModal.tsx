@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, Calendar, Copy, Check, ChevronDown, Zap, UserPlus } from 'lucide-react';
 import { Employee, SalaryCalculationMode, EmploymentTypeRule } from '../../types';
 import { formatNaira, DEFAULT_EMPLOYMENT_TYPE_RULES } from '../../engine/payePensionEngine';
-import { NIGERIAN_BANKS, NIGERIAN_PFAS } from '../../constants/banks';
+import { NIGERIAN_BANKS, NIGERIAN_PFAS, NIGERIAN_STATES } from '../../constants/banks';
 import { DEFAULT_DEPARTMENTS } from '../../store/usePayrollStore';
 import { QuickAddForm } from './QuickAddForm';
 
@@ -91,6 +91,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     payeNumber: editingEmployee?.payeNumber || '',
     pensionNumber: editingEmployee?.pensionNumber || '',
     pfaName: editingEmployee?.pfaName || '',
+    stateOfResidence: editingEmployee?.stateOfResidence || 'Lagos',
     status: editingEmployee?.status || 'Active',
   });
 
@@ -132,6 +133,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         payeNumber: editingEmployee.payeNumber || '',
         pensionNumber: editingEmployee.pensionNumber || '',
         pfaName: editingEmployee.pfaName || '',
+        stateOfResidence: editingEmployee.stateOfResidence || 'Lagos',
         status: editingEmployee.status,
       });
       setMonthlySalaries(editingEmployee.monthlySalaries || {});
@@ -157,6 +159,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         payeNumber: '',
         pensionNumber: '',
         pfaName: '',
+        stateOfResidence: 'Lagos',
         status: 'Active',
       });
       setMonthlySalaries({});
@@ -164,6 +167,16 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     }
     setActiveYear(currentYear || 2026);
   }, [editingEmployee, isOpen, currentYear, activeRules]);
+
+  // Lock background scroll when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
 
   // Retrieve gross salary for a specific month in activeYear
   const getMonthGross = (mKey: string): number => {
@@ -230,10 +243,10 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   const yearsOptions = [2024, 2025, 2026, 2027, 2028];
 
   return (
-    <div className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden select-none">
       <div className={`bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full ${
         activeTab === 'quick' && !editingEmployee ? 'max-w-4xl' : 'max-w-2xl'
-      } overflow-hidden shadow-2xl my-6 flex flex-col max-h-[90vh] transition-all duration-150`}>
+      } overflow-hidden shadow-2xl flex flex-col max-h-[calc(100vh-4.5rem)] transition-all duration-150 select-text`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
@@ -588,43 +601,72 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
               </div>
 
               {/* Registration Identification Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
                 <div>
-                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                  <label 
+                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                    title="State of Residence for State PAYE Tax remittance"
+                  >
+                    State of Residence
+                  </label>
+                  <select
+                    value={formData.stateOfResidence || 'Lagos'}
+                    onChange={e => setFormData({ ...formData, stateOfResidence: e.target.value })}
+                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
+                  >
+                    {NIGERIAN_STATES.map(st => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label 
+                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                    title="Tax Identification Number / State PAYE No"
+                  >
                     Tax ID / State PAYE
                   </label>
                   <input 
                     type="text" 
                     value={formData.payeNumber} 
                     onChange={e => setFormData({ ...formData, payeNumber: e.target.value })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     placeholder="e.g. PAYE-LAS-..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                  <label 
+                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                    title="Pension Retirement Savings Account PIN"
+                  >
                     Pension RSA PIN
                   </label>
                   <input 
                     type="text" 
                     value={formData.pensionNumber} 
                     onChange={e => setFormData({ ...formData, pensionNumber: e.target.value })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     placeholder="e.g. PEN100..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                    Pension Administrator (PFA)
+                  <label 
+                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                    title="Pension Fund Administrator (PFA)"
+                  >
+                    Pension PFA Name
                   </label>
                   <input 
                     type="text" 
                     list="nigerian-pfas-datalist"
                     value={formData.pfaName} 
                     onChange={e => setFormData({ ...formData, pfaName: e.target.value })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     placeholder="Select PFA..."
                   />
                   <datalist id="nigerian-pfas-datalist">

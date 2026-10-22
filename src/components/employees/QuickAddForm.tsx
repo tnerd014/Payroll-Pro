@@ -334,6 +334,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
         payeNumber: '',
         pensionNumber: '',
         pfaName: '',
+        stateOfResidence: 'Lagos',
         status: 'Active',
       };
     });

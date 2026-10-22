@@ -299,3 +299,6 @@ export function formatCompactNaira(amount: number): string {
   }
   return formatNaira(val);
 }
+
+export { formatDate, formatDateTime } from './dateUtils';
+

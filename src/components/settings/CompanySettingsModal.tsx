@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { Building2, Upload, X, Check, Image as ImageIcon } from 'lucide-react';
-import { CompanyProfile } from '../../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { Building2, Upload, X, Check, Image as ImageIcon, Lock, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { CompanyProfile, DEFAULT_SECURITY_QUESTIONS } from '../../types';
 
 interface CompanySettingsModalProps {
   isOpen: boolean;
@@ -16,7 +16,14 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
   onSave,
 }) => {
   const [formData, setFormData] = useState<CompanyProfile>(company);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setFormData(company);
+    setPasswordError(null);
+  }, [company, isOpen]);
 
   if (!isOpen) return null;
 
@@ -33,7 +40,29 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    setPasswordError(null);
+
+    if (formData.hasPassword) {
+      if (!formData.password) {
+        setPasswordError('Please enter a password or disable password protection.');
+        return;
+      }
+      if (!formData.securityAnswer?.trim()) {
+        setPasswordError('Please provide a security answer for password recovery.');
+        return;
+      }
+    }
+
+    const payload: Partial<CompanyProfile> = {
+      ...formData,
+      hasPassword: Boolean(formData.hasPassword && formData.password),
+      password: formData.hasPassword ? formData.password : '',
+      passwordHint: formData.hasPassword ? (formData.passwordHint || '') : '',
+      securityQuestion: formData.hasPassword ? (formData.securityQuestion || DEFAULT_SECURITY_QUESTIONS[0]) : '',
+      securityAnswer: formData.hasPassword ? (formData.securityAnswer?.trim() || '') : '',
+    };
+
+    onSave(payload);
     onClose();
   };
 
@@ -159,6 +188,105 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
                 placeholder="info@company.com"
               />
             </div>
+          </div>
+
+          {/* Security & Access Protection Section */}
+          <div className="p-3.5 bg-slate-50 dark:bg-zinc-800/40 rounded-xl border border-slate-200 dark:border-zinc-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Lock className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 block text-xs">Password Protection</span>
+                  <span className="text-[11px] text-slate-500 dark:text-zinc-400">Require password or PIN on startup / account switch</span>
+                </div>
+              </div>
+              
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={Boolean(formData.hasPassword)}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    hasPassword: e.target.checked,
+                    password: e.target.checked ? prev.password || '' : '',
+                    passwordHint: e.target.checked ? prev.passwordHint || '' : '',
+                  }))}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-slate-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {formData.hasPassword && (
+              <div className="pt-2 border-t border-slate-200 dark:border-zinc-800 space-y-2.5 animate-in fade-in">
+                {passwordError && (
+                  <p className="text-[11px] text-rose-500 font-medium">{passwordError}</p>
+                )}
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1">Company Password / PIN</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password || ''}
+                      onChange={e => {
+                        setFormData({ ...formData, password: e.target.value });
+                        if (passwordError) setPasswordError(null);
+                      }}
+                      className="w-full h-8 rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/80 px-2.5 pr-8 text-xs text-slate-900 dark:text-white outline-none focus:border-blue-600"
+                      placeholder="Enter password or PIN"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1">Password Hint (Optional)</label>
+                  <input
+                    type="text"
+                    value={formData.passwordHint || ''}
+                    onChange={e => setFormData({ ...formData, passwordHint: e.target.value })}
+                    className="w-full h-8 rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/80 px-2.5 text-xs text-slate-900 dark:text-white outline-none focus:border-blue-600"
+                    placeholder="e.g. Director's phone number or code"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Security Question (For Recovery) <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={formData.securityQuestion || DEFAULT_SECURITY_QUESTIONS[0]}
+                    onChange={e => setFormData({ ...formData, securityQuestion: e.target.value })}
+                    className="w-full h-8 rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/80 px-2 text-xs text-slate-900 dark:text-white outline-none focus:border-blue-600"
+                  >
+                    {DEFAULT_SECURITY_QUESTIONS.map((q, idx) => (
+                      <option key={idx} value={q}>{q}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Security Answer <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.securityAnswer || ''}
+                    onChange={e => setFormData({ ...formData, securityAnswer: e.target.value })}
+                    className="w-full h-8 rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/80 px-2.5 text-xs text-slate-900 dark:text-white outline-none focus:border-blue-600"
+                    placeholder="Answer to reset PIN if forgotten"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           </div>
 

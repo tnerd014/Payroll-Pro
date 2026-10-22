@@ -6,24 +6,28 @@ import {
   Printer, 
   Upload, 
   Search,
+  X,
   SlidersHorizontal,
   Download,
   FileSpreadsheet,
   Clock,
   History,
-  ArrowRight
+  ArrowRight,
+  Palette
 } from 'lucide-react';
-import { CalculatedPayrollItem, PayrollSnapshot, Employee, PayrollVariables, PayeTaxVariables, CompanyProfile } from '../../types';
-import { formatNaira, formatCompactNaira } from '../../engine/payePensionEngine';
+import { CalculatedPayrollItem, PayrollSnapshot, Employee, PayrollVariables, PayeTaxVariables, CompanyProfile, PayslipDesignConfig, PayslipCustomPreset } from '../../types';
+import { formatNaira, formatCompactNaira, formatDateTime } from '../../engine/payePensionEngine';
 import { FinalizeLockModal } from './FinalizeLockModal';
 import { UnlockPayrollModal } from './UnlockPayrollModal';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { BulkPrintPayslipsModal } from './BulkPrintPayslipsModal';
 import { PayslipModal } from './PayslipModal';
 import { exportPayrollProToExcel, ExportOptions } from '../../engine/excelEngine';
+import { exportNibssBankTransferCsv } from '../../engine/bankPaymentEngine';
 import { ExportScopeModal } from '../excel/ExportScopeModal';
 import { MONTHS } from '../../store/usePayrollStore';
 import { TablePagination } from '../common/TablePagination';
+import { SortableHeader, SortDirection } from '../common/SortableHeader';
 
 interface PayrollProcessingViewProps {
   monthLabel: string;
@@ -42,6 +46,13 @@ interface PayrollProcessingViewProps {
   company: CompanyProfile;
   onOpenCompanySettings: () => void;
   departmentsList?: string[];
+  onOpenPayslipDesigner?: () => void;
+  payslipDesign?: PayslipDesignConfig;
+  onUpdatePayslipDesign?: (updates: Partial<PayslipDesignConfig>) => void;
+  onResetPayslipDesign?: () => void;
+  savedPresets?: PayslipCustomPreset[];
+  onSavePreset?: (name: string, config: PayslipDesignConfig) => void;
+  onDeletePreset?: (id: string) => void;
 }
 
 export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
@@ -61,6 +72,13 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   company,
   onOpenCompanySettings,
   departmentsList = [],
+  onOpenPayslipDesigner,
+  payslipDesign,
+  onUpdatePayslipDesign,
+  onResetPayslipDesign,
+  savedPresets = [],
+  onSavePreset,
+  onDeletePreset,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'processing' | 'paye' | 'pension'>('processing');
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
@@ -152,6 +170,67 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
     });
   }, [displayItems, searchQuery, selectedDeptFilter, activeSubTab]);
 
+  // Sorting State
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedItems = useMemo(() => {
+    if (!sortField) return filteredItems;
+    return [...filteredItems].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'code':
+          comparison = (a.employeeCode || '').localeCompare(b.employeeCode || '');
+          break;
+        case 'name':
+          comparison = (a.fullName || '').localeCompare(b.fullName || '');
+          break;
+        case 'dept':
+          comparison = (a.department || '').localeCompare(b.department || '');
+          break;
+        case 'gross':
+          comparison = a.monthlyGross - b.monthlyGross;
+          break;
+        case 'paye':
+          comparison = a.monthlyPaye - b.monthlyPaye;
+          break;
+        case 'pension':
+          comparison = a.employeePension - b.employeePension;
+          break;
+        case 'net':
+          comparison = a.netTakeHome - b.netTakeHome;
+          break;
+        case 'annualGross':
+          comparison = a.annualGross - b.annualGross;
+          break;
+        case 'totalCra':
+          comparison = a.totalCra - b.totalCra;
+          break;
+        case 'taxableIncome':
+          comparison = a.taxableIncome - b.taxableIncome;
+          break;
+        case 'employerPension':
+          comparison = a.employerPension - b.employerPension;
+          break;
+        case 'totalPension':
+          comparison = (a.employeePension + a.employerPension) - (b.employeePension + b.employerPension);
+          break;
+        default:
+          comparison = 0;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredItems, sortField, sortDirection]);
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -163,8 +242,8 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredItems.slice(start, start + pageSize);
-  }, [filteredItems, currentPage, pageSize]);
+    return sortedItems.slice(start, start + pageSize);
+  }, [sortedItems, currentPage, pageSize]);
 
   // Totals computed across all displayed items
   const totalGross = displayItems.reduce((s, i) => s + i.monthlyGross, 0);
@@ -210,12 +289,13 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   return (
     <div className="space-y-5 max-w-6xl mx-auto select-none">
       
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Payroll Processing
-          </h1>
+      {/* Top Header - Sticky */}
+      <div className="sticky top-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md pt-2.5 pb-3.5 border-b border-zinc-200 dark:border-zinc-800 -mx-6 px-6 md:-mx-8 md:px-8">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Payroll Processing
+            </h1>
           <p className="text-xs text-zinc-500 mt-0.5">
             Active cycle for {monthLabel} {year} &bull; {items.length} Employees enrolled
           </p>
@@ -346,6 +426,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           </button>
         </div>
       </div>
+    </div>
 
       {/* Archived Snapshot Warning Banner */}
       {isViewingArchived && displaySnapshot && (
@@ -359,7 +440,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                 Viewing Archived Payroll Snapshot: Version {displaySnapshot.version}
               </div>
               <div className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
-                Finalized on {displaySnapshot.finalizedAt ? new Date(displaySnapshot.finalizedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown date'}
+                Finalized on {displaySnapshot.finalizedAt ? formatDateTime(displaySnapshot.finalizedAt) : 'Unknown date'}
                 {displaySnapshot.finalizedBy ? ` by ${displaySnapshot.finalizedBy}` : ''}
                 {displaySnapshot.notes ? ` • Note: "${displaySnapshot.notes}"` : ''}
                 {' '}&bull; Calculations, payslips, and exports reflect Version {displaySnapshot.version}.
@@ -440,13 +521,6 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
             {formatNaira(totalGross)}
           </div>
-          <div className="text-[11px] text-zinc-400 mt-1.5 flex gap-2">
-            <span>Basic: {formatCompactNaira(totalBasic)}</span>
-            <span>&bull;</span>
-            <span>Housing: {formatCompactNaira(totalHousing)}</span>
-            <span>&bull;</span>
-            <span>Transport: {formatCompactNaira(totalTransport)}</span>
-          </div>
         </div>
 
         {/* Card 2: Deductions */}
@@ -455,11 +529,6 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
             {formatNaira(totalDeductions)}
           </div>
-          <div className="text-[11px] text-zinc-400 mt-1.5 flex gap-2">
-            <span>PAYE: {formatCompactNaira(totalPaye)}</span>
-            <span>&bull;</span>
-            <span>Pension: {formatCompactNaira(totalEmpPension)}</span>
-          </div>
         </div>
 
         {/* Card 3: Net */}
@@ -467,9 +536,6 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           <span className="text-xs text-zinc-500 block mb-1">Total Net Payout (Take-Home)</span>
           <div className="text-xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">
             {formatNaira(totalNet)}
-          </div>
-          <div className="text-[11px] text-zinc-400 mt-1.5">
-            {filteredItems.length} staff reconciled
           </div>
         </div>
 
@@ -486,8 +552,18 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search employee name or code..."
-            className="w-full bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition"
+            className="w-full bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-7 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition p-0.5 rounded cursor-pointer"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -524,33 +600,161 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/60 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                <th className="px-3.5 py-2.5">Code</th>
-                <th className="px-3.5 py-2.5">Employee</th>
-                <th className="px-3.5 py-2.5">Dept</th>
-                <th className="px-3.5 py-2.5 text-right">Gross</th>
+                <th className="px-3.5 py-2.5">
+                  <SortableHeader
+                    label="Code"
+                    field="code"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="left"
+                  />
+                </th>
+                <th className="px-3.5 py-2.5">
+                  <SortableHeader
+                    label="Employee"
+                    field="name"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="left"
+                  />
+                </th>
+                <th className="px-3.5 py-2.5">
+                  <SortableHeader
+                    label="Dept"
+                    field="dept"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="left"
+                  />
+                </th>
+                <th className="px-3.5 py-2.5 text-right">
+                  <SortableHeader
+                    label="Gross"
+                    field="gross"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                  />
+                </th>
                 {activeSubTab === 'processing' && (
                   <>
-                    <th className="px-3.5 py-2.5 text-right">PAYE</th>
-                    <th className="px-3.5 py-2.5 text-right">Pension</th>
-                    <th className="px-3.5 py-2.5 text-right">Net Pay</th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="PAYE"
+                        field="paye"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="Pension"
+                        field="pension"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="Net Pay"
+                        field="net"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
                   </>
                 )}
                 {activeSubTab === 'paye' && (
                   <>
-                    <th className="px-3.5 py-2.5 text-right">Annual Gross</th>
-                    <th className="px-3.5 py-2.5 text-right">Total CRA</th>
-                    <th className="px-3.5 py-2.5 text-right">Taxable Income</th>
-                    <th className="px-3.5 py-2.5 text-right">Monthly PAYE</th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="Annual Gross"
+                        field="annualGross"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="Total CRA"
+                        field="totalCra"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="Taxable Income"
+                        field="taxableIncome"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="Monthly PAYE"
+                        field="paye"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
                   </>
                 )}
                 {activeSubTab === 'pension' && (
                   <>
-                    <th className="px-3.5 py-2.5 text-right">Employee (8%)</th>
-                    <th className="px-3.5 py-2.5 text-right">Employer (10%)</th>
-                    <th className="px-3.5 py-2.5 text-right">Total Remittance</th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="Employee (8%)"
+                        field="pension"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="Employer (10%)"
+                        field="employerPension"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3.5 py-2.5 text-right">
+                      <SortableHeader
+                        label="Total Remittance"
+                        field="totalPension"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
                   </>
                 )}
-                <th className="px-3.5 py-2.5 text-center">Action</th>
+                <th className="px-3.5 py-2.5 text-center font-semibold uppercase tracking-wider text-[10px] text-zinc-500">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
@@ -727,6 +931,17 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           monthLabel={monthLabel}
           year={year}
           company={company}
+          config={payslipDesign}
+          onOpenPayslipDesigner={onOpenPayslipDesigner}
+          employees={employees}
+          payrollVariables={payrollVariables}
+          payeTaxVariables={payeTaxVariables}
+          selectedMonth={selectedMonth}
+          onUpdatePayslipDesign={onUpdatePayslipDesign}
+          onResetPayslipDesign={onResetPayslipDesign}
+          savedPresets={savedPresets}
+          onSavePreset={onSavePreset}
+          onDeletePreset={onDeletePreset}
         />
       )}
 
@@ -738,7 +953,18 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           monthLabel={monthLabel}
           year={year}
           company={company}
+          config={payslipDesign}
           onClose={() => setSelectedSingleSlip(null)}
+          onOpenPayslipDesigner={onOpenPayslipDesigner}
+          employees={employees}
+          payrollVariables={payrollVariables}
+          payeTaxVariables={payeTaxVariables}
+          selectedMonth={selectedMonth}
+          onUpdatePayslipDesign={onUpdatePayslipDesign}
+          onResetPayslipDesign={onResetPayslipDesign}
+          savedPresets={savedPresets}
+          onSavePreset={onSavePreset}
+          onDeletePreset={onDeletePreset}
         />
       )}
 

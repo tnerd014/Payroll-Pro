@@ -20,6 +20,16 @@ header select,
   -webkit-app-region: no-drag !important;
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
 
 code, .font-mono {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -46,6 +56,10 @@ code, .font-mono {
   @page {
     size: A4 portrait;
     margin: 10mm 12mm;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   body, #root, .print-container {
     background: #ffffff !important;

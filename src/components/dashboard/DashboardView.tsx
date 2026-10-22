@@ -278,13 +278,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-5 select-none max-w-6xl mx-auto">
       
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Executive Dashboard
-            </h1>
+      {/* Top Header - Sticky */}
+      <div className="sticky top-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md pt-2.5 pb-3.5 border-b border-zinc-200 dark:border-zinc-800 -mx-6 px-6 md:-mx-8 md:px-8">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                Executive Dashboard
+              </h1>
             {isLocked ? (
               <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60 flex items-center gap-1">
                 <Lock className="w-3 h-3" /> Locked Run
@@ -436,6 +437,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
       </div>
+    </div>
 
       {/* ================= 4 MINIMALIST METRIC CARDS ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -446,9 +448,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono">
             {formatNaira(totalGross)}
           </div>
-          <span className="text-[11px] text-zinc-400 mt-1 block">
-            {isAllMonths ? `Full Year ${filterYear}` : `${activeMonthLabel} ${filterYear}`} allocation
-          </span>
         </div>
 
         {/* Card 2: Net */}
@@ -457,9 +456,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="text-xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
             {formatNaira(totalNet)}
           </div>
-          <span className="text-[11px] text-zinc-400 mt-1 block">
-            {netRatio.toFixed(1)}% of gross take-home
-          </span>
         </div>
 
         {/* Card 3: Deductions */}
@@ -468,9 +464,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono">
             {formatNaira(totalDeductions)}
           </div>
-          <span className="text-[11px] text-zinc-400 mt-1 block">
-            PAYE: {formatCompactNaira(totalPaye)} &bull; Pen: {formatCompactNaira(totalPension)}
-          </span>
         </div>
 
         {/* Card 4: Workforce */}
@@ -479,9 +472,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
             {activeItems.length} <span className="text-xs font-normal text-zinc-400">Personnel</span>
           </div>
-          <span className="text-[11px] text-zinc-400 mt-1 block">
-            {deptList.length} Units &bull; Employer Outflow: {formatCompactNaira(totalEmployerCost)}
-          </span>
         </div>
 
       </div>

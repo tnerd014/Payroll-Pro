@@ -3,6 +3,7 @@ import {
   Users, 
   UserPlus, 
   Search, 
+  X,
   Filter, 
   Edit3, 
   Trash2, 
@@ -15,6 +16,7 @@ import { Employee, SalaryCalculationMode, EmploymentTypeRule } from '../../types
 import { formatNaira, getEmployeeGrossForPeriod } from '../../engine/payePensionEngine';
 import { EmployeeFormModal } from './EmployeeFormModal';
 import { TablePagination } from '../common/TablePagination';
+import { SortableHeader, SortDirection } from '../common/SortableHeader';
 
 interface EmployeeListViewProps {
   employees: Employee[];
@@ -48,6 +50,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [selectedType, setSelectedType] = useState('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'Active' | 'Inactive'>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState<'quick' | 'standard'>('quick');
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
@@ -93,8 +96,74 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
     
     const matchesDept = selectedDept === 'ALL' || emp.department === selectedDept;
     const matchesType = selectedType === 'ALL' || (emp.employmentType || 'Full-Time') === selectedType;
-    return matchesSearch && matchesDept && matchesType;
+    const matchesStatus = selectedStatus === 'ALL' || (emp.status || 'Active') === selectedStatus;
+    return matchesSearch && matchesDept && matchesType && matchesStatus;
   });
+
+  // Sorting State
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedEmployees = useMemo(() => {
+    if (!sortField) return filteredEmployees;
+    return [...filteredEmployees].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'name': {
+          const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
+          const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
+          comparison = nameA.localeCompare(nameB);
+          break;
+        }
+        case 'department': {
+          const deptA = `${a.department || ''} ${a.position || ''}`.trim().toLowerCase();
+          const deptB = `${b.department || ''} ${b.position || ''}`.trim().toLowerCase();
+          comparison = deptA.localeCompare(deptB);
+          break;
+        }
+        case 'gross': {
+          const grossA = getEmployeeGrossForPeriod(a, currentMonth, currentYear);
+          const grossB = getEmployeeGrossForPeriod(b, currentMonth, currentYear);
+          comparison = grossA - grossB;
+          break;
+        }
+        case 'rent': {
+          comparison = (a.annualRent || 0) - (b.annualRent || 0);
+          break;
+        }
+        case 'bank': {
+          const bankA = `${a.bankName || ''} ${a.accountNumber || ''}`.trim().toLowerCase();
+          const bankB = `${b.bankName || ''} ${b.accountNumber || ''}`.trim().toLowerCase();
+          comparison = bankA.localeCompare(bankB);
+          break;
+        }
+        case 'type': {
+          const typeA = (a.employmentType || 'Full-Time').toLowerCase();
+          const typeB = (b.employmentType || 'Full-Time').toLowerCase();
+          comparison = typeA.localeCompare(typeB);
+          break;
+        }
+        case 'status': {
+          const statusA = (a.status || 'Active').toLowerCase();
+          const statusB = (b.status || 'Active').toLowerCase();
+          comparison = statusA.localeCompare(statusB);
+          break;
+        }
+        default:
+          comparison = 0;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredEmployees, sortField, sortDirection, currentMonth, currentYear]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -103,12 +172,12 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
   // Reset to page 1 on filter or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedDept, selectedType]);
+  }, [searchTerm, selectedDept, selectedType, selectedStatus]);
 
   const paginatedEmployees = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredEmployees.slice(start, start + pageSize);
-  }, [filteredEmployees, currentPage, pageSize]);
+    return sortedEmployees.slice(start, start + pageSize);
+  }, [sortedEmployees, currentPage, pageSize]);
 
   const totalGrossCommitment = employees
     .filter(e => e.status === 'Active')
@@ -134,32 +203,34 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-3">
-        <div>
-          <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Employee Directory
-          </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Manage staff profiles, monthly gross remuneration, and statutory deduction flags.
-          </p>
-        </div>
+      {/* Header - Sticky */}
+      <div className="sticky top-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md pt-2.5 pb-3 border-b border-zinc-200 dark:border-zinc-800 -mx-6 px-6 md:-mx-8 md:px-8">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
+              Employee Directory
+            </h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Manage staff profiles, monthly gross remuneration, and statutory deduction flags.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onNavigateToExcel}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition-colors"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Excel Sync</span>
-          </button>
-          <button
-            onClick={() => { setEditingEmp(null); setModalTab('quick'); setIsModalOpen(true); }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none cursor-pointer"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Add Employee</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onNavigateToExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition-colors"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Excel Sync</span>
+            </button>
+            <button
+              onClick={() => { setEditingEmp(null); setModalTab('quick'); setIsModalOpen(true); }}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none cursor-pointer"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Add Employee</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -196,8 +267,18 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
             placeholder="Search by name, code, dept, PAYE ID, or RSA PIN..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded pl-8 pr-7 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition p-0.5 rounded cursor-pointer"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -226,25 +307,101 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
               ))}
             </select>
           </div>
+
+          <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5">
+            <select
+              value={selectedStatus}
+              onChange={e => setSelectedStatus(e.target.value as 'ALL' | 'Active' | 'Inactive')}
+              className="bg-transparent text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer font-medium"
+              title="Filter by Status"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Employees Table */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto min-h-[200px] pb-3">
+        <div className="overflow-x-auto min-h-[260px] pb-4">
           <table className="w-full text-left text-xs">
             <thead className="bg-zinc-50/70 dark:bg-zinc-950/60 border-b border-zinc-200 dark:border-zinc-800/80 text-zinc-400 dark:text-zinc-500 uppercase tracking-wider text-[10px] font-semibold">
               <tr>
-                <th className="py-2.5 px-3.5">Full Name</th>
-                <th className="py-2.5 px-3.5">Department & Role</th>
-                <th className="py-2.5 px-3.5 text-right">
-                  {salaryCalculationMode === 'net-to-gross' ? 'Target Net Pay' : 'Monthly Gross'}
+                <th className="py-2.5 px-3.5">
+                  <SortableHeader
+                    label="Full Name"
+                    field="name"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="left"
+                  />
                 </th>
-                <th className="py-2.5 px-3.5 text-right">Annual Rent</th>
-                <th className="py-2.5 px-3.5">Bank Account</th>
-                <th className="py-2.5 px-3.5 text-center">Statutory</th>
-                <th className="py-2.5 px-3.5 text-center">Status</th>
-                <th className="py-2.5 px-3.5 text-right">Actions</th>
+                <th className="py-2.5 px-3.5">
+                  <SortableHeader
+                    label="Department & Role"
+                    field="department"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="left"
+                  />
+                </th>
+                <th className="py-2.5 px-3.5 text-right">
+                  <SortableHeader
+                    label={salaryCalculationMode === 'net-to-gross' ? 'Target Net Pay' : 'Monthly Gross'}
+                    field="gross"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                  />
+                </th>
+                <th className="py-2.5 px-3.5 text-right">
+                  <SortableHeader
+                    label="Annual Rent"
+                    field="rent"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                  />
+                </th>
+                <th className="py-2.5 px-3.5">
+                  <SortableHeader
+                    label="Bank Account"
+                    field="bank"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="left"
+                  />
+                </th>
+                <th className="py-2.5 px-3.5 text-center">
+                  <SortableHeader
+                    label="Type"
+                    field="type"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="center"
+                  />
+                </th>
+                <th className="py-2.5 px-3.5 text-center">
+                  <SortableHeader
+                    label="Status"
+                    field="status"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="center"
+                  />
+                </th>
+                <th className="py-2.5 px-3.5 text-right font-semibold uppercase tracking-wider text-[10px] text-zinc-400 dark:text-zinc-500">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
@@ -255,152 +412,141 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                   </td>
                 </tr>
               ) : (
-                paginatedEmployees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/30 transition-colors">
-                    <td className="py-2.5 px-3.5">
-                      <div className="font-medium text-zinc-900 dark:text-zinc-100">{emp.firstName} {emp.lastName}</div>
-                      <div className="text-[11px] text-zinc-400 truncate max-w-[200px]">{emp.email || 'No email on file'}</div>
-                    </td>
-                    <td className="py-2.5 px-3.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-zinc-800 dark:text-zinc-200 font-medium text-xs">{emp.department}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-normal">
+                paginatedEmployees.map((emp, index) => {
+                  const isDropUp = paginatedEmployees.length >= 4
+                    ? index >= paginatedEmployees.length - 2
+                    : paginatedEmployees.length === 3
+                    ? index === 2
+                    : false;
+
+                  return (
+                    <tr key={emp.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/30 transition-colors">
+                      <td className="py-2.5 px-3.5">
+                        <div className="font-medium text-zinc-900 dark:text-zinc-100">{emp.firstName} {emp.lastName}</div>
+                        <div className="text-[11px] text-zinc-400 truncate max-w-[200px]">{emp.email || 'No email on file'}</div>
+                      </td>
+                      <td className="py-2.5 px-3.5">
+                        <div className="text-zinc-800 dark:text-zinc-200 font-medium text-xs">{emp.department}</div>
+                        <div className="text-[11px] text-zinc-400 mt-0.5">{emp.position || '—'}</div>
+                      </td>
+                      <td className="py-2.5 px-3.5 font-mono text-xs font-medium text-zinc-900 dark:text-zinc-100 text-right">
+                        {formatNaira(getEmployeeGrossForPeriod(emp, currentMonth, currentYear))}
+                        {emp.monthlySalaries && Object.keys(emp.monthlySalaries).length > 0 && (
+                          <span className="block text-[9px] font-sans text-amber-500 dark:text-amber-400 font-normal">
+                            Variable schedule
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3.5 font-mono text-xs text-zinc-500 dark:text-zinc-400 text-right">
+                        {emp.annualRent > 0 ? formatNaira(emp.annualRent) : '—'}
+                      </td>
+                      <td className="py-2.5 px-3.5">
+                        <div className="text-zinc-800 dark:text-zinc-200 text-xs font-medium">{emp.bankName || '—'}</div>
+                        <div className="font-mono text-[11px] text-zinc-400 tracking-wider">{emp.accountNumber || '—'}</div>
+                      </td>
+                      <td className="py-2.5 px-3.5 text-center">
+                        <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          emp.employmentType === 'Contract'
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                            : emp.employmentType === 'Part-Time'
+                            ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
+                            : emp.employmentType === 'Intern / NYSC'
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+                        }`}>
                           {emp.employmentType || 'Full-Time'}
                         </span>
-                      </div>
-                      <div className="text-[11px] text-zinc-400 mt-0.5">{emp.position || '—'}</div>
-                    </td>
-                    <td className="py-2.5 px-3.5 font-mono text-xs font-medium text-zinc-900 dark:text-zinc-100 text-right">
-                      {formatNaira(getEmployeeGrossForPeriod(emp, currentMonth, currentYear))}
-                      {emp.monthlySalaries && Object.keys(emp.monthlySalaries).length > 0 && (
-                        <span className="block text-[9px] font-sans text-amber-500 dark:text-amber-400 font-normal">
-                          Variable schedule
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-3.5 font-mono text-xs text-zinc-500 dark:text-zinc-400 text-right">
-                      {emp.annualRent > 0 ? formatNaira(emp.annualRent) : '—'}
-                    </td>
-                    <td className="py-2.5 px-3.5">
-                      <div className="text-zinc-800 dark:text-zinc-200 text-xs font-medium">{emp.bankName || '—'}</div>
-                      <div className="font-mono text-[11px] text-zinc-400 tracking-wider">{emp.accountNumber || '—'}</div>
-                    </td>
-                    <td className="py-2.5 px-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono">
-                        <span 
-                          className={`px-1.5 py-0.5 rounded text-[10px] ${
-                            emp.hasPension 
-                              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300' 
-                              : 'text-zinc-300 dark:text-zinc-700'
-                          }`} 
-                          title={`Statutory Pension ${emp.pensionNumber ? `(RSA: ${emp.pensionNumber})` : ''}`}
-                        >
-                          PEN
-                        </span>
-                        <span 
-                          className={`px-1.5 py-0.5 rounded text-[10px] ${
-                            emp.hasPaye 
-                              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300' 
-                              : 'text-zinc-300 dark:text-zinc-700'
-                          }`} 
-                          title={`PAYE Tax ${emp.payeNumber ? `(ID: ${emp.payeNumber})` : ''}`}
-                        >
-                          TAX
-                        </span>
-                      </div>
-                      {(emp.payeNumber || emp.pensionNumber) && (
-                        <div className="text-[9px] font-mono text-zinc-400 dark:text-zinc-500 mt-0.5 truncate max-w-[120px] mx-auto text-center" title={`PAYE: ${emp.payeNumber || '-'} | RSA: ${emp.pensionNumber || '-'} ${emp.pfaName ? `(${emp.pfaName})` : ''}`}>
-                          {emp.payeNumber ? emp.payeNumber : emp.pensionNumber}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-3.5 text-center">
-                      <button
-                        onClick={() => onUpdateEmployee(emp.id, { status: emp.status === 'Active' ? 'Inactive' : 'Active' })}
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium transition cursor-pointer ${
-                          emp.status === 'Active' 
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20' 
-                            : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20'
-                        }`}
-                        title="Click to toggle status"
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${emp.status === 'Active' ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
-                        <span>{emp.status}</span>
-                      </button>
-                    </td>
-                    <td className="py-2.5 px-3.5 text-right">
-                      <div className="relative inline-block text-left employee-actions-menu">
+                      </td>
+                      <td className="py-2.5 px-3.5 text-center">
                         <button
-                          type="button"
-                          onClick={() => setActiveMenuEmpId(activeMenuEmpId === emp.id ? null : emp.id)}
-                          className={`p-1.5 rounded-md transition-colors ${
-                            activeMenuEmpId === emp.id
-                              ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
-                              : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                          onClick={() => onUpdateEmployee(emp.id, { status: emp.status === 'Active' ? 'Inactive' : 'Active' })}
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium transition cursor-pointer ${
+                            emp.status === 'Active' 
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20' 
+                              : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20'
                           }`}
-                          title="Actions menu"
+                          title="Click to toggle status"
                         >
-                          <MoreVertical className="w-4 h-4" />
+                          <span className={`w-1.5 h-1.5 rounded-full ${emp.status === 'Active' ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                          <span>{emp.status}</span>
                         </button>
+                      </td>
+                      <td className="py-2.5 px-3.5 text-right">
+                        <div className="relative inline-block text-left employee-actions-menu">
+                          <button
+                            type="button"
+                            onClick={() => setActiveMenuEmpId(activeMenuEmpId === emp.id ? null : emp.id)}
+                            className={`p-1.5 rounded-md transition-colors ${
+                              activeMenuEmpId === emp.id
+                                ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
+                                : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                            }`}
+                            title="Actions menu"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
 
-                        {activeMenuEmpId === emp.id && (
-                          <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-30 animate-fade-in text-left">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveMenuEmpId(null);
-                                handleEdit(emp);
-                              }}
-                              className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
-                              <span>Edit Employee</span>
-                            </button>
+                          {activeMenuEmpId === emp.id && (
+                            <div className={`absolute right-0 ${
+                              isDropUp ? 'bottom-full mb-1' : 'top-full mt-1'
+                            } w-44 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-50 animate-fade-in text-left`}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuEmpId(null);
+                                  handleEdit(emp);
+                                }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
+                                <span>Edit Employee</span>
+                              </button>
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveMenuEmpId(null);
-                                onUpdateEmployee(emp.id, {
-                                  status: emp.status === 'Active' ? 'Inactive' : 'Active'
-                                });
-                              }}
-                              className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-                            >
-                              {emp.status === 'Active' ? (
-                                <>
-                                  <UserX className="w-3.5 h-3.5 text-amber-500" />
-                                  <span>Mark Inactive</span>
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
-                                  <span>Mark Active</span>
-                                </>
-                              )}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuEmpId(null);
+                                  onUpdateEmployee(emp.id, {
+                                    status: emp.status === 'Active' ? 'Inactive' : 'Active'
+                                  });
+                                }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+                              >
+                                {emp.status === 'Active' ? (
+                                  <>
+                                    <UserX className="w-3.5 h-3.5 text-amber-500" />
+                                    <span>Mark Inactive</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                    <span>Mark Active</span>
+                                  </>
+                                )}
+                              </button>
 
-                            <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+                              <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveMenuEmpId(null);
-                                if (confirm(`Are you sure you want to delete ${emp.firstName} ${emp.lastName}?`)) {
-                                  onDeleteEmployee(emp.id);
-                                }
-                              }}
-                              className="w-full px-3 py-1.5 flex items-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete Employee</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuEmpId(null);
+                                  if (confirm(`Are you sure you want to delete ${emp.firstName} ${emp.lastName}?`)) {
+                                    onDeleteEmployee(emp.id);
+                                  }
+                                }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete Employee</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

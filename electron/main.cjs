@@ -24,10 +24,15 @@ function createWindow() {
     },
   });
 
-  if (isDev && process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else if (isDev) {
-    mainWindow.loadURL('http://localhost:5174');
+  const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5174';
+  if (isDev) {
+    const tryLoad = () => {
+      if (!mainWindow) return;
+      mainWindow.loadURL(devUrl).catch(() => {
+        setTimeout(tryLoad, 1000);
+      });
+    };
+    tryLoad();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }

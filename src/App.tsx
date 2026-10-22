@@ -9,16 +9,27 @@ import { PayrollProcessingView } from './components/payroll/PayrollProcessingVie
 import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { SettingsView, SettingsTab, DirtyStateInfo } from './components/settings/SettingsView';
 import { CompanySettingsModal } from './components/settings/CompanySettingsModal';
+import { WindowsAccountPicker } from './components/auth/WindowsAccountPicker';
+import { PayslipDesignerPage } from './components/payslip/PayslipDesignerPage';
+import { LoansAdvancesView } from './components/loans/LoansAdvancesView';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import { AppView } from './types';
+import { AppView, CompanyAccount } from './types';
 
 export const App: React.FC = () => {
   const {
     state,
+    companies,
+    activeCompanyId,
+    selectCompany,
+    lockOrSwitchCompany,
+    createCompany,
+    updateCompanyAccount,
+    deleteCompany,
     monthLabel,
     activeEmployees,
     currentPayrollItems,
     activeSnapshot,
+    isDarkTheme,
     toggleTheme,
     updateCompanyProfile,
     setActiveView,
@@ -36,6 +47,18 @@ export const App: React.FC = () => {
     deleteSnapshot,
     updatePayrollVariables,
     updatePayeTaxVariables,
+    updatePayslipDesign,
+    resetPayslipDesign,
+    savedPayslipPresets,
+    savePayslipPreset,
+    deletePayslipPreset,
+    addLoan,
+    updateLoan,
+    deleteLoan,
+    pauseResumeLoan,
+    recordManualLoanRepayment,
+    applyPeriodLoanDeduction,
+    applyAllPeriodLoanDeductions,
     resetAllData,
     reloadFromStorage,
   } = usePayrollStore();
@@ -54,6 +77,31 @@ export const App: React.FC = () => {
   };
 
   const [isCompanySettingsOpen, setIsCompanySettingsOpen] = useState(false);
+
+  // --- WORKSPACE DIRECT PASSWORD UNLOCK STATE ---
+  const [initialLockedCompanyId, setInitialLockedCompanyId] = useState<string | null>(null);
+  const [previousActiveCompanyId, setPreviousActiveCompanyId] = useState<string | null>(null);
+  const [previousActiveView, setPreviousActiveView] = useState<AppView | null>(null);
+
+  const handleBackToPrevious = () => {
+    if (previousActiveCompanyId) {
+      const prevComp = companies.find(c => c.id === previousActiveCompanyId);
+      const res = selectCompany(previousActiveCompanyId, prevComp?.password);
+      if (res.success && previousActiveView) {
+        setActiveView(previousActiveView);
+      }
+    }
+    setPreviousActiveCompanyId(null);
+    setPreviousActiveView(null);
+    setInitialLockedCompanyId(null);
+  };
+
+  const handleExplicitLockOrSwitch = () => {
+    setPreviousActiveCompanyId(null);
+    setPreviousActiveView(null);
+    setInitialLockedCompanyId(null);
+    lockOrSwitchCompany();
+  };
 
   // --- UNSAVED SETTINGS LEAVE PROTECTION ---
   const [unsavedSettingsInfo, setUnsavedSettingsInfo] = useState<DirtyStateInfo | null>(null);
@@ -79,17 +127,48 @@ export const App: React.FC = () => {
 
   // Sync dark class on document root and body for bulletproof dark/light mode switching
   useEffect(() => {
-    if (state.isDarkTheme) {
+    if (isDarkTheme) {
       document.documentElement.classList.add('dark');
       document.body.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
       document.body.classList.remove('dark');
     }
-  }, [state.isDarkTheme]);
+  }, [isDarkTheme]);
+
+  // If no company workspace is active, display the Windows OS-style Account Picker
+  if (!activeCompanyId) {
+    return (
+      <WindowsAccountPicker
+        companies={companies}
+        initialCompanyId={initialLockedCompanyId}
+        canGoBack={Boolean(previousActiveCompanyId)}
+        onBackToPrevious={handleBackToPrevious}
+        onClearInitialCompany={() => {
+          setInitialLockedCompanyId(null);
+          setPreviousActiveCompanyId(null);
+          setPreviousActiveView(null);
+        }}
+        onSelectCompany={(companyId, passwordAttempt) => {
+          const res = selectCompany(companyId, passwordAttempt);
+          if (res.success) {
+            setInitialLockedCompanyId(null);
+            setPreviousActiveCompanyId(null);
+            setPreviousActiveView(null);
+          }
+          return res;
+        }}
+        onCreateCompany={createCompany}
+        onUpdateCompany={updateCompanyAccount}
+        onDeleteCompany={deleteCompany}
+        isDarkTheme={isDarkTheme}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
 
   return (
-    <div className={`h-screen w-screen flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${state.isDarkTheme ? 'dark' : ''}`}>
+    <div className={`h-screen w-screen flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
       
       {/* Desktop Native Title Bar with Menu Bar */}
       <ErrorBoundary
@@ -116,13 +195,39 @@ export const App: React.FC = () => {
           payrollVariables={state.payrollVariables}
           payeTaxVariables={state.payeTaxVariables}
           monthLabel={monthLabel}
-          isDarkTheme={state.isDarkTheme}
+          isDarkTheme={isDarkTheme}
           onToggleTheme={toggleTheme}
           company={state.company}
+          companies={companies}
+          activeCompanyId={activeCompanyId}
+          onSelectCompany={(id) => {
+            const target = companies.find(c => c.id === id);
+            if (!target) return;
+            if (target.id === activeCompanyId) return;
+
+            // If the workspace requires a password, take user directly to the account sign-in view
+            if (target.hasPassword && target.password) {
+              setPreviousActiveCompanyId(activeCompanyId);
+              setPreviousActiveView(state.activeView);
+              setInitialLockedCompanyId(target.id);
+              lockOrSwitchCompany();
+              return;
+            }
+
+            // Otherwise switch directly
+            const res = selectCompany(id);
+            if (!res.success) {
+              setPreviousActiveCompanyId(activeCompanyId);
+              setPreviousActiveView(state.activeView);
+              setInitialLockedCompanyId(target.id);
+              lockOrSwitchCompany();
+            }
+          }}
           onOpenCompanySettings={() => handleRequestNavigate('settings')}
           onNavigate={handleRequestNavigate}
           onSoftReload={handleSoftReload}
           onTriggerAddEmployee={handleTriggerAddEmployee}
+          onLockOrSwitchCompany={handleExplicitLockOrSwitch}
         />
       </ErrorBoundary>
 
@@ -134,83 +239,138 @@ export const App: React.FC = () => {
           activeView={state.activeView}
           onViewChange={handleRequestNavigate}
           staffCount={activeEmployees.length}
+          activeLoansCount={state.loans?.filter(l => l.status === 'Active').length || 0}
           isLocked={Boolean(activeSnapshot?.isLocked)}
+          companyName={state.company.name}
+          companyLogoUrl={state.company.logoUrl}
+          onLockOrSwitchCompany={handleExplicitLockOrSwitch}
         />
 
         {/* Viewport Content Area wrapped with Error Boundary */}
         <ErrorBoundary onResetView={() => setActiveView('dashboard')}>
-          <main key={refreshTick} className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#fbfbfb] dark:bg-[#09090b]">
-            <div className="max-w-6xl mx-auto">
-              {state.activeView === 'dashboard' && (
-                <DashboardView
-                  items={currentPayrollItems}
-                  staffCount={activeEmployees.length}
-                  monthLabel={monthLabel}
-                  selectedMonth={state.selectedMonth}
-                  year={state.selectedYear}
-                  activeSnapshot={activeSnapshot}
-                  onNavigate={handleRequestNavigate}
-                  departments={state.departments}
-                  employees={state.employees}
-                  payrollVariables={state.payrollVariables}
-                  payeTaxVariables={state.payeTaxVariables}
-                  onPeriodChange={setSelectedPeriod}
-                />
-              )}
+          <main 
+            key={refreshTick} 
+            className={`flex-1 ${
+              state.activeView === 'analytics'
+                ? 'flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b]'
+                : 'overflow-y-auto px-6 pb-6 pt-0 md:px-8 md:pb-8 md:pt-0 bg-[#fbfbfb] dark:bg-[#09090b]'
+            }`}
+          >
+            {state.activeView === 'analytics' ? (
+              <AnalyticsView
+                items={currentPayrollItems}
+                employees={state.employees}
+                payrollVariables={state.payrollVariables}
+                payeTaxVariables={state.payeTaxVariables}
+                monthLabel={monthLabel}
+                selectedMonth={state.selectedMonth}
+                year={state.selectedYear}
+                activeSnapshot={activeSnapshot}
+                snapshots={state.snapshots}
+                departments={state.departments}
+                company={state.company}
+              />
+            ) : (
+              <div className="max-w-6xl mx-auto space-y-4">
+                {state.activeView === 'loans' && (
+                  <LoansAdvancesView
+                    loans={state.loans || []}
+                    employees={state.employees}
+                    payrollItems={currentPayrollItems}
+                    company={state.company}
+                    monthLabel={monthLabel}
+                    selectedMonth={state.selectedMonth}
+                    selectedYear={state.selectedYear}
+                    onAddLoan={addLoan}
+                    onUpdateLoan={updateLoan}
+                    onDeleteLoan={deleteLoan}
+                    onPauseResumeLoan={pauseResumeLoan}
+                    onRecordManualPayment={recordManualLoanRepayment}
+                    onApplyLoanDeduction={applyPeriodLoanDeduction}
+                    onApplyAllLoanDeductions={applyAllPeriodLoanDeductions}
+                  />
+                )}
+                {state.activeView === 'dashboard' && (
+                  <DashboardView
+                    items={currentPayrollItems}
+                    staffCount={activeEmployees.length}
+                    monthLabel={monthLabel}
+                    selectedMonth={state.selectedMonth}
+                    year={state.selectedYear}
+                    activeSnapshot={activeSnapshot}
+                    onNavigate={handleRequestNavigate}
+                    departments={state.departments}
+                    employees={state.employees}
+                    payrollVariables={state.payrollVariables}
+                    payeTaxVariables={state.payeTaxVariables}
+                    onPeriodChange={setSelectedPeriod}
+                  />
+                )}
 
-              {state.activeView === 'employees' && (
-                <EmployeeListView
-                  employees={state.employees}
-                  departments={state.departments}
-                  onAddEmployee={addEmployee}
-                  onAddEmployees={addEmployees}
-                  onUpdateEmployee={updateEmployee}
-                  onDeleteEmployee={deleteEmployee}
-                  onNavigateToExcel={() => handleRequestNavigate('excel')}
-                  currentYear={state.selectedYear}
-                  currentMonth={state.selectedMonth}
-                  salaryCalculationMode={state.payrollVariables.salaryCalculationMode}
-                  employmentTypeRules={state.payrollVariables.employmentTypeRules}
-                  addEmployeeTrigger={addEmployeeTrigger}
-                />
-              )}
+                {state.activeView === 'employees' && (
+                  <EmployeeListView
+                    employees={state.employees}
+                    departments={state.departments}
+                    onAddEmployee={addEmployee}
+                    onAddEmployees={addEmployees}
+                    onUpdateEmployee={updateEmployee}
+                    onDeleteEmployee={deleteEmployee}
+                    onNavigateToExcel={() => handleRequestNavigate('excel')}
+                    currentYear={state.selectedYear}
+                    currentMonth={state.selectedMonth}
+                    salaryCalculationMode={state.payrollVariables.salaryCalculationMode}
+                    employmentTypeRules={state.payrollVariables.employmentTypeRules}
+                    addEmployeeTrigger={addEmployeeTrigger}
+                  />
+                )}
 
-              {state.activeView === 'payroll' && (
-                <PayrollProcessingView
-                  monthLabel={monthLabel}
-                  year={state.selectedYear}
-                  items={currentPayrollItems}
-                  activeSnapshot={activeSnapshot}
-                  snapshots={state.snapshots}
-                  onFinalizeAndLock={finalizeAndLockPayroll}
-                  onUnlock={unlockPayroll}
-                  onDeleteSnapshot={deleteSnapshot}
-                  employees={state.employees}
-                  payrollVariables={state.payrollVariables}
-                  payeTaxVariables={state.payeTaxVariables}
-                  selectedMonth={state.selectedMonth}
-                  onPeriodChange={setSelectedPeriod}
-                  company={state.company}
-                  onOpenCompanySettings={() => handleRequestNavigate('settings')}
-                  departmentsList={state.departments}
-                />
-              )}
+                {state.activeView === 'payroll' && (
+                  <PayrollProcessingView
+                    monthLabel={monthLabel}
+                    year={state.selectedYear}
+                    items={currentPayrollItems}
+                    activeSnapshot={activeSnapshot}
+                    snapshots={state.snapshots}
+                    onFinalizeAndLock={finalizeAndLockPayroll}
+                    onUnlock={unlockPayroll}
+                    onDeleteSnapshot={deleteSnapshot}
+                    employees={state.employees}
+                    payrollVariables={state.payrollVariables}
+                    payeTaxVariables={state.payeTaxVariables}
+                    selectedMonth={state.selectedMonth}
+                    onPeriodChange={setSelectedPeriod}
+                    company={state.company}
+                    onOpenCompanySettings={() => handleRequestNavigate('settings')}
+                    departmentsList={state.departments}
+                    onOpenPayslipDesigner={() => handleRequestNavigate('payslip-designer')}
+                    payslipDesign={state.payslipDesign}
+                    onUpdatePayslipDesign={updatePayslipDesign}
+                    onResetPayslipDesign={resetPayslipDesign}
+                    savedPresets={savedPayslipPresets}
+                    onSavePreset={savePayslipPreset}
+                    onDeletePreset={deletePayslipPreset}
+                  />
+                )}
 
-              {state.activeView === 'analytics' && (
-                <AnalyticsView
-                  items={currentPayrollItems}
-                  employees={state.employees}
-                  payrollVariables={state.payrollVariables}
-                  payeTaxVariables={state.payeTaxVariables}
-                  monthLabel={monthLabel}
-                  selectedMonth={state.selectedMonth}
-                  year={state.selectedYear}
-                  activeSnapshot={activeSnapshot}
-                  snapshots={state.snapshots}
-                  departments={state.departments}
-                  company={state.company}
-                />
-              )}
+                {state.activeView === 'payslip-designer' && (
+                  <PayslipDesignerPage
+                    company={state.company}
+                    employees={state.employees}
+                    payrollVariables={state.payrollVariables}
+                    payeTaxVariables={state.payeTaxVariables}
+                    monthLabel={monthLabel}
+                    selectedMonth={state.selectedMonth}
+                    year={state.selectedYear}
+                    payslipDesign={state.payslipDesign}
+                    onUpdatePayslipDesign={updatePayslipDesign}
+                    onResetPayslipDesign={resetPayslipDesign}
+                    onBackToPayroll={() => handleRequestNavigate('payroll')}
+                    savedPresets={savedPayslipPresets}
+                    onSavePreset={savePayslipPreset}
+                    onDeletePreset={deletePayslipPreset}
+                    loans={state.loans || []}
+                  />
+                )}
 
               {(state.activeView === 'settings' || state.activeView === 'variables' || state.activeView === 'excel') && (
                 <SettingsView
@@ -243,8 +403,9 @@ export const App: React.FC = () => {
                 />
               )}
             </div>
-          </main>
-        </ErrorBoundary>
+          )}
+        </main>
+      </ErrorBoundary>
 
       </div>
 

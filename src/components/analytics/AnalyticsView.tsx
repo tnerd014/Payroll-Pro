@@ -36,6 +36,7 @@ import { exportPayrollProToExcel } from '../../engine/excelEngine';
 import { PrintableScheduleModal, ScheduleReportType } from './PrintableScheduleModal';
 import { MONTHS } from '../../store/usePayrollStore';
 import { TablePagination } from '../common/TablePagination';
+import { SortableHeader, SortDirection } from '../common/SortableHeader';
 
 export type AnalyticsRangeMode = 'single-month' | 'full-year' | 'all-history';
 
@@ -95,6 +96,22 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   // Print Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printModalType, setPrintModalType] = useState<ScheduleReportType>('bank');
+
+  // Merged Export & Print Menu State
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportMenuRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutsideExport = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    if (isExportMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutsideExport);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutsideExport);
+  }, [isExportMenuOpen]);
 
   // Schedule Pagination State
   const [schedulePage, setSchedulePage] = useState(1);
@@ -208,22 +225,122 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     return Array.from(annualMap.values());
   }, [rangeMode, activeMonthKey, activeYear, employees, payrollVariables, payeTaxVariables, selectedDept, selectedEmpType]);
 
+  // Department Sorting
+  const [deptSortField, setDeptSortField] = useState<string | null>('gross');
+  const [deptSortDir, setDeptSortDir] = useState<SortDirection>('desc');
+  const handleDeptSort = (field: string) => {
+    if (deptSortField === field) {
+      setDeptSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setDeptSortField(field);
+      setDeptSortDir('asc');
+    }
+  };
+
+  // Tax Schedule Sorting
+  const [taxSortField, setTaxSortField] = useState<string | null>(null);
+  const [taxSortDir, setTaxSortDir] = useState<SortDirection>('asc');
+  const handleTaxSort = (field: string) => {
+    if (taxSortField === field) {
+      setTaxSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setTaxSortField(field);
+      setTaxSortDir('asc');
+    }
+  };
+
+  // Pension Schedule Sorting
+  const [pensionSortField, setPensionSortField] = useState<string | null>(null);
+  const [pensionSortDir, setPensionSortDir] = useState<SortDirection>('asc');
+  const handlePensionSort = (field: string) => {
+    if (pensionSortField === field) {
+      setPensionSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setPensionSortField(field);
+      setPensionSortDir('asc');
+    }
+  };
+
+  // Bank Schedule Sorting
+  const [bankSortField, setBankSortField] = useState<string | null>(null);
+  const [bankSortDir, setBankSortDir] = useState<SortDirection>('asc');
+  const handleBankSort = (field: string) => {
+    if (bankSortField === field) {
+      setBankSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setBankSortField(field);
+      setBankSortDir('asc');
+    }
+  };
+
   const taxItems = useMemo(() => activeItems.filter(i => i.monthlyPaye > 0 || i.hasPaye), [activeItems]);
+  const sortedTaxItems = useMemo(() => {
+    if (!taxSortField) return taxItems;
+    return [...taxItems].sort((a, b) => {
+      let comparison = 0;
+      switch (taxSortField) {
+        case 'code': comparison = (a.employeeCode || '').localeCompare(b.employeeCode || ''); break;
+        case 'name': comparison = (a.fullName || '').localeCompare(b.fullName || ''); break;
+        case 'type': comparison = (a.employmentType || '').localeCompare(b.employmentType || ''); break;
+        case 'gross': comparison = a.monthlyGross - b.monthlyGross; break;
+        case 'cra': comparison = a.totalCra - b.totalCra; break;
+        case 'taxable': comparison = a.taxableIncome - b.taxableIncome; break;
+        case 'paye': comparison = a.monthlyPaye - b.monthlyPaye; break;
+        default: comparison = 0;
+      }
+      return taxSortDir === 'asc' ? comparison : -comparison;
+    });
+  }, [taxItems, taxSortField, taxSortDir]);
+
   const paginatedTaxItems = useMemo(() => {
     const start = (schedulePage - 1) * schedulePageSize;
-    return taxItems.slice(start, start + schedulePageSize);
-  }, [taxItems, schedulePage, schedulePageSize]);
+    return sortedTaxItems.slice(start, start + schedulePageSize);
+  }, [sortedTaxItems, schedulePage, schedulePageSize]);
 
   const pensionItems = useMemo(() => activeItems.filter(i => i.hasPension), [activeItems]);
+  const sortedPensionItems = useMemo(() => {
+    if (!pensionSortField) return pensionItems;
+    return [...pensionItems].sort((a, b) => {
+      let comparison = 0;
+      switch (pensionSortField) {
+        case 'code': comparison = (a.employeeCode || '').localeCompare(b.employeeCode || ''); break;
+        case 'name': comparison = (a.fullName || '').localeCompare(b.fullName || ''); break;
+        case 'pfa': comparison = (a.pfaName || '').localeCompare(b.pfaName || ''); break;
+        case 'base': comparison = a.pensionableBHT - b.pensionableBHT; break;
+        case 'employee': comparison = a.employeePension - b.employeePension; break;
+        case 'employer': comparison = a.employerPension - b.employerPension; break;
+        case 'total': comparison = (a.employeePension + a.employerPension) - (b.employeePension + b.employerPension); break;
+        default: comparison = 0;
+      }
+      return pensionSortDir === 'asc' ? comparison : -comparison;
+    });
+  }, [pensionItems, pensionSortField, pensionSortDir]);
+
   const paginatedPensionItems = useMemo(() => {
     const start = (schedulePage - 1) * schedulePageSize;
-    return pensionItems.slice(start, start + schedulePageSize);
-  }, [pensionItems, schedulePage, schedulePageSize]);
+    return sortedPensionItems.slice(start, start + schedulePageSize);
+  }, [sortedPensionItems, schedulePage, schedulePageSize]);
+
+  const sortedBankItems = useMemo(() => {
+    if (!bankSortField) return activeItems;
+    return [...activeItems].sort((a, b) => {
+      let comparison = 0;
+      switch (bankSortField) {
+        case 'code': comparison = (a.employeeCode || '').localeCompare(b.employeeCode || ''); break;
+        case 'name': comparison = (a.fullName || '').localeCompare(b.fullName || ''); break;
+        case 'bank': comparison = (a.bankName || '').localeCompare(b.bankName || ''); break;
+        case 'account': comparison = (a.accountNumber || '').localeCompare(b.accountNumber || ''); break;
+        case 'net': comparison = a.netTakeHome - b.netTakeHome; break;
+        default: comparison = 0;
+      }
+      return bankSortDir === 'asc' ? comparison : -comparison;
+    });
+  }, [activeItems, bankSortField, bankSortDir]);
 
   const paginatedBankItems = useMemo(() => {
     const start = (schedulePage - 1) * schedulePageSize;
-    return activeItems.slice(start, start + schedulePageSize);
-  }, [activeItems, schedulePage, schedulePageSize]);
+    return sortedBankItems.slice(start, start + schedulePageSize);
+  }, [sortedBankItems, schedulePage, schedulePageSize]);
 
   // Aggregated totals
   const totalGross = activeItems.reduce((s, i) => s + i.monthlyGross, 0);
@@ -255,10 +372,22 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       map[dept].tax += item.monthlyPaye;
       map[dept].pension += (item.employeePension + item.employerPension);
     });
-    return Object.entries(map)
-      .map(([dept, data]) => ({ dept, ...data }))
-      .sort((a, b) => b.gross - a.gross);
-  }, [activeItems]);
+    const list = Object.entries(map).map(([dept, data]) => ({ dept, ...data }));
+    if (!deptSortField) return list;
+    return list.sort((a, b) => {
+      let comparison = 0;
+      switch (deptSortField) {
+        case 'dept': comparison = a.dept.localeCompare(b.dept); break;
+        case 'count': comparison = a.count - b.count; break;
+        case 'gross': comparison = a.gross - b.gross; break;
+        case 'net': comparison = a.net - b.net; break;
+        case 'tax': comparison = a.tax - b.tax; break;
+        case 'pension': comparison = a.pension - b.pension; break;
+        default: comparison = 0;
+      }
+      return deptSortDir === 'asc' ? comparison : -comparison;
+    });
+  }, [activeItems, deptSortField, deptSortDir]);
 
   // Employment Type Breakdown
   const empTypeList = useMemo(() => {
@@ -317,22 +446,23 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     : `Complete Historical Multi-Year Records`;
 
   return (
-    <div className="space-y-5 select-none max-w-6xl mx-auto">
+    <div className="flex flex-col h-full overflow-hidden select-none">
       
-      {/* Top Header - Single Unified Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-3.5">
-        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-          <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight shrink-0">
-            Payroll Analytics &amp; Statutory Reports
-          </h1>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 shrink-0">
-            {activeItems.length} Records
-          </span>
-          <span className="text-zinc-300 dark:text-zinc-700 hidden md:inline">&bull;</span>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400 hidden md:inline truncate">
-            {periodSubtitle}
-          </span>
-        </div>
+      {/* Top Header - Pinned above scroll container so the vertical scrollbar starts below this header */}
+      <div className="shrink-0 bg-[#fbfbfb] dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 px-6 pt-5 pb-3.5 md:px-8 z-20">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+            <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight shrink-0">
+              Payroll Analytics &amp; Statutory Reports
+            </h1>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 shrink-0">
+              {activeItems.length} Records
+            </span>
+            <span className="text-zinc-300 dark:text-zinc-700 hidden md:inline">&bull;</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 hidden md:inline truncate">
+              {periodSubtitle}
+            </span>
+          </div>
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Minimalist Filter Popover Button */}
@@ -500,34 +630,65 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             )}
           </div>
 
-          {/* Print Button */}
-          <button
-            type="button"
-            onClick={() => {
-              const mappedType: ScheduleReportType = activeTab === 'tax' ? 'paye' : activeTab === 'pension' ? 'pension' : 'bank';
-              setPrintModalType(mappedType);
-              setIsPrintModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition shadow-xs cursor-pointer"
-            title="Print or save PDF of current schedule"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print / Save PDF</span>
-          </button>
-          
-          {/* Export Button */}
-          <button
-            type="button"
-            onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Export All Schedules (.xlsx)</span>
-          </button>
+          {/* Merged Action Dropdown: Print & Export */}
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition shadow-xs cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print &amp; Export</span>
+              <ChevronDown className={`w-3.5 h-3.5 opacity-70 transition-transform duration-150 ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isExportMenuOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-60 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    const mappedType: ScheduleReportType = activeTab === 'tax' ? 'paye' : activeTab === 'pension' ? 'pension' : 'bank';
+                    setPrintModalType(mappedType);
+                    setIsPrintModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-800 dark:text-zinc-200 transition cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 text-zinc-500 shrink-0" />
+                  <div>
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100">Print / Save PDF</div>
+                    <div className="text-[10px] text-zinc-400">Printable schedule and audit voucher</div>
+                  </div>
+                </button>
+
+                <div className="h-px bg-zinc-100 dark:bg-zinc-800/80 my-1" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleExport();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-800 dark:text-zinc-200 transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div>
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100">Export All Schedules (.xlsx)</div>
+                    <div className="text-[10px] text-zinc-400">Complete multi-tab Excel workbook</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+    </div>
 
-      {/* Tabs */}
+    {/* Scrollable Content Container - Vertical scrollbar starts here BELOW the header */}
+    <div className="flex-1 overflow-y-auto px-6 py-5 md:px-8">
+      <div className="max-w-6xl mx-auto space-y-5">
+
+        {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-zinc-200 dark:border-zinc-800 text-xs overflow-x-auto pb-0.5">
         <button
           onClick={() => setActiveTab('overview')}
@@ -596,9 +757,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <p className="text-base sm:text-lg font-semibold font-mono text-zinc-900 dark:text-zinc-100 tracking-tight">
                 {formatNaira(totalGross)}
               </p>
-              <span className="text-[10px] text-zinc-400 block font-mono">
-                {rangeMode === 'full-year' ? '12 Months Cumulative' : 'Current Cycle Gross'}
-              </span>
             </div>
 
             {/* Card 2: Net Take-Home */}
@@ -609,9 +767,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <p className="text-base sm:text-lg font-semibold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight">
                 {formatNaira(totalNet)}
               </p>
-              <span className="text-[10px] text-zinc-400 block font-mono">
-                {netRatio.toFixed(1)}% of Gross Disbursed
-              </span>
             </div>
 
             {/* Card 3: Total PAYE */}
@@ -622,9 +777,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <p className="text-base sm:text-lg font-semibold font-mono text-amber-600 dark:text-amber-400 tracking-tight">
                 {formatNaira(totalPaye)}
               </p>
-              <span className="text-[10px] text-zinc-400 block font-mono">
-                {payeRatio.toFixed(1)}% Effective Tax Rate
-              </span>
             </div>
 
             {/* Card 4: Pension Pool */}
@@ -635,9 +787,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <p className="text-base sm:text-lg font-semibold font-mono text-blue-600 dark:text-blue-400 tracking-tight">
                 {formatNaira(totalPensionPool)}
               </p>
-              <span className="text-[10px] text-zinc-400 block font-mono">
-                8% Emp + 10% Emplr
-              </span>
             </div>
 
             {/* Card 5: Total Employer Cost */}
@@ -648,9 +797,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <p className="text-base sm:text-lg font-semibold font-mono text-zinc-900 dark:text-zinc-100 tracking-tight">
                 {formatNaira(totalEmployerCost)}
               </p>
-              <span className="text-[10px] text-zinc-400 block font-mono">
-                Gross + 10% Match Outflow
-              </span>
             </div>
 
           </div>
@@ -797,31 +943,31 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           </div>
 
-          {/* Department Cost Distribution (Minimalist Bars) */}
+          {/* Department Cost Distribution */}
           <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-xs border-b border-zinc-100 dark:border-zinc-800/60 pb-2">
               <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">
                 Department Cost Allocation
               </h3>
               <span className="text-zinc-400 font-mono text-[11px]">{deptList.length} Operating Units</span>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-2.5 text-xs">
               {deptList.map(dept => {
                 const percent = totalGross > 0 ? (dept.gross / totalGross) * 100 : 0;
                 return (
                   <div key={dept.dept} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">
+                        <span className="font-medium text-zinc-800 dark:text-zinc-200">
                           {dept.dept}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-mono">
+                        <span className="text-[10px] text-zinc-400 font-mono">
                           {dept.count} staff
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                        <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
                           {formatNaira(dept.gross)}
                         </span>
                         <span className="text-[11px] font-mono text-zinc-400 w-12 text-right">
@@ -829,9 +975,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         </span>
                       </div>
                     </div>
-                    <div className="w-full bg-zinc-100 dark:bg-zinc-800/80 h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-800/80 h-1 rounded-full overflow-hidden">
                       <div 
-                        className="bg-zinc-900 dark:bg-zinc-200 h-1.5 rounded-full transition-all duration-300"
+                        className="bg-zinc-800 dark:bg-zinc-300 h-1 rounded-full transition-all duration-300"
                         style={{ width: `${percent}%` }}
                       />
                     </div>
@@ -914,13 +1060,27 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium">Department</th>
-                  <th className="py-2.5 px-3 font-medium text-center">Headcount</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Total Gross</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Total Net</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Total PAYE</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Total Pension</th>
-                  <th className="py-2.5 px-3 font-medium text-right">% of Payroll</th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="Department" field="dept" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-center">
+                    <SortableHeader label="Headcount" field="count" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="center" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Total Gross" field="gross" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Total Net" field="net" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Total PAYE" field="tax" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Total Pension" field="pension" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500">% of Payroll</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-mono">
@@ -965,13 +1125,27 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium">Code</th>
-                  <th className="py-2.5 px-3 font-medium">Employee Name</th>
-                  <th className="py-2.5 px-3 font-medium">Employment Type</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Gross Remuneration</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Total CRA Relief</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Taxable Income</th>
-                  <th className="py-2.5 px-3 font-medium text-right">PAYE Deducted</th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="Code" field="code" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="Employee Name" field="name" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="Employment Type" field="type" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Gross Remuneration" field="gross" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Total CRA Relief" field="cra" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Taxable Income" field="taxable" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="PAYE Deducted" field="paye" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-mono">
@@ -1022,13 +1196,27 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium">Code</th>
-                  <th className="py-2.5 px-3 font-medium">Employee Name</th>
-                  <th className="py-2.5 px-3 font-medium">PFA / RSA PIN</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Pensionable Base (BHT)</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Employee (8%)</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Employer (10%)</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Total Remittance</th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="Code" field="code" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="Employee Name" field="name" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="PFA / RSA PIN" field="pfa" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Pensionable Base (BHT)" field="base" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Employee (8%)" field="employee" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Employer (10%)" field="employer" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Total Remittance" field="total" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-mono">
@@ -1079,12 +1267,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium">S/N</th>
-                  <th className="py-2.5 px-3 font-medium">Beneficiary</th>
-                  <th className="py-2.5 px-3 font-medium">Bank</th>
-                  <th className="py-2.5 px-3 font-medium">NUBAN Account</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Net Amount</th>
-                  <th className="py-2.5 px-3 font-medium">Narration</th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500">S/N</span>
+                  </th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="Beneficiary" field="name" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="Bank" field="bank" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <SortableHeader label="NUBAN Account" field="account" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="left" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Net Amount" field="net" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium">
+                    <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500">Narration</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/60 font-mono">
@@ -1114,7 +1314,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
       )}
 
-      {/* Printable Schedule Modal */}
+      </div>
+    </div>
+
+    {/* Printable Schedule Modal */}
       {isPrintModalOpen && (
         <PrintableScheduleModal
           isOpen={isPrintModalOpen}

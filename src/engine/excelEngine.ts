@@ -553,7 +553,7 @@ function applyFreezePanesToWorkbook(wb: XLSX.WorkBook): Uint8Array {
 
 function saveExcelWorkbookFile(buffer: Uint8Array, filename: string) {
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-    const blob = new Blob([buffer], {
+    const blob = new Blob([buffer as any], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
     if ((window.navigator as any)?.msSaveOrOpenBlob) {

@@ -615,7 +615,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="space-y-6">
       
       {/* Sticky Header & Tabs Container with Persistent Save Button */}
-      <div className="sticky -top-6 md:-top-8 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md pt-2 pb-2.5 -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 border-b border-zinc-200/80 dark:border-zinc-800/80 space-y-2.5 transition-all">
+      <div className="sticky top-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md pt-4 sm:pt-5 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 border-b border-zinc-200/80 dark:border-zinc-800/80 space-y-2.5 transition-all">
         
         {/* Top Row: Title + Persistent Action */}
         <div className="flex justify-between items-center gap-3">
@@ -623,9 +623,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
               System Settings
             </h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate hidden sm:block">
-              Configure company branding, statutory tax variables, Excel data sync, and system reset.
-            </p>
+
           </div>
 
           {/* Always-Visible Save Action */}

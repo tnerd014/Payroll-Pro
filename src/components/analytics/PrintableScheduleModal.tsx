@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, ArrowLeft, Download, Landmark, FileText, ShieldCheck, Check } from 'lucide-react';
 import { CalculatedPayrollItem, CompanyProfile, Employee } from '../../types';
-import { formatNaira } from '../../engine/payePensionEngine';
+import { formatNaira, formatDate } from '../../engine/payePensionEngine';
 
 export type ScheduleReportType = 'bank' | 'paye' | 'pension';
 
@@ -59,13 +60,9 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
   const totalGross = safeItems.reduce((s, i) => s + (i.monthlyGross || 0), 0);
   const totalTaxable = safeItems.reduce((s, i) => s + (i.taxableIncome || 0), 0);
 
-  const currentDateStr = new Date().toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  const currentDateStr = formatDate(new Date());
 
-  return (
+  return createPortal(
     <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-[#f4f4f5] dark:bg-[#09090b] flex flex-col overflow-hidden text-zinc-900 dark:text-zinc-100 print:top-0 print:inset-0 print:bg-white print:z-auto">
       
       {/* Top Application Header Bar - no-print */}
@@ -358,6 +355,7 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
 
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

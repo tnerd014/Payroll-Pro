@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { History, Lock, Clock, CheckCircle2, Eye, X, ArrowRight, ArrowUpRight, ArrowDownRight, Layers, Trash2, AlertTriangle } from 'lucide-react';
 import { PayrollSnapshot } from '../../types';
-import { formatNaira } from '../../engine/payePensionEngine';
+import { formatNaira, formatDateTime } from '../../engine/payePensionEngine';
 
 interface VersionHistoryModalProps {
   isOpen: boolean;
@@ -67,13 +67,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
             const isCurrentlySelected = currentSelectedVersion === String(snap.version);
             const isActiveLock = Boolean(snap.isLocked);
             const formattedDate = snap.finalizedAt 
-              ? new Date(snap.finalizedAt).toLocaleDateString('en-GB', { 
-                  day: '2-digit', 
-                  month: 'short', 
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }) 
+              ? formatDateTime(snap.finalizedAt)
               : 'Unknown date';
 
             // Compare with previous version if available
