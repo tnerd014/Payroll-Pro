@@ -19,7 +19,8 @@ import {
   DEFAULT_PAYSLIP_DESIGN,
   PRESET_HEX_MAP,
   normalizeVisibleColumns,
-  NetPayFontSize
+  NetPayFontSize,
+  BreakdownFontSize
 } from '../../types';
 import { formatNaira } from '../../engine/payePensionEngine';
 
@@ -183,6 +184,44 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
     return undefined;
   };
 
+  // Salary breakdown font size & scale helper
+  const breakdownSize: BreakdownFontSize = config.breakdownFontSize || 'standard';
+  const cycleBreakdownSizes: BreakdownFontSize[] = ['small', 'standard', 'large', 'xl'];
+  const currentBreakdownSizeIdx = cycleBreakdownSizes.indexOf(breakdownSize);
+
+  const handleStepBreakdownFontSize = (delta: number) => {
+    if (!onUpdateConfig) return;
+    const nextIdx = Math.max(0, Math.min(cycleBreakdownSizes.length - 1, currentBreakdownSizeIdx + delta));
+    onUpdateConfig({ breakdownFontSize: cycleBreakdownSizes[nextIdx] });
+  };
+
+  const breakdownClasses = {
+    small: {
+      title: 'text-[11px]',
+      row: 'text-[11px] py-0.5',
+      totalRow: 'text-xs pt-1.5',
+      totalNumber: 'text-xs',
+    },
+    standard: {
+      title: 'text-xs',
+      row: 'text-xs py-1',
+      totalRow: 'text-xs pt-2',
+      totalNumber: 'text-xs sm:text-sm',
+    },
+    large: {
+      title: 'text-sm',
+      row: 'text-sm py-1.5',
+      totalRow: 'text-sm pt-2.5',
+      totalNumber: 'text-sm sm:text-base font-semibold',
+    },
+    xl: {
+      title: 'text-base',
+      row: 'text-base py-2',
+      totalRow: 'text-base pt-3',
+      totalNumber: 'text-base sm:text-lg font-bold',
+    },
+  }[breakdownSize];
+
   // Helper to render interactive section wrapper
   const renderSectionWrapper = (id: PayslipSectionId, content: React.ReactNode) => {
     if (!interactive) return content;
@@ -194,7 +233,33 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
     return (
       <div className="group relative rounded transition-all hover:ring-2 hover:ring-indigo-400/50 hover:bg-indigo-50/10 dark:hover:bg-indigo-950/10 p-1 -m-1">
         {/* Floating Quick Action Controls */}
-        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-md rounded px-1 py-0.5 z-20 select-none">
+        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-md rounded px-1.5 py-0.5 z-20 select-none">
+          {/* Quick Font Size Controls for Breakdown Sections */}
+          {(id === 'earnings' || id === 'deductions') && onUpdateConfig && (
+            <div className="flex items-center gap-0.5 pr-1.5 mr-1 border-r border-zinc-200 dark:border-zinc-700">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleStepBreakdownFontSize(-1); }}
+                disabled={currentBreakdownSizeIdx === 0}
+                className="px-1 text-[11px] font-bold rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 cursor-pointer"
+                title="Smaller Font (Numbers & Text)"
+              >
+                A-
+              </button>
+              <span className="text-[10px] font-mono px-0.5 uppercase font-semibold text-zinc-500 dark:text-zinc-400">
+                {breakdownSize}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleStepBreakdownFontSize(1); }}
+                disabled={currentBreakdownSizeIdx === cycleBreakdownSizes.length - 1}
+                className="px-1 text-[11px] font-bold rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 disabled:opacity-30 cursor-pointer"
+                title="Larger Font (Numbers & Text)"
+              >
+                A+
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onMoveSectionUp?.(id); }}
@@ -490,33 +555,79 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
   // Section 4: Earnings
   const renderEarnings = () => {
     const rawEarnings = [
-      { id: 'basic_salary', label: 'Basic Salary (40%):', val: formatNaira(item.basic) },
-      { id: 'housing', label: 'Housing Allowance (30%):', val: formatNaira(item.housing) },
-      { id: 'transport', label: 'Transport Allowance (20%):', val: formatNaira(item.transport) },
-      { id: 'other_allowances', label: 'Other Allowances (10%):', val: formatNaira(item.otherAllowances) },
+      { id: 'basic_salary', label: 'Basic Salary:', val: formatNaira(item.basic) },
+      { id: 'housing', label: 'Housing Allowance:', val: formatNaira(item.housing) },
+      { id: 'transport', label: 'Transport Allowance:', val: formatNaira(item.transport) },
+      { id: 'other_allowances', label: 'Other Allowances:', val: formatNaira(item.otherAllowances) },
     ];
     const earningsList = rawEarnings.filter(r => isCol(r.id));
 
     return (
       <div className="space-y-3">
-        <h3 style={themeStyles.accentText} className="text-xs font-bold uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800 pb-1.5">
-          {config.earningsTitle}
-        </h3>
-        <div className="space-y-1 text-xs">
+        <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-1.5 gap-2">
+          {interactive && onUpdateConfig ? (
+            <input
+              type="text"
+              value={config.earningsTitle}
+              onChange={(e) => onUpdateConfig({ earningsTitle: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+              style={themeStyles.accentText}
+              className={`${breakdownClasses.title} font-bold uppercase tracking-wider bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none flex-1 transition`}
+              placeholder="EARNINGS BREAKDOWN"
+              title="Click to edit Earnings Header directly"
+            />
+          ) : (
+            <h3 style={themeStyles.accentText} className={`${breakdownClasses.title} font-bold uppercase tracking-wider`}>
+              {config.earningsTitle}
+            </h3>
+          )}
+
+          {interactive && onUpdateConfig && (
+            <div 
+              className="flex items-center gap-0.5 bg-black/5 dark:bg-white/10 rounded px-1.5 py-0.5 shrink-0 select-none shadow-2xs border border-zinc-200/60 dark:border-zinc-700/60"
+              onClick={(e) => e.stopPropagation()}
+              title="Earnings & Deductions Font Size (A- / A+)"
+            >
+              <button
+                type="button"
+                onClick={() => handleStepBreakdownFontSize(-1)}
+                disabled={currentBreakdownSizeIdx === 0}
+                className="px-1 text-[11px] font-bold hover:bg-black/10 dark:hover:bg-white/10 rounded disabled:opacity-30 cursor-pointer"
+                title="Smaller Font"
+              >
+                A-
+              </button>
+              <span className="text-[10px] font-mono px-1 uppercase font-semibold text-zinc-600 dark:text-zinc-300">
+                {breakdownSize}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleStepBreakdownFontSize(1)}
+                disabled={currentBreakdownSizeIdx === cycleBreakdownSizes.length - 1}
+                className="px-1 text-[11px] font-bold hover:bg-black/10 dark:hover:bg-white/10 rounded disabled:opacity-30 cursor-pointer"
+                title="Larger Font"
+              >
+                A+
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-1">
           {earningsList.map((row, idx) => (
             <div 
               key={row.label} 
               style={getRowStripeStyle(idx)}
-              className="flex justify-between text-zinc-600 dark:text-zinc-400 px-1.5 py-1 rounded"
+              className={`flex justify-between text-zinc-600 dark:text-zinc-400 px-1.5 ${breakdownClasses.row} rounded`}
             >
               <span>{row.label}</span>
               <span className="font-mono text-zinc-900 dark:text-zinc-100">{row.val}</span>
             </div>
           ))}
           {isCol('gross_pay') && (
-            <div className="flex justify-between font-bold text-zinc-900 dark:text-zinc-100 pt-2 border-t border-zinc-200 dark:border-zinc-800 px-1.5">
+            <div className={`flex justify-between font-bold text-zinc-900 dark:text-zinc-100 ${breakdownClasses.totalRow} border-t border-zinc-200 dark:border-zinc-800 px-1.5`}>
               <span>{config.grossPayLabel || 'Total Gross Remuneration'}:</span>
-              <span className="font-mono">{formatNaira(item.monthlyGross)}</span>
+              <span className={`font-mono ${breakdownClasses.totalNumber}`}>{formatNaira(item.monthlyGross)}</span>
             </div>
           )}
         </div>
@@ -537,24 +648,70 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
 
     return (
       <div className="space-y-3">
-        <h3 style={themeStyles.accentText} className="text-xs font-bold uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-800 pb-1.5">
-          {config.deductionsTitle}
-        </h3>
-        <div className="space-y-1 text-xs">
+        <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-1.5 gap-2">
+          {interactive && onUpdateConfig ? (
+            <input
+              type="text"
+              value={config.deductionsTitle}
+              onChange={(e) => onUpdateConfig({ deductionsTitle: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+              style={themeStyles.accentText}
+              className={`${breakdownClasses.title} font-bold uppercase tracking-wider bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none flex-1 transition`}
+              placeholder="STATUTORY DEDUCTIONS"
+              title="Click to edit Deductions Header directly"
+            />
+          ) : (
+            <h3 style={themeStyles.accentText} className={`${breakdownClasses.title} font-bold uppercase tracking-wider`}>
+              {config.deductionsTitle}
+            </h3>
+          )}
+
+          {interactive && onUpdateConfig && (
+            <div 
+              className="flex items-center gap-0.5 bg-black/5 dark:bg-white/10 rounded px-1.5 py-0.5 shrink-0 select-none shadow-2xs border border-zinc-200/60 dark:border-zinc-700/60"
+              onClick={(e) => e.stopPropagation()}
+              title="Earnings & Deductions Font Size (A- / A+)"
+            >
+              <button
+                type="button"
+                onClick={() => handleStepBreakdownFontSize(-1)}
+                disabled={currentBreakdownSizeIdx === 0}
+                className="px-1 text-[11px] font-bold hover:bg-black/10 dark:hover:bg-white/10 rounded disabled:opacity-30 cursor-pointer"
+                title="Smaller Font"
+              >
+                A-
+              </button>
+              <span className="text-[10px] font-mono px-1 uppercase font-semibold text-zinc-600 dark:text-zinc-300">
+                {breakdownSize}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleStepBreakdownFontSize(1)}
+                disabled={currentBreakdownSizeIdx === cycleBreakdownSizes.length - 1}
+                className="px-1 text-[11px] font-bold hover:bg-black/10 dark:hover:bg-white/10 rounded disabled:opacity-30 cursor-pointer"
+                title="Larger Font"
+              >
+                A+
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-1">
           {deductionsList.map((row, idx) => (
             <div 
               key={row.label} 
               style={getRowStripeStyle(idx)}
-              className="flex justify-between text-zinc-600 dark:text-zinc-400 px-1.5 py-1 rounded"
+              className={`flex justify-between text-zinc-600 dark:text-zinc-400 px-1.5 ${breakdownClasses.row} rounded`}
             >
               <span>{row.label}</span>
               <span className="font-mono text-zinc-900 dark:text-zinc-100">{row.val}</span>
             </div>
           ))}
           {isCol('total_deductions') && (
-            <div className="flex justify-between font-bold text-zinc-900 dark:text-zinc-100 pt-2 border-t border-zinc-200 dark:border-zinc-800 px-1.5">
+            <div className={`flex justify-between font-bold text-zinc-900 dark:text-zinc-100 ${breakdownClasses.totalRow} border-t border-zinc-200 dark:border-zinc-800 px-1.5`}>
               <span>{config.totalDeductionsLabel || 'Total Deductions'}:</span>
-              <span className="font-mono text-rose-600 dark:text-rose-400">-{formatNaira(item.totalDeductions)}</span>
+              <span className={`font-mono text-rose-600 dark:text-rose-400 ${breakdownClasses.totalNumber}`}>-{formatNaira(item.totalDeductions)}</span>
             </div>
           )}
         </div>
@@ -794,7 +951,7 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
   const isTwoColBreakdown = config.breakdownLayout === 'two-column' && earningsEnabled && deductionsEnabled;
 
   return (
-    <div className={`w-full relative bg-white text-zinc-900 ${scaleClass} ${fontClass} ${roundedClass} ${borderClass} ${densityStyles.padding} ${densityStyles.spacing} shadow-sm print:shadow-none print:break-inside-avoid overflow-hidden select-text transition-all`}>
+    <div className={`w-full relative bg-white text-zinc-900 ${scaleClass} ${fontClass} ${roundedClass} ${borderClass} ${densityStyles.padding} ${densityStyles.spacing} shadow-sm print:shadow-none print:break-inside-avoid overflow-hidden print:overflow-visible select-none transition-all`}>
       {isCustomScaled && (
         <style>{`
           .${scaleClass} { font-size: ${Math.round(13 * fontScaleRatio * 10) / 10}px; }

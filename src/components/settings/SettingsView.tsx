@@ -29,7 +29,8 @@ import {
   Users,
   ShieldCheck,
   Briefcase,
-  History
+  History,
+  Cloud
 } from 'lucide-react';
 import { 
   CompanyProfile, 
@@ -41,7 +42,10 @@ import {
   PayrollSnapshot,
   AppView,
   EmploymentTypeRule,
-  ResetOptions
+  ResetOptions,
+  EmployeeLoan,
+  PayslipDesignConfig,
+  TeamMember
 } from '../../types';
 import { 
   DEFAULT_PAYROLL_VARIABLES, 
@@ -57,8 +61,9 @@ import {
 } from '../../engine/excelEngine';
 import { ExportScopeModal } from '../excel/ExportScopeModal';
 import { MONTHS } from '../../store/usePayrollStore';
+import { CompanyAuditAndTeamTab } from './CompanyAuditAndTeamTab';
 
-export type SettingsTab = 'branding' | 'tax' | 'excel' | 'reset';
+export type SettingsTab = 'branding' | 'tax' | 'excel' | 'audit_team' | 'reset';
 
 export interface DirtyStateInfo {
   isDirty: boolean;
@@ -85,11 +90,16 @@ interface SettingsViewProps {
   selectedMonth?: string;
   year: number;
   activeSnapshot: PayrollSnapshot | undefined;
+  snapshots?: PayrollSnapshot[];
   snapshotsCount?: number;
+  loans?: EmployeeLoan[];
+  payslipDesign?: PayslipDesignConfig;
   onImportEmployees: (items: Partial<Employee>[], mode: 'merge' | 'overwrite', scope?: 'all' | 'salary-only' | 'bank-only') => void;
   onResetAllData: (options?: ResetOptions) => void;
   onNavigate: (view: AppView) => void;
   onRegisterDirtyState?: (info: DirtyStateInfo | null) => void;
+  onRefreshData?: () => void;
+  currentUser?: TeamMember | null;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -110,13 +120,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   selectedMonth = 'jan',
   year,
   activeSnapshot,
+  snapshots = [],
   snapshotsCount = 0,
+  loans = [],
+  payslipDesign,
   onImportEmployees,
   onResetAllData,
   onNavigate,
-  onRegisterDirtyState
+  onRegisterDirtyState,
+  onRefreshData,
+  currentUser
 }) => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  const isAdmin = currentUser?.role === 'Admin';
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    if (initialTab === 'audit_team' && !isAdmin) return 'branding';
+    return initialTab;
+  });
+
+  useEffect(() => {
+    if (!isAdmin && activeTab === 'audit_team') {
+      setActiveTab('branding');
+    }
+  }, [isAdmin, activeTab]);
 
   // --- BRANDING STATE ---
   const [companyForm, setCompanyForm] = useState<CompanyProfile>(company);
@@ -523,7 +548,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         targetYear,
         activeSnapshot,
         company,
-        options
+        { ...options, loans },
+        loans
       );
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 4000);
@@ -688,7 +714,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="flex items-center gap-1 text-xs overflow-x-auto no-scrollbar">
           <button
             onClick={() => handleTabChange('branding')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${
               activeTab === 'branding'
                 ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
@@ -703,7 +729,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <button
             onClick={() => handleTabChange('tax')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${
               activeTab === 'tax'
                 ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
@@ -718,7 +744,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <button
             onClick={() => handleTabChange('excel')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${
               activeTab === 'excel'
                 ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
@@ -728,9 +754,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span>Excel Sync</span>
           </button>
 
+          {isAdmin && (
+            <button
+              onClick={() => handleTabChange('audit_team')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${
+                activeTab === 'audit_team'
+                  ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Audit Trail</span>
+            </button>
+          )}
+
           <button
             onClick={() => handleTabChange('reset')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition ml-auto shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition ml-auto shrink-0 cursor-pointer focus:outline-none ${
               activeTab === 'reset'
                 ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 font-semibold'
                 : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20'
@@ -1841,6 +1881,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
 
         </div>
+      )}
+
+      {/* ================= TAB: AUDIT TRAIL & TEAM ACCESS ================= */}
+      {activeTab === 'audit_team' && isAdmin && (
+        <CompanyAuditAndTeamTab company={company} />
       )}
 
       {/* ================= TAB 4: RESET SYSTEM ("DANGER ZONE" / SELECTIVE RESET) ================= */}

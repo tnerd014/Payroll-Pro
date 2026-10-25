@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Save } from 'lucide-react';
 import { usePayrollStore } from './store/usePayrollStore';
 import { DesktopTitleBar } from './components/layout/DesktopTitleBar';
@@ -13,13 +13,187 @@ import { WindowsAccountPicker } from './components/auth/WindowsAccountPicker';
 import { PayslipDesignerPage } from './components/payslip/PayslipDesignerPage';
 import { LoansAdvancesView } from './components/loans/LoansAdvancesView';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import { AppView, CompanyAccount } from './types';
+import { AppView, CompanyAccount, TeamMember } from './types';
+import { CloudStaffGate } from './components/auth/CloudStaffGate';
+import { getActiveTeamMember, setActiveTeamMember, saveCloudConfig, leavePresenceChannel, joinPresenceChannel, fetchCompaniesFromSupabase, getSupabaseClient, subscribeToMemberUpdates } from './services/supabaseClient';
+import { purgeAllLocalDataOnDisconnect } from './store/usePayrollStore';
 
 export const App: React.FC = () => {
+  const [authenticatedMember, setAuthenticatedMember] = useState<TeamMember | null>(() => getActiveTeamMember());
+  // Ref always holds the current authenticatedMember so realtime callbacks never read stale closures
+  const authenticatedMemberRef = useRef<TeamMember | null>(authenticatedMember);
+  useEffect(() => { authenticatedMemberRef.current = authenticatedMember; }, [authenticatedMember]);
+
+  const handleSignOut = () => {
+    leavePresenceChannel();
+    setActiveTeamMember(null);
+    setAuthenticatedMember(null);
+  };
+
+  const handleDisconnectServer = () => {
+    leavePresenceChannel();
+    purgeAllLocalDataOnDisconnect();
+    setActiveTeamMember(null);
+    setAuthenticatedMember(null);
+    saveCloudConfig({ url: '', anonKey: '', isEnabled: false });
+    setCompaniesList([]);
+  };
+
+  // Rejoin presence channel when the app loads with an existing session.
+  // joinPresenceChannel is only called inside CloudStaffGate on a fresh login;
+  // if the session was restored from localStorage on startup we must re-broadcast
+  // here so the admin member list shows correct Online/Offline status.
+  useEffect(() => {
+    if (!authenticatedMember) return;
+    fetchCompaniesFromSupabase().then(compRes => {
+      joinPresenceChannel({
+        memberId: authenticatedMember.id,
+        name: authenticatedMember.name,
+        role: authenticatedMember.role,
+        companyId: compRes.companies?.[0]?.id || '',
+        companyName: compRes.companies?.[0]?.name || '',
+        joinedAt: new Date().toISOString(),
+        lastSeenAt: new Date().toISOString(),
+      });
+    }).catch(() => {
+      // Offline on startup — skip presence, will try again on reconnect
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authenticatedMember?.id]);
+
+  // ─── Instant role / deactivation enforcement ────────────────────────────────
+  // When an Admin changes this user's role or deactivates them from another device or window,
+  // the change takes effect immediately on screen — without needing a reload or re-login.
+  useEffect(() => {
+    if (!authenticatedMember?.id) return;
+    const memberId = authenticatedMember.id;
+    const client = getSupabaseClient();
+    let isMounted = true;
+
+    const applyRowUpdate = (row: any) => {
+      if (!isMounted) return;
+      const current = authenticatedMemberRef.current;
+      if (!current || current.id !== memberId) return;
+
+      // Deactivated: force sign-out immediately
+      if (row.is_active === false) {
+        alert('Your account has been deactivated by an administrator. You have been signed out.');
+        handleSignOut();
+        return;
+      }
+
+      const newRole = row.role ?? current.role;
+      const newName = row.name ?? current.name;
+      const newEmail = row.email ?? current.email;
+      const newIsActive = row.is_active !== undefined ? Boolean(row.is_active) : current.isActive;
+
+      // Only re-render if something actually changed
+      if (
+        newRole !== current.role ||
+        newName !== current.name ||
+        newEmail !== current.email ||
+        newIsActive !== current.isActive
+      ) {
+        const updatedMember: TeamMember = {
+          ...current,
+          role: newRole,
+          name: newName,
+          email: newEmail,
+          isActive: newIsActive,
+        };
+        authenticatedMemberRef.current = updatedMember;
+        setActiveTeamMember(updatedMember);
+        setAuthenticatedMember(updatedMember);
+
+        // Update presence channel with updated role so other operators see the update
+        fetchCompaniesFromSupabase().then(compRes => {
+          joinPresenceChannel({
+            memberId: updatedMember.id,
+            name: updatedMember.name,
+            role: updatedMember.role,
+            companyId: compRes.companies?.[0]?.id || '',
+            companyName: compRes.companies?.[0]?.name || '',
+            joinedAt: new Date().toISOString(),
+            lastSeenAt: new Date().toISOString(),
+          });
+        }).catch(() => {});
+      }
+    };
+
+    // 1. Direct DB fetch helper
+    const checkFreshFromDb = async () => {
+      if (!client || !isMounted) return;
+      try {
+        const { data, error } = await client
+          .from('team_members')
+          .select('id,name,email,role,is_active')
+          .eq('id', memberId)
+          .maybeSingle();
+
+        if (!error && data) {
+          applyRowUpdate(data);
+        }
+      } catch {
+        // Silent network fallback
+      }
+    };
+
+    // Immediate check on mount!
+    checkFreshFromDb();
+
+    // 2. High-frequency polling (every 3 seconds) — guaranteed fallback even if WebSockets/Realtime are blocked
+    const pollInterval = setInterval(checkFreshFromDb, 3000);
+
+    // 3. Window focus and visibility sync — whenever the user clicks into or switches to this window
+    const handleFocus = () => { checkFreshFromDb(); };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    // 4. WebSocket Broadcast listener — instant notification from other admin sessions
+    const unsubBroadcast = subscribeToMemberUpdates((payload) => {
+      if (payload.memberId === memberId) {
+        checkFreshFromDb();
+      }
+    });
+
+    // 5. Postgres Changes (Database Realtime Replication)
+    let pgChannel: any = null;
+    if (client) {
+      pgChannel = client
+        .channel(`team-member-sync-${memberId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'team_members' },
+          (payload: any) => {
+            const row = payload.new;
+            if (row && row.id === memberId) {
+              applyRowUpdate(row);
+            } else {
+              checkFreshFromDb();
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      unsubBroadcast();
+      if (pgChannel && client) {
+        client.removeChannel(pgChannel);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authenticatedMember?.id]);
+
   const {
     state,
     companies,
     activeCompanyId,
+    setCompaniesList,
     selectCompany,
     lockOrSwitchCompany,
     createCompany,
@@ -136,6 +310,22 @@ export const App: React.FC = () => {
     }
   }, [isDarkTheme]);
 
+  // Cloud & Staff Authentication Gate:
+  if (!authenticatedMember) {
+    return (
+      <CloudStaffGate
+        onAuthenticated={(member, loadedCompanies) => {
+          setAuthenticatedMember(member);
+          if (loadedCompanies && loadedCompanies.length > 0) {
+            setCompaniesList(loadedCompanies);
+          }
+        }}
+        isDarkTheme={isDarkTheme}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
+
   // If no company workspace is active, display the Windows OS-style Account Picker
   if (!activeCompanyId) {
     return (
@@ -163,6 +353,10 @@ export const App: React.FC = () => {
         onDeleteCompany={deleteCompany}
         isDarkTheme={isDarkTheme}
         onToggleTheme={toggleTheme}
+        onCompaniesSynced={setCompaniesList}
+        currentUser={authenticatedMember}
+        onSignOut={handleSignOut}
+        onDisconnectServer={handleDisconnectServer}
       />
     );
   }
@@ -200,6 +394,9 @@ export const App: React.FC = () => {
           company={state.company}
           companies={companies}
           activeCompanyId={activeCompanyId}
+          loans={state.loans || []}
+          departments={state.departments || []}
+          employmentTypeRules={state.payrollVariables?.employmentTypeRules || []}
           onSelectCompany={(id) => {
             const target = companies.find(c => c.id === id);
             if (!target) return;
@@ -228,6 +425,8 @@ export const App: React.FC = () => {
           onSoftReload={handleSoftReload}
           onTriggerAddEmployee={handleTriggerAddEmployee}
           onLockOrSwitchCompany={handleExplicitLockOrSwitch}
+          currentUser={authenticatedMember}
+          onSignOut={handleSignOut}
         />
       </ErrorBoundary>
 
@@ -253,7 +452,7 @@ export const App: React.FC = () => {
             className={`flex-1 ${
               state.activeView === 'analytics'
                 ? 'flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b]'
-                : 'overflow-y-auto px-6 pb-6 pt-0 md:px-8 md:pb-8 md:pt-0 bg-[#fbfbfb] dark:bg-[#09090b]'
+                : 'overflow-auto px-6 pb-6 pt-0 md:px-8 md:pb-8 md:pt-0 bg-[#fbfbfb] dark:bg-[#09090b]'
             }`}
           >
             {state.activeView === 'analytics' ? (
@@ -269,27 +468,70 @@ export const App: React.FC = () => {
                 snapshots={state.snapshots}
                 departments={state.departments}
                 company={state.company}
+                loans={state.loans || []}
+              />
+            ) : state.activeView === 'employees' ? (
+              <EmployeeListView
+                employees={state.employees}
+                departments={state.departments}
+                onAddEmployee={addEmployee}
+                onAddEmployees={addEmployees}
+                onUpdateEmployee={updateEmployee}
+                onDeleteEmployee={deleteEmployee}
+                onNavigateToExcel={() => handleRequestNavigate('excel')}
+                currentYear={state.selectedYear}
+                currentMonth={state.selectedMonth}
+                salaryCalculationMode={state.payrollVariables.salaryCalculationMode}
+                employmentTypeRules={state.payrollVariables.employmentTypeRules}
+                addEmployeeTrigger={addEmployeeTrigger}
+                loans={state.loans || []}
+              />
+            ) : state.activeView === 'payroll' ? (
+              <PayrollProcessingView
+                monthLabel={monthLabel}
+                year={state.selectedYear}
+                items={currentPayrollItems}
+                activeSnapshot={activeSnapshot}
+                snapshots={state.snapshots}
+                onFinalizeAndLock={finalizeAndLockPayroll}
+                onUnlock={unlockPayroll}
+                onDeleteSnapshot={deleteSnapshot}
+                employees={state.employees}
+                payrollVariables={state.payrollVariables}
+                payeTaxVariables={state.payeTaxVariables}
+                selectedMonth={state.selectedMonth}
+                onPeriodChange={setSelectedPeriod}
+                company={state.company}
+                onOpenCompanySettings={() => handleRequestNavigate('settings')}
+                departmentsList={state.departments}
+                onOpenPayslipDesigner={() => handleRequestNavigate('payslip-designer')}
+                payslipDesign={state.payslipDesign}
+                onUpdatePayslipDesign={updatePayslipDesign}
+                onResetPayslipDesign={resetPayslipDesign}
+                savedPresets={savedPayslipPresets}
+                onSavePreset={savePayslipPreset}
+                onDeletePreset={deletePayslipPreset}
+                loans={state.loans || []}
+              />
+            ) : state.activeView === 'loans' ? (
+              <LoansAdvancesView
+                loans={state.loans || []}
+                employees={state.employees}
+                payrollItems={currentPayrollItems}
+                company={state.company}
+                monthLabel={monthLabel}
+                selectedMonth={state.selectedMonth}
+                selectedYear={state.selectedYear}
+                onAddLoan={addLoan}
+                onUpdateLoan={updateLoan}
+                onDeleteLoan={deleteLoan}
+                onPauseResumeLoan={pauseResumeLoan}
+                onRecordManualPayment={recordManualLoanRepayment}
+                onApplyLoanDeduction={applyPeriodLoanDeduction}
+                onApplyAllLoanDeductions={applyAllPeriodLoanDeductions}
               />
             ) : (
               <div className="max-w-6xl mx-auto space-y-4">
-                {state.activeView === 'loans' && (
-                  <LoansAdvancesView
-                    loans={state.loans || []}
-                    employees={state.employees}
-                    payrollItems={currentPayrollItems}
-                    company={state.company}
-                    monthLabel={monthLabel}
-                    selectedMonth={state.selectedMonth}
-                    selectedYear={state.selectedYear}
-                    onAddLoan={addLoan}
-                    onUpdateLoan={updateLoan}
-                    onDeleteLoan={deleteLoan}
-                    onPauseResumeLoan={pauseResumeLoan}
-                    onRecordManualPayment={recordManualLoanRepayment}
-                    onApplyLoanDeduction={applyPeriodLoanDeduction}
-                    onApplyAllLoanDeductions={applyAllPeriodLoanDeductions}
-                  />
-                )}
                 {state.activeView === 'dashboard' && (
                   <DashboardView
                     items={currentPayrollItems}
@@ -304,51 +546,6 @@ export const App: React.FC = () => {
                     payrollVariables={state.payrollVariables}
                     payeTaxVariables={state.payeTaxVariables}
                     onPeriodChange={setSelectedPeriod}
-                  />
-                )}
-
-                {state.activeView === 'employees' && (
-                  <EmployeeListView
-                    employees={state.employees}
-                    departments={state.departments}
-                    onAddEmployee={addEmployee}
-                    onAddEmployees={addEmployees}
-                    onUpdateEmployee={updateEmployee}
-                    onDeleteEmployee={deleteEmployee}
-                    onNavigateToExcel={() => handleRequestNavigate('excel')}
-                    currentYear={state.selectedYear}
-                    currentMonth={state.selectedMonth}
-                    salaryCalculationMode={state.payrollVariables.salaryCalculationMode}
-                    employmentTypeRules={state.payrollVariables.employmentTypeRules}
-                    addEmployeeTrigger={addEmployeeTrigger}
-                  />
-                )}
-
-                {state.activeView === 'payroll' && (
-                  <PayrollProcessingView
-                    monthLabel={monthLabel}
-                    year={state.selectedYear}
-                    items={currentPayrollItems}
-                    activeSnapshot={activeSnapshot}
-                    snapshots={state.snapshots}
-                    onFinalizeAndLock={finalizeAndLockPayroll}
-                    onUnlock={unlockPayroll}
-                    onDeleteSnapshot={deleteSnapshot}
-                    employees={state.employees}
-                    payrollVariables={state.payrollVariables}
-                    payeTaxVariables={state.payeTaxVariables}
-                    selectedMonth={state.selectedMonth}
-                    onPeriodChange={setSelectedPeriod}
-                    company={state.company}
-                    onOpenCompanySettings={() => handleRequestNavigate('settings')}
-                    departmentsList={state.departments}
-                    onOpenPayslipDesigner={() => handleRequestNavigate('payslip-designer')}
-                    payslipDesign={state.payslipDesign}
-                    onUpdatePayslipDesign={updatePayslipDesign}
-                    onResetPayslipDesign={resetPayslipDesign}
-                    savedPresets={savedPayslipPresets}
-                    onSavePreset={savePayslipPreset}
-                    onDeletePreset={deletePayslipPreset}
                   />
                 )}
 
@@ -395,11 +592,16 @@ export const App: React.FC = () => {
                   selectedMonth={state.selectedMonth}
                   year={state.selectedYear}
                   activeSnapshot={activeSnapshot}
+                  snapshots={state.snapshots}
                   snapshotsCount={state.snapshots.length}
+                  loans={state.loans || []}
+                  payslipDesign={state.payslipDesign}
                   onImportEmployees={importEmployees}
                   onResetAllData={resetAllData}
                   onNavigate={handleRequestNavigate}
                   onRegisterDirtyState={setUnsavedSettingsInfo}
+                  onRefreshData={handleSoftReload}
+                  currentUser={authenticatedMember}
                 />
               )}
             </div>

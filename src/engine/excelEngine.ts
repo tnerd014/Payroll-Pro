@@ -6,9 +6,10 @@ import {
   PayrollVariables, 
   PayeTaxVariables,
   PayrollSnapshot,
-  CompanyProfile
+  CompanyProfile,
+  EmployeeLoan
 } from '../types';
-import { calculatePayrollItem, formatNaira, getEmployeeGrossForPeriod } from './payePensionEngine';
+import { calculatePayrollItem, formatNaira, getEmployeeGrossForPeriod, DEFAULT_PAYE_VARIABLES, isEmployeeActiveForPeriod } from './payePensionEngine';
 import { MONTHS } from '../store/usePayrollStore';
 
 export type ExportScope = 'current-month' | 'full-year' | 'all-history';
@@ -18,6 +19,7 @@ export type ExportInformationScope =
   | 'payroll-register' 
   | 'bank-schedule' 
   | 'statutory-remittance' 
+  | 'loans-schedule'
   | 'staff-database';
 
 export interface ExportOptions {
@@ -29,6 +31,7 @@ export interface ExportOptions {
   employmentTypeFilter?: string; // 'ALL' | 'Full-Time' | 'Part-Time' | 'Contract' | 'Intern / NYSC'
   departmentFilter?: string; // 'ALL' | specific department name
   informationScope?: ExportInformationScope;
+  loans?: EmployeeLoan[];
 }
 
 const DEFAULT_COMPANY_FALLBACK: CompanyProfile = {
@@ -320,13 +323,15 @@ export function exportPayrollProToExcel(
   year: number,
   snapshot?: PayrollSnapshot | null,
   company: CompanyProfile = DEFAULT_COMPANY_FALLBACK,
-  options: ExportOptions = { scope: 'current-month', includeFormulas: true }
+  options: ExportOptions = { scope: 'current-month', includeFormulas: true },
+  loans: EmployeeLoan[] = []
 ) {
   const wb = XLSX.utils.book_new();
   const includeFormulas = options.includeFormulas ?? true;
   const scope = options.scope ?? 'current-month';
   const effectiveCompany = company || DEFAULT_COMPANY_FALLBACK;
   const infoScope = options.informationScope || 'all';
+  const effectiveLoans = options.loans || loans || [];
 
   // Apply employment type & department filters
   let filteredEmployees = employees;
@@ -342,7 +347,9 @@ export function exportPayrollProToExcel(
   }
 
   const allowedCodes = new Set(filteredEmployees.map(e => e.code.toLowerCase()));
+  const allowedEmpIds = new Set(filteredEmployees.map(e => e.id));
   const filteredItems = payrollItems.filter(i => allowedCodes.has(i.employeeCode.toLowerCase()));
+  const filteredLoans = effectiveLoans.filter(l => allowedEmpIds.has(l.employeeId));
 
   // 1. VARIABLES TAB (Central Statutory Configuration Reference)
   // Must be created first or present so formula references ('Variables'!$C$6, etc.) are valid
@@ -356,7 +363,8 @@ export function exportPayrollProToExcel(
     monthLabel,
     year,
     effectiveCompany,
-    includeFormulas
+    includeFormulas,
+    payeVars
   );
 
   // 3. EXECUTIVE SUMMARY TAB (C-Suite Dashboard with SUMIF/COUNTIF tables)
@@ -384,7 +392,8 @@ export function exportPayrollProToExcel(
     monthLabel,
     year,
     effectiveCompany,
-    includeFormulas
+    includeFormulas,
+    payeVars
   );
 
   const wsPension = createPensionRemittanceSheet(
@@ -395,7 +404,17 @@ export function exportPayrollProToExcel(
     includeFormulas
   );
 
-  // 6. ANNUAL 12-MONTH MATRIX
+  // 6. STAFF LOANS & SALARY ADVANCES SCHEDULE TAB
+  const wsLoans = createLoansScheduleSheet(
+    filteredLoans,
+    filteredEmployees,
+    monthLabel,
+    year,
+    effectiveCompany,
+    includeFormulas
+  );
+
+  // 7. ANNUAL 12-MONTH MATRIX
   const wsAnnual = createAnnualPayMatrixSheet(
     filteredEmployees,
     year,
@@ -403,7 +422,7 @@ export function exportPayrollProToExcel(
     includeFormulas
   );
 
-  // 7. STAFF DATABASE
+  // 8. STAFF DATABASE
   const wsStaff = createStaffDatabaseSheet(filteredEmployees);
 
   // Assemble Workbook Tabs according to Information Scope
@@ -413,13 +432,19 @@ export function exportPayrollProToExcel(
     XLSX.utils.book_append_sheet(wb, wsBank, 'Bank_Schedule');
     XLSX.utils.book_append_sheet(wb, wsPaye, 'PAYE_Tax_Schedule');
     XLSX.utils.book_append_sheet(wb, wsPension, 'Pension_Remittance');
+    XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
     XLSX.utils.book_append_sheet(wb, wsAnnual, `Annual_Matrix_${year}`.slice(0, 31));
     XLSX.utils.book_append_sheet(wb, wsStaff, 'Staff_Database');
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
   } else if (infoScope === 'payroll-register') {
     XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
     XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
+    XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
     XLSX.utils.book_append_sheet(wb, wsAnnual, `Annual_Matrix_${year}`.slice(0, 31));
+    XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
+  } else if (infoScope === 'loans-schedule') {
+    XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
+    XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
   } else if (infoScope === 'bank-schedule') {
     XLSX.utils.book_append_sheet(wb, wsBank, 'Bank_Schedule');
@@ -428,6 +453,7 @@ export function exportPayrollProToExcel(
   } else if (infoScope === 'statutory-remittance') {
     XLSX.utils.book_append_sheet(wb, wsPaye, 'PAYE_Tax_Schedule');
     XLSX.utils.book_append_sheet(wb, wsPension, 'Pension_Remittance');
+    XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
     XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
   } else if (infoScope === 'staff-database') {
@@ -435,12 +461,36 @@ export function exportPayrollProToExcel(
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
   }
 
-  // If Full-Year Scope: append individual monthly payroll sheets
+  // If Full-Year Scope: append individual monthly payroll sheets with accurate loan deductions
   if (scope === 'full-year' && (infoScope === 'all' || infoScope === 'payroll-register')) {
     MONTHS.forEach(m => {
+      const currentPeriodKey = `${year}-${m.key.toLowerCase()}`;
       const monthItems = filteredEmployees
-        .filter(e => e.status === 'Active')
-        .map(emp => calculatePayrollItem(emp, payrollVars, payeVars, m.key, year));
+        .filter(e => isEmployeeActiveForPeriod(e, year, m.key))
+        .map(emp => {
+          const base = calculatePayrollItem(emp, payrollVars, payeVars, m.key, year);
+          let totalLoanDeduction = 0;
+          effectiveLoans.forEach(loan => {
+            if (!loan || loan.employeeId !== emp.id) return;
+            const periodRecord = (loan.history || []).find(h => (h.periodKey || '').toLowerCase() === currentPeriodKey);
+            if (periodRecord) {
+              totalLoanDeduction += Math.max(0, Number(periodRecord.amount) || 0);
+            } else if (loan.status === 'Active' && (loan.remainingBalance || 0) > 0) {
+              const monthly = loan.type === 'Salary Advance'
+                ? (loan.remainingBalance || 0)
+                : Math.min(Number(loan.monthlyDeduction) || 0, Number(loan.remainingBalance) || 0);
+              totalLoanDeduction += Math.max(0, monthly);
+            }
+          });
+          const netTakeHome = Math.max(0, base.netTakeHome - totalLoanDeduction);
+          const totalDeductions = base.totalDeductions + totalLoanDeduction;
+          return {
+            ...base,
+            loanDeduction: totalLoanDeduction,
+            totalDeductions,
+            netTakeHome,
+          };
+        });
 
       const wsMonth = createMasterPayrollSheet(
         filteredEmployees,
@@ -449,7 +499,8 @@ export function exportPayrollProToExcel(
         m.label,
         year,
         effectiveCompany,
-        includeFormulas
+        includeFormulas,
+        payeVars
       );
       XLSX.utils.book_append_sheet(wb, wsMonth, `${m.key.toUpperCase()}_${year}`.slice(0, 31));
     });
@@ -581,12 +632,12 @@ function createVariablesSheet(
   payeVars: PayeTaxVariables,
   company: CompanyProfile
 ): XLSX.WorkSheet {
-  const basicDec = (payrollVars.basic || 40) / 100;
-  const housingDec = (payrollVars.housing || 30) / 100;
-  const transportDec = (payrollVars.transport || 20) / 100;
-  const otherDec = (payrollVars.otherAllowances || 10) / 100;
-  const empPensionDec = (payrollVars.employeePensionRate || 8) / 100;
-  const emprPensionDec = (payrollVars.employerPensionRate || 10) / 100;
+  const basicDec = (payrollVars.basic ?? 40) / 100;
+  const housingDec = (payrollVars.housing ?? 15) / 100;
+  const transportDec = (payrollVars.transport ?? 15) / 100;
+  const otherDec = (payrollVars.otherAllowances ?? 30) / 100;
+  const empPensionDec = (payrollVars.employeePensionRate ?? 8) / 100;
+  const emprPensionDec = (payrollVars.employerPensionRate ?? 10) / 100;
 
   const aoa: any[][] = [
     [company.name.toUpperCase()],
@@ -595,13 +646,13 @@ function createVariablesSheet(
     [],
     ['Parameter Code', 'Parameter Description', 'Configured Value', 'Unit / Basis', 'Statutory / Legal Reference'],
     // Row 6: Basic
-    ['BASIC_RATE', 'Basic Salary Allowance Ratio', { t: 'n', v: basicDec, z: '0.00%' }, '40% of Monthly Gross', 'Nigerian Compensation Standard'],
+    ['BASIC_RATE', 'Basic Salary Allowance Ratio', { t: 'n', v: basicDec, z: '0.00%' }, `${(basicDec * 100).toFixed(0)}% of Monthly Gross`, 'Nigerian Compensation Standard'],
     // Row 7: Housing
-    ['HOUSING_RATE', 'Housing Allowance Ratio', { t: 'n', v: housingDec, z: '0.00%' }, '30% of Monthly Gross', 'Nigerian Compensation Standard'],
+    ['HOUSING_RATE', 'Housing Allowance Ratio', { t: 'n', v: housingDec, z: '0.00%' }, `${(housingDec * 100).toFixed(0)}% of Monthly Gross`, 'Nigerian Compensation Standard'],
     // Row 8: Transport
-    ['TRANSPORT_RATE', 'Transport Allowance Ratio', { t: 'n', v: transportDec, z: '0.00%' }, '20% of Monthly Gross', 'Nigerian Compensation Standard'],
+    ['TRANSPORT_RATE', 'Transport Allowance Ratio', { t: 'n', v: transportDec, z: '0.00%' }, `${(transportDec * 100).toFixed(0)}% of Monthly Gross`, 'Nigerian Compensation Standard'],
     // Row 9: Other
-    ['OTHER_RATE', 'Other Allowances Ratio', { t: 'n', v: otherDec, z: '0.00%' }, '10% of Monthly Gross', 'Nigerian Compensation Standard'],
+    ['OTHER_RATE', 'Other Allowances Ratio', { t: 'n', v: otherDec, z: '0.00%' }, `${(otherDec * 100).toFixed(0)}% of Monthly Gross`, 'Nigerian Compensation Standard'],
     [],
     ['STATUTORY PENSION PARAMETERS (PRA 2014)', '', '', '', ''],
     // Row 12: Employee Pension
@@ -609,9 +660,9 @@ function createVariablesSheet(
     // Row 13: Employer Pension
     ['EMPR_PENSION_RATE', 'Employer Matching Contribution', { t: 'n', v: emprPensionDec, z: '0.00%' }, '10% of Pensionable BHT', 'Section 4(1)(b) Pension Reform Act 2014'],
     [],
-    ['PERSONAL INCOME TAX (PITA 2011 / FINANCE ACT)', '', '', '', ''],
+    ['PERSONAL INCOME TAX (PITA 2026 / FINANCE ACT)', '', '', '', ''],
     // Row 16: CRA Base
-    ['CRA_BASE', 'Consolidated Relief Base Allowance', { t: 'n', v: payeVars.craBase || 800000, z: CURRENCY_FORMAT }, 'NGN Base Annual Relief', 'Sixth Schedule PITA 2011'],
+    ['CRA_BASE', 'Consolidated Relief Base Allowance', { t: 'n', v: payeVars.craBase || 800000, z: CURRENCY_FORMAT }, 'NGN Base Annual Relief', 'Sixth Schedule PITA 2026'],
     // Row 17: Rent Relief Rate
     ['RENT_RELIEF_RATE', 'Rent Relief Statutory Rate', { t: 'n', v: payeVars.rentReliefRate || 0.20, z: '0.00%' }, '20% of Annual Rent', 'National Tax Policy'],
     // Row 18: Rent Relief Cap
@@ -633,6 +684,42 @@ function createVariablesSheet(
 }
 
 /**
+ * Decomposes progressive tax bracket tiers into Excel SUMPRODUCT array thresholds
+ * and differential marginal rate increments for live, single-cell progressive formula calculation.
+ */
+function getPayeFormulaComponents(payeVars?: PayeTaxVariables) {
+  const rawBrackets = (payeVars?.taxBrackets && Array.isArray(payeVars.taxBrackets) && payeVars.taxBrackets.length > 0)
+    ? payeVars.taxBrackets
+    : DEFAULT_PAYE_VARIABLES.taxBrackets;
+
+  const sorted = [...rawBrackets].sort((a, b) => {
+    if (a.upTo === null) return 1;
+    if (b.upTo === null) return -1;
+    return (a.upTo || 0) - (b.upTo || 0);
+  });
+
+  const thresholds: number[] = [0];
+  const diffRates: number[] = [];
+  let prevRate = 0;
+
+  for (let idx = 0; idx < sorted.length; idx++) {
+    const b = sorted[idx];
+    const rate = b.rate || 0;
+    const diff = Math.round((rate - prevRate) * 10000) / 10000;
+    diffRates.push(diff);
+    prevRate = rate;
+    if (b.upTo !== null && idx < sorted.length - 1) {
+      thresholds.push(b.upTo);
+    }
+  }
+
+  const threshStr = thresholds.join(';');
+  const diffStr = diffRates.join(';');
+
+  return { thresholds, diffRates, threshStr, diffStr };
+}
+
+/**
  * 2. MASTER PAYROLL REGISTER TAB
  * Structured table design with frozen headers, live formulas linking to Variables tab,
  * and SUBTOTAL(109, ...) summaries for dynamic recalculation during Excel row filtering.
@@ -644,14 +731,16 @@ function createMasterPayrollSheet(
   monthLabel: string,
   year: number,
   company: CompanyProfile,
-  includeFormulas: boolean
+  includeFormulas: boolean,
+  payeVars?: PayeTaxVariables
 ): XLSX.WorkSheet {
-  const basicRate = (payrollVars.basic || 40) / 100;
-  const housingRate = (payrollVars.housing || 30) / 100;
-  const transportRate = (payrollVars.transport || 20) / 100;
-  const otherRate = (payrollVars.otherAllowances || 10) / 100;
-  const empPensionRate = (payrollVars.employeePensionRate || 8) / 100;
-  const compPensionRate = (payrollVars.employerPensionRate || 10) / 100;
+  const basicRate = (payrollVars.basic ?? 40) / 100;
+  const housingRate = (payrollVars.housing ?? 15) / 100;
+  const transportRate = (payrollVars.transport ?? 15) / 100;
+  const otherRate = (payrollVars.otherAllowances ?? 30) / 100;
+  const empPensionRate = (payrollVars.employeePensionRate ?? 8) / 100;
+  const compPensionRate = (payrollVars.employerPensionRate ?? 10) / 100;
+  const { threshStr, diffStr } = getPayeFormulaComponents(payeVars);
 
   // Header Rows
   const aoa: any[][] = [
@@ -669,10 +758,10 @@ function createMasterPayrollSheet(
       'Bank Name',
       'Account Number',
       'Monthly Gross (₦)',
-      `Basic (${(basicRate * 100).toFixed(0)}%)`,
-      `Housing (${(housingRate * 100).toFixed(0)}%)`,
-      `Transport (${(transportRate * 100).toFixed(0)}%)`,
-      `Other (${(otherRate * 100).toFixed(0)}%)`,
+      'Basic (₦)',
+      'Housing (₦)',
+      'Transport (₦)',
+      'Other (₦)',
       'Pensionable BHT (₦)',
       `Employee Pension (${(empPensionRate * 100).toFixed(0)}%)`,
       'Monthly PAYE Tax (₦)',
@@ -694,6 +783,24 @@ function createMasterPayrollSheet(
     const rowNum = headerRowIdx + 1 + index; // 1-based row in Excel
     const sn = index + 1;
     const enrolledPensionStr = item.hasPension ? 'YES' : 'NO';
+    const loanDed = Math.round((item.loanDeduction || 0) * 100) / 100;
+    const dedFormula = loanDed > 0 ? `O${rowNum}+P${rowNum}+${loanDed}` : `O${rowNum}+P${rowNum}`;
+
+    let payeCell: any;
+    if (includeFormulas) {
+      if (!item.hasPaye) {
+        payeCell = { t: 'n', f: '0', v: 0, z: CURRENCY_FORMAT };
+      } else {
+        const fixedReliefs = Math.round(((item.rentRelief || 0) + (item.extraReliefs || 0)) * 100) / 100;
+        const reliefExpr = fixedReliefs > 0 ? `'Variables'!$C$16+O${rowNum}*12+${fixedReliefs}` : `'Variables'!$C$16+O${rowNum}*12`;
+        const taxableExpr = `(I${rowNum}*12-(${reliefExpr}))`;
+        const annualTaxExpr = `SUMPRODUCT((${taxableExpr}>{${threshStr}})*(${taxableExpr}-{${threshStr}}), {${diffStr}})`;
+        const payeFormula = `ROUND(MAX(0, ${annualTaxExpr})/12, 2)`;
+        payeCell = { t: 'n', f: payeFormula, v: Math.round(item.monthlyPaye * 100) / 100, z: CURRENCY_FORMAT };
+      }
+    } else {
+      payeCell = { t: 'n', v: Math.round(item.monthlyPaye * 100) / 100, z: CURRENCY_FORMAT };
+    }
 
     if (includeFormulas) {
       aoa.push([
@@ -712,8 +819,8 @@ function createMasterPayrollSheet(
         { t: 'n', f: `ROUND(I${rowNum}*'Variables'!$C$9, 2)`, v: item.otherAllowances, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUM(J${rowNum}:L${rowNum})`, v: item.pensionableBHT, z: CURRENCY_FORMAT },
         { t: 'n', f: `IF(V${rowNum}="YES", ROUND(N${rowNum}*'Variables'!$C$12, 2), 0)`, v: item.employeePension, z: CURRENCY_FORMAT },
-        { t: 'n', v: Math.round(item.monthlyPaye * 100) / 100, z: CURRENCY_FORMAT },
-        { t: 'n', f: `O${rowNum}+P${rowNum}`, v: item.totalDeductions, z: CURRENCY_FORMAT },
+        payeCell,
+        { t: 'n', f: dedFormula, v: item.totalDeductions, z: CURRENCY_FORMAT },
         { t: 'n', f: `I${rowNum}-Q${rowNum}`, v: item.netTakeHome, z: CURRENCY_FORMAT },
         { t: 'n', f: `IF(V${rowNum}="YES", ROUND(N${rowNum}*'Variables'!$C$13, 2), 0)`, v: item.employerPension, z: CURRENCY_FORMAT },
         { t: 'n', f: `I${rowNum}+S${rowNum}`, v: item.employerTotalCost, z: CURRENCY_FORMAT },
@@ -1164,19 +1271,21 @@ function createBankDisbursementSheet(
 
 /**
  * 5. STATUTORY PAYE TAX SCHEDULE
- * State Internal Revenue Service monthly statutory tax return under PITA 2011/2020.
+ * State Internal Revenue Service monthly statutory tax return under PITA 2026.
  */
 function createPayeTaxScheduleSheet(
   items: CalculatedPayrollItem[],
   monthLabel: string,
   year: number,
   company: CompanyProfile,
-  includeFormulas: boolean
+  includeFormulas: boolean,
+  payeVars?: PayeTaxVariables
 ): XLSX.WorkSheet {
+  const { threshStr, diffStr } = getPayeFormulaComponents(payeVars);
   const aoa: any[][] = [
     [company.name.toUpperCase()],
     [`STATUTORY PAYE TAX REMITTANCE SCHEDULE - ${monthLabel.toUpperCase()} ${year}`],
-    [`State Internal Revenue Service (IRS) Monthly Return  |  Sixth Schedule PITA 2011/2020`],
+    [`State Internal Revenue Service (IRS) Monthly Return  |  Sixth Schedule PITA 2026`],
     [],
     [
       'S/N',
@@ -1198,6 +1307,11 @@ function createPayeTaxScheduleSheet(
   items.forEach((item, index) => {
     const rowNum = headerRowIdx + 1 + index;
     const masterRow = 6 + index;
+    const fixedReliefs = Math.round(((item.rentRelief || 0) + (item.extraReliefs || 0)) * 100) / 100;
+    const craFormula = fixedReliefs > 0
+      ? `'Variables'!$C$16+'Payroll_Register'!O${masterRow}*12+${fixedReliefs}`
+      : `'Variables'!$C$16+'Payroll_Register'!O${masterRow}*12`;
+    const annualTaxFormula = `ROUND(SUMPRODUCT((G${rowNum}>{${threshStr}})*(G${rowNum}-{${threshStr}}), {${diffStr}}), 2)`;
 
     if (includeFormulas) {
       aoa.push([
@@ -1206,9 +1320,9 @@ function createPayeTaxScheduleSheet(
         item.fullName,
         item.payeNumber || 'UNREGISTERED',
         { t: 'n', f: `ROUND('Payroll_Register'!I${masterRow}*12, 2)`, v: item.annualGross, z: CURRENCY_FORMAT },
-        { t: 'n', v: Math.round(item.totalCra * 100) / 100, z: CURRENCY_FORMAT },
+        { t: 'n', f: craFormula, v: Math.round(item.totalCra * 100) / 100, z: CURRENCY_FORMAT },
         { t: 'n', f: `MAX(0, E${rowNum}-F${rowNum})`, v: item.taxableIncome, z: CURRENCY_FORMAT },
-        { t: 'n', f: `ROUND(I${rowNum}*12, 2)`, v: item.annualTax, z: CURRENCY_FORMAT },
+        { t: 'n', f: annualTaxFormula, v: item.annualTax, z: CURRENCY_FORMAT },
         { t: 'n', f: `'Payroll_Register'!P${masterRow}`, v: item.monthlyPaye, z: CURRENCY_FORMAT },
         item.position,
         item.department,
@@ -1405,6 +1519,168 @@ function createPensionRemittanceSheet(
     { wch: 22 }, // Empr Pension
     { wch: 24 }, // Total 18% Remittance
     { wch: 18 }, // Dept
+  ];
+
+  return styleWorksheetCorporate(ws);
+}
+
+/**
+ * 6. STAFF LOANS & SALARY ADVANCES REPAYMENT SCHEDULE TAB
+ * Executive schedule detailing employee loans, monthly deductions, repayments, and remaining balances.
+ */
+function createLoansScheduleSheet(
+  loans: EmployeeLoan[],
+  employees: Employee[],
+  monthLabel: string,
+  year: number,
+  company: CompanyProfile,
+  includeFormulas: boolean
+): XLSX.WorkSheet {
+  const aoa: any[][] = [
+    [company.name.toUpperCase()],
+    [`STAFF LOANS & SALARY ADVANCES REPAYMENT SCHEDULE - ${monthLabel.toUpperCase()} ${year}`],
+    [`Employee Facility Balances, Monthly Payroll Deductions & Ledger  |  Currency: NGN (₦)`],
+    [],
+    [
+      'S/N',
+      'Staff Code',
+      'Employee Full Name',
+      'Department',
+      'Facility Type',
+      'Principal Amount (₦)',
+      'Monthly Deduction (₦)',
+      'Total Repaid (₦)',
+      'Remaining Balance (₦)',
+      'Start Period',
+      'Status',
+      'Disbursement Date',
+      'Notes / Description'
+    ]
+  ];
+
+  const headerRowIdx = 5;
+  const empMap = new Map(employees.map(e => [e.id, e]));
+
+  if (!loans || loans.length === 0) {
+    aoa.push([
+      1,
+      '-',
+      'No Loan / Salary Advance Facilities Recorded',
+      '-',
+      '-',
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      '-',
+      'Active',
+      '-',
+      'No active loan commitments on file'
+    ]);
+  } else {
+    loans.forEach((loan, index) => {
+      const emp = empMap.get(loan.employeeId);
+      const rowNum = headerRowIdx + 1 + index;
+      const principal = Number(loan.principalAmount) || 0;
+      const monthly = Number(loan.monthlyDeduction) || 0;
+      const repaid = Number(loan.totalRepaid) || 0;
+      const balance = Number(loan.remainingBalance) || Math.max(0, principal - repaid);
+
+      if (includeFormulas) {
+        aoa.push([
+          index + 1,
+          emp?.code || 'EMP',
+          emp ? `${emp.firstName} ${emp.lastName}`.trim() : 'Unknown Employee',
+          emp?.department || 'General',
+          loan.type || 'Staff Loan',
+          { t: 'n', v: principal, z: CURRENCY_FORMAT },
+          { t: 'n', v: monthly, z: CURRENCY_FORMAT },
+          { t: 'n', v: repaid, z: CURRENCY_FORMAT },
+          { t: 'n', f: `MAX(0, F${rowNum}-H${rowNum})`, v: balance, z: CURRENCY_FORMAT },
+          loan.startPeriodKey || 'N/A',
+          loan.status || 'Active',
+          loan.disbursementDate || loan.createdAt ? new Date(loan.disbursementDate || loan.createdAt).toLocaleDateString('en-GB') : '-',
+          loan.notes || loan.description || '-'
+        ]);
+      } else {
+        aoa.push([
+          index + 1,
+          emp?.code || 'EMP',
+          emp ? `${emp.firstName} ${emp.lastName}`.trim() : 'Unknown Employee',
+          emp?.department || 'General',
+          loan.type || 'Staff Loan',
+          { t: 'n', v: principal, z: CURRENCY_FORMAT },
+          { t: 'n', v: monthly, z: CURRENCY_FORMAT },
+          { t: 'n', v: repaid, z: CURRENCY_FORMAT },
+          { t: 'n', v: balance, z: CURRENCY_FORMAT },
+          loan.startPeriodKey || 'N/A',
+          loan.status || 'Active',
+          loan.disbursementDate || loan.createdAt ? new Date(loan.disbursementDate || loan.createdAt).toLocaleDateString('en-GB') : '-',
+          loan.notes || loan.description || '-'
+        ]);
+      }
+    });
+
+    // Summary Totals Row
+    const startRow = headerRowIdx + 1;
+    const endRow = headerRowIdx + loans.length;
+    const sumPrincipal = loans.reduce((s, l) => s + (Number(l.principalAmount) || 0), 0);
+    const sumMonthly = loans.reduce((s, l) => s + (Number(l.monthlyDeduction) || 0), 0);
+    const sumRepaid = loans.reduce((s, l) => s + (Number(l.totalRepaid) || 0), 0);
+    const sumBalance = loans.reduce((s, l) => s + (Number(l.remainingBalance) || 0), 0);
+
+    if (includeFormulas) {
+      aoa.push([
+        '',
+        '',
+        'TOTAL FACILITY SUMMARY',
+        '',
+        '',
+        { t: 'n', f: `SUBTOTAL(109, F${startRow}:F${endRow})`, v: sumPrincipal, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, G${startRow}:G${endRow})`, v: sumMonthly, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, H${startRow}:H${endRow})`, v: sumRepaid, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, I${startRow}:I${endRow})`, v: sumBalance, z: CURRENCY_FORMAT },
+        '',
+        '',
+        '',
+        ''
+      ]);
+    } else {
+      aoa.push([
+        '',
+        '',
+        'TOTAL FACILITY SUMMARY',
+        '',
+        '',
+        { t: 'n', v: sumPrincipal, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumMonthly, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumRepaid, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumBalance, z: CURRENCY_FORMAT },
+        '',
+        '',
+        '',
+        ''
+      ]);
+    }
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!views'] = [{ state: 'frozen', xSplit: 3, ySplit: 5 }];
+  (ws as any)['!freezePane'] = { xSplit: 3, ySplit: 5, topLeftCell: 'D6' };
+  ws['!cols'] = [
+    { wch: 6 },  // S/N
+    { wch: 14 }, // Staff Code
+    { wch: 28 }, // Full Name
+    { wch: 20 }, // Department
+    { wch: 18 }, // Facility Type
+    { wch: 22 }, // Principal Amount
+    { wch: 22 }, // Monthly Deduction
+    { wch: 22 }, // Total Repaid
+    { wch: 22 }, // Remaining Balance
+    { wch: 16 }, // Start Period
+    { wch: 14 }, // Status
+    { wch: 18 }, // Disbursement Date
+    { wch: 30 }, // Notes / Description
   ];
 
   return styleWorksheetCorporate(ws);

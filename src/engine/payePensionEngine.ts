@@ -39,9 +39,9 @@ export const DEFAULT_EMPLOYMENT_TYPE_RULES: EmploymentTypeRule[] = [
 
 export const DEFAULT_PAYROLL_VARIABLES: PayrollVariables = {
   basic: 40,
-  housing: 30,
-  transport: 20,
-  otherAllowances: 10,
+  housing: 15,
+  transport: 15,
+  otherAllowances: 30,
   employeePensionRate: 8,
   employerPensionRate: 10,
   salaryCalculationMode: 'gross-to-net',
@@ -300,5 +300,5 @@ export function formatCompactNaira(amount: number): string {
   return formatNaira(val);
 }
 
-export { formatDate, formatDateTime } from './dateUtils';
+export { formatDate, formatDateTime, isEmployeeActiveForPeriod } from './dateUtils';
 

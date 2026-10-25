@@ -8,12 +8,29 @@ import {
   ChevronDown,
   Check,
   Search,
-  Building2,
+  Home,
   Lock,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck,
+  User,
+  LogOut,
+  Cloud,
+  RefreshCw,
+  FileSpreadsheet,
+  Download,
+  UserPlus,
+  Settings,
+  LayoutDashboard,
+  Users,
+  CreditCard,
+  PieChart,
+  SlidersHorizontal
 } from 'lucide-react';
-import { exportPayrollProToExcel } from '../../engine/excelEngine';
-import { Employee, CalculatedPayrollItem, PayrollVariables, PayeTaxVariables, PayrollSnapshot, AppView, CompanyProfile, CompanyAccount } from '../../types';
+import { exportPayrollProToExcel, ExportOptions } from '../../engine/excelEngine';
+import { ExportScopeModal } from '../excel/ExportScopeModal';
+import { MONTHS } from '../../store/usePayrollStore';
+import { Employee, CalculatedPayrollItem, PayrollVariables, PayeTaxVariables, PayrollSnapshot, AppView, CompanyProfile, CompanyAccount, TeamMember, EmployeeLoan, EmploymentTypeRule } from '../../types';
+import { checkRealConnectivity } from '../../services/supabaseClient';
 import appLogo from '../../../assets/icon.png';
 
 interface DesktopTitleBarProps {
@@ -37,6 +54,11 @@ interface DesktopTitleBarProps {
   onSoftReload?: () => void;
   onTriggerAddEmployee?: () => void;
   onLockOrSwitchCompany?: () => void;
+  currentUser?: TeamMember | null;
+  onSignOut?: () => void;
+  loans?: EmployeeLoan[];
+  departments?: string[];
+  employmentTypeRules?: EmploymentTypeRule[];
 }
 
 export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
@@ -59,8 +81,15 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   onSoftReload,
   onTriggerAddEmployee,
   onLockOrSwitchCompany,
+  currentUser,
+  onSignOut,
+  loans = [],
+  departments = [],
+  employmentTypeRules = [],
 }) => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [workspaceDropdownOpen, setWorkspaceDropdownOpen] = useState(false);
   const [workspaceSearch, setWorkspaceSearch] = useState('');
@@ -82,6 +111,60 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
     const q = workspaceSearch.toLowerCase();
     return companies.filter(c => (c.name || '').toLowerCase().includes(q));
   }, [companies, workspaceSearch]);
+
+  // Real connectivity state — uses an actual server ping, not navigator.onLine
+  // navigator.onLine is unreliable in Electron: it returns true even when there
+  // is no internet, as long as any network interface (e.g., router) is available.
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const connectivityIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const runCheck = async () => {
+      const real = await checkRealConnectivity();
+      if (!cancelled) setIsOnline(real);
+    };
+
+    // Run immediately, then every 15 seconds
+    runCheck();
+    connectivityIntervalRef.current = setInterval(runCheck, 15000);
+
+    // Also respond to browser online/offline events as a fast trigger
+    const handleBrowserEvent = () => { runCheck(); };
+    window.addEventListener('online', handleBrowserEvent);
+    window.addEventListener('offline', handleBrowserEvent);
+
+    return () => {
+      cancelled = true;
+      if (connectivityIntervalRef.current) clearInterval(connectivityIntervalRef.current);
+      window.removeEventListener('online', handleBrowserEvent);
+      window.removeEventListener('offline', handleBrowserEvent);
+    };
+  }, []);
+
+  const [hasPendingSync, setHasPendingSync] = useState(false);
+
+  useEffect(() => {
+    const checkSyncStatus = () => {
+      if (!activeCompanyId) {
+        setHasPendingSync(false);
+        return;
+      }
+      const pending = localStorage.getItem('PAYROLL_PRO_PENDING_SYNC_' + activeCompanyId) === 'true';
+      setHasPendingSync(pending);
+    };
+
+    checkSyncStatus();
+    window.addEventListener('payroll-sync-status-changed', checkSyncStatus);
+    window.addEventListener('online', checkSyncStatus);
+    window.addEventListener('offline', checkSyncStatus);
+    return () => {
+      window.removeEventListener('payroll-sync-status-changed', checkSyncStatus);
+      window.removeEventListener('online', checkSyncStatus);
+      window.removeEventListener('offline', checkSyncStatus);
+    };
+  }, [activeCompanyId]);
 
   const [zoomLevel, setZoomLevel] = useState(1);
 
@@ -144,40 +227,144 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
     }
   };
 
+  const computedDepartments = useMemo(() => {
+    const set = new Set<string>(departments);
+    employees.forEach(e => { if (e.department) set.add(e.department); });
+    return Array.from(set).filter(Boolean);
+  }, [departments, employees]);
+
+  const handleQuickExport = () => {
+    try {
+      exportPayrollProToExcel(
+        employees,
+        payrollItems,
+        payrollVariables,
+        payeTaxVariables,
+        monthLabel,
+        selectedYear,
+        activeSnapshot,
+        company,
+        { scope: 'current-month', includeFormulas: true, loans },
+        loans
+      );
+    } catch (err) {
+      console.error('Failed to export payroll Excel workbook:', err);
+      alert('Unable to export Excel file: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleConfirmExport = (options: ExportOptions) => {
+    try {
+      const targetMonthLabel = options.selectedMonth
+        ? (MONTHS.find(m => m.key === options.selectedMonth)?.label || monthLabel)
+        : monthLabel;
+      const targetYear = options.selectedYear || selectedYear;
+
+      exportPayrollProToExcel(
+        employees,
+        payrollItems,
+        payrollVariables,
+        payeTaxVariables,
+        targetMonthLabel,
+        targetYear,
+        activeSnapshot,
+        company,
+        { ...options, loans },
+        loans
+      );
+      setIsExportModalOpen(false);
+    } catch (err) {
+      console.error('Failed to export payroll Excel workbook:', err);
+      alert('Unable to export Excel file: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      // Priority 1: Export shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'E' || e.key === 'e')) {
+        e.preventDefault();
+        handleQuickExport();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault();
+        setIsExportModalOpen(true);
+        return;
+      }
+
+      // Priority 2: Reload / Force Reload
+      if (e.ctrlKey && e.shiftKey && (e.key === 'R' || e.key === 'r')) {
+        e.preventDefault();
+        handleForceReload();
+        return;
+      }
+      if (((e.ctrlKey && (e.key === 'r' || e.key === 'R')) || e.key === 'F5') && !e.shiftKey) {
+        e.preventDefault();
+        handleReload();
+        return;
+      }
+
+      // Priority 3: Fullscreen
+      if (e.key === 'F11') {
+        e.preventDefault();
+        handleToggleFullScreen();
+        return;
+      }
+
+      // If typing in input, don't trigger navigation / modifier shortcuts
+      if (isInput) return;
+
       if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
         e.preventDefault();
         onTriggerAddEmployee?.();
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
-        handleQuickExport();
-      } else if (e.ctrlKey && e.shiftKey && (e.key === 'R' || e.key === 'r')) {
+        onNavigate('payroll');
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
         e.preventDefault();
-        handleForceReload();
-      } else if ((e.ctrlKey && (e.key === 'r' || e.key === 'R')) || e.key === 'F5') {
+        onToggleTheme();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
-        handleReload();
-      } else if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
-        e.preventDefault();
-        handleZoomIn();
-      } else if (e.ctrlKey && (e.key === '-' || e.key === '_')) {
-        e.preventDefault();
-        handleZoomOut();
-      } else if (e.ctrlKey && e.key === '0') {
-        e.preventDefault();
-        handleResetZoom();
+        onOpenCompanySettings ? onOpenCompanySettings() : onNavigate('settings');
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
         e.preventDefault();
         onLockOrSwitchCompany?.();
-      } else if (e.key === 'F11') {
-        e.preventDefault();
-        handleToggleFullScreen();
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        if (e.key === '1') { e.preventDefault(); onNavigate('dashboard'); }
+        else if (e.key === '2') { e.preventDefault(); onNavigate('employees'); }
+        else if (e.key === '3') { e.preventDefault(); onNavigate('payroll'); }
+        else if (e.key === '4') { e.preventDefault(); onNavigate('loans'); }
+        else if (e.key === '5') { e.preventDefault(); onNavigate('analytics'); }
+        else if (e.key === '6') { e.preventDefault(); onNavigate('settings'); }
+        else if (e.key === '=' || e.key === '+') { e.preventDefault(); handleZoomIn(); }
+        else if (e.key === '-' || e.key === '_') { e.preventDefault(); handleZoomOut(); }
+        else if (e.key === '0') { e.preventDefault(); handleResetZoom(); }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [zoomLevel, onTriggerAddEmployee, onLockOrSwitchCompany, employees, payrollItems, payrollVariables, payeTaxVariables, monthLabel, selectedYear, activeSnapshot]);
+  }, [
+    zoomLevel, 
+    onTriggerAddEmployee, 
+    onLockOrSwitchCompany, 
+    onNavigate, 
+    onToggleTheme, 
+    onOpenCompanySettings, 
+    employees, 
+    payrollItems, 
+    payrollVariables, 
+    payeTaxVariables, 
+    monthLabel, 
+    selectedMonth, 
+    selectedYear, 
+    activeSnapshot, 
+    company, 
+    loans
+  ]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -193,28 +380,12 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleQuickExport = () => {
-    try {
-      exportPayrollProToExcel(
-        employees,
-        payrollItems,
-        payrollVariables,
-        payeTaxVariables,
-        monthLabel,
-        selectedYear,
-        activeSnapshot
-      );
-    } catch (err) {
-      console.error('Failed to export payroll Excel workbook:', err);
-      alert('Unable to export Excel file: ' + (err instanceof Error ? err.message : String(err)));
-    }
-  };
-
   return (
-    <header 
-      className="no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-3 select-none relative z-[9999] shrink-0 transition-colors"
-      style={{ WebkitAppRegion: "drag" } as any}
-    >
+    <>
+      <header 
+        className="no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-3 select-none relative z-[9999] shrink-0 transition-colors"
+        style={{ WebkitAppRegion: "drag" } as any}
+      >
       {/* Left: Brand + Native Dropdown Menus */}
       <div className="flex items-center gap-1" ref={menuRef} style={{ WebkitAppRegion: "no-drag" } as any}>
         
@@ -240,34 +411,57 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           </button>
 
           {activeMenu === 'file' && (
-            <div className="absolute left-0 top-full mt-1 w-48 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000]">
+            <div className="absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
               <button
                 onClick={() => { onTriggerAddEmployee?.(); setActiveMenu(null); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200 flex items-center justify-between cursor-pointer"
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
               >
                 <span>Add Employee</span>
-                <span className="text-[10px] text-zinc-400 font-mono">Ctrl+N</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+N</span>
               </button>
+
+              <button
+                onClick={() => { setIsExportModalOpen(true); setActiveMenu(null); }}
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
+              >
+                <span>Export to Excel...</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+E</span>
+              </button>
+
               <button
                 onClick={() => { handleQuickExport(); setActiveMenu(null); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200 flex items-center justify-between cursor-pointer"
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
               >
-                <span>Export Workbook</span>
-                <span className="text-[10px] text-zinc-400 font-mono">Ctrl+E</span>
+                <span>Quick Export</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+Shift+E</span>
               </button>
+
+              <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+
               <button
-                onClick={() => { onNavigate('settings'); setActiveMenu(null); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200 flex items-center justify-between cursor-pointer"
+                onClick={() => { onOpenCompanySettings ? onOpenCompanySettings() : onNavigate('settings'); setActiveMenu(null); }}
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
               >
-                <span>Settings</span>
+                <span>Company Settings</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+,</span>
               </button>
-              <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-1" />
+
               <button
                 onClick={() => { onLockOrSwitchCompany?.(); setActiveMenu(null); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200 flex items-center justify-between cursor-pointer"
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
               >
-                <span>Switch Company</span>
-                <span className="text-[10px] text-zinc-400 font-mono">Ctrl+L</span>
+                <span>Switch Workspace</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+L</span>
+              </button>
+
+              <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+
+              <button
+                onClick={() => { (window as any).electronAPI?.windowClose?.(); setActiveMenu(null); }}
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
+              >
+                <span>Exit</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Alt+F4</span>
               </button>
             </div>
           )}
@@ -287,12 +481,47 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           </button>
 
           {activeMenu === 'payroll' && (
-            <div className="absolute left-0 top-full mt-1 w-48 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000]">
+            <div className="absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
               <button
                 onClick={() => { onNavigate('payroll'); setActiveMenu(null); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200 cursor-pointer"
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
               >
-                Payroll Processing
+                <span>Payroll Processing</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+P</span>
+              </button>
+
+              <button
+                onClick={() => { onNavigate('loans'); setActiveMenu(null); }}
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
+              >
+                <span>Loans & Advances</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+4</span>
+              </button>
+
+              <button
+                onClick={() => { onNavigate('employees'); setActiveMenu(null); }}
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
+              >
+                <span>Staff Directory</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+2</span>
+              </button>
+
+              <button
+                onClick={() => { onNavigate('analytics'); setActiveMenu(null); }}
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
+              >
+                <span>Reports & Analytics</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+5</span>
+              </button>
+
+              <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+
+              <button
+                onClick={() => { setIsExportModalOpen(true); setActiveMenu(null); }}
+                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
+              >
+                <span>Export to Excel...</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+E</span>
               </button>
             </div>
           )}
@@ -302,7 +531,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         <div className="relative">
           <button
             onClick={() => setActiveMenu(activeMenu === 'view' ? null : 'view')}
-            className={`px-2 py-1 rounded text-xs font-medium transition ${
+            className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
               activeMenu === 'view' 
                 ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
@@ -312,57 +541,57 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           </button>
 
           {activeMenu === 'view' && (
-            <div className="absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000]">
+            <div className="absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
               <button
                 onClick={() => { handleReload(); setActiveMenu(null); }}
-                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200"
+                className="w-full flex items-center justify-between px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
               >
-                <span>Reload Page</span>
-                <span className="text-[11px] text-zinc-400 font-mono">Ctrl+R</span>
+                <span>Reload</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+R</span>
               </button>
               
               <button
                 onClick={() => { handleForceReload(); setActiveMenu(null); }}
-                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200"
+                className="w-full flex items-center justify-between px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
               >
                 <span>Force Reload</span>
-                <span className="text-[11px] text-zinc-400 font-mono">Ctrl+Shift+R</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+Shift+R</span>
               </button>
 
-              <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-1" />
+              <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
 
               <button
                 onClick={() => { handleZoomIn(); setActiveMenu(null); }}
-                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200"
+                className="w-full flex items-center justify-between px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
               >
                 <span>Zoom In</span>
-                <span className="text-[11px] text-zinc-400 font-mono">Ctrl+=</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+=</span>
               </button>
 
               <button
                 onClick={() => { handleZoomOut(); setActiveMenu(null); }}
-                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200"
+                className="w-full flex items-center justify-between px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
               >
                 <span>Zoom Out</span>
-                <span className="text-[11px] text-zinc-400 font-mono">Ctrl+-</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+-</span>
               </button>
 
               <button
                 onClick={() => { handleResetZoom(); setActiveMenu(null); }}
-                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200"
+                className="w-full flex items-center justify-between px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
               >
                 <span>Reset Zoom</span>
-                <span className="text-[11px] text-zinc-400 font-mono">Ctrl+0</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+0</span>
               </button>
 
-              <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-1" />
+              <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
 
               <button
                 onClick={() => { handleToggleFullScreen(); setActiveMenu(null); }}
-                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-200"
+                className="w-full flex items-center justify-between px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
               >
-                <span>Toggle Full Screen</span>
-                <span className="text-[11px] text-zinc-400 font-mono">F11</span>
+                <span>Full Screen</span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">F11</span>
               </button>
             </div>
           )}
@@ -385,7 +614,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           }`}
           title="Switch workspace / company"
         >
-          <Building2 className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200" />
+          <Home className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200" />
           <span className="truncate max-w-[260px] lg:max-w-[380px]">{company?.name ?? 'Select Workspace'}</span>
           <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform duration-150 ${workspaceDropdownOpen ? 'rotate-180' : ''}`} />
         </button>
@@ -451,7 +680,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
                           ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100' 
                           : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 border-zinc-200 dark:border-zinc-700/60'
                       }`}>
-                        <Building2 className="w-3 h-3" />
+                        <Home className="w-3 h-3" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs">{comp.name}</p>
@@ -499,9 +728,71 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         )}
       </div>
 
-      {/* Right: Theme Toggle + Native Controls */}
+      {/* Right: User Pill, Theme Toggle + Native Controls */}
       <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: "no-drag" } as any}>
         
+        {/* Network / Offline & Sync Status Indicator */}
+        {!isOnline ? (
+          <div 
+            title="Offline — changes saved locally and will sync when reconnected"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+          >
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+            <span>{hasPendingSync ? 'Offline (pending)' : 'Offline'}</span>
+          </div>
+        ) : hasPendingSync ? (
+          <div 
+            title="Syncing changes to cloud server..."
+            className="flex items-center gap-1.5 text-[11px] font-medium text-sky-600 dark:text-sky-400"
+          >
+            <RefreshCw className="w-2.5 h-2.5 text-sky-500 shrink-0 animate-spin" />
+            <span>Syncing</span>
+          </div>
+        ) : (
+          <div 
+            title="Online — workspace synced with cloud server"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400"
+          >
+            <span className="relative flex w-2.5 h-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>
+              <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-emerald-500"></span>
+            </span>
+            <span>Synced</span>
+          </div>
+        )}
+
+        {currentUser && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              title={`${currentUser.name} (${currentUser.role})`}
+              className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+            >
+              <User className="w-3.5 h-3.5" />
+            </button>
+
+            {userMenuOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs">
+                <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400">
+                  Staff: <strong>{currentUser.email || currentUser.username}</strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    onSignOut?.();
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Switch Staff User</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Theme Toggle */}
         <button
           onClick={onToggleTheme}
@@ -539,5 +830,20 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
       </div>
 
     </header>
+
+    {/* Global Export Scope Modal accessible anywhere via Ctrl+E or File Menu */}
+    {isExportModalOpen && (
+      <ExportScopeModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onConfirm={handleConfirmExport}
+        currentMonthLabel={monthLabel}
+        currentMonthKey={selectedMonth}
+        currentYear={selectedYear}
+        departments={computedDepartments}
+        employmentTypeRules={employmentTypeRules}
+      />
+    )}
+  </>
   );
 };

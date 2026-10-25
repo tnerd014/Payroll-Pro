@@ -25,7 +25,8 @@ import {
   Employee, 
   PayrollVariables, 
   PayeTaxVariables, 
-  CompanyProfile 
+  CompanyProfile,
+  EmployeeLoan
 } from '../../types';
 import { 
   formatNaira, 
@@ -52,6 +53,7 @@ interface AnalyticsViewProps {
   snapshots?: PayrollSnapshot[];
   departments?: string[];
   company?: CompanyProfile;
+  loans?: EmployeeLoan[];
 }
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
@@ -65,7 +67,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   activeSnapshot,
   snapshots = [],
   departments = [],
-  company = { name: 'COMPANY LIMITED', subtitle: '', address: '', phone: '', email: '' }
+  company = { name: 'COMPANY LIMITED', subtitle: '', address: '', phone: '', email: '' },
+  loans = [],
 }) => {
   // Navigation tabs
   const [activeTab, setActiveTab] = useState<'overview' | 'departments' | 'tax' | 'pension' | 'bank'>('overview');
@@ -192,15 +195,28 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   // Active items based on current rangeMode
   const activeItems = useMemo(() => {
     if (rangeMode === 'single-month') {
-      return getComputedItemsForMonth(activeMonthKey, activeYear).filter(filterPredicate);
+      // Use the parent-provided items for the current period (respects locked snapshots).
+      // For other months, re-compute live from employees.
+      const isActivePeriod =
+        activeMonthKey === initialSelectedMonth && activeYear === initialYear;
+      const baseItems = isActivePeriod
+        ? (Array.isArray(initialItems) ? initialItems : [])
+        : getComputedItemsForMonth(activeMonthKey, activeYear);
+      return baseItems.filter(filterPredicate);
     }
-    
+
     // For Full Year or All History: aggregate employee 12-month totals into composite items
     const monthsToScan = rangeMode === 'full-year' ? MONTHS : MONTHS; // extensible to multi-year
     const annualMap = new Map<string, CalculatedPayrollItem>();
 
     monthsToScan.forEach(m => {
-      const mItems = getComputedItemsForMonth(m.key, activeYear).filter(filterPredicate);
+      // Use parent items for the current period; re-compute for all other months
+      const isCurrentPeriod = m.key === initialSelectedMonth && activeYear === initialYear;
+      const mItems = (isCurrentPeriod
+        ? (Array.isArray(initialItems) ? initialItems : [])
+        : getComputedItemsForMonth(m.key, activeYear)
+      ).filter(filterPredicate);
+
       mItems.forEach(item => {
         const existing = annualMap.get(item.employeeId);
         if (!existing) {
@@ -223,7 +239,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     });
 
     return Array.from(annualMap.values());
-  }, [rangeMode, activeMonthKey, activeYear, employees, payrollVariables, payeTaxVariables, selectedDept, selectedEmpType]);
+  }, [rangeMode, activeMonthKey, activeYear, initialItems, initialSelectedMonth, initialYear, employees, payrollVariables, payeTaxVariables, selectedDept, selectedEmpType]);
 
   // Department Sorting
   const [deptSortField, setDeptSortField] = useState<string | null>('gross');
@@ -425,7 +441,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         selectedYear: activeYear,
         departmentFilter: selectedDept,
         employmentTypeFilter: selectedEmpType,
-      }
+        loans,
+      },
+      loans
     );
   };
 
@@ -1121,29 +1139,29 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)]">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px]">
+              <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] shadow-xs">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Code" field="code" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Employee Name" field="name" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Employment Type" field="type" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Gross Remuneration" field="gross" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Total CRA Relief" field="cra" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Taxable Income" field="taxable" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="PAYE Deducted" field="paye" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
                   </th>
                 </tr>
@@ -1192,29 +1210,29 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)]">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px]">
+              <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] shadow-xs">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Code" field="code" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Employee Name" field="name" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="PFA / RSA PIN" field="pfa" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Pensionable Base (BHT)" field="base" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Employee (8%)" field="employee" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Employer (10%)" field="employer" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Total Remittance" field="total" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
                   </th>
                 </tr>
@@ -1263,26 +1281,26 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)]">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px]">
+              <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] shadow-xs">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500">S/N</span>
                   </th>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Beneficiary" field="name" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Bank" field="bank" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="NUBAN Account" field="account" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
                     <SortableHeader label="Net Amount" field="net" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
                     <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500">Narration</span>
                   </th>
                 </tr>

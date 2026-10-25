@@ -60,6 +60,18 @@ export interface Employee {
   status: 'Active' | 'Inactive';
   employmentType?: string; // 'Full-Time' | 'Part-Time' | 'Contract' | 'Intern / NYSC'
   stateOfResidence?: string; // Nigerian State for PAYE Remittance (e.g. Lagos, Ogun, FCT Abuja)
+  startDate?: string; // ISO date YYYY-MM-DD
+  endDate?: string; // ISO date YYYY-MM-DD (exit/termination date)
+  originalHireDate?: string; // ISO date YYYY-MM-DD (first ever hire date)
+  stints?: EmploymentStint[]; // Historical and active employment stints
+}
+
+export interface EmploymentStint {
+  stintId: string;
+  startDate: string; // ISO date YYYY-MM-DD
+  endDate?: string; // ISO date YYYY-MM-DD (empty if ongoing)
+  exitReason?: string; // e.g. 'Resignation' | 'Contract Ended' | 'Termination' | 'Retirement' | 'Other'
+  notes?: string;
 }
 
 export type SalaryCalculationMode = 'gross-to-net' | 'net-to-gross';
@@ -241,6 +253,7 @@ export type PayslipHeaderLayout = 'modern' | 'centered' | 'banner' | 'clean' | '
 export type PayslipFontFamily = 'sans' | 'serif' | 'mono';
 export type PayslipFontSize = 'compact' | 'standard' | 'large' | 'xl';
 export type NetPayFontSize = 'small' | 'standard' | 'large' | 'xl';
+export type BreakdownFontSize = 'small' | 'standard' | 'large' | 'xl';
 export type PayslipDensity = 'compact' | 'standard' | 'spacious';
 export type PayslipWatermark = 'none' | 'confidential' | 'official' | 'copy' | 'paid' | 'custom';
 
@@ -291,6 +304,7 @@ export interface PayslipDesignConfig {
   netPayTitle: string;
   netPaySubtitle?: string;     // e.g. "Confirmed electronic bank transfer remittance"
   netPayFontSize?: NetPayFontSize; // 'small' | 'standard' | 'large' | 'xl'
+  breakdownFontSize?: BreakdownFontSize; // 'small' | 'standard' | 'large' | 'xl' (Earnings & Deductions numbers and text scale)
   grossPayLabel: string;        // e.g. "Total Emolument" or "Total Gross Remuneration"
   totalDeductionsLabel: string; // e.g. "Total Deductions"
   employerCostLabel: string;    // e.g. "Total Employer Cost"
@@ -343,10 +357,10 @@ export const ALL_PAYSLIP_COLUMNS: PayslipColumnDef[] = [
   { id: 'pension_rsa', label: 'Pension RSA PIN & PFA', sectionId: 'employee_meta', defaultChecked: true },
 
   // Earnings Components
-  { id: 'basic_salary', label: 'Basic Salary (40%)', sectionId: 'earnings', defaultChecked: true },
-  { id: 'housing', label: 'Housing Allowance (30%)', sectionId: 'earnings', defaultChecked: true },
-  { id: 'transport', label: 'Transport Allowance (20%)', sectionId: 'earnings', defaultChecked: true },
-  { id: 'other_allowances', label: 'Other Allowances (10%)', sectionId: 'earnings', defaultChecked: true },
+  { id: 'basic_salary', label: 'Basic Salary', sectionId: 'earnings', defaultChecked: true },
+  { id: 'housing', label: 'Housing Allowance', sectionId: 'earnings', defaultChecked: true },
+  { id: 'transport', label: 'Transport Allowance', sectionId: 'earnings', defaultChecked: true },
+  { id: 'other_allowances', label: 'Other Allowances', sectionId: 'earnings', defaultChecked: true },
   { id: 'gross_pay', label: 'Total Gross Remuneration', sectionId: 'earnings', defaultChecked: true },
 
   // Statutory Deductions & Taxes
@@ -420,6 +434,7 @@ export const DEFAULT_PAYSLIP_DESIGN: PayslipDesignConfig = {
   netPayTitle: 'Net Take-Home Pay',
   netPaySubtitle: '',
   netPayFontSize: 'standard',
+  breakdownFontSize: 'standard',
   grossPayLabel: 'Total Gross Remuneration',
   totalDeductionsLabel: 'Total Deductions',
   employerCostLabel: 'Total Employer Cost',
@@ -451,4 +466,36 @@ export interface ResetOptions {
   resetVariables: boolean;
   resetCompany: boolean;
   resetDepartments: boolean;
+}
+
+export type TeamMemberRole = 'Admin' | 'Payroll Officer' | 'Auditor';
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email?: string;
+  username?: string;
+  role: TeamMemberRole;
+  pin?: string;
+  password?: string;
+  securityQuestion?: string;
+  securityAnswer?: string;
+  recoveryEmail?: string;
+  tempPassword?: string;
+  mustChangePassword?: boolean;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  companyId?: string;
+  companyName?: string;
+  actorId?: string;
+  actorName: string;
+  action: string;
+  details: string;
+  ipOrDevice?: string;
+  createdAt: string;
 }

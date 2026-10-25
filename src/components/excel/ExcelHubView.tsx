@@ -8,7 +8,7 @@ import {
   ShieldCheck, 
   ArrowRight
 } from 'lucide-react';
-import { Employee, CalculatedPayrollItem, PayrollVariables, PayeTaxVariables, PayrollSnapshot } from '../../types';
+import { Employee, CalculatedPayrollItem, PayrollVariables, PayeTaxVariables, PayrollSnapshot, EmployeeLoan } from '../../types';
 import { exportPayrollProToExcel, parseEmployeesFromExcel } from '../../engine/excelEngine';
 
 interface ExcelHubViewProps {
@@ -20,6 +20,7 @@ interface ExcelHubViewProps {
   year: number;
   activeSnapshot: PayrollSnapshot | undefined;
   onImportEmployees: (items: Partial<Employee>[], mode: 'merge' | 'overwrite') => void;
+  loans?: EmployeeLoan[];
 }
 
 export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
@@ -30,7 +31,8 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
   monthLabel,
   year,
   activeSnapshot,
-  onImportEmployees
+  onImportEmployees,
+  loans = []
 }) => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [parsedData, setParsedData] = useState<Partial<Employee>[] | null>(null);
@@ -48,7 +50,10 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
         payeTaxVariables,
         monthLabel,
         year,
-        activeSnapshot
+        activeSnapshot,
+        undefined,
+        { scope: 'current-month', includeFormulas: true, loans },
+        loans
       );
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 3000);

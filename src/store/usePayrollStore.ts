@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Employee, 
   PayrollVariables, 
@@ -21,12 +21,26 @@ import {
   DEFAULT_PAYROLL_VARIABLES, 
   DEFAULT_PAYE_VARIABLES, 
   DEFAULT_EMPLOYMENT_TYPE_RULES,
-  calculatePayrollItem 
+  calculatePayrollItem,
+  isEmployeeActiveForPeriod
 } from '../engine/payePensionEngine';
+import { 
+  getSupabaseClient, 
+  downloadCompanyDataFromSupabase,
+  uploadCompanyDataToSupabase,
+  checkRealConnectivity,
+  getSavedCloudConfig,
+  fetchCompaniesFromSupabase,
+  syncCompanyToSupabase,
+  deleteCompanyFromSupabase,
+  deleteEmployeeFromCloud,
+  logAuditEvent
+} from '../services/supabaseClient';
 
 export const STORAGE_KEY = 'PAYROLL_PRO_LOCAL_STORAGE_V5';
 export const COMPANIES_REGISTRY_KEY = 'PAYROLL_PRO_COMPANIES_REGISTRY_V1';
 export const COMPANY_DATA_PREFIX = 'PAYROLL_PRO_DATA_COMPANY_';
+export const PENDING_OFFLINE_SYNC_PREFIX = 'PAYROLL_PRO_PENDING_SYNC_';
 export const THEME_PREFERENCE_KEY = 'PAYROLL_PRO_THEME_PREF';
 
 export const MONTHS = [
@@ -57,146 +71,154 @@ export const getPeriodIndex = (periodKey?: string): number => {
   return y * 12 + m;
 };
 
+export function parseDateToYearMonth(dateStr?: string): { year: number; monthIdx: number } | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const trimmed = dateStr.trim();
+
+  // Check period key format: "2026-jan"
+  if (/^\d{4}-[a-zA-Z]{3}$/i.test(trimmed)) {
+    const [y, mStr] = trimmed.split('-');
+    const mIdx = MONTH_KEY_INDEX[mStr.toLowerCase()];
+    if (mIdx !== undefined) return { year: parseInt(y, 10), monthIdx: mIdx };
+  }
+
+  // Check YYYY-MM-DD
+  if (/^\d{4}-\d{1,2}/.test(trimmed)) {
+    const parts = trimmed.split('-');
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (!isNaN(y) && m >= 1 && m <= 12) return { year: y, monthIdx: m - 1 };
+  }
+
+  // Check DD/MM/YYYY or DD-MM-YYYY
+  if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(trimmed)) {
+    const parts = trimmed.split(/[\/\-]/);
+    const m = parseInt(parts[1], 10);
+    const y = parseInt(parts[2], 10);
+    if (!isNaN(y) && m >= 1 && m <= 12) return { year: y, monthIdx: m - 1 };
+  }
+
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime())) {
+    return { year: d.getFullYear(), monthIdx: d.getMonth() };
+  }
+
+  return null;
+}
+
+/**
+ * Automatically synchronizes loan amortizations and deductions from the repayment
+ * start date up to the active target payroll period (e.g. from January 2026 to October 2026).
+ * Ensures past elapsed months are seamlessly recorded in the loan history, total repaid,
+ * and remaining balance.
+ */
+export function autoSyncLoansForPeriod(
+  loans: EmployeeLoan[] = [],
+  targetYear: number = 2026,
+  targetMonthKey: string = 'oct'
+): EmployeeLoan[] {
+  if (!Array.isArray(loans) || loans.length === 0) return [];
+  const targetM = (targetMonthKey || 'oct').toLowerCase();
+  const targetMonthIdx = MONTH_KEY_INDEX[targetM] ?? 9;
+
+  return loans.map(loan => {
+    if (!loan || loan.status === 'Paused' || (loan.principalAmount || 0) <= 0) {
+      return loan;
+    }
+
+    let startYear = targetYear;
+    let startMonthIdx = 0; // default to Jan
+
+    const parsedStart = parseDateToYearMonth(loan.startPeriodKey) ||
+      parseDateToYearMonth(loan.repaymentStartDate) ||
+      parseDateToYearMonth(loan.disbursementDate) ||
+      parseDateToYearMonth(loan.repaymentDate) ||
+      parseDateToYearMonth(loan.createdAt);
+
+    if (parsedStart) {
+      startYear = parsedStart.year;
+      startMonthIdx = parsedStart.monthIdx;
+    }
+
+    const elapsedPeriods: { key: string; year: number; monthIdx: number }[] = [];
+    let curY = startYear;
+    let curM = startMonthIdx;
+    let safety = 0;
+
+    while ((curY < targetYear || (curY === targetYear && curM <= targetMonthIdx)) && safety < 120) {
+      const mKey = MONTHS[curM]?.key || 'jan';
+      elapsedPeriods.push({
+        key: `${curY}-${mKey}`,
+        year: curY,
+        monthIdx: curM,
+      });
+      curM++;
+      if (curM > 11) {
+        curM = 0;
+        curY++;
+      }
+      safety++;
+    }
+
+    if (elapsedPeriods.length === 0) return loan;
+
+    const history = [...(loan.history || [])];
+    const monthlyDeduction = loan.type === 'Salary Advance'
+      ? (loan.principalAmount || 0)
+      : (Number(loan.monthlyDeduction) || loan.principalAmount || 0);
+
+    for (const period of elapsedPeriods) {
+      const alreadyHas = history.some(h => h.periodKey === period.key);
+      if (!alreadyHas) {
+        const currentRepaid = history.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+        const rem = Math.max(0, (loan.principalAmount || 0) - currentRepaid);
+        if (rem <= 0) break;
+
+        const deduction = Math.min(monthlyDeduction, rem);
+        if (deduction > 0) {
+          const mLabel = MONTHS[period.monthIdx]?.label || period.key;
+          history.push({
+            id: `repay-auto-${period.key}-${loan.id}`,
+            periodKey: period.key,
+            amount: deduction,
+            paidAt: `${period.year}-${String(period.monthIdx + 1).padStart(2, '0')}-28T12:00:00.000Z`,
+            notes: `Automated deduction (${mLabel} ${period.year})`,
+          });
+        }
+      }
+    }
+
+    const totalRepaid = history.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+    const remainingBalance = Math.max(0, (loan.principalAmount || 0) - totalRepaid);
+    const status: LoanStatus = remainingBalance <= 0 ? 'Paid' : loan.status;
+
+    return {
+      ...loan,
+      history,
+      totalRepaid,
+      remainingBalance,
+      status,
+    };
+  });
+}
+
 const DEFAULT_COMPANY: CompanyProfile = {
-  name: 'DEWATERING CONSTRUCTION ETC LIMITED',
-  subtitle: 'Ground Water Control & Engineering Specialist',
-  address: 'Plot 12, Commercial Avenue, Victoria Island, Lagos, Nigeria',
-  phone: '+234 800 339 2837',
-  email: 'info@dewateringconstruction.com',
+  name: '',
+  subtitle: '',
+  address: '',
+  phone: '',
+  email: '',
   logoUrl: '',
 };
 
-const INITIAL_EMPLOYEES: Employee[] = [
-  {
-    id: 'emp-1',
-    code: 'EMP-001',
-    firstName: 'HUBERT',
-    lastName: 'DAVIES',
-    department: 'ADMIN',
-    position: 'CEO',
-    email: 'hubert.davies@company.com',
-    phone: '+234 802 334 9901',
-    monthlyGross: 1000000,
-    annualRent: 2000000,
-    bankName: 'STANBIC',
-    accountNumber: '9200384717',
-    hasPension: true,
-    hasPaye: true,
-    payeNumber: 'PAYE-LAS-0091823',
-    pensionNumber: 'PEN10082736451',
-    pfaName: 'Stanbic IBTC Pension Managers',
-    status: 'Active',
-  },
-  {
-    id: 'emp-2',
-    code: 'EMP-002',
-    firstName: 'ALICIA',
-    lastName: 'OBOKIA',
-    department: 'ADMIN',
-    position: 'Head of Admin',
-    email: 'alicia.obokia@company.com',
-    phone: '+234 803 555 1122',
-    monthlyGross: 400000,
-    annualRent: 1200000,
-    bankName: 'FIRST BANK',
-    accountNumber: '3059739035',
-    hasPension: true,
-    hasPaye: true,
-    payeNumber: 'PAYE-LAS-0044192',
-    pensionNumber: 'PEN10093847291',
-    pfaName: 'ARM Pension Managers',
-    status: 'Active',
-  },
-  {
-    id: 'emp-3',
-    code: 'EMP-003',
-    firstName: 'ELIJAH',
-    lastName: 'IDIAFEHI',
-    department: 'DEWATERING',
-    position: 'Head of Operations',
-    email: 'elijah.idiafehi@company.com',
-    phone: '+234 809 111 8844',
-    monthlyGross: 400000,
-    annualRent: 1000000,
-    bankName: 'STANBIC',
-    accountNumber: '0026639919',
-    hasPension: true,
-    hasPaye: true,
-    payeNumber: 'PAYE-LAS-0082711',
-    pensionNumber: 'PEN10037461928',
-    pfaName: 'Stanbic IBTC Pension Managers',
-    status: 'Active',
-  },
-  {
-    id: 'emp-4',
-    code: 'EMP-004',
-    firstName: 'OLATUNDE GBENGA',
-    lastName: 'ALONGE',
-    department: 'GEN OFFICE',
-    position: 'Projects Supervisor',
-    email: 'olatunde.alonge@company.com',
-    phone: '+234 814 777 2200',
-    monthlyGross: 300000,
-    annualRent: 800000,
-    bankName: 'ACCESS',
-    accountNumber: '1445714675',
-    hasPension: true,
-    hasPaye: true,
-    payeNumber: 'PAYE-LAS-0073619',
-    pensionNumber: 'PEN10058291047',
-    pfaName: 'Access Pensions',
-    status: 'Active',
-  },
-  {
-    id: 'emp-5',
-    code: 'EMP-005',
-    firstName: 'OLAJUMOKE',
-    lastName: 'BANIRE',
-    department: 'ADMIN',
-    position: 'Admin/Accounts Officer',
-    email: 'olajumoke.banire@company.com',
-    phone: '+234 701 865 0532',
-    monthlyGross: 160000,
-    annualRent: 500000,
-    bankName: 'Palm pay',
-    accountNumber: '7018650532',
-    hasPension: true,
-    hasPaye: true,
-    payeNumber: 'PAYE-LAS-0055201',
-    pensionNumber: 'PEN10069382019',
-    pfaName: 'Premium Pension Limited',
-    status: 'Active',
-  },
-  {
-    id: 'emp-6',
-    code: 'EMP-006',
-    firstName: 'KAYODE',
-    lastName: 'ASHABI',
-    department: 'LOGISTICS',
-    position: 'Logistics Lead',
-    email: 'kayode.ashabi@company.com',
-    phone: '+234 805 123 4567',
-    monthlyGross: 250000,
-    annualRent: 600000,
-    bankName: 'GTBANK',
-    accountNumber: '0123456789',
-    hasPension: true,
-    hasPaye: true,
-    payeNumber: 'PAYE-LAS-0061849',
-    pensionNumber: 'PEN10072948102',
-    pfaName: 'Stanbic IBTC Pension Managers',
-    status: 'Active',
-  }
-];
+const INITIAL_EMPLOYEES: Employee[] = [];
 
 export const DEFAULT_DEPARTMENTS: string[] = [
   'ADMIN',
   'OPERATIONS',
   'FINANCE & ACCOUNTS',
   'ENGINEERING',
-  'DEWATERING',
   'LOGISTICS',
-  'GENERAL OFFICE',
   'HUMAN RESOURCES',
 ];
 
@@ -216,540 +238,23 @@ export interface AppState {
   loans?: EmployeeLoan[];
 }
 
-export const INITIAL_SAMPLE_COMPANIES: CompanyAccount[] = [
-  {
-    id: 'comp-default',
-    name: 'DEWATERING CONSTRUCTION ETC LIMITED',
-    subtitle: 'Ground Water Control & Engineering Specialist',
-    address: 'Plot 12, Commercial Avenue, Victoria Island, Lagos, Nigeria',
-    phone: '+234 800 339 2837',
-    email: 'info@dewateringconstruction.com',
-    hasPassword: false,
-    createdAt: '2026-01-15T08:00:00.000Z',
-  },
-  {
-    id: 'comp-zenith-energy',
-    name: 'ZENITH ENERGY & INFRASTRUCTURE LTD',
-    subtitle: 'Offshore Drilling & Energy Logistics',
-    address: 'Plot 87, Adeola Odeku Street, Victoria Island, Lagos',
-    phone: '+234 1 270 3000',
-    email: 'payroll@zenithenergy.ng',
-    hasPassword: true,
-    password: '1234',
-    passwordHint: 'Default PIN is 1234',
-    createdAt: '2026-01-20T09:30:00.000Z',
-  },
-  {
-    id: 'comp-paystack',
-    name: 'PAYSTACK PAYMENTS NIGERIA LTD',
-    subtitle: 'Online & In-Person Merchant Gateways',
-    address: '126 Joel Ogunnaike Street, GRA Ikeja, Lagos',
-    phone: '+234 1 631 6160',
-    email: 'hr@paystack.com',
-    hasPassword: false,
-    createdAt: '2026-02-01T10:15:00.000Z',
-  },
-  {
-    id: 'comp-dangote',
-    name: 'DANGOTE CEMENT PLC',
-    subtitle: 'Industrial Manufacturing & Supply Chain',
-    address: '1 Alfred Rewane Road, Falomo, Ikoyi, Lagos',
-    phone: '+234 1 448 0815',
-    email: 'careers@dangote-group.com',
-    hasPassword: true,
-    password: 'dangote',
-    passwordHint: 'Founder name in lowercase',
-    createdAt: '2026-02-05T11:00:00.000Z',
-  },
-  {
-    id: 'comp-flutterwave',
-    name: 'FLUTTERWAVE TECHNOLOGIES LTD',
-    subtitle: 'Global Payments & Cross-Border Rails',
-    address: '8 Providence Street, Lekki Phase 1, Lagos',
-    phone: '+234 1 888 9595',
-    email: 'finance@flutterwavego.com',
-    hasPassword: false,
-    createdAt: '2026-02-10T14:20:00.000Z',
-  },
-  {
-    id: 'comp-access-holdings',
-    name: 'ACCESS HOLDINGS PLC',
-    subtitle: 'Banking, Pensions & Asset Management',
-    address: 'Plot 999c, Danmole Street, Victoria Island, Lagos',
-    phone: '+234 1 271 2005',
-    email: 'payroll@accessholdings.com',
-    hasPassword: true,
-    password: 'access2026',
-    passwordHint: 'access + current year',
-    createdAt: '2026-02-15T08:45:00.000Z',
-  },
-  {
-    id: 'comp-interswitch',
-    name: 'INTERSWITCH GROUP',
-    subtitle: 'Digital Commerce & Financial Switching',
-    address: 'Oko Awo Street, Victoria Island, Lagos',
-    phone: '+234 1 628 3888',
-    email: 'accounts@interswitchgroup.com',
-    hasPassword: false,
-    createdAt: '2026-02-20T16:00:00.000Z',
-  },
-  {
-    id: 'comp-julius-berger',
-    name: 'JULIUS BERGER NIGERIA PLC',
-    subtitle: 'Infrastructure, Civil Engineering & Roads',
-    address: '10 Shettima A. Munguno Crescent, Utako, Abuja',
-    phone: '+234 9 611 0000',
-    email: 'info@julius-berger.com',
-    hasPassword: false,
-    createdAt: '2026-02-25T12:00:00.000Z',
-  },
-  {
-    id: 'comp-mtn-nigeria',
-    name: 'MTN NIGERIA COMMUNICATIONS PLC',
-    subtitle: 'Telecommunications, 5G & Digital Services',
-    address: 'Golden Plaza, Falomo, Ikoyi, Lagos',
-    phone: '+234 803 100 0180',
-    email: 'support@mtn.ng',
-    hasPassword: true,
-    password: 'mtn123',
-    passwordHint: 'mtn + 123',
-    createdAt: '2026-03-01T09:10:00.000Z',
-  },
-  {
-    id: 'comp-air-peace',
-    name: 'AIR PEACE AIRLINES LIMITED',
-    subtitle: 'Commercial Aviation & Regional Cargo',
-    address: '25 Sobo Arobiodu Street, GRA Ikeja, Lagos',
-    phone: '+234 700 3592 4773',
-    email: 'crew-payroll@flyairpeace.com',
-    hasPassword: false,
-    createdAt: '2026-03-05T13:40:00.000Z',
-  },
-  {
-    id: 'comp-bua-foods',
-    name: 'BUA FOODS PLC',
-    subtitle: 'FMCG, Sugar Refining & Flour Mills',
-    address: 'BUA Towers, Adetokunbo Ademola, VI, Lagos',
-    phone: '+234 1 461 0669',
-    email: 'buafoods@buagroup.com',
-    hasPassword: false,
-    createdAt: '2026-03-10T11:25:00.000Z',
-  },
-  {
-    id: 'comp-totalenergies',
-    name: 'TOTALENERGIES MARKETING NIGERIA',
-    subtitle: 'Downstream Petroleum & Renewable Energy',
-    address: '4 Churchgate Street, Victoria Island, Lagos',
-    phone: '+234 1 262 1780',
-    email: 'totalenergies.ng@totalenergies.com',
-    hasPassword: true,
-    password: 'energy',
-    passwordHint: 'energy',
-    createdAt: '2026-03-15T15:00:00.000Z',
-  },
-  {
-    id: 'comp-fcmb',
-    name: 'FIRST CITY MONUMENT BANK',
-    subtitle: 'Retail & Commercial Banking Services',
-    address: 'Primrose Tower, 17A Tinubu Street, Lagos Island',
-    phone: '+234 1 279 8800',
-    email: 'customerservice@fcmb.com',
-    hasPassword: false,
-    createdAt: '2026-03-20T10:05:00.000Z',
-  },
-  {
-    id: 'comp-andela',
-    name: 'ANDELA SOFTWARE AFRICA',
-    subtitle: 'Global Engineering Talent & Distributed Teams',
-    address: 'Ikorodu Road, Anthony, Lagos',
-    phone: '+234 1 293 4900',
-    email: 'talent@andela.com',
-    hasPassword: false,
-    createdAt: '2026-03-25T14:50:00.000Z',
-  },
-  {
-    id: 'comp-seplat',
-    name: 'SEPLAT ENERGY PLC',
-    subtitle: 'Independent Oil & Natural Gas Exploration',
-    address: '16A Temple Road, Ikoyi, Lagos',
-    phone: '+234 1 277 0400',
-    email: 'seplat@seplatenergy.com',
-    hasPassword: true,
-    password: 'seplat',
-    passwordHint: 'Company name in lowercase',
-    createdAt: '2026-04-01T08:30:00.000Z',
-  },
-  {
-    id: 'comp-nb-plc',
-    name: 'NIGERIAN BREWERIES PLC',
-    subtitle: 'Brewing, Beverages & Consumer Goods',
-    address: '1 Abebe Village Road, Iganmu, Lagos',
-    phone: '+234 1 271 7400',
-    email: 'corporate.affairs@nbplc.com',
-    hasPassword: false,
-    createdAt: '2026-04-05T17:15:00.000Z',
-  },
-  {
-    id: 'comp-kuda',
-    name: 'KUDA TECHNOLOGIES LTD',
-    subtitle: 'Digital Banking & Mobile Microfinance',
-    address: '1-11 Commercial Avenue, Yaba, Lagos',
-    phone: '+234 1 633 5832',
-    email: 'help@kuda.com',
-    hasPassword: false,
-    createdAt: '2026-04-10T12:00:00.000Z',
-  },
-  {
-    id: 'comp-uac',
-    name: 'UAC OF NIGERIA PLC',
-    subtitle: 'Diversified Conglomerate & Real Estate',
-    address: 'UAC House, 1-5 Odunlami Street, Marina, Lagos',
-    phone: '+234 1 270 1879',
-    email: 'info@uacnplc.com',
-    hasPassword: true,
-    password: 'uac2026',
-    passwordHint: 'uac + year',
-    createdAt: '2026-04-15T09:45:00.000Z',
-  },
-  {
-    id: 'comp-moniepoint',
-    name: 'MONIEPOINT FINANCIAL INC',
-    subtitle: 'Agency Banking & Merchant Credit Terminals',
-    address: 'Admiralty Way, Lekki Phase 1, Lagos',
-    phone: '+234 1 888 8450',
-    email: 'support@moniepoint.com',
-    hasPassword: false,
-    createdAt: '2026-04-20T16:30:00.000Z',
-  },
-  {
-    id: 'comp-reddington',
-    name: 'REDDINGTON HOSPITAL GROUP',
-    subtitle: 'Tertiary Healthcare, Cardiology & Diagnostics',
-    address: '12 Idowu Martins Street, Victoria Island, Lagos',
-    phone: '+234 1 271 5340',
-    email: 'records@reddingtonhospital.com',
-    hasPassword: true,
-    password: 'health',
-    passwordHint: 'health',
-    createdAt: '2026-04-25T11:15:00.000Z',
-  },
-  {
-    id: 'comp-gtco',
-    name: 'GUARANTY TRUST HOLDING COMPANY (GTCO)',
-    subtitle: 'Commercial Banking & Wealth Management',
-    address: '635 Akin Adesola Street, Victoria Island, Lagos',
-    phone: '+234 1 448 0000',
-    email: 'enquiries@gtcoplc.com',
-    hasPassword: false,
-    createdAt: '2026-05-01T08:00:00.000Z',
-  },
-  {
-    id: 'comp-airtel',
-    name: 'AIRTEL NETWORKS NIGERIA LTD',
-    subtitle: 'Telecommunications & Broadband Infrastructure',
-    address: 'Plot 2 & 6 Banana Island Road, Ikoyi, Lagos',
-    phone: '+234 802 222 1111',
-    email: 'customercare@ng.airtel.com',
-    hasPassword: true,
-    password: 'airtel',
-    passwordHint: 'airtel',
-    createdAt: '2026-05-03T09:20:00.000Z',
-  },
-  {
-    id: 'comp-nestle',
-    name: 'NESTLE NIGERIA PLC',
-    subtitle: 'Food Processing, Nutrition & Consumer Brands',
-    address: '22/24 Industrial Avenue, Ilupeju, Lagos',
-    phone: '+234 1 271 5700',
-    email: 'corporate.communications@ng.nestle.com',
-    hasPassword: false,
-    createdAt: '2026-05-05T10:15:00.000Z',
-  },
-  {
-    id: 'comp-lafarge',
-    name: 'LAFARGE AFRICA PLC',
-    subtitle: 'Building Materials, Concrete & Cement Solutions',
-    address: '27B Gerrard Road, Ikoyi, Lagos',
-    phone: '+234 1 271 4900',
-    email: 'lafarge.info@lafarge.com',
-    hasPassword: false,
-    createdAt: '2026-05-08T11:40:00.000Z',
-  },
-  {
-    id: 'comp-fidelity',
-    name: 'FIDELITY BANK PLC',
-    subtitle: 'SME Lending, Commercial & Retail Banking',
-    address: '2 Kofo Abayomi Street, Victoria Island, Lagos',
-    phone: '+234 1 448 5252',
-    email: 'true.serve@fidelitybank.ng',
-    hasPassword: true,
-    password: 'fidelity',
-    passwordHint: 'fidelity',
-    createdAt: '2026-05-10T14:10:00.000Z',
-  },
-  {
-    id: 'comp-aradel',
-    name: 'ARADEL HOLDINGS PLC',
-    subtitle: 'Integrated Oil, Gas & Refining Operations',
-    address: '11B Walter Carrington Crescent, Victoria Island, Lagos',
-    phone: '+234 1 279 2800',
-    email: 'info@aradel.com',
-    hasPassword: false,
-    createdAt: '2026-05-12T15:30:00.000Z',
-  },
-  {
-    id: 'comp-transcorp',
-    name: 'TRANSNATIONAL CORPORATION PLC',
-    subtitle: 'Power Generation, Hospitality & Agribusiness',
-    address: '38 Glover Road, Ikoyi, Lagos',
-    phone: '+234 1 903 3940',
-    email: 'info@transcorpgroup.com',
-    hasPassword: false,
-    createdAt: '2026-05-15T08:45:00.000Z',
-  },
-  {
-    id: 'comp-guinness',
-    name: 'GUINNESS NIGERIA PLC',
-    subtitle: 'Brewing, Distilling & Beverage Distribution',
-    address: '24 Oba Akran Avenue, Ikeja, Lagos',
-    phone: '+234 1 270 9100',
-    email: 'guinness.customercare@diageo.com',
-    hasPassword: true,
-    password: 'guinness',
-    passwordHint: 'guinness',
-    createdAt: '2026-05-18T12:00:00.000Z',
-  },
-  {
-    id: 'comp-stanbic',
-    name: 'STANBIC IBTC HOLDINGS PLC',
-    subtitle: 'Corporate Financing, Capital Markets & Pensions',
-    address: 'I.B.T.C. Place, Walter Carrington Crescent, VI, Lagos',
-    phone: '+234 1 422 2222',
-    email: 'customercare@stanbicibtc.com',
-    hasPassword: false,
-    createdAt: '2026-05-20T13:20:00.000Z',
-  },
-  {
-    id: 'comp-gig-logistics',
-    name: 'GIG LOGISTICS & COURIER LTD',
-    subtitle: 'Last-Mile Delivery, Freight & Domestic Haulage',
-    address: '1 Wole Ariyo Street, Lekki Phase 1, Lagos',
-    phone: '+234 813 985 1120',
-    email: 'support@giglogistics.ng',
-    hasPassword: false,
-    createdAt: '2026-05-22T09:10:00.000Z',
-  },
-  {
-    id: 'comp-paga',
-    name: 'PAGA FINANCIAL TECHNOLOGIES',
-    subtitle: 'Mobile Money, Bill Pay & Agent Networks',
-    address: '176 Herbert Macaulay Way, Yaba, Lagos',
-    phone: '+234 700 000 7242',
-    email: 'service@mypaga.com',
-    hasPassword: false,
-    createdAt: '2026-05-25T16:05:00.000Z',
-  },
-  {
-    id: 'comp-oando',
-    name: 'OANDO ENERGY SERVICES LIMITED',
-    subtitle: 'Upstream Exploration & Energy Infrastructure',
-    address: 'The Wings Office Complex, 17A Ozumba Mbadiwe, VI, Lagos',
-    phone: '+234 1 270 4400',
-    email: 'info@oandoplc.com',
-    hasPassword: true,
-    password: 'oando',
-    passwordHint: 'oando',
-    createdAt: '2026-05-28T10:30:00.000Z',
-  },
-  {
-    id: 'comp-uba',
-    name: 'UNITED BANK FOR AFRICA (UBA) PLC',
-    subtitle: 'Pan-African Retail Banking & International Settlements',
-    address: '57 Marina, Lagos Island, Lagos',
-    phone: '+234 1 280 8822',
-    email: 'cfc@ubagroup.com',
-    hasPassword: false,
-    createdAt: '2026-06-01T08:15:00.000Z',
-  },
-  {
-    id: 'comp-piggyvest',
-    name: 'PIGGYVEST SAVINGS & INVESTMENTS',
-    subtitle: 'Consumer Wealthtech, Automated Micro-Savings',
-    address: 'Teslim Elias Close, Victoria Island, Lagos',
-    phone: '+234 700 933 9339',
-    email: 'contact@piggyvest.com',
-    hasPassword: false,
-    createdAt: '2026-06-03T11:50:00.000Z',
-  },
-  {
-    id: 'comp-flourmills',
-    name: 'FLOUR MILLS OF NIGERIA PLC',
-    subtitle: 'Agro-Allied Industries, Grains & Food Production',
-    address: '1 Golden Penny Drive, Wharf Road, Apapa, Lagos',
-    phone: '+234 1 280 1010',
-    email: 'info@fmnplc.com',
-    hasPassword: false,
-    createdAt: '2026-06-05T14:40:00.000Z',
-  },
-  {
-    id: 'comp-sterling',
-    name: 'STERLING FINANCIAL HOLDINGS CO',
-    subtitle: 'Specialized Banking, Health & Agriculture Lending',
-    address: 'Sterling Towers, 20 Marina, Lagos',
-    phone: '+234 1 448 4481',
-    email: 'customercare@sterling.ng',
-    hasPassword: true,
-    password: 'sterling',
-    passwordHint: 'sterling',
-    createdAt: '2026-06-08T09:00:00.000Z',
-  },
-  {
-    id: 'comp-conoil',
-    name: 'CONOIL PRODUCING LIMITED',
-    subtitle: 'Hydrocarbon Extraction & Petroleum Products',
-    address: 'Bull Plaza, 38/39 Marina, Lagos Island, Lagos',
-    phone: '+234 1 266 5440',
-    email: 'info@conoilproducing.com',
-    hasPassword: false,
-    createdAt: '2026-06-10T15:20:00.000Z',
-  },
-  {
-    id: 'comp-axamansard',
-    name: 'AXA MANSARD INSURANCE PLC',
-    subtitle: 'Underwriting, Life Assurance & Health HMO',
-    address: 'Santa Clara Court, Plot 1412 Ahmadu Bello Way, VI, Lagos',
-    phone: '+234 1 448 5440',
-    email: 'ccare@axamansard.com',
-    hasPassword: false,
-    createdAt: '2026-06-12T10:10:00.000Z',
-  },
-  {
-    id: 'comp-cadbury',
-    name: 'CADBURY NIGERIA PLC',
-    subtitle: 'Confectionery, Malted Drinks & Packaged Foods',
-    address: 'Lateef Jakande Road, Agidingbi, Ikeja, Lagos',
-    phone: '+234 1 271 7777',
-    email: 'cadbury.nigeria@mdlz.com',
-    hasPassword: false,
-    createdAt: '2026-06-15T11:30:00.000Z',
-  },
-  {
-    id: 'comp-mainone',
-    name: 'MAINONE CABLE COMPANY LIMITED',
-    subtitle: 'Subsea Fiber Optics, Datacenters & Cloud Interconnect',
-    address: 'Fabac Center, 3B Ligali Ayorinde Street, VI, Lagos',
-    phone: '+234 1 342 9000',
-    email: 'info@mainone.net',
-    hasPassword: true,
-    password: 'mainone',
-    passwordHint: 'mainone',
-    createdAt: '2026-06-18T13:45:00.000Z',
-  },
-  {
-    id: 'comp-coronation',
-    name: 'CORONATION MERCHANT BANK',
-    subtitle: 'Investment Banking, Securities & Capital Advisory',
-    address: '10 Amodu Ojikutu Street, Victoria Island, Lagos',
-    phone: '+234 1 236 6000',
-    email: 'info@coronationmb.com',
-    hasPassword: false,
-    createdAt: '2026-06-20T08:50:00.000Z',
-  },
-  {
-    id: 'comp-eko-supreme',
-    name: 'EKO SUPREME RESOURCES LTD',
-    subtitle: 'Home Care, Detergents & Chemical Manufacturing',
-    address: 'Plot 2, Block G, Commercial Scheme, Agbara, Ogun',
-    phone: '+234 1 774 4110',
-    email: 'sales@ekosupreme.com',
-    hasPassword: false,
-    createdAt: '2026-06-22T16:15:00.000Z',
-  },
-  {
-    id: 'comp-presco',
-    name: 'PRESCO OIL PALM PLC',
-    subtitle: 'Agro-Industrial Oil Palm Plantations & Processing',
-    address: 'Obaretin Estate, Km 22 Benin-Sapele Road, Edo State',
-    phone: '+234 52 254 020',
-    email: 'presco@presco-plc.com',
-    hasPassword: false,
-    createdAt: '2026-06-25T09:40:00.000Z',
-  },
-  {
-    id: 'comp-heirs',
-    name: 'HEIRS HOLDINGS LIMITED',
-    subtitle: 'Strategic Investment, Energy & Philanthropy',
-    address: '1 MacGregor Road, Ikoyi, Lagos',
-    phone: '+234 1 277 4641',
-    email: 'info@heirsholdings.com',
-    hasPassword: true,
-    password: 'heirs',
-    passwordHint: 'heirs',
-    createdAt: '2026-06-28T14:00:00.000Z',
-  },
-  {
-    id: 'comp-landmark',
-    name: 'LANDMARK AFRICA REAL ESTATE',
-    subtitle: 'Commercial Mixed-Use, Leisure & Hospitality',
-    address: 'Landmark Centre, Water Corporation Drive, VI, Lagos',
-    phone: '+234 1 454 4444',
-    email: 'info@landmarkafrica.com',
-    hasPassword: false,
-    createdAt: '2026-07-01T10:00:00.000Z',
-  },
-  {
-    id: 'comp-alat',
-    name: 'ALAT BY WEMA BANK',
-    subtitle: 'Branchless Digital Banking & FinTech Platform',
-    address: '54 Marina, Lagos Island, Lagos',
-    phone: '+234 700 2255 2528',
-    email: 'help@alat.ng',
-    hasPassword: false,
-    createdAt: '2026-07-03T11:20:00.000Z',
-  },
-  {
-    id: 'comp-jumia',
-    name: 'JUMIA LOGISTICS SERVICES',
-    subtitle: 'E-Commerce Fulfillment, Warehousing & Fleet',
-    address: '109 Commercial Avenue, Sabo, Yaba, Lagos',
-    phone: '+234 1 888 1106',
-    email: 'logistics@jumia.com.ng',
-    hasPassword: false,
-    createdAt: '2026-07-05T12:30:00.000Z',
-  },
-  {
-    id: 'comp-chi-pharma',
-    name: 'CHI PHARMACEUTICALS LIMITED',
-    subtitle: 'Essential Medicines, Formulations & Distribution',
-    address: '14 Chivita Avenue, Ajao Estate, Isolo, Lagos',
-    phone: '+234 1 280 2000',
-    email: 'info@chipharm.com',
-    hasPassword: true,
-    password: 'health2026',
-    passwordHint: 'health + year',
-    createdAt: '2026-07-08T15:10:00.000Z',
-  },
-  {
-    id: 'comp-bevco',
-    name: 'BEVCO BOTTLING & BEVERAGES',
-    subtitle: 'Natural Mineral Water, Juices & Carbonates',
-    address: 'Plot 15, Iganmu Industrial Estate, Lagos',
-    phone: '+234 1 773 8920',
-    email: 'enquiries@bevcobottling.ng',
-    hasPassword: false,
-    createdAt: '2026-07-10T09:15:00.000Z',
-  },
-  {
-    id: 'comp-chopchow',
-    name: 'CHOPCHOW HOSPITALITY & CATERING',
-    subtitle: 'Corporate Banqueting, Fine Dining & Events',
-    address: '22 Admiralty Way, Lekki Phase 1, Lagos',
-    phone: '+234 812 400 9090',
-    email: 'events@chopchowgroup.com',
-    hasPassword: false,
-    createdAt: '2026-07-12T13:45:00.000Z',
-  },
-];
+/**
+ * Cleanly purges all workspace and cached company records upon cloud disconnect
+ */
+export function purgeAllLocalDataOnDisconnect(): void {
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith(COMPANY_DATA_PREFIX) || key === COMPANIES_REGISTRY_KEY || key === STORAGE_KEY)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  } catch (e) {
+    console.error('Failed to purge local data on disconnect:', e);
+  }
+}
 
 export function loadCompaniesRegistry(): CompanyAccount[] {
   let accounts: CompanyAccount[] = [];
@@ -764,60 +269,6 @@ export function loadCompaniesRegistry(): CompanyAccount[] {
     }
   } catch (e) {
     console.warn('Failed to load companies registry:', e);
-  }
-
-  // Automatic Migration from legacy STORAGE_KEY
-  if (accounts.length === 0) {
-    try {
-      const legacy = localStorage.getItem(STORAGE_KEY);
-      if (legacy) {
-        const parsedLegacy = JSON.parse(legacy);
-        const migratedCompany: CompanyAccount = {
-          id: 'comp-default',
-          name: parsedLegacy?.company?.name || DEFAULT_COMPANY.name,
-          subtitle: parsedLegacy?.company?.subtitle || DEFAULT_COMPANY.subtitle,
-          address: parsedLegacy?.company?.address || DEFAULT_COMPANY.address,
-          phone: parsedLegacy?.company?.phone || DEFAULT_COMPANY.phone,
-          email: parsedLegacy?.company?.email || DEFAULT_COMPANY.email,
-          logoUrl: parsedLegacy?.company?.logoUrl || '',
-          hasPassword: Boolean(parsedLegacy?.company?.hasPassword),
-          password: parsedLegacy?.company?.password || '',
-          passwordHint: parsedLegacy?.company?.passwordHint || '',
-          createdAt: new Date().toISOString(),
-          lastActiveAt: new Date().toISOString(),
-        };
-        accounts = [migratedCompany];
-        localStorage.setItem(COMPANY_DATA_PREFIX + 'comp-default', legacy);
-      }
-    } catch (e) {
-      console.warn('Failed to migrate legacy data to multi-company registry:', e);
-    }
-  }
-
-  // Ensure all 50 sample companies are present so the user can experience 50 companies immediately
-  const existingIds = new Set(accounts.map(a => a.id));
-  const existingNames = new Set(accounts.map(a => (a.name || '').trim().toLowerCase()));
-
-  let hasNew = false;
-  INITIAL_SAMPLE_COMPANIES.forEach(sample => {
-    if (!existingIds.has(sample.id) && !existingNames.has(sample.name.trim().toLowerCase())) {
-      accounts.push(sample);
-      hasNew = true;
-    }
-  });
-
-  if (accounts.length === 0) {
-    accounts = [...INITIAL_SAMPLE_COMPANIES];
-    hasNew = true;
-  }
-
-  // Save updated list if new sample companies were merged
-  if (hasNew || !localStorage.getItem(COMPANIES_REGISTRY_KEY)) {
-    try {
-      localStorage.setItem(COMPANIES_REGISTRY_KEY, JSON.stringify(accounts));
-    } catch (e) {
-      console.warn('Failed to persist sample companies:', e);
-    }
   }
 
   return accounts;
@@ -888,10 +339,14 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
                 id: e.id || `emp-${idx}`,
                 employmentType: e.employmentType || 'Full-Time'
               }))
-            : (companyId === 'comp-default' ? INITIAL_EMPLOYEES : []),
+            : [],
           payslipDesign: parsed.payslipDesign ? { ...DEFAULT_PAYSLIP_DESIGN, ...parsed.payslipDesign } : DEFAULT_PAYSLIP_DESIGN,
           savedPayslipPresets: (parsed.savedPayslipPresets && Array.isArray(parsed.savedPayslipPresets)) ? parsed.savedPayslipPresets : [],
-          loans: (parsed.loans && Array.isArray(parsed.loans)) ? parsed.loans : [],
+          loans: autoSyncLoansForPeriod(
+            (parsed.loans && Array.isArray(parsed.loans)) ? parsed.loans : [],
+            Number(parsed.selectedYear) || 2026,
+            parsed.selectedMonth || 'oct'
+          ),
         };
       }
     }
@@ -919,7 +374,7 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
 
   return {
     company: fallbackCompany,
-    employees: companyId === 'comp-default' ? INITIAL_EMPLOYEES : [],
+    employees: [],
     departments: DEFAULT_DEPARTMENTS,
     payrollVariables: DEFAULT_PAYROLL_VARIABLES,
     payeTaxVariables: DEFAULT_PAYE_VARIABLES,
@@ -963,8 +418,98 @@ export function usePayrollStore() {
     }
   };
 
+  const setCompaniesList = (newList: CompanyAccount[]) => {
+    setCompanies(newList);
+    saveCompaniesRegistry(newList);
+  };
+
+  // Continuous Live Sync for Companies: Realtime Postgres changes, WebSocket broadcast, polling & window focus
+  useEffect(() => {
+    let isMounted = true;
+
+    const refreshCompaniesList = () => {
+      const cfg = getSavedCloudConfig();
+      if (!cfg.isEnabled) return;
+
+      fetchCompaniesFromSupabase().then(res => {
+        if (!isMounted) return;
+        if (res.success && Array.isArray(res.companies)) {
+          const freshList = res.companies;
+          setCompanies(prev => {
+            const prevStr = JSON.stringify(prev);
+            const nextStr = JSON.stringify(freshList);
+            if (prevStr !== nextStr) {
+              saveCompaniesRegistry(freshList);
+              return freshList;
+            }
+            return prev;
+          });
+        }
+      }).catch(() => {});
+    };
+
+    // 1. Initial fetch on mount
+    refreshCompaniesList();
+
+    // 2. High-frequency polling (every 4 seconds) so other teams see new companies even without WebSockets
+    const pollTimer = setInterval(refreshCompaniesList, 4000);
+
+    // 3. Window focus & visibility trigger — whenever an operator clicks into the app window
+    const handleFocus = () => { refreshCompaniesList(); };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+    window.addEventListener('company-list-updated', handleFocus);
+
+    // 4. Supabase Realtime WebSocket listener for the companies table
+    const client = getSupabaseClient();
+    let channel: any = null;
+    if (client) {
+      channel = client
+        .channel(`companies-global-sync-${Date.now()}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'companies' }, () => {
+          refreshCompaniesList();
+        })
+        .on('broadcast', { event: 'company-list-updated' }, () => {
+          refreshCompaniesList();
+        })
+        .subscribe();
+    }
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      window.removeEventListener('company-list-updated', handleFocus);
+      if (channel && client) {
+        client.removeChannel(channel);
+      }
+    };
+  }, []);
+
+  // On startup: Ensure all loans are synchronized up to the active period
+  useEffect(() => {
+    setState(s => {
+      const synced = autoSyncLoansForPeriod(s.loans || [], s.selectedYear, s.selectedMonth);
+      const isChanged = JSON.stringify(synced) !== JSON.stringify(s.loans);
+      if (isChanged) {
+        return { ...s, loans: synced };
+      }
+      return s;
+    });
+  }, []);
+
+  const activeCompanyIdRef = useRef<string | null>(activeCompanyId);
+  useEffect(() => { activeCompanyIdRef.current = activeCompanyId; }, [activeCompanyId]);
+
   useEffect(() => {
     if (!activeCompanyId) return;
+
+    // ISOLATION GUARD: Never save state if it belongs to another company during switch
+    if (state.company?.id && state.company.id !== activeCompanyId) {
+      return;
+    }
+
     try {
       localStorage.setItem(COMPANY_DATA_PREFIX + activeCompanyId, JSON.stringify(state));
       // Also sync to legacy storage for backwards compatibility
@@ -974,9 +519,197 @@ export function usePayrollStore() {
     }
   }, [state, activeCompanyId]);
 
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isFirstRender = useRef(true);
+  const isLocalUploadInProgressRef = useRef(false);
+  const lastLocalUploadTimeRef = useRef(0);
+
+  // Auto-sync state changes: immediate local save, debounced upload when online, or queue if offline
+  useEffect(() => {
+    if (!activeCompanyId) return;
+
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const cfg = getSavedCloudConfig();
+    if (!cfg.isEnabled) return;
+
+    // ISOLATION GUARD: Never upload data if state belongs to a different company than activeCompanyId
+    if (state.company?.id && state.company.id !== activeCompanyId) {
+      return;
+    }
+
+    let cleanedUp = false;
+
+    // Use a real server ping instead of navigator.onLine, which is unreliable in Electron
+    (async () => {
+      const isReallyOnline = await checkRealConnectivity();
+      if (cleanedUp) return;
+
+      if (!isReallyOnline) {
+        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+        window.dispatchEvent(new Event('payroll-sync-status-changed'));
+        return;
+      }
+
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+
+      syncTimeoutRef.current = setTimeout(() => {
+        isLocalUploadInProgressRef.current = true;
+        uploadCompanyDataToSupabase(
+          state.company,
+          state.employees,
+          state.departments,
+          state.payrollVariables,
+          state.payeTaxVariables,
+          state.loans || [],
+          state.snapshots,
+          state.payslipDesign,
+          state.savedPayslipPresets || []
+        ).then(res => {
+          if (res.success) {
+            localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId);
+            window.dispatchEvent(new Event('payroll-sync-status-changed'));
+          }
+        }).catch(err => {
+          console.warn('Auto-sync upload error:', err);
+          localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+          window.dispatchEvent(new Event('payroll-sync-status-changed'));
+        }).finally(() => {
+          lastLocalUploadTimeRef.current = Date.now();
+          isLocalUploadInProgressRef.current = false;
+        });
+      }, 2000);
+    })();
+
+    return () => {
+      cleanedUp = true;
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    };
+  }, [state, activeCompanyId]);
+
+  // Reconnection listener: auto-sync pending offline changes immediately upon network restoration
+  useEffect(() => {
+    const handleReconnect = () => {
+      const cfg = getSavedCloudConfig();
+      if (!cfg.isEnabled || !activeCompanyId) return;
+
+      const hasPending = localStorage.getItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId) === 'true';
+      if (hasPending) {
+        isLocalUploadInProgressRef.current = true;
+        uploadCompanyDataToSupabase(
+          state.company,
+          state.employees,
+          state.departments,
+          state.payrollVariables,
+          state.payeTaxVariables,
+          state.loans || [],
+          state.snapshots,
+          state.payslipDesign,
+          state.savedPayslipPresets || []
+        ).then(res => {
+          if (res.success) {
+            localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId);
+            window.dispatchEvent(new Event('payroll-sync-status-changed'));
+            logAuditEvent(
+              activeCompanyId,
+              state.company.name,
+              'Offline Sync Completed',
+              'Offline changes automatically synchronized to cloud upon reconnect'
+            );
+          }
+        }).finally(() => {
+          lastLocalUploadTimeRef.current = Date.now();
+          isLocalUploadInProgressRef.current = false;
+        });
+      }
+    };
+
+    window.addEventListener('online', handleReconnect);
+    return () => window.removeEventListener('online', handleReconnect);
+  }, [activeCompanyId, state]);
+
+  // Live Supabase Cloud Realtime Channel
+  useEffect(() => {
+    const client = getSupabaseClient();
+    if (!client || !activeCompanyId) return;
+
+    let debounceTimer: NodeJS.Timeout | null = null;
+
+    const debouncedSyncFromCloud = () => {
+      // 1. Do not process incoming realtime echoes while our own upload is active or within 4s of completion
+      if (isLocalUploadInProgressRef.current || (Date.now() - lastLocalUploadTimeRef.current < 4000)) {
+        return;
+      }
+
+      // 2. Debounce by 600ms so batch changes settle together rather than triggering multiple concurrent downloads
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        downloadCompanyDataFromSupabase(activeCompanyId).then(res => {
+          if (!res.success) return;
+          setState(prev => {
+            // Guard: Never wipe out populated local employee list if incoming payload is empty
+            if (prev.employees.length > 0 && (!res.employees || res.employees.length === 0)) {
+              return prev;
+            }
+            return {
+              ...prev,
+              // Company profile synced (logoUrl, name, subtitle, address, phone, email)
+              ...(res.company ? { company: { ...prev.company, ...res.company } } : {}),
+              // Departments list
+              ...(res.departments && res.departments.length > 0 ? { departments: res.departments } : {}),
+              // Employees
+              ...(res.employees ? { employees: res.employees } : {}),
+              // Loans
+              ...(res.loans ? { loans: res.loans } : {}),
+              // Snapshots
+              ...(res.snapshots ? { snapshots: res.snapshots } : {}),
+              // Payroll variables
+              ...(res.payrollVariables ? { payrollVariables: res.payrollVariables } : {}),
+              // PAYE tax variables
+              ...(res.payeTaxVariables ? { payeTaxVariables: res.payeTaxVariables } : {}),
+              // Payslip design
+              ...(res.payslipDesign ? { payslipDesign: res.payslipDesign } : {}),
+              // Payslip presets (named design templates)
+              ...(res.savedPayslipPresets && res.savedPayslipPresets.length > 0 ? { savedPayslipPresets: res.savedPayslipPresets } : {}),
+            };
+          });
+        });
+      }, 600);
+    };
+
+    const channel = client
+      .channel(`payroll-pro-realtime-${activeCompanyId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employees', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_loans', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payroll_snapshots', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      // Company profile changes (logo, name, subtitle, address, etc.) — syncs across all team members instantly
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'companies', filter: `id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      // Department list changes — syncs add/rename/delete across team members
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'departments', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      // Payroll variable changes (salary splits, pension rates) — syncs immediately
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payroll_variables', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      // PAYE tax variable changes (brackets, reliefs) — syncs immediately
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'paye_tax_variables', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      // Payslip design changes — syncs immediately
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payslip_designs', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      // Payslip preset changes — syncs saved named presets immediately
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payslip_presets', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      .subscribe();
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      client.removeChannel(channel);
+    };
+  }, [activeCompanyId]);
 
 
-  const activeEmployees = (state.employees || []).filter(e => e && e.status === 'Active');
+
+  const activeEmployees = (state.employees || []).filter(e => isEmployeeActiveForPeriod(e, state.selectedYear, state.selectedMonth));
   const liveCalculatedItems: CalculatedPayrollItem[] = activeEmployees.map(emp => {
     try {
       const base = calculatePayrollItem(emp, state.payrollVariables, state.payeTaxVariables, state.selectedMonth, state.selectedYear);
@@ -1077,9 +810,45 @@ export function usePayrollStore() {
       }
     }
 
+    // Cancel any pending sync timeouts from the previous company immediately
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = null;
+    }
+
     const loadedData = loadCompanyData(companyId, targetComp);
-    setState({ ...loadedData, activeView: 'dashboard', isDarkTheme });
+    const safeData: AppState = {
+      ...loadedData,
+      company: { ...loadedData.company, id: companyId, name: targetComp.name },
+      activeView: 'dashboard',
+      isDarkTheme,
+    };
+    setState(safeData);
     setActiveCompanyId(companyId);
+
+    // If cloud is connected, immediately fetch the verified employees for this specific company
+    const cfg = getSavedCloudConfig();
+    if (cfg.isEnabled) {
+      downloadCompanyDataFromSupabase(companyId).then(res => {
+        if (!res.success) return;
+        setState(prev => {
+          // Guard: Only apply if user is still inside this company
+          if (activeCompanyIdRef.current !== companyId) return prev;
+          return {
+            ...prev,
+            company: res.company ? { ...prev.company, ...res.company, id: companyId } : prev.company,
+            employees: res.employees || [],
+            departments: (res.departments && res.departments.length > 0) ? res.departments : prev.departments,
+            payrollVariables: res.payrollVariables || prev.payrollVariables,
+            payeTaxVariables: res.payeTaxVariables || prev.payeTaxVariables,
+            loans: res.loans || prev.loans,
+            snapshots: res.snapshots || prev.snapshots,
+            payslipDesign: res.payslipDesign || prev.payslipDesign,
+            savedPayslipPresets: res.savedPayslipPresets || prev.savedPayslipPresets,
+          };
+        });
+      }).catch(() => {});
+    }
 
     setCompanies(prev => {
       const updated = prev.map(c => c.id === companyId ? { ...c, lastActiveAt: new Date().toISOString() } : c);
@@ -1091,6 +860,11 @@ export function usePayrollStore() {
   };
 
   const lockOrSwitchCompany = () => {
+    // Clear any pending sync timeout so previous company doesn't upload during switch
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = null;
+    }
     setActiveCompanyId(null);
   };
 
@@ -1150,6 +924,21 @@ export function usePayrollStore() {
       setCompanies(nextCompanies);
       saveCompaniesRegistry(nextCompanies);
 
+      if (getSavedCloudConfig().isEnabled) {
+        syncCompanyToSupabase(newAccount);
+        uploadCompanyDataToSupabase(
+          newCompanyProfile,
+          [],
+          DEFAULT_DEPARTMENTS,
+          DEFAULT_PAYROLL_VARIABLES,
+          DEFAULT_PAYE_VARIABLES,
+          [],
+          [],
+          DEFAULT_PAYSLIP_DESIGN,
+          []
+        );
+      }
+
       setState(newAppState);
       setActiveCompanyId(newId);
       return { success: true, companyId: newId };
@@ -1169,6 +958,9 @@ export function usePayrollStore() {
             updated.passwordHint = '';
             updated.securityQuestion = '';
             updated.securityAnswer = '';
+          }
+          if (getSavedCloudConfig().isEnabled) {
+            syncCompanyToSupabase(updated);
           }
           return updated;
         }
@@ -1209,6 +1001,10 @@ export function usePayrollStore() {
       const nextCompanies = companies.filter(c => c.id !== companyId);
       setCompanies(nextCompanies);
       saveCompaniesRegistry(nextCompanies);
+
+      if (getSavedCloudConfig().isEnabled) {
+        deleteCompanyFromSupabase(companyId);
+      }
 
       if (activeCompanyId === companyId) {
         setActiveCompanyId(null);
@@ -1259,7 +1055,10 @@ export function usePayrollStore() {
   };
 
   const setSelectedPeriod = (monthKey: string, year: number) => {
-    setState(s => ({ ...s, selectedMonth: monthKey, selectedYear: year }));
+    setState(s => {
+      const synced = autoSyncLoansForPeriod(s.loans || [], year, monthKey);
+      return { ...s, selectedMonth: monthKey, selectedYear: year, loans: synced };
+    });
   };
 
   const addEmployee = (emp: Omit<Employee, 'id'>) => {
@@ -1269,6 +1068,12 @@ export function usePayrollStore() {
       employmentType: emp.employmentType || 'Full-Time',
     };
     setState(s => ({ ...s, employees: [newEmp, ...s.employees] }));
+    logAuditEvent(
+      activeCompanyId || '',
+      activeCompany?.name || '',
+      'CREATED_EMPLOYEE',
+      `Added employee ${emp.firstName} ${emp.lastName} (${emp.code || 'Auto-Code'}) with Gross ₦${Number(emp.monthlyGross || 0).toLocaleString()}`
+    );
   };
 
   const addEmployees = (emps: Omit<Employee, 'id'>[]) => {
@@ -1280,20 +1085,54 @@ export function usePayrollStore() {
       employmentType: emp.employmentType || 'Full-Time',
     }));
     setState(s => ({ ...s, employees: [...newEmps, ...s.employees] }));
+    logAuditEvent(
+      activeCompanyId || '',
+      activeCompany?.name || '',
+      'BATCH_CREATED_EMPLOYEES',
+      `Added ${emps.length} new employees in batch`
+    );
   };
 
   const updateEmployee = (id: string, updates: Partial<Employee>) => {
+    const existing = state.employees.find(e => e.id === id);
     setState(s => ({
       ...s,
       employees: s.employees.map(e => e.id === id ? { ...e, ...updates } : e)
     }));
+
+    let changeSummary = 'Updated employee details';
+    if (existing && updates.monthlyGross !== undefined && updates.monthlyGross !== existing.monthlyGross) {
+      changeSummary = `Updated salary for ${existing.firstName} ${existing.lastName} from ₦${existing.monthlyGross.toLocaleString()} to ₦${Number(updates.monthlyGross).toLocaleString()}`;
+    } else if (existing) {
+      changeSummary = `Updated record for ${existing.firstName} ${existing.lastName}`;
+    }
+
+    logAuditEvent(
+      activeCompanyId || '',
+      activeCompany?.name || '',
+      'UPDATED_EMPLOYEE',
+      changeSummary
+    );
   };
 
   const deleteEmployee = (id: string) => {
+    const existing = state.employees.find(e => e.id === id);
     setState(s => ({
       ...s,
-      employees: s.employees.filter(e => e.id !== id)
+      employees: s.employees.filter(e => e.id !== id),
+      loans: (s.loans || []).filter(l => l.employeeId !== id)
     }));
+    if (existing) {
+      logAuditEvent(
+        activeCompanyId || '',
+        activeCompany?.name || '',
+        'DELETED_EMPLOYEE',
+        `Deleted employee ${existing.firstName} ${existing.lastName} (${existing.code})`
+      );
+    }
+    deleteEmployeeFromCloud(id, activeCompanyId || undefined).catch(err => {
+      console.warn('Could not immediately delete employee from cloud:', err);
+    });
   };
 
   const importEmployees = (
@@ -1477,6 +1316,13 @@ export function usePayrollStore() {
         newSnapshot
       ]
     }));
+
+    logAuditEvent(
+      activeCompanyId || '',
+      activeCompany?.name || '',
+      'FINALIZED_PAYROLL',
+      `Locked & finalized ${monthLabel} ${state.selectedYear} payroll (v${nextVersion}) for ${totals.staffCount} staff. Total Net Pay: ₦${totals.totalNet.toLocaleString()}`
+    );
   };
 
   const unlockPayroll = (reason: string = '') => {
@@ -1488,6 +1334,13 @@ export function usePayrollStore() {
           : snap
       )
     }));
+
+    logAuditEvent(
+      activeCompanyId || '',
+      activeCompany?.name || '',
+      'UNLOCKED_PAYROLL',
+      `Unlocked ${monthLabel} ${state.selectedYear} payroll. Reason: ${reason || 'Not specified'}`
+    );
   };
 
   const deleteSnapshot = (snapshotId: string) => {
@@ -1657,10 +1510,13 @@ export function usePayrollStore() {
       createdAt: new Date().toISOString(),
       history: [],
     };
-    setState(s => ({
-      ...s,
-      loans: [newLoan, ...(s.loans || [])],
-    }));
+    setState(s => {
+      const synced = autoSyncLoansForPeriod([newLoan, ...(s.loans || [])], s.selectedYear, s.selectedMonth);
+      return {
+        ...s,
+        loans: synced,
+      };
+    });
   };
 
   const updateLoan = (id: string, updates: Partial<EmployeeLoan>) => {
@@ -1816,6 +1672,7 @@ export function usePayrollStore() {
     createCompany,
     updateCompanyAccount,
     deleteCompany,
+    setCompaniesList,
     monthLabel,
     activeEmployees,
     currentPayrollItems,

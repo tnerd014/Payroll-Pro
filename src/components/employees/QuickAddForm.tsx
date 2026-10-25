@@ -19,6 +19,7 @@ export interface QuickRow {
   fullName: string;
   monthlySalary: string;
   employmentType: string;
+  department: string;
 }
 
 interface QuickAddFormProps {
@@ -102,10 +103,10 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
 
   // Initialize with 4 empty rows
   const [rows, setRows] = useState<QuickRow[]>([
-    { id: 'row-1', fullName: '', monthlySalary: '', employmentType: defaultType },
-    { id: 'row-2', fullName: '', monthlySalary: '', employmentType: defaultType },
-    { id: 'row-3', fullName: '', monthlySalary: '', employmentType: defaultType },
-    { id: 'row-4', fullName: '', monthlySalary: '', employmentType: defaultType },
+    { id: 'row-1', fullName: '', monthlySalary: '', employmentType: defaultType, department: defaultDept },
+    { id: 'row-2', fullName: '', monthlySalary: '', employmentType: defaultType, department: defaultDept },
+    { id: 'row-3', fullName: '', monthlySalary: '', employmentType: defaultType, department: defaultDept },
+    { id: 'row-4', fullName: '', monthlySalary: '', employmentType: defaultType, department: defaultDept },
   ]);
 
   // Input refs for keyboard navigation
@@ -135,6 +136,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
       fullName: '',
       monthlySalary: '',
       employmentType: defaultType,
+      department: defaultDept,
     };
     setRows(prev => [...prev, newRow]);
     
@@ -148,7 +150,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
   const removeRow = (idx: number) => {
     if (rows.length <= 1) {
       // Don't remove last row, just clear it
-      setRows([{ id: 'row-1', fullName: '', monthlySalary: '', employmentType: defaultType }]);
+      setRows([{ id: 'row-1', fullName: '', monthlySalary: '', employmentType: defaultType, department: defaultDept }]);
       setTimeout(() => nameRefs.current[0]?.focus(), 50);
       return;
     }
@@ -261,6 +263,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
         fullName: name,
         monthlySalary: salary,
         employmentType: type,
+        department: defaultDept,
       };
     });
 
@@ -320,7 +323,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
         code: codes[idx],
         firstName,
         lastName,
-        department: selectedDept,
+        department: row.department || defaultDept,
         position: 'Staff Member',
         employmentType: empType,
         email: '',
@@ -347,19 +350,6 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
       {/* Top Controls Toolbar */}
       <div className="px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Department:</span>
-            <select
-              value={selectedDept}
-              onChange={e => setSelectedDept(e.target.value)}
-              className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
-            >
-              {availableDepartments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
-          </div>
-
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Default Type:</span>
             <div className="flex items-center gap-1">
@@ -468,9 +458,9 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
           <thead>
             <tr className="border-b border-zinc-200 dark:border-zinc-800 text-left text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
               <th className="pb-2 pl-2 w-10 text-center">#</th>
-              <th className="pb-2 px-2 w-[44%]">Full Name <span className="text-rose-500">*</span></th>
-              <th className="pb-2 px-2 w-[28%]">Monthly Salary (₦)</th>
-              <th className="pb-2 px-2 w-[24%]">Employee Type</th>
+              <th className="pb-2 px-2 w-[38%]">Full Name <span className="text-rose-500">*</span></th>
+              <th className="pb-2 px-2 w-[25%]">Monthly Salary (₦)</th>
+              <th className="pb-2 px-2 w-[23%]">Department</th>
               <th className="pb-2 pr-2 w-10 text-center"></th>
             </tr>
           </thead>
@@ -532,17 +522,17 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
                     </div>
                   </td>
 
-                  {/* Employee Type Select */}
+                  {/* Department Select */}
                   <td className="py-2 px-2">
                     <select
                       ref={el => { typeRefs.current[idx] = el; }}
-                      value={row.employmentType}
-                      onChange={e => updateRow(idx, { employmentType: e.target.value })}
+                      value={row.department}
+                      onChange={e => updateRow(idx, { department: e.target.value })}
                       onKeyDown={e => handleTypeKeyDown(e, idx)}
                       className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
                     >
-                      {activeRules.map(r => (
-                        <option key={r.id} value={r.name}>{r.name}</option>
+                      {availableDepartments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
                       ))}
                     </select>
                   </td>

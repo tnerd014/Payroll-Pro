@@ -52,7 +52,8 @@ import {
   DEFAULT_PAYSLIP_DESIGN,
   PRESET_HEX_MAP,
   EmployeeLoan,
-  NetPayFontSize
+  NetPayFontSize,
+  BreakdownFontSize
 } from '../../types';
 import { calculatePayrollItem, formatDate } from '../../engine/payePensionEngine';
 import { CustomizablePayslipView } from './CustomizablePayslipView';
@@ -95,7 +96,13 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
   loans = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'layout' | 'theme' | 'text' | 'presets'>('layout');
-  const [selectedEmpId] = useState<string>('sample');
+  const [selectedEmpId, setSelectedEmpId] = useState<string>(() => employees[0]?.id || 'sample');
+
+  useEffect(() => {
+    if (employees && employees.length > 0 && selectedEmpId === 'sample') {
+      setSelectedEmpId(employees[0].id);
+    }
+  }, [employees, selectedEmpId]);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [customPresetName, setCustomPresetName] = useState<string>('');
   const [showSaveThemeModal, setShowSaveThemeModal] = useState<boolean>(false);
@@ -1490,6 +1497,46 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                   className="w-full px-2.5 py-1.5 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-500 text-xs"
                   placeholder="e.g. Statutory Deductions"
                 />
+              </div>
+
+              {/* Earnings & Deductions Breakdown Font Size */}
+              <div className="space-y-1 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-zinc-900 dark:text-zinc-100 block">
+                    Earnings & Deductions Font Size
+                  </label>
+                  <span className="text-[10px] text-zinc-400">Numbers & line items scale</span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+                  {(
+                    [
+                      { id: 'small', label: 'Small', desc: 'Compact' },
+                      { id: 'standard', label: 'Standard', desc: 'Default' },
+                      { id: 'large', label: 'Large', desc: 'Prominent' },
+                      { id: 'xl', label: 'X-Large', desc: 'Maximum' }
+                    ] as const
+                  ).map((opt) => {
+                    const currentSize: BreakdownFontSize = payslipDesign.breakdownFontSize || 'standard';
+                    const isSelected = currentSize === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => onUpdatePayslipDesign({ breakdownFontSize: opt.id })}
+                        className={`px-2 py-1.5 rounded text-xs border text-center transition cursor-pointer flex flex-col items-center justify-center ${
+                          isSelected
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-xs'
+                            : 'bg-white dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
+                        }`}
+                      >
+                        <span className="text-[11px] leading-tight font-medium">{opt.label}</span>
+                        <span className={`text-[9px] ${isSelected ? 'opacity-80' : 'text-zinc-400 dark:text-zinc-500'}`}>
+                          {opt.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-1">

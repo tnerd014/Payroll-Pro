@@ -1,17 +1,28 @@
 /**
- * Payroll Pro - Enterprise Supabase PostgreSQL Schema
+ * Payroll Pro - Complete Production Cloud Database Schema (PostgreSQL)
  * 
- * Paste and run this entire script inside your Supabase project's SQL Editor.
- * This establishes all relational tables, indexes, Row-Level Security (RLS) policies,
- * and Supabase Realtime publication for multi-user live collaboration.
+ * Paste and run this script inside your cloud database SQL query editor (e.g. Supabase SQL Editor).
+ * This sets up all relational tables, column migrations, triggers, indexes, security policies,
+ * permissions, replica identities, and real-time WebSocket synchronization.
+ * 
+ * Fully idempotent and safe to run multiple times without data loss.
  */
 
 export const SUPABASE_SQL_SCHEMA = `-- ==============================================================================
--- PAYROLL PRO: POSTGRESQL RELATIONAL SCHEMA & REALTIME SETUP
--- Compatible with Supabase (PostgreSQL 15+)
+-- PAYROLL PRO: COMPLETE PRODUCTION DATABASE SCHEMA & REAL-TIME SETUP
+-- Compatible with PostgreSQL 14+ / Supabase
+-- Fully Idempotent (Safe to run multiple times without data loss)
 -- ==============================================================================
 
--- 1. COMPANIES TABLE
+-- 0. EXTENSIONS
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ==============================================================================
+-- 1. RELATIONAL TABLES
+-- ==============================================================================
+
+-- 1.1 COMPANIES TABLE
 CREATE TABLE IF NOT EXISTS public.companies (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -29,7 +40,7 @@ CREATE TABLE IF NOT EXISTS public.companies (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. DEPARTMENTS TABLE
+-- 1.2 DEPARTMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.departments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
@@ -38,7 +49,7 @@ CREATE TABLE IF NOT EXISTS public.departments (
     UNIQUE(company_id, name)
 );
 
--- 3. EMPLOYEES TABLE
+-- 1.3 EMPLOYEES TABLE
 CREATE TABLE IF NOT EXISTS public.employees (
     id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
@@ -61,12 +72,16 @@ CREATE TABLE IF NOT EXISTS public.employees (
     status TEXT DEFAULT 'Active',
     employment_type TEXT DEFAULT 'Full-Time',
     state_of_residence TEXT DEFAULT 'Lagos',
+    start_date TEXT DEFAULT '',
+    end_date TEXT DEFAULT '',
+    original_hire_date TEXT DEFAULT '',
+    stints JSONB DEFAULT '[]'::jsonb,
     monthly_salaries JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. PAYROLL VARIABLES (Statutory splits, pension rates)
+-- 1.4 PAYROLL VARIABLES TABLE (Statutory splits, pension rates)
 CREATE TABLE IF NOT EXISTS public.payroll_variables (
     company_id TEXT PRIMARY KEY REFERENCES public.companies(id) ON DELETE CASCADE,
     basic NUMERIC(5, 2) DEFAULT 40,
@@ -80,7 +95,7 @@ CREATE TABLE IF NOT EXISTS public.payroll_variables (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. PAYE TAX VARIABLES (Tax Brackets, Reliefs, PITA 2011)
+-- 1.5 PAYE TAX VARIABLES TABLE (Tax Brackets, Reliefs, PITA 2011)
 CREATE TABLE IF NOT EXISTS public.paye_tax_variables (
     company_id TEXT PRIMARY KEY REFERENCES public.companies(id) ON DELETE CASCADE,
     cra_base NUMERIC(15, 2) DEFAULT 800000,
@@ -91,7 +106,7 @@ CREATE TABLE IF NOT EXISTS public.paye_tax_variables (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. EMPLOYEE LOANS & SALARY ADVANCES
+-- 1.6 EMPLOYEE LOANS & SALARY ADVANCES TABLE
 CREATE TABLE IF NOT EXISTS public.employee_loans (
     id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
@@ -113,7 +128,7 @@ CREATE TABLE IF NOT EXISTS public.employee_loans (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. PAYROLL SNAPSHOTS (Finalized historical periods)
+-- 1.7 PAYROLL SNAPSHOTS TABLE (Locked historical payroll runs)
 CREATE TABLE IF NOT EXISTS public.payroll_snapshots (
     id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
@@ -130,7 +145,7 @@ CREATE TABLE IF NOT EXISTS public.payroll_snapshots (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8. PAYSLIP DESIGN & PRESETS
+-- 1.8 PAYSLIP DESIGN & PRESETS
 CREATE TABLE IF NOT EXISTS public.payslip_designs (
     company_id TEXT PRIMARY KEY REFERENCES public.companies(id) ON DELETE CASCADE,
     config JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -145,18 +160,180 @@ CREATE TABLE IF NOT EXISTS public.payslip_presets (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 1.9 TEAM MEMBERS TABLE (Authorized staff profiles, secure login & recovery)
+CREATE TABLE IF NOT EXISTS public.team_members (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT DEFAULT '',
+    username TEXT DEFAULT '',
+    role TEXT NOT NULL DEFAULT 'Payroll Officer', -- 'Admin', 'Payroll Officer', 'Auditor'
+    pin TEXT DEFAULT '1234',
+    password TEXT DEFAULT '',
+    security_question TEXT DEFAULT '',
+    security_answer TEXT DEFAULT '',
+    recovery_email TEXT DEFAULT '',
+    temp_password TEXT DEFAULT '',
+    must_change_password BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 1.10 AUDIT LOGS TABLE (Automated change tracking)
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_id TEXT DEFAULT '',
+    company_name TEXT DEFAULT '',
+    actor_id TEXT DEFAULT '',
+    actor_name TEXT NOT NULL,
+    action TEXT NOT NULL,
+    details TEXT DEFAULT '',
+    ip_or_device TEXT DEFAULT 'Desktop Workspace',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ==============================================================================
--- PERFORMANCE INDEXES
+-- 2. SCHEMA SELF-HEALING (Ensure all columns exist if tables pre-date updates)
+-- ==============================================================================
+
+-- Companies columns
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS subtitle TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS address TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS logo_url TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS has_password BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS password TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS password_hint TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS security_question TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS security_answer TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Employees columns
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS employment_type TEXT DEFAULT 'Full-Time';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS state_of_residence TEXT DEFAULT 'Lagos';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS monthly_salaries JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS annual_rent NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS paye_number TEXT DEFAULT '';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS pension_number TEXT DEFAULT '';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS pfa_name TEXT DEFAULT '';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS start_date TEXT DEFAULT '';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS end_date TEXT DEFAULT '';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS original_hire_date TEXT DEFAULT '';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS stints JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Payroll Variables columns
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS salary_calculation_mode TEXT DEFAULT 'gross-to-net';
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS employment_type_rules JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- PAYE Variables columns
+ALTER TABLE public.paye_tax_variables ADD COLUMN IF NOT EXISTS rent_relief_rate NUMERIC(5, 2) DEFAULT 0.20;
+ALTER TABLE public.paye_tax_variables ADD COLUMN IF NOT EXISTS rent_relief_cap NUMERIC(15, 2) DEFAULT 500000;
+ALTER TABLE public.paye_tax_variables ADD COLUMN IF NOT EXISTS extra_conditions JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.paye_tax_variables ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Employee Loans columns
+ALTER TABLE public.employee_loans ADD COLUMN IF NOT EXISTS repayment_start_date TEXT DEFAULT '';
+ALTER TABLE public.employee_loans ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+ALTER TABLE public.employee_loans ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+ALTER TABLE public.employee_loans ADD COLUMN IF NOT EXISTS history JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.employee_loans ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Snapshots columns
+ALTER TABLE public.payroll_snapshots ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1;
+ALTER TABLE public.payroll_snapshots ADD COLUMN IF NOT EXISTS totals JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.payroll_snapshots ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+ALTER TABLE public.payroll_snapshots ADD COLUMN IF NOT EXISTS finalized_by TEXT DEFAULT 'Administrator';
+
+-- Team Members columns
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS username TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Payroll Officer';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS pin TEXT DEFAULT '1234';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS password TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS security_question TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS security_answer TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS recovery_email TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS temp_password TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Audit Logs columns
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS ip_or_device TEXT DEFAULT 'Desktop Workspace';
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS company_id TEXT DEFAULT '';
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS company_name TEXT DEFAULT '';
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS actor_id TEXT DEFAULT '';
+
+-- ==============================================================================
+-- 3. AUTOMATIC UPDATED_AT TRIGGER FUNCTION
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+    DROP TRIGGER IF EXISTS trg_companies_updated_at ON public.companies;
+    CREATE TRIGGER trg_companies_updated_at BEFORE UPDATE ON public.companies
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_employees_updated_at ON public.employees;
+    CREATE TRIGGER trg_employees_updated_at BEFORE UPDATE ON public.employees
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_payroll_variables_updated_at ON public.payroll_variables;
+    CREATE TRIGGER trg_payroll_variables_updated_at BEFORE UPDATE ON public.payroll_variables
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_paye_tax_variables_updated_at ON public.paye_tax_variables;
+    CREATE TRIGGER trg_paye_tax_variables_updated_at BEFORE UPDATE ON public.paye_tax_variables
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_employee_loans_updated_at ON public.employee_loans;
+    CREATE TRIGGER trg_employee_loans_updated_at BEFORE UPDATE ON public.employee_loans
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_team_members_updated_at ON public.team_members;
+    CREATE TRIGGER trg_team_members_updated_at BEFORE UPDATE ON public.team_members
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+END $$;
+
+-- ==============================================================================
+-- 4. PERFORMANCE INDEXES
 -- ==============================================================================
 CREATE INDEX IF NOT EXISTS idx_employees_company ON public.employees(company_id);
 CREATE INDEX IF NOT EXISTS idx_employees_status ON public.employees(company_id, status);
+CREATE INDEX IF NOT EXISTS idx_employees_code ON public.employees(company_id, code);
 CREATE INDEX IF NOT EXISTS idx_departments_company ON public.departments(company_id);
 CREATE INDEX IF NOT EXISTS idx_loans_company_emp ON public.employee_loans(company_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_snapshots_company_period ON public.payroll_snapshots(company_id, year, month_key);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON public.audit_logs(company_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_team_members_active ON public.team_members(is_active);
+CREATE INDEX IF NOT EXISTS idx_team_members_role ON public.team_members(role);
+CREATE INDEX IF NOT EXISTS idx_team_members_email ON public.team_members(email);
+CREATE INDEX IF NOT EXISTS idx_team_members_username ON public.team_members(username);
 
 -- ==============================================================================
--- ROW LEVEL SECURITY (RLS) & PUBLIC ANON PERMISSIONS
--- Allows connected instances using the anon public key to read and write records.
+-- 5. ACCESS PRIVILEGES & GRANTS (Ensures Anon & Authenticated Keys Can Query)
+-- ==============================================================================
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+
+-- ==============================================================================
+-- 6. ROW LEVEL SECURITY (RLS) & ACCESS POLICIES
 -- ==============================================================================
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
@@ -167,8 +344,9 @@ ALTER TABLE public.employee_loans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payroll_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payslip_designs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payslip_presets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Allow anon and authenticated users full CRUD access
 DO $$ 
 BEGIN
     DROP POLICY IF EXISTS "Anon Access Companies" ON public.companies;
@@ -197,30 +375,70 @@ BEGIN
 
     DROP POLICY IF EXISTS "Anon Access Payslip Presets" ON public.payslip_presets;
     CREATE POLICY "Anon Access Payslip Presets" ON public.payslip_presets FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Anon Access Team Members" ON public.team_members;
+    CREATE POLICY "Anon Access Team Members" ON public.team_members FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Anon Access Audit Logs" ON public.audit_logs;
+    CREATE POLICY "Anon Access Audit Logs" ON public.audit_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 END $$;
 
 -- ==============================================================================
--- SUPABASE REALTIME REPLICATION (For live team synchronization)
--- Broadcasts inserts, updates, and deletes across all connected desktop clients.
+-- 7. REPLICA IDENTITY FULL (Required for Realtime UPDATE & DELETE Filters)
+-- Without FULL replica identity, PostgreSQL does not record non-PK columns
+-- during UPDATE/DELETE, which breaks Realtime client filters.
+-- ==============================================================================
+ALTER TABLE public.companies REPLICA IDENTITY FULL;
+ALTER TABLE public.departments REPLICA IDENTITY FULL;
+ALTER TABLE public.employees REPLICA IDENTITY FULL;
+ALTER TABLE public.payroll_variables REPLICA IDENTITY FULL;
+ALTER TABLE public.paye_tax_variables REPLICA IDENTITY FULL;
+ALTER TABLE public.employee_loans REPLICA IDENTITY FULL;
+ALTER TABLE public.payroll_snapshots REPLICA IDENTITY FULL;
+ALTER TABLE public.payslip_designs REPLICA IDENTITY FULL;
+ALTER TABLE public.payslip_presets REPLICA IDENTITY FULL;
+ALTER TABLE public.team_members REPLICA IDENTITY FULL;
+ALTER TABLE public.audit_logs REPLICA IDENTITY FULL;
+
+-- ==============================================================================
+-- 8. REALTIME BROADCAST REPLICATION (PostgreSQL -> Desktop Clients)
+-- Safely adds each table individually to supabase_realtime publication
 -- ==============================================================================
 DO $$
+DECLARE
+    tbl text;
+    tables text[] := ARRAY[
+        'companies', 
+        'departments', 
+        'employees', 
+        'payroll_variables', 
+        'paye_tax_variables', 
+        'employee_loans', 
+        'payroll_snapshots',
+        'payslip_designs',
+        'payslip_presets',
+        'team_members',
+        'audit_logs'
+    ];
 BEGIN
-    BEGIN
-        ALTER PUBLICATION supabase_realtime ADD TABLE 
-            public.companies, 
-            public.departments, 
-            public.employees, 
-            public.payroll_variables, 
-            public.paye_tax_variables, 
-            public.employee_loans, 
-            public.payroll_snapshots,
-            public.payslip_designs,
-            public.payslip_presets;
-    EXCEPTION
-        WHEN duplicate_object THEN
-            NULL; -- Table is already in publication
-        WHEN others THEN
-            RAISE NOTICE 'Skipping publication adjustment or table already added: %', SQLERRM;
-    END;
+    -- Ensure publication exists
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        CREATE PUBLICATION supabase_realtime;
+    END IF;
+
+    -- Add each table individually (safe if already added)
+    FOREACH tbl IN ARRAY tables LOOP
+        BEGIN
+            EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', tbl);
+        EXCEPTION
+            WHEN duplicate_object THEN
+                NULL; -- Already in publication
+            WHEN others THEN
+                -- Ignore if already present or handled
+                NULL;
+        END;
+    END LOOP;
 END $$;
+
+NOTIFY pgrst, 'reload schema';
 `;

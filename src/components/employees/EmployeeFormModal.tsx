@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Calendar, Copy, Check, ChevronDown, Zap, UserPlus } from 'lucide-react';
+import { X, Calendar, Copy, Check, ChevronDown, Zap, UserPlus, Trash2 } from 'lucide-react';
 import { Employee, SalaryCalculationMode, EmploymentTypeRule } from '../../types';
 import { formatNaira, DEFAULT_EMPLOYMENT_TYPE_RULES } from '../../engine/payePensionEngine';
 import { NIGERIAN_BANKS, NIGERIAN_PFAS, NIGERIAN_STATES } from '../../constants/banks';
@@ -11,6 +11,7 @@ interface EmployeeFormModalProps {
   onClose: () => void;
   onSave: (emp: Omit<Employee, 'id'>) => void;
   onSaveMultiple?: (emps: Omit<Employee, 'id'>[]) => void;
+  onDelete?: (id: string) => void;
   editingEmployee?: Employee | null;
   existingEmployees?: Employee[];
   currentYear?: number;
@@ -40,6 +41,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   onClose,
   onSave,
   onSaveMultiple,
+  onDelete,
   editingEmployee,
   existingEmployees = [],
   currentYear = 2026,
@@ -93,6 +95,10 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     pfaName: editingEmployee?.pfaName || '',
     stateOfResidence: editingEmployee?.stateOfResidence || 'Lagos',
     status: editingEmployee?.status || 'Active',
+    startDate: editingEmployee?.startDate || '',
+    endDate: editingEmployee?.endDate || '',
+    originalHireDate: editingEmployee?.originalHireDate || '',
+    stints: editingEmployee?.stints || [],
   });
 
   const [activeYear, setActiveYear] = useState<number>(currentYear || 2026);
@@ -135,6 +141,10 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         pfaName: editingEmployee.pfaName || '',
         stateOfResidence: editingEmployee.stateOfResidence || 'Lagos',
         status: editingEmployee.status,
+        startDate: editingEmployee.startDate || '',
+        endDate: editingEmployee.endDate || '',
+        originalHireDate: editingEmployee.originalHireDate || '',
+        stints: editingEmployee.stints || [],
       });
       setMonthlySalaries(editingEmployee.monthlySalaries || {});
       const hasCustom = !!(editingEmployee.monthlySalaries && Object.keys(editingEmployee.monthlySalaries).length > 0);
@@ -161,6 +171,10 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         pfaName: '',
         stateOfResidence: 'Lagos',
         status: 'Active',
+        startDate: '',
+        endDate: '',
+        originalHireDate: '',
+        stints: [],
       });
       setMonthlySalaries({});
       setShowMonthlyBreakdown(false);
@@ -246,7 +260,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     <div className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden select-none">
       <div className={`bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full ${
         activeTab === 'quick' && !editingEmployee ? 'max-w-4xl' : 'max-w-2xl'
-      } overflow-hidden shadow-2xl flex flex-col max-h-[calc(100vh-4.5rem)] transition-all duration-150 select-text`}>
+      } overflow-hidden shadow-2xl flex flex-col max-h-[calc(100vh-4.5rem)] transition-all duration-150`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
@@ -421,6 +435,60 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/40">
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                      Start Date (Hire Date)
+                    </label>
+                    <input 
+                      type="date" 
+                      value={formData.startDate || ''} 
+                      onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                      End Date (Exit Date)
+                    </label>
+                    <input 
+                      type="date" 
+                      value={formData.endDate || ''} 
+                      onChange={e => {
+                        const newEnd = e.target.value;
+                        setFormData({ 
+                          ...formData, 
+                          endDate: newEnd,
+                          status: newEnd ? 'Inactive' : formData.status
+                        });
+                      }}
+                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    />
+                  </div>
+                </div>
+
+                {formData.endDate ? (
+                  <p className="text-[10px] text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-md leading-relaxed">
+                    💡 <strong>Payroll Rule:</strong> Staff is paid in their exit month and automatically excluded from all subsequent pay runs.
+                  </p>
+                ) : null}
+
+                {formData.stints && formData.stints.length > 0 && (
+                  <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 rounded-lg p-2.5 text-[11px]">
+                    <div className="font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                      Employment Tenure History ({formData.stints.length} {formData.stints.length === 1 ? 'stint' : 'stints'})
+                    </div>
+                    <div className="space-y-1">
+                      {formData.stints.map((st, idx) => (
+                        <div key={st.stintId || idx} className="text-zinc-500 dark:text-zinc-400 flex items-center justify-between text-[10px]">
+                          <span>Stint #{idx + 1}: {st.startDate || '—'} → {st.endDate || 'Active'}</span>
+                          {st.exitReason && <span className="text-zinc-400">({st.exitReason})</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -724,8 +792,27 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
           {/* Fixed Bottom Footer */}
           <div className="flex items-center justify-between px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/40 shrink-0">
-            <div className="text-[11px] text-zinc-400">
-              <span className="font-mono text-zinc-500 dark:text-zinc-400">[{formData.code}]</span> &bull; {editingEmployee ? 'Updating staff profile' : 'New employee entry'}
+            <div className="flex items-center gap-2">
+              {editingEmployee && onDelete ? (
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to permanently delete employee ${editingEmployee.firstName} ${editingEmployee.lastName} (${editingEmployee.code})?`)) {
+                      onDelete(editingEmployee.id);
+                      onClose();
+                    }
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 transition-colors cursor-pointer flex items-center gap-1.5"
+                  title="Delete this employee record"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Staff</span>
+                </button>
+              ) : (
+                <div className="text-[11px] text-zinc-400">
+                  <span className="font-mono text-zinc-500 dark:text-zinc-400">[{formData.code}]</span> &bull; New employee entry
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button 

@@ -11,6 +11,49 @@
   }
 }
 
+/* ── Universal Desktop App Non-Selection Rules ── */
+/* Prevents all accidental text highlighting and dragging across the entire application */
+*, *::before, *::after {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Allow selection ONLY in editable inputs, textareas, and explicitly designated elements */
+input,
+textarea,
+[contenteditable="true"],
+[contenteditable="true"] *,
+.select-text,
+.select-text *,
+.selectable,
+.selectable * {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Remove default blue browser selection highlight from non-selectable elements */
+::selection {
+  background: transparent;
+}
+
+/* High-contrast selection highlight inside editable elements */
+input::selection,
+textarea::selection,
+[contenteditable="true"]::selection,
+[contenteditable="true"] *::selection,
+.select-text::selection,
+.select-text *::selection,
+.selectable::selection,
+.selectable *::selection {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+/* Prevent browser ghost-dragging of images and links */
+img, a {
+  -webkit-user-drag: none !important;
+}
+
 /* Electron frameless window interactivity */
 header button,
 header a,
@@ -51,11 +94,11 @@ code, .font-mono {
   background: rgba(160, 160, 160, 0.4);
 }
 
-/* High-contrast paper-white print mode */
+  /* High-contrast paper-white print mode */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm 12mm;
+    margin: 8mm 10mm;
   }
   * {
     -webkit-print-color-adjust: exact !important;
@@ -71,11 +114,63 @@ code, .font-mono {
   .print-only {
     display: block !important;
   }
+
+  /* Support for full-page portal modals (bulk payslips, schedules, etc.) */
+  body.print-portal-active > #root {
+    display: none !important;
+  }
+  body.print-portal-active {
+    background: #ffffff !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 100% !important;
+    position: static !important;
+  }
+  .print-modal-root {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    inset: auto !important;
+  }
+  .print-modal-split {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .print-modal-workspace {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .print-modal-list {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
   .print-page {
+    display: block !important;
+    width: 100% !important;
     page-break-after: always !important;
     break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   .print-page:last-child {
     page-break-after: auto !important;

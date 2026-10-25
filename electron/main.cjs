@@ -20,9 +20,30 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
-      spellcheck: false,
+      devTools: isDev, // Disable DevTools console in installed production app
     },
   });
+
+  // Security: Lock down console/DevTools in production/installed builds
+  if (!isDev) {
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow.webContents.closeDevTools();
+    });
+
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      // Block F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+      if (
+        input.key === 'F12' ||
+        (input.control && input.shift && ['I', 'i', 'J', 'j', 'C', 'c'].includes(input.key))
+      ) {
+        event.preventDefault();
+      }
+    });
+
+    mainWindow.webContents.on('context-menu', (event) => {
+      event.preventDefault();
+    });
+  }
 
   const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5174';
   if (isDev) {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Printer, 
@@ -12,8 +12,10 @@ import {
   RotateCcw,
   Palette,
   ArrowLeft,
-  ChevronDown
+  ChevronDown,
+  Calendar
 } from 'lucide-react';
+import { MONTHS } from '../../store/usePayrollStore';
 import { 
   CalculatedPayrollItem, 
   CompanyProfile, 
@@ -28,9 +30,10 @@ import {
   ALL_PAYSLIP_COLUMNS,
   normalizeVisibleColumns,
   DEFAULT_COLUMNS,
-  PayslipColumnDef
+  PayslipColumnDef,
+  PayrollSnapshot
 } from '../../types';
-import { formatNaira, DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES } from '../../engine/payePensionEngine';
+import { formatNaira, DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES, calculatePayrollItem, isEmployeeActiveForPeriod } from '../../engine/payePensionEngine';
 import { PayslipDesignerPage } from '../payslip/PayslipDesignerPage';
 import { PayslipThemeSelector } from '../payslip/payslipThemes';
 import { CustomizablePayslipView } from '../payslip/CustomizablePayslipView';
@@ -48,6 +51,7 @@ interface BulkPrintPayslipsModalProps {
   payrollVariables?: PayrollVariables;
   payeTaxVariables?: PayeTaxVariables;
   selectedMonth?: string;
+  snapshots?: PayrollSnapshot[];
   onUpdatePayslipDesign?: (updates: Partial<PayslipDesignConfig>) => void;
   onResetPayslipDesign?: () => void;
   savedPresets?: PayslipCustomPreset[];
@@ -68,6 +72,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
   payrollVariables,
   payeTaxVariables,
   selectedMonth,
+  snapshots = [],
   onUpdatePayslipDesign,
   onResetPayslipDesign,
   savedPresets = [],
@@ -78,6 +83,47 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [previewEmployeeId, setPreviewEmployeeId] = useState<string>('');
+
+  // --- Date picker state ---
+  // Default automatically to current real-world month and year upon entry
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [printYear, setPrintYear] = useState<number>(() => new Date().getFullYear());
+  const [selectedMonthKeys, setSelectedMonthKeys] = useState<string[]>(() => [
+    MONTHS[new Date().getMonth()].key
+  ]);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
+        setIsDatePickerOpen(false);
+      }
+    };
+    if (isDatePickerOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDatePickerOpen]);
+
+  const toggleMonthKey = (key: string) => {
+    setSelectedMonthKeys(prev =>
+      prev.includes(key) ? (prev.length > 1 ? prev.filter(k => k !== key) : prev) : [...prev, key]
+    );
+  };
+
+  // Build a readable label for the selected months/year
+  const printPeriodLabel = useMemo(() => {
+    const currentMonthObj = MONTHS[new Date().getMonth()];
+    if (selectedMonthKeys.length === 0) return `${currentMonthObj.label} ${new Date().getFullYear()}`;
+    const sorted = MONTHS.filter(m => selectedMonthKeys.includes(m.key));
+    if (sorted.length === 1) return `${sorted[0].label} ${printYear}`;
+    if (sorted.length === 12) return `All Months ${printYear}`;
+    // Try to detect a consecutive range
+    const indices = sorted.map(m => MONTHS.findIndex(mo => mo.key === m.key)).sort((a, b) => a - b);
+    const isRange = indices.every((v, i) => i === 0 || v === indices[i - 1] + 1);
+    if (isRange && sorted.length >= 3) {
+      return `${sorted[0].label}–${sorted[sorted.length - 1].label} ${printYear}`;
+    }
+    return sorted.map(m => m.label.slice(0, 3)).join(', ') + ` ${printYear}`;
+  }, [selectedMonthKeys, printYear]);
 
   const [selectedColumns, setSelectedColumns] = useState<string[]>(() => {
     return (config.visibleColumns && config.visibleColumns.length > 0)
@@ -131,13 +177,20 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
     }));
   }, [employees, safeItems]);
 
-  // Initialize selection when opened
+  // Initialize selection and reset to current month and year when page is entered / modal opened
   React.useEffect(() => {
-    if (isOpen && safeItems.length > 0) {
-      const allIds = safeItems.map(i => i.employeeId);
-      setSelectedEmployees(allIds);
-      if (!previewEmployeeId || !allIds.includes(previewEmployeeId)) {
-        setPreviewEmployeeId(allIds[0] || '');
+    if (isOpen) {
+      const now = new Date();
+      setPrintYear(now.getFullYear());
+      setSelectedMonthKeys([MONTHS[now.getMonth()].key]);
+      setActivePeriodIdx(0);
+
+      if (safeItems.length > 0) {
+        const allIds = safeItems.map(i => i.employeeId);
+        setSelectedEmployees(allIds);
+        if (!previewEmployeeId || !allIds.includes(previewEmployeeId)) {
+          setPreviewEmployeeId(allIds[0] || '');
+        }
       }
     }
   }, [isOpen, safeItems]);
@@ -192,7 +245,72 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
     return selectedItems.findIndex(i => i.employeeId === currentPreviewItem?.employeeId);
   }, [selectedItems, currentPreviewItem]);
 
-  if (!isOpen) return null;
+  // Build payslips per selected period (month × year)
+  // For each period: use locked snapshot if found, else live-calculate from employees
+  const periodPayslips = useMemo(() => {
+    const pv = payrollVariables || DEFAULT_PAYROLL_VARIABLES;
+    const pt = payeTaxVariables || DEFAULT_PAYE_VARIABLES;
+
+    return MONTHS
+      .filter(m => selectedMonthKeys.includes(m.key))
+      .map(m => {
+        const periodKey = `${printYear}-${m.key}`;
+        // Try locked snapshot first
+        const snap = snapshots.find(s => s.monthKey === m.key && s.year === printYear && s.isLocked);
+
+        let periodItems: CalculatedPayrollItem[];
+
+        if (snap && snap.items && snap.items.length > 0) {
+          // Use snapshot data
+          periodItems = snap.items.filter(i => i && selectedEmployees.includes(i.employeeId));
+        } else if (employees.length > 0) {
+          // Live-calculate for this period
+          const activeEmps = employees.filter(e => isEmployeeActiveForPeriod(e, printYear, m.key));
+          periodItems = activeEmps
+            .filter(e => selectedEmployees.includes(e.id))
+            .map(emp => {
+              try {
+                return calculatePayrollItem(emp, pv, pt, m.key, printYear);
+              } catch {
+                return null;
+              }
+            })
+            .filter(Boolean) as CalculatedPayrollItem[];
+        } else {
+          // Fallback: use passed-in items (single period) filtered for selected employees
+          periodItems = safeItems.filter(i => i && selectedEmployees.includes(i.employeeId));
+        }
+
+        return {
+          periodKey,
+          monthKey: m.key,
+          monthLabel: m.label,
+          year: printYear,
+          items: periodItems,
+          isSnapshot: Boolean(snap),
+        };
+      })
+      .filter(p => p.items.length > 0);
+  }, [selectedMonthKeys, printYear, snapshots, employees, payrollVariables, payeTaxVariables, selectedEmployees, safeItems]);
+
+  // Total printed payslip count across all periods
+  const totalPrintCount = useMemo(() =>
+    periodPayslips.reduce((sum, p) => sum + p.items.length, 0),
+    [periodPayslips]
+  );
+
+  // Which period is currently shown in the preview (index into periodPayslips)
+  const [activePeriodIdx, setActivePeriodIdx] = useState(0);
+
+  // Clamp activePeriodIdx when periods change
+  useEffect(() => {
+    setActivePeriodIdx(prev => Math.min(prev, Math.max(0, periodPayslips.length - 1)));
+  }, [periodPayslips.length]);
+
+  // The period currently shown on screen
+  const activePeriod = periodPayslips[activePeriodIdx] ?? null;
+  // Items for the active period (used by the header employee pager)
+  const activePeriodItems = activePeriod?.items ?? [];
 
   const toggleAccordion = (sectionId: string) => {
     setExpandedSections(prev => ({
@@ -305,15 +423,15 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
   };
 
   const goToNextPreview = () => {
-    if (selectedItems.length <= 1) return;
-    const nextIdx = (previewIndex + 1) % selectedItems.length;
-    scrollToVoucher(selectedItems[nextIdx].employeeId);
+    if (activePeriodItems.length <= 1) return;
+    const nextIdx = (previewIndex + 1) % activePeriodItems.length;
+    scrollToVoucher(activePeriodItems[nextIdx].employeeId);
   };
 
   const goToPrevPreview = () => {
-    if (selectedItems.length <= 1) return;
-    const prevIdx = (previewIndex - 1 + selectedItems.length) % selectedItems.length;
-    scrollToVoucher(selectedItems[prevIdx].employeeId);
+    if (activePeriodItems.length <= 1) return;
+    const prevIdx = (previewIndex - 1 + activePeriodItems.length) % activePeriodItems.length;
+    scrollToVoucher(activePeriodItems[prevIdx].employeeId);
   };
 
   if (isDesignerOpen) {
@@ -343,83 +461,178 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
   return createPortal(
     <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-zinc-100 dark:bg-[#09090b] flex flex-col select-none print:top-0 print:inset-0">
       
-      {/* Top Application Header Bar */}
-      <div className="no-print h-12 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 px-4 sm:px-6 flex items-center justify-between text-zinc-900 dark:text-zinc-100 shrink-0">
-        
-        {/* Left: Back Button, Title & Count */}
-        <div className="flex items-center gap-3">
+      {/* ── Minimalist Top Header Bar ── */}
+      <div className="no-print h-11 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 flex items-center gap-2 text-zinc-900 dark:text-zinc-100 shrink-0">
+
+        {/* Back */}
+        <button
+          onClick={onClose}
+          className="flex items-center gap-1 px-2 py-1 rounded text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+          title="Back to Payroll (Esc)"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Back</span>
+        </button>
+
+        <span className="w-px h-4 bg-zinc-200 dark:bg-zinc-800 shrink-0" />
+
+        {/* Title */}
+        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 shrink-0 hidden sm:inline">Print Payslips</span>
+
+        {/* Clickable Date Chip with Popover */}
+        <div className="relative" ref={datePickerRef}>
           <button
-            onClick={onClose}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
-            title="Back to Payroll (Esc)"
+            type="button"
+            onClick={() => setIsDatePickerOpen(v => !v)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition cursor-pointer ${
+              isDatePickerOpen
+                ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                : 'border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+            }`}
+            title="Click to change print period"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back</span>
+            <Calendar className="w-3 h-3 text-zinc-400 dark:text-zinc-500" />
+            <span>{printPeriodLabel}</span>
+            <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform duration-150 ${isDatePickerOpen ? 'rotate-180' : ''}`} />
           </button>
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-zinc-500" />
-            <h2 className="text-xs font-semibold tracking-tight">
-              Print Payslips &bull; <span className="text-zinc-500 font-normal">{monthLabel} {year}</span>
-            </h2>
-          </div>
-          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-mono">
-            {selectedEmployees.length} of {safeItems.length} selected
-          </span>
+
+          {isDatePickerOpen && (
+            <div className="absolute left-0 top-full mt-1.5 z-50 w-64 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden">
+              {/* Year Nav */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setPrintYear(y => y - 1)}
+                  className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{printYear}</span>
+                <button
+                  type="button"
+                  onClick={() => setPrintYear(y => y + 1)}
+                  className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Month Grid */}
+              <div className="grid grid-cols-4 gap-1 p-2">
+                {MONTHS.map(m => {
+                  const active = selectedMonthKeys.includes(m.key);
+                  const isCurrent = m.key === MONTHS[new Date().getMonth()].key && printYear === new Date().getFullYear();
+                  return (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => toggleMonthKey(m.key)}
+                      className={`relative flex items-center justify-center py-1.5 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                        active
+                          ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold'
+                          : isCurrent
+                          ? 'border border-zinc-400 dark:border-zinc-500 text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/40'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
+                      }`}
+                      title={isCurrent ? `${m.label} (Current Month)` : m.label}
+                    >
+                      {m.label.slice(0, 3)}
+                      {active && selectedMonthKeys.length > 1 && (
+                        <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-white dark:bg-zinc-900" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Footer hints */}
+              <div className="px-3 py-1.5 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    setPrintYear(now.getFullYear());
+                    setSelectedMonthKeys([MONTHS[now.getMonth()].key]);
+                  }}
+                  className="text-[11px] text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:underline transition cursor-pointer"
+                >
+                  Current Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDatePickerOpen(false)}
+                  className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Center: Live Preview Paging Controls */}
-        {selectedItems.length > 0 && currentPreviewItem && (
-          <div className="hidden md:flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800/60 px-2.5 py-1 rounded-md text-xs">
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Center: Employee pager for active period */}
+        {activePeriodItems.length > 0 && currentPreviewItem && (
+          <div className="hidden md:flex items-center gap-1.5 text-xs">
             <button
               onClick={goToPrevPreview}
-              disabled={selectedItems.length <= 1}
-              className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-              title="Previous Voucher"
+              disabled={activePeriodItems.length <= 1}
+              className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              title="Previous employee"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
-              Voucher {previewIndex >= 0 ? previewIndex + 1 : 1} of {selectedItems.length}:
-              <strong className="ml-1 text-zinc-900 dark:text-zinc-100">{currentPreviewItem.fullName}</strong>
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 tabular-nums">
+              {previewIndex >= 0 ? previewIndex + 1 : 1}
+              <span className="mx-1 text-zinc-300 dark:text-zinc-700">/</span>
+              {activePeriodItems.length}
+            </span>
+            <span className="text-[11px] text-zinc-700 dark:text-zinc-200 font-medium max-w-[160px] truncate hidden lg:inline">
+              {currentPreviewItem.fullName}
             </span>
             <button
               onClick={goToNextPreview}
-              disabled={selectedItems.length <= 1}
-              className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-              title="Next Voucher"
+              disabled={activePeriodItems.length <= 1}
+              className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+              title="Next employee"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
+        <div className="flex-1" />
+
         {/* Right: Actions */}
-        <div className="flex items-center gap-2">
-          {/* Quick Theme Selector Dropdown */}
+        <div className="flex items-center gap-1.5">
+          {/* Quick Theme Selector */}
           <PayslipThemeSelector
             currentConfig={config}
             savedPresets={savedPresets}
             onSelectTheme={onUpdatePayslipDesign || (() => {})}
           />
 
-          {/* Design Layout Sub-page Trigger */}
+          {/* Design Layout — icon only */}
           <button
             type="button"
             onClick={() => setIsDesignerOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 rounded-md text-xs font-medium transition shadow-xs cursor-pointer"
-            title="Design and customize payslip layout, theme & headers"
+            className="p-1.5 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-md transition cursor-pointer"
+            title="Design & customize payslip layout"
           >
-            <Palette className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-            <span>Design Layout</span>
+            <Palette className="w-3.5 h-3.5" />
           </button>
+
+          {/* Print all selected */}
           <button
             onClick={handlePrint}
-            disabled={selectedEmployees.length === 0}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-xs font-medium transition shadow-xs"
-            title="Send all selected vouchers to printer"
+            disabled={totalPrintCount === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-xs font-medium transition cursor-pointer"
+            title={`Print ${totalPrintCount} payslip${totalPrintCount === 1 ? '' : 's'} (${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} × ${periodPayslips.length} period${periodPayslips.length !== 1 ? 's' : ''})`}
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print {selectedEmployees.length} Voucher{selectedEmployees.length === 1 ? '' : 's'}</span>
+            <span>Print {totalPrintCount}</span>
           </button>
         </div>
 
@@ -485,17 +698,22 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between text-[11px]">
-                  <select
-                    value={deptFilter}
-                    onChange={e => setDeptFilter(e.target.value)}
-                    className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-zinc-700 dark:text-zinc-300 text-xs focus:outline-none"
-                  >
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>
-                        {dept === 'ALL' ? 'All Departments' : dept}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 shrink-0">
+                      {selectedEmployees.length}/{safeItems.length}
+                    </span>
+                    <select
+                      value={deptFilter}
+                      onChange={e => setDeptFilter(e.target.value)}
+                      className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-zinc-700 dark:text-zinc-300 text-xs focus:outline-none"
+                    >
+                      {departments.map(dept => (
+                        <option key={dept} value={dept}>
+                          {dept === 'ALL' ? 'All Departments' : dept}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   <div className="flex gap-2">
                     <button
@@ -792,7 +1010,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
         {/* Right Preview Area */}
         <div className="flex-1 bg-zinc-100 dark:bg-[#09090b] overflow-y-auto p-6 flex justify-center print:p-0 print:bg-white print:overflow-visible">
-          {selectedItems.length === 0 ? (
+          {totalPrintCount === 0 ? (
             <div className="w-full max-w-sm mx-auto py-24 text-center flex flex-col items-center justify-center">
               <div className="w-14 h-14 rounded-full bg-zinc-200/50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 mb-3.5">
                 <FileText className="w-6 h-6" />
@@ -814,34 +1032,112 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
               )}
             </div>
           ) : (
-            <div className="w-full max-w-3xl flex flex-col items-center gap-8 print:gap-0 print:max-w-none">
-              {selectedItems.map((item, index) => (
-                <div 
-                  key={item.employeeId} 
-                  id={`voucher-${item.employeeId}`}
-                  className="w-full flex flex-col items-center print-page scroll-mt-6"
-                >
-                  {/* On-screen employee indicator when multiple are selected */}
-                  {selectedItems.length > 1 && (
-                    <div className="no-print w-full flex items-center justify-between px-3 py-1.5 mb-2 text-[11px] text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-200/60 dark:bg-zinc-800/60 rounded border border-zinc-300/40 dark:border-zinc-700/50">
-                      <span>Payslip {index + 1} of {selectedItems.length} &bull; <strong className="text-zinc-800 dark:text-zinc-200 font-sans">{item.fullName}</strong></span>
-                      <span className="text-[10px] uppercase tracking-wider">{item.employeeCode} &bull; {item.department}</span>
-                    </div>
-                  )}
+            <div className="w-full max-w-3xl flex flex-col gap-0 print:max-w-none">
 
-                  <div className="w-full shadow-xs print:shadow-none bg-white rounded-lg">
-                    <CustomizablePayslipView
-                      item={item}
-                      company={company}
-                      monthLabel={monthLabel}
-                      year={year}
-                      config={config}
-                      isCol={isCol}
-                      visibleColumns={selectedColumns}
-                    />
+              {/* ── Period nav bar (only shown when multiple periods selected) ── */}
+              {periodPayslips.length > 1 && activePeriod && (
+                <div className="no-print flex items-center gap-2 mb-5 px-1">
+                  <button
+                    type="button"
+                    onClick={() => setActivePeriodIdx(i => Math.max(0, i - 1))}
+                    disabled={activePeriodIdx === 0}
+                    className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer text-zinc-500 dark:text-zinc-400"
+                    title="Previous period"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 shrink-0">
+                      {activePeriod.monthLabel} {activePeriod.year}
+                    </span>
+                    {activePeriod.isSnapshot ? (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                        Locked
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 shrink-0">
+                        Live Calc
+                      </span>
+                    )}
+                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
+                      {activePeriod.items.length} payslip{activePeriod.items.length !== 1 ? 's' : ''}
+                    </span>
+                    <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800 mx-1" />
+                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono shrink-0">
+                      {activePeriodIdx + 1} / {periodPayslips.length}
+                    </span>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActivePeriodIdx(i => Math.min(periodPayslips.length - 1, i + 1))}
+                    disabled={activePeriodIdx === periodPayslips.length - 1}
+                    className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer text-zinc-500 dark:text-zinc-400"
+                    title="Next period"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
-              ))}
+              )}
+
+              {/* ── Payslips for the active period only ── */}
+              {activePeriod && (
+                <div className="flex flex-col items-center gap-8 print:gap-0">
+                  {/* Print: render ALL periods stacked (hidden on screen) */}
+                  <div className="hidden print:contents">
+                    {periodPayslips.map(period =>
+                      period.items.map(item => (
+                        <div
+                          key={`print-${period.periodKey}-${item.employeeId}`}
+                          className="w-full flex flex-col items-center print-page"
+                        >
+                          <div className="w-full bg-white">
+                            <CustomizablePayslipView
+                              item={item}
+                              company={company}
+                              monthLabel={period.monthLabel}
+                              year={period.year}
+                              config={config}
+                              isCol={isCol}
+                              visibleColumns={selectedColumns}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Screen: only active period */}
+                  {activePeriod.items.map((item) => (
+                    <div
+                      key={`${activePeriod.periodKey}-${item.employeeId}`}
+                      id={`voucher-${item.employeeId}`}
+                      className="w-full flex flex-col items-center print:hidden scroll-mt-6"
+                    >
+                      {/* Per-payslip indicator — only shown when multiple employees */}
+                      {activePeriod.items.length > 1 && (
+                        <div className="no-print w-full flex items-center justify-between px-3 py-1.5 mb-2 text-[11px] text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-200/60 dark:bg-zinc-800/60 rounded border border-zinc-300/40 dark:border-zinc-700/50">
+                          <strong className="text-zinc-800 dark:text-zinc-200 font-sans">{item.fullName}</strong>
+                          <span className="text-[10px] uppercase tracking-wider">{item.employeeCode} • {item.department}</span>
+                        </div>
+                      )}
+                      <div className="w-full shadow-xs bg-white rounded-lg">
+                        <CustomizablePayslipView
+                          item={item}
+                          company={company}
+                          monthLabel={activePeriod.monthLabel}
+                          year={activePeriod.year}
+                          config={config}
+                          isCol={isCol}
+                          visibleColumns={selectedColumns}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
             </div>
           )}
         </div>

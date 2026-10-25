@@ -10,7 +10,9 @@ import {
   CreditCard,
   Clock,
   MoreVertical,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Employee, EmployeeLoan, LoanType, LoanStatus, CalculatedPayrollItem, CompanyProfile } from '../../types';
 import { formatNaira, formatDate } from '../../engine/payePensionEngine';
@@ -50,6 +52,9 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'All' | LoanType>('All');
   const [filterStatus, setFilterStatus] = useState<'All' | LoanStatus>('All');
+
+  // Stats visibility state
+  const [showStats, setShowStats] = useState(true);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -292,8 +297,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Sticky Minimalist Header */}
-      <div className="sticky top-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md pt-2.5 pb-3 border-b border-zinc-200 dark:border-zinc-800 -mx-6 px-6 md:-mx-8 md:px-8">
+      {/* ── Top Header ── */}
+      <div className="pt-2.5 pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -317,38 +322,40 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
         </div>
       </div>
 
-      {/* 4 Minimal Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
-          <span className="text-[11px] font-medium text-zinc-500 block">Total Disbursed</span>
-          <div className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-0.5">
-            {formatNaira(stats.totalDisbursed)}
+      {/* ── Stat Cards ── */}
+      {showStats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+            <span className="text-[11px] font-medium text-zinc-500 block">Total Disbursed</span>
+            <div className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-0.5">
+              {formatNaira(stats.totalDisbursed)}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+            <span className="text-[11px] font-medium text-zinc-500 block">Total Repaid</span>
+            <div className="text-lg font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+              {formatNaira(stats.totalRepaid)}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+            <span className="text-[11px] font-medium text-zinc-500 block">Active Balance</span>
+            <div className="text-lg font-semibold tracking-tight text-amber-600 dark:text-amber-400 font-mono mt-0.5">
+              {formatNaira(stats.activeOutstanding)}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+            <span className="text-[11px] font-medium text-zinc-500 block">Active Borrowers</span>
+            <div className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-0.5">
+              {stats.activeBorrowersCount} Staff
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
-          <span className="text-[11px] font-medium text-zinc-500 block">Total Repaid</span>
-          <div className="text-lg font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-            {formatNaira(stats.totalRepaid)}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
-          <span className="text-[11px] font-medium text-zinc-500 block">Active Balance</span>
-          <div className="text-lg font-semibold tracking-tight text-amber-600 dark:text-amber-400 font-mono mt-0.5">
-            {formatNaira(stats.activeOutstanding)}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
-          <span className="text-[11px] font-medium text-zinc-500 block">Active Borrowers</span>
-          <div className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-0.5">
-            {stats.activeBorrowersCount} Staff
-          </div>
-        </div>
-      </div>
-
-      {/* Action Toast Notification */}
+      {/* ── Toast ── */}
       {toastMessage && (
         <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-medium animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -356,8 +363,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
         </div>
       )}
 
-
-      {/* Filter and Search Bar */}
+      {/* ── Search & Filters ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="relative flex-1 max-w-sm">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
@@ -379,7 +385,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
@@ -400,25 +406,36 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
             <option value="Paused">Paused</option>
             <option value="Paid">Fully Paid</option>
           </select>
+
+          {/* Toggle Stats for More Table Room */}
+          <button
+            type="button"
+            onClick={() => setShowStats(!showStats)}
+            className="h-8 flex items-center gap-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 text-xs font-medium transition cursor-pointer shadow-2xs"
+            title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
+          >
+            {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <span>{showStats ? "Hide Stats" : "Show Stats"}</span>
+          </button>
         </div>
       </div>
 
-      {/* Minimal Table */}
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] shadow-xs">
-        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+      {/* ── Table Card ── */}
+      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] shadow-xs overflow-hidden">
+        <div className={`overflow-x-auto overflow-y-auto ${showStats ? 'max-h-[calc(100vh-285px)]' : 'max-h-[calc(100vh-185px)]'}`}>
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider select-none shadow-xs">
-              <tr>
-                <th className="py-2.5 px-3 sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Staff Member</th>
-                <th className="py-2.5 px-3 sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Type</th>
-                <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Principal</th>
-                <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900" title="Automatically deducted from take-home pay each payroll cycle">Auto Deduct</th>
-                <th className="py-2.5 px-3 min-w-[130px] sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Progress</th>
-                <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Balance</th>
-                <th className="py-2.5 px-3 text-center sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Status</th>
-                <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Actions</th>
-              </tr>
-            </thead>
+          <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider select-none shadow-xs">
+            <tr>
+              <th className="py-2.5 px-3 sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 rounded-tl-lg">Staff Member</th>
+              <th className="py-2.5 px-3 sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Type</th>
+              <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Principal</th>
+              <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900" title="Automatically deducted from take-home pay each payroll cycle">Auto Deduct</th>
+              <th className="py-2.5 px-3 min-w-[130px] sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Progress</th>
+              <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Balance</th>
+              <th className="py-2.5 px-3 text-center sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Status</th>
+              <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 rounded-tr-lg">Actions</th>
+            </tr>
+          </thead>
             <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
               {filteredLoans.length === 0 ? (
                 <tr>
@@ -589,32 +606,17 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                               className="fixed w-52 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-fade-in text-left divide-y divide-zinc-100 dark:divide-zinc-800/60 loan-actions-dropdown"
                             >
                               <div className="py-0.5">
-                                {/* 1. Quick Deduct / Deducted status */}
-                                {!isPaid && (
-                                  !isDeductedThisMonth && onApplyLoanDeduction ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveMenuLoanId(null);
-                                        handleApplySingleDeduction(loan);
-                                      }}
-                                      className="w-full px-3 py-1.5 flex items-center gap-2 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 font-medium transition cursor-pointer"
-                                      title={`Apply deduction for ${monthLabel} now in case it was pending`}
-                                    >
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                                      <span>
-                                        {loan.type === 'Salary Advance'
-                                          ? `Apply 100% Deduct`
-                                          : `Deduct Now (${monthLabel})`}
-                                      </span>
-                                    </button>
-                                  ) : (
-                                    <div className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-400 dark:text-zinc-500 text-[11px] select-none">
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                                      <span>Deducted for {monthLabel}</span>
-                                    </div>
-                                  )
-                                )}
+                                {/* 1. Automated Deduction Status Indicator */}
+                                <div className="px-3 py-1.5 flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-[11px] select-none bg-zinc-50/50 dark:bg-zinc-900/50">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                  <span>
+                                    {isPaid 
+                                      ? 'Fully Repaid' 
+                                      : isPaused 
+                                        ? 'Deductions Paused' 
+                                        : `Auto-deducted through ${monthLabel}`}
+                                  </span>
+                                </div>
 
                                 {/* 2. Start / Pause Deductions */}
                                 {!isPaid && (
@@ -686,7 +688,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
           </table>
         </div>
 
-        {/* Minimalist Pagination */}
+        {/* Pinned Pagination Footer - Solid Floor of Table */}
         <TablePagination
           currentPage={currentPage}
           totalItems={filteredLoans.length}

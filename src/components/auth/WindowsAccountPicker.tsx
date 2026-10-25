@@ -24,11 +24,18 @@ import {
   Search,
   CheckCircle2,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  Cloud,
+  User,
+  Users,
+  LogOut
 } from 'lucide-react';
-import { CompanyAccount, DEFAULT_SECURITY_QUESTIONS } from '../../types';
+import { CompanyAccount, DEFAULT_SECURITY_QUESTIONS, TeamMember } from '../../types';
 import { formatDate } from '../../engine/dateUtils';
 import appLogo from '../../../assets/icon.png';
+import { GlobalCloudModal } from './GlobalCloudModal';
+import { TeamMembersPage } from '../team/TeamMembersPage';
+import { getSavedCloudConfig, SupabaseCloudConfig } from '../../services/supabaseClient';
 
 interface WindowsAccountPickerProps {
   companies: CompanyAccount[];
@@ -42,6 +49,10 @@ interface WindowsAccountPickerProps {
   onDeleteCompany: (companyId: string) => { success: boolean; error?: string };
   isDarkTheme: boolean;
   onToggleTheme: () => void;
+  onCompaniesSynced?: (companies: CompanyAccount[]) => void;
+  currentUser?: TeamMember | null;
+  onSignOut?: () => void;
+  onDisconnectServer?: () => void;
 }
 
 export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
@@ -56,7 +67,23 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   onDeleteCompany,
   isDarkTheme,
   onToggleTheme,
+  onCompaniesSynced,
+  currentUser,
+  onSignOut,
+  onDisconnectServer,
 }) => {
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
+  const [isTeamPageOpen, setIsTeamPageOpen] = useState(false);
+  const [cloudConfig, setCloudConfig] = useState<SupabaseCloudConfig>(() => getSavedCloudConfig());
+
+  const handleCompaniesSynced = (updated: CompanyAccount[]) => {
+    setCloudConfig(getSavedCloudConfig());
+    if (onCompaniesSynced) {
+      onCompaniesSynced(updated);
+    }
+  };
+
   // Live Clock
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   useEffect(() => {
@@ -497,8 +524,66 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
           </span>
         </div>
 
-        {/* Right: Theme Toggle & Native Window Controls */}
+        {/* Right: Cloud Gateway, Theme Toggle & Native Window Controls */}
         <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: 'no-drag' } as any}>
+          <button
+            onClick={() => setIsCloudModalOpen(true)}
+            title={cloudConfig.isEnabled ? 'Connected to Team Cloud Database' : 'Connect to Team Cloud Database'}
+            className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+              cloudConfig.isEnabled
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+            }`}
+          >
+            <Cloud className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="hidden sm:inline">{cloudConfig.isEnabled ? 'Cloud Live' : 'Cloud Setup'}</span>
+          </button>
+
+          {currentUser && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                title={`${currentUser.name} (${currentUser.role})`}
+                className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+              >
+                <User className="w-3.5 h-3.5" />
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs">
+                  <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400">
+                    Signed in as <strong>{currentUser.email || currentUser.username}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onSignOut?.();
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Switch Staff User</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      if (confirm('Disconnect from server?')) {
+                        onDisconnectServer?.();
+                      }
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
+                  >
+                    <Cloud className="w-3.5 h-3.5" />
+                    <span>Disconnect Server</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             onClick={onToggleTheme}
             title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
@@ -824,8 +909,14 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
             </div>
           </div>
+        ) : isTeamPageOpen ? (
+          /* VIEW 2: FULL PAGE AUTHORIZED TEAM MEMBERS */
+          <TeamMembersPage
+            onBack={() => setIsTeamPageOpen(false)}
+            currentUser={currentUser || null}
+          />
         ) : (
-          /* VIEW 2: MINIMALIST ACCOUNT SELECTION GRID */
+          /* VIEW 3: MINIMALIST ACCOUNT SELECTION GRID */
           <div className="flex-1 flex flex-col min-h-0 w-full animate-in fade-in duration-150">
             
             {/* Pinned Minimalist Toolbar (always visible at top, never scrolls) */}
@@ -851,29 +942,92 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 )}
               </div>
 
-              {/* Right: + Add Company Button */}
-              <button
-                onClick={openCreateModal}
-                className="h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer ml-auto"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Company</span>
-              </button>
+              {/* Right: Actions */}
+              <div className="flex items-center gap-2 ml-auto shrink-0">
+                {currentUser?.role === 'Admin' && (
+                  <button
+                    type="button"
+                    onClick={() => setIsTeamPageOpen(true)}
+                    className="h-8 px-3 rounded-lg bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    title="Manage authorized staff and operator accounts"
+                  >
+                    <Users className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                    <span>Authorized Staff</span>
+                  </button>
+                )}
+                <button
+                  onClick={openCreateModal}
+                  className="h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Company</span>
+                </button>
+              </div>
 
             </div>
 
             {/* Scrollable Container for Company Cards */}
             <div className="flex-1 overflow-y-auto min-h-0 pb-8 pr-1">
-              {/* Zero State if no match */}
+              {/* Zero State if no companies or no search match */}
               {filteredCompanies.length === 0 ? (
-                <div className="py-16 text-center space-y-2">
-                  <p className="text-xs text-zinc-500">No company found matching "{searchQuery}"</p>
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                  >
-                    Clear search
-                  </button>
+                <div className="py-20 flex flex-col items-center justify-center text-center space-y-3 max-w-sm mx-auto">
+                  {searchQuery ? (
+                    <>
+                      <p className="text-xs text-zinc-500">No company found matching "{searchQuery}"</p>
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Clear search
+                      </button>
+                    </>
+                  ) : !cloudConfig.isEnabled ? (
+                    <div className="p-6 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3.5 w-full">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto">
+                        <Cloud className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-semibold text-zinc-900 dark:text-white">Connect to Team Server</h3>
+                        <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
+                          Connect your desktop to access all team companies in real-time, or create a new company workspace.
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-2 pt-1">
+                        <button
+                          onClick={() => setIsCloudModalOpen(true)}
+                          className="w-full py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-semibold hover:opacity-90 transition cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5"
+                        >
+                          <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Connect Team Server</span>
+                        </button>
+                        <button
+                          onClick={openCreateModal}
+                          className="w-full py-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer"
+                        >
+                          + Create New Company
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-6 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3 w-full">
+                      <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center mx-auto">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-semibold text-zinc-900 dark:text-white">No Companies Found</h3>
+                        <p className="text-[11px] text-zinc-500 mt-1">
+                          Connected to cloud server. Create your first company workspace to get started.
+                        </p>
+                      </div>
+                      <button
+                        onClick={openCreateModal}
+                        className="w-full py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-semibold hover:opacity-90 transition cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add First Company</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* Minimalist 5-Column Grid */
@@ -1539,6 +1693,14 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Global Cloud Database Setup Modal */}
+      <GlobalCloudModal
+        isOpen={isCloudModalOpen}
+        onClose={() => setIsCloudModalOpen(false)}
+        localCompanies={companies}
+        onCompaniesSynced={handleCompaniesSynced}
+      />
 
     </div>
   );

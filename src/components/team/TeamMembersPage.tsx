@@ -1,0 +1,1293 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Users, 
+  Plus, 
+  RefreshCw, 
+  X, 
+  Trash2, 
+  Check, 
+  Copy, 
+  CheckCircle2, 
+  AlertTriangle,
+  ArrowLeft,
+  Search,
+  KeyRound,
+  ShieldCheck,
+  Edit3,
+  User as UserIcon,
+  UserX,
+  UserCheck,
+  MoreVertical,
+  Eye,
+  Mail,
+  AtSign,
+  Shield,
+  Calendar
+} from 'lucide-react';
+import { TeamMember, TeamMemberRole, DEFAULT_SECURITY_QUESTIONS } from '../../types';
+import { 
+  fetchTeamMembers, 
+  saveTeamMemberToCloud, 
+  deleteTeamMemberFromCloud, 
+  logAuditEvent,
+  subscribeToPresence,
+  getSupabaseClient,
+  StaffPresence,
+  subscribeToMemberUpdates
+} from '../../services/supabaseClient';
+
+interface TeamMembersPageProps {
+  onBack: () => void;
+  currentUser: TeamMember | null;
+}
+
+export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
+  onBack,
+  currentUser,
+}) => {
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 15;
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [viewMember, setViewMember] = useState<TeamMember | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Live presence: which members are currently online
+  const [onlineMembers, setOnlineMembers] = useState<StaffPresence[]>([]);
+  const unsubPresenceRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    // Only subscribe if current user is Admin
+    if (currentUser?.role !== 'Admin') return;
+    const unsub = subscribeToPresence((online) => {
+      setOnlineMembers(online);
+    });
+    unsubPresenceRef.current = unsub;
+    return () => { unsub(); };
+  }, [currentUser]);
+
+  // Close dropdown on outside click or Escape
+  useEffect(() => {
+    if (!openMenuId) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenMenuId(null);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [openMenuId]);
+
+  // New Member Form State
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [role, setRole] = useState<TeamMemberRole>('Payroll Officer');
+  const [password, setPassword] = useState('');
+  const [securityQuestion, setSecurityQuestion] = useState(DEFAULT_SECURITY_QUESTIONS[0]);
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [requirePasswordChange, setRequirePasswordChange] = useState(true);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Edit Member Modal State
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editRole, setEditRole] = useState<TeamMemberRole>('Payroll Officer');
+  const [editPassword, setEditPassword] = useState('');
+  const [editIsActive, setEditIsActive] = useState<boolean>(true);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Success Notice State
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    username: string;
+    email: string;
+    pass: string;
+    role: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const loadMembers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetchTeamMembers();
+      if (res.success && res.members) {
+        setMembers(res.members);
+      }
+    } catch (err) {
+      console.warn('Failed to load team members:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMembers();
+  }, []);
+
+  // Multi-layered auto-refresh: polling, window focus, WebSocket broadcast, and Postgres changes
+  useEffect(() => {
+    // 1. Polling interval while page is open (every 3.5s)
+    const interval = setInterval(() => {
+      loadMembers();
+    }, 3500);
+
+    // 2. Window focus & visibility: refresh instantly when admin focuses back to this window
+    const handleFocus = () => { loadMembers(); };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    // 3. WebSocket Broadcast listener from other admin sessions
+    const unsubBroadcast = subscribeToMemberUpdates(() => {
+      loadMembers();
+    });
+
+    // 4. Postgres Changes (Database Realtime)
+    const client = getSupabaseClient();
+    let channel: any = null;
+    if (client) {
+      channel = client
+        .channel(`team-members-realtime-${Date.now()}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, () => {
+          loadMembers();
+        })
+        .subscribe();
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      unsubBroadcast();
+      if (channel && client) {
+        client.removeChannel(channel);
+      }
+    };
+  }, []);
+
+  const handleGeneratePassword = () => {
+    const code = Math.floor(100000 + Math.random() * 900000);
+    setPassword(`PAY-${code}`);
+  };
+
+  const handleGenerateEditPassword = () => {
+    const code = Math.floor(100000 + Math.random() * 900000);
+    setEditPassword(`PAY-${code}`);
+  };
+
+  const handleOpenAdd = () => {
+    setName('');
+    setEmail('');
+    setUsername('');
+    setRole('Payroll Officer');
+    const code = Math.floor(100000 + Math.random() * 900000);
+    setPassword(`PAY-${code}`);
+    setSecurityQuestion(DEFAULT_SECURITY_QUESTIONS[0]);
+    setCustomQuestion('');
+    setSecurityAnswer('');
+    setRequirePasswordChange(true);
+    setFormError(null);
+    setIsAddModalOpen(true);
+  };
+
+  const handleSaveMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setFormError('Please enter full name');
+      return;
+    }
+    if (!email.trim()) {
+      setFormError('Please enter email address');
+      return;
+    }
+    if (!password.trim()) {
+      setFormError('Please enter password');
+      return;
+    }
+
+    const finalQuestion = securityQuestion === 'Write your own custom question...'
+      ? customQuestion.trim()
+      : securityQuestion.trim();
+
+    if (securityQuestion === 'Write your own custom question...' && !finalQuestion) {
+      setFormError('Please enter your custom security question');
+      return;
+    }
+
+    setIsSaving(true);
+    setFormError(null);
+
+    const generatedUsername = username.trim() || email.split('@')[0].toLowerCase();
+    const newMemberId = 'staff-' + Date.now();
+
+    const memberPayload: TeamMember = {
+      id: newMemberId,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      username: generatedUsername,
+      role,
+      password: password.trim(),
+      pin: password.trim(),
+      tempPassword: requirePasswordChange ? password.trim() : '',
+      mustChangePassword: requirePasswordChange,
+      securityQuestion: finalQuestion,
+      securityAnswer: securityAnswer.trim().toLowerCase(),
+      recoveryEmail: email.trim().toLowerCase(),
+      isActive: true,
+      createdAt: new Date().toISOString()
+    };
+
+    const res = await saveTeamMemberToCloud(memberPayload);
+    setIsSaving(false);
+
+    if (res.success) {
+      await logAuditEvent(
+        '',
+        'Global System',
+        'Staff Account Created',
+        `Admin created staff account for ${memberPayload.name} (${memberPayload.role})`
+      );
+      setIsAddModalOpen(false);
+      setCreatedCredentials({
+        name: memberPayload.name,
+        username: memberPayload.username || '',
+        email: memberPayload.email || '',
+        pass: password.trim(),
+        role: memberPayload.role
+      });
+      loadMembers();
+    } else {
+      setFormError(res.error || 'Failed to save team member');
+    }
+  };
+
+  // Direct Inline Role Update
+  const handleRoleChange = async (member: TeamMember, newRole: TeamMemberRole) => {
+    if (member.role === newRole) return;
+
+    const oldRole = member.role;
+    const updatedMember: TeamMember = { ...member, role: newRole };
+
+    // Optimistic UI update
+    setMembers(prev => prev.map(m => m.id === member.id ? updatedMember : m));
+
+    const res = await saveTeamMemberToCloud(updatedMember);
+    if (res.success) {
+      await logAuditEvent(
+        '',
+        'Global System',
+        'Staff Role Updated',
+        `Admin changed role for ${member.name} from ${oldRole} to ${newRole}`
+      );
+    } else {
+      alert(res.error || 'Failed to update role');
+      loadMembers(); // Revert on failure
+    }
+  };
+
+  // Open Edit Modal
+  const handleOpenEdit = (member: TeamMember) => {
+    setEditingMember(member);
+    setEditName(member.name);
+    setEditEmail(member.email || '');
+    setEditUsername(member.username || '');
+    setEditRole(member.role);
+    setEditPassword('');
+    setEditIsActive(member.isActive !== false);
+    setEditError(null);
+  };
+
+  // Toggle Member Active / Deactivated
+  const handleToggleActive = async (member: TeamMember) => {
+    const nextActive = member.isActive === false ? true : false;
+    const actionLabel = nextActive ? 'activate' : 'deactivate';
+    if (!confirm(`Are you sure you want to ${actionLabel} ${member.name}? ${nextActive ? 'They will be allowed to log into the workspace.' : 'They will be blocked from logging into the workspace.'}`)) {
+      return;
+    }
+    const updated: TeamMember = {
+      ...member,
+      isActive: nextActive,
+      updatedAt: new Date().toISOString()
+    };
+    const res = await saveTeamMemberToCloud(updated);
+    if (res.success) {
+      await logAuditEvent(
+        '',
+        'Global System',
+        nextActive ? 'Staff Member Activated' : 'Staff Member Deactivated',
+        `Admin ${actionLabel}d access for ${member.name} (${member.role})`
+      );
+      loadMembers();
+    } else {
+      alert(res.error || `Failed to ${actionLabel} member`);
+    }
+  };
+
+  // Save Edit Member
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    if (!editName.trim()) {
+      setEditError('Name is required');
+      return;
+    }
+    if (!editEmail.trim()) {
+      setEditError('Email is required');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    setEditError(null);
+
+    const updated: TeamMember = {
+      ...editingMember,
+      name: editName.trim(),
+      email: editEmail.trim().toLowerCase(),
+      username: editUsername.trim() || editEmail.split('@')[0].toLowerCase(),
+      role: editRole,
+      isActive: editIsActive,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (editPassword.trim()) {
+      updated.password = editPassword.trim();
+      updated.pin = editPassword.trim();
+      updated.tempPassword = editPassword.trim();
+      updated.mustChangePassword = true;
+    }
+
+    const res = await saveTeamMemberToCloud(updated);
+    setIsSavingEdit(false);
+
+    if (res.success) {
+      await logAuditEvent(
+        '',
+        'Global System',
+        'Staff Details Updated',
+        `Admin updated details for ${updated.name} (${updated.role})${editPassword.trim() ? ' and reset password' : ''}${updated.isActive === false ? ' [Deactivated]' : ' [Active]'}`
+      );
+      setEditingMember(null);
+      loadMembers();
+    } else {
+      setEditError(res.error || 'Failed to update member');
+    }
+  };
+
+  const handleDeleteMember = async (memberId: string, memberName: string) => {
+    if (confirm(`Permanently delete authorized user ${memberName}? They will lose all access.`)) {
+      const res = await deleteTeamMemberFromCloud(memberId);
+      if (res.success) {
+        await logAuditEvent(
+          '',
+          'Global System',
+          'Staff Access Deleted',
+          `Admin deleted authorized user ${memberName}`
+        );
+        loadMembers();
+      } else {
+        alert(res.error || 'Failed to delete user');
+      }
+    }
+  };
+
+  const handleCopyCredentials = () => {
+    if (!createdCredentials) return;
+    const text = `Payroll Pro Staff Credentials:
+Name: ${createdCredentials.name}
+Role: ${createdCredentials.role}
+Email: ${createdCredentials.email}
+Username: ${createdCredentials.username}
+Password: ${createdCredentials.pass}`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const filteredMembers = members.filter(m => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (m.name || '').toLowerCase().includes(q) ||
+      (m.email || '').toLowerCase().includes(q) ||
+      (m.username || '').toLowerCase().includes(q) ||
+      (m.role || '').toLowerCase().includes(q)
+    );
+  });
+
+  // Reset to page 1 whenever the search query changes
+  React.useEffect(() => { setCurrentPage(1); }, [searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
+  const pagedMembers = filteredMembers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 w-full animate-in fade-in duration-150">
+      
+      {/* Pinned Top Toolbar */}
+      <div className="shrink-0 pt-3 pb-3 bg-[#fbfbfb] dark:bg-[#09090b] z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200/80 dark:border-zinc-800/80">
+        
+        {/* Left: Back Action & Title */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shadow-2xs"
+            title="Return to workspaces"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Workspaces</span>
+          </button>
+
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                Authorized Team Members
+              </h1>
+              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                {members.length} {members.length === 1 ? 'Operator' : 'Operators'}
+              </span>
+              {currentUser?.role === 'Admin' && onlineMembers.length > 0 && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  <span className="relative flex w-1.5 h-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-emerald-500"></span>
+                  </span>
+                  {onlineMembers.length} Online
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 hidden sm:block">
+              Staff authorized to sign in and process payroll across all company workspaces.
+            </p>
+          </div>
+        </div>
+
+        {/* Right: Search, Refresh & Add Actions */}
+        <div className="flex items-center gap-2">
+          <div className="relative w-full sm:w-56">
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Filter staff by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-8 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-lg pl-8 pr-7 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={loadMembers}
+            disabled={isLoading}
+            className="h-8 px-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition flex items-center justify-center cursor-pointer shadow-2xs"
+            title="Refresh list"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenAdd}
+            className="h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Member</span>
+          </button>
+        </div>
+
+      </div>
+
+      {/* Sticky Table Header — outside scroll so it never scrolls away */}
+      <div className="shrink-0 bg-white dark:bg-[#121215] border-x border-t border-zinc-200 dark:border-zinc-800 rounded-t-xl mt-4 mx-0">
+        <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 rounded-t-xl">
+          <div className="col-span-5 sm:col-span-4">Operator Name &amp; ID</div>
+          <div className="col-span-4 sm:col-span-3">Work Email</div>
+          <div className="col-span-3 sm:col-span-2">Access Role</div>
+          <div className="hidden sm:block sm:col-span-2">Status</div>
+          <div className="hidden sm:block sm:col-span-1 text-right">Actions</div>
+        </div>
+      </div>
+
+      {/* Main Content Area — scrollable rows only */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        
+        {/* Table / Ledger Card — no top rounding since header is above */}
+        <div className="bg-white dark:bg-[#121215] border-x border-b border-zinc-200 dark:border-zinc-800 rounded-b-xl overflow-hidden shadow-2xs">
+
+          {/* Table Body */}
+          <div className="divide-y divide-zinc-200 dark:divide-zinc-800 text-xs">
+            {isLoading ? (
+              <div className="py-16 flex items-center justify-center text-zinc-400 text-xs gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Loading team members...</span>
+              </div>
+            ) : filteredMembers.length === 0 ? (
+              <div className="py-16 text-center text-zinc-400 text-xs space-y-2">
+                <Users className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto" />
+                <p>{searchQuery ? `No staff member matches "${searchQuery}"` : 'No team members registered yet.'}</p>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    Clear filter
+                  </button>
+                )}
+              </div>
+            ) : (
+              pagedMembers.map(member => {
+                const isSelf = currentUser?.id === member.id;
+                return (
+                  <div 
+                    key={member.id} 
+                    className="grid grid-cols-12 gap-3 px-4 py-3 items-center hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition cursor-pointer"
+                    onClick={(e) => {
+                      // Don't open view if clicking on select, button, or menu
+                      const tag = (e.target as HTMLElement).closest('select,button,a');
+                      if (!tag) setViewMember(member);
+                    }}
+                  >
+                    {/* Col 1: Operator Name & Avatar */}
+                    <div className="col-span-5 sm:col-span-4 flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-semibold text-xs shrink-0 border border-zinc-200 dark:border-zinc-700/60">
+                        {member.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                            {member.name}
+                          </span>
+                          {isSelf && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded font-normal bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-zinc-400 truncate font-mono">
+                          @{member.username || member.email?.split('@')[0]}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Col 2: Work Email */}
+                    <div className="col-span-4 sm:col-span-3 text-zinc-600 dark:text-zinc-300 truncate">
+                      {member.email || <span className="text-zinc-400 italic">None</span>}
+                    </div>
+
+                    {/* Col 3: Role Selector / Badge */}
+                    <div className="col-span-3 sm:col-span-2">
+                      {isSelf ? (
+                        <span className="inline-flex items-center text-[11px] px-2.5 py-0.5 rounded font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+                          {member.role}
+                        </span>
+                      ) : (
+                        <select
+                          value={member.role}
+                          onChange={(e) => handleRoleChange(member, e.target.value as TeamMemberRole)}
+                          className={`h-7 text-[11px] px-2 py-0 rounded font-medium border focus:outline-none cursor-pointer transition shadow-2xs ${
+                            member.role === 'Admin'
+                              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                              : member.role === 'Auditor'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                          }`}
+                          title="Change operator access role"
+                        >
+                          <option value="Payroll Officer" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Payroll Officer</option>
+                          <option value="Auditor" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Auditor (View Only)</option>
+                          <option value="Admin" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Administrator</option>
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Col 4: Status */}
+                    <div className="hidden sm:flex sm:col-span-2 items-center gap-1.5 text-xs">
+                      {member.isActive === false ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                          Deactivated
+                        </span>
+                      ) : (() => {
+                        const presence = onlineMembers.find(p => p.memberId === member.id);
+                        if (presence) {
+                          const since = new Date(presence.joinedAt);
+                          const sinceStr = since.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                          return (
+                            <span
+                              title={`Online since ${sinceStr}${presence.companyName ? ` — ${presence.companyName}` : ''}`}
+                              className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium"
+                            >
+                              <span className="relative flex w-2 h-2 shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full w-2 h-2 bg-emerald-500"></span>
+                              </span>
+                              Online
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="flex items-center gap-1.5 text-zinc-400 dark:text-zinc-500">
+                            <span className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600 shrink-0"></span>
+                            Offline
+                          </span>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Col 5: Actions — 3-dot dropdown */}
+                    <div className="flex sm:col-span-1 justify-end items-center" ref={openMenuId === member.id ? menuRef : undefined}>
+                      {!isSelf ? (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setOpenMenuId(prev => prev === member.id ? null : member.id)}
+                            className="p-1.5 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                            title="Member actions"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+
+                          {openMenuId === member.id && (
+                            <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white dark:bg-[#1a1a1e] border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 text-xs overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
+                              {/* Edit */}
+                              <button
+                                type="button"
+                                onClick={() => { setOpenMenuId(null); handleOpenEdit(member); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
+                                Edit Details
+                              </button>
+
+                              {/* Activate / Deactivate */}
+                              <button
+                                type="button"
+                                onClick={() => { setOpenMenuId(null); handleToggleActive(member); }}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition cursor-pointer ${
+                                  member.isActive === false
+                                    ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                                    : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                                }`}
+                              >
+                                {member.isActive === false ? (
+                                  <><UserCheck className="w-3.5 h-3.5" />Activate Access</>
+                                ) : (
+                                  <><UserX className="w-3.5 h-3.5" />Deactivate Access</>
+                                )}
+                              </button>
+
+                              {/* Divider */}
+                              <div className="my-1 border-t border-zinc-100 dark:border-zinc-800" />
+
+                              {/* Delete */}
+                              <button
+                                type="button"
+                                onClick={() => { setOpenMenuId(null); handleDeleteMember(member.id, member.name); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete User
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-zinc-300 dark:text-zinc-700 text-xs select-none pr-1">&mdash;</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* Pinned Pagination Footer */}
+      <div className="shrink-0 border-t border-zinc-200 dark:border-zinc-800 bg-[#fbfbfb] dark:bg-[#09090b] px-4 py-2.5 flex items-center justify-between gap-3">
+        {/* Left: count info */}
+        <span className="text-[11px] text-zinc-400">
+          {filteredMembers.length === 0
+            ? 'No results'
+            : `Showing ${Math.min((currentPage - 1) * PAGE_SIZE + 1, filteredMembers.length)}–${Math.min(currentPage * PAGE_SIZE, filteredMembers.length)} of ${filteredMembers.length} operator${filteredMembers.length !== 1 ? 's' : ''}`
+          }
+        </span>
+
+        {/* Right: page controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="h-7 w-7 flex items-center justify-center rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition text-xs cursor-pointer"
+              title="Previous page"
+            >
+              &#8249;
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                if (idx > 0 && typeof arr[idx - 1] === 'number' && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, idx) =>
+                p === '...' ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-zinc-400 text-xs select-none">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setCurrentPage(p as number)}
+                    className={`h-7 min-w-[28px] px-1.5 flex items-center justify-center rounded border text-xs font-medium transition cursor-pointer ${
+                      currentPage === p
+                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                        : 'bg-white dark:bg-[#121215] border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )
+            }
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="h-7 w-7 flex items-center justify-center rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition text-xs cursor-pointer"
+              title="Next page"
+            >
+              &#8250;
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* EDIT MEMBER MODAL */}
+      {editingMember && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-3.5 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center">
+                  <Edit3 className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  Edit Operator Profile
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMember(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="flex items-center gap-1.5 text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 px-2.5 py-1.5 rounded-md">
+                <AlertTriangle className="w-3 h-3 shrink-0" />
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit} className="space-y-2.5">
+              <div>
+                <label className="block text-[11px] text-zinc-500 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Work Email *</label>
+                  <input
+                    type="email"
+                    required
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-zinc-500 mb-1">Access Role</label>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as TeamMemberRole)}
+                  className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 cursor-pointer"
+                >
+                  <option value="Payroll Officer">Payroll Officer</option>
+                  <option value="Auditor">Auditor (View Only)</option>
+                  <option value="Admin">Administrator</option>
+                </select>
+              </div>
+
+              {/* Account Status (Active / Deactivated) */}
+              <div className="flex items-center justify-between py-1.5 px-2.5 bg-zinc-50 dark:bg-zinc-900/60 rounded border border-zinc-200 dark:border-zinc-800">
+                <div>
+                  <span className="block text-[11px] font-medium text-zinc-800 dark:text-zinc-200">Account Status</span>
+                  <span className="text-[10px] text-zinc-500">
+                    {editIsActive ? 'Active — allowed to log into workspace' : 'Deactivated — blocked from logging in'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditIsActive(!editIsActive)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    editIsActive ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      editIsActive ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] text-zinc-500">Reset Password (Optional)</label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateEditPassword}
+                    className="text-[10px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                  >
+                    Generate
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Leave blank to keep existing password"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 font-mono focus:outline-none focus:border-zinc-400"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                {editingMember.id !== currentUser?.id ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const toDeleteId = editingMember.id;
+                      const toDeleteName = editingMember.name;
+                      setEditingMember(null);
+                      handleDeleteMember(toDeleteId, toDeleteName);
+                    }}
+                    className="px-2 py-1 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded text-xs transition cursor-pointer flex items-center gap-1 font-medium"
+                    title="Permanently delete user"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Delete User</span>
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingMember(null)}
+                    className="px-3 py-1.5 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingEdit}
+                    className="px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    {isSavingEdit && <RefreshCw className="w-3 h-3 animate-spin" />}
+                    <span>Save Changes</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD MEMBER MODAL */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-3.5 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center">
+                  <Plus className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  Add Team Member
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {formError && (
+              <div className="flex items-center gap-1.5 text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 px-2.5 py-1.5 rounded-md">
+                <AlertTriangle className="w-3 h-3 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveMember} className="space-y-2.5">
+              <div>
+                <label className="block text-[11px] text-zinc-500 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Adeola Johnson"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Work Email *</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="email@company.com"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (!username) setUsername(e.target.value.split('@')[0].toLowerCase());
+                    }}
+                    className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Username</label>
+                  <input
+                    type="text"
+                    placeholder="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Access Role</label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as TeamMemberRole)}
+                    className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 cursor-pointer"
+                  >
+                    <option value="Payroll Officer">Payroll Officer</option>
+                    <option value="Auditor">Auditor (View Only)</option>
+                    <option value="Admin">Administrator</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] text-zinc-500">Initial Password *</label>
+                    <button
+                      type="button"
+                      onClick={handleGeneratePassword}
+                      className="text-[10px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                    >
+                      Generate
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 font-mono focus:outline-none focus:border-zinc-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-zinc-500 mb-1">Security Question</label>
+                <select
+                  value={securityQuestion}
+                  onChange={(e) => setSecurityQuestion(e.target.value)}
+                  className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 cursor-pointer"
+                >
+                  {DEFAULT_SECURITY_QUESTIONS.map(q => (
+                    <option key={q} value={q}>{q}</option>
+                  ))}
+                </select>
+              </div>
+
+              {securityQuestion === 'Write your own custom question...' && (
+                <div>
+                  <label className="block text-[11px] text-zinc-500 mb-1">Custom Security Question *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. What was your childhood nickname?"
+                    value={customQuestion}
+                    onChange={(e) => setCustomQuestion(e.target.value)}
+                    className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[11px] text-zinc-500 mb-1">Security Answer</label>
+                <input
+                  type="text"
+                  placeholder="Answer used for password recovery"
+                  value={securityAnswer}
+                  onChange={(e) => setSecurityAnswer(e.target.value)}
+                  className="w-full h-8 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                />
+              </div>
+
+              <div className="pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-zinc-600 dark:text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={requirePasswordChange}
+                    onChange={(e) => setRequirePasswordChange(e.target.checked)}
+                    className="rounded border-zinc-300 text-zinc-900 focus:ring-0"
+                  />
+                  <span>Require password change on first login</span>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-3 py-1.5 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  {isSaving && <RefreshCw className="w-3 h-3 animate-spin" />}
+                  <span>Save Member</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREDENTIALS SHARE NOTICE */}
+      {createdCredentials && (
+        <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 max-w-sm w-full shadow-2xl space-y-3.5 text-xs">
+            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="w-4 h-4" />
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">Member Account Created</span>
+            </div>
+
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              Share these credentials with your colleague to sign in from their computer:
+            </p>
+
+            <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded border border-zinc-200 dark:border-zinc-800 font-mono text-[11px] space-y-1">
+              <div><span className="text-zinc-400">Email:</span> {createdCredentials.email}</div>
+              <div><span className="text-zinc-400">Username:</span> {createdCredentials.username}</div>
+              <div><span className="text-zinc-400">Initial Password:</span> <strong className="text-blue-500">{createdCredentials.pass}</strong></div>
+              <div><span className="text-zinc-400">Role:</span> {createdCredentials.role}</div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleCopyCredentials}
+                className="px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded text-xs font-medium transition cursor-pointer flex items-center gap-1"
+              >
+                {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreatedCredentials(null)}
+                className="px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded text-xs font-medium cursor-pointer hover:opacity-90"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Member View Modal ── */}
+      {viewMember && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-150"
+          onClick={() => setViewMember(null)}
+        >
+          <div
+            className="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => setViewMember(null)}
+              className="absolute top-3 right-3 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Avatar + Name header */}
+            <div className="px-6 pt-6 pb-4 flex items-center gap-4 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-bold text-lg border border-zinc-200 dark:border-zinc-700 shrink-0">
+                {viewMember.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm truncate">
+                    {viewMember.name}
+                  </span>
+                  {currentUser?.id === viewMember.id && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                      You
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-zinc-400 font-mono mt-0.5 truncate">
+                  @{viewMember.username || viewMember.email?.split('@')[0] || '—'}
+                </div>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="px-6 py-4 space-y-3 text-xs">
+              {/* Email */}
+              <div className="flex items-center gap-3">
+                <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span className="text-zinc-500 dark:text-zinc-400 w-16 shrink-0">Email</span>
+                <span className="text-zinc-800 dark:text-zinc-200 truncate">
+                  {viewMember.email || <span className="italic text-zinc-400">None on file</span>}
+                </span>
+              </div>
+
+              {/* Role */}
+              <div className="flex items-center gap-3">
+                <Shield className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span className="text-zinc-500 dark:text-zinc-400 w-16 shrink-0">Role</span>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${
+                  viewMember.role === 'Admin'
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : viewMember.role === 'Auditor'
+                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                      : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                }`}>
+                  {viewMember.role}
+                </span>
+              </div>
+
+              {/* Status */}
+              <div className="flex items-center gap-3">
+                <Eye className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span className="text-zinc-500 dark:text-zinc-400 w-16 shrink-0">Status</span>
+                {viewMember.isActive === false ? (
+                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                    Deactivated
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    Active
+                  </span>
+                )}
+              </div>
+
+              {/* Joined */}
+              {viewMember.createdAt && (
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span className="text-zinc-500 dark:text-zinc-400 w-16 shrink-0">Joined</span>
+                  <span className="text-zinc-800 dark:text-zinc-200">
+                    {new Date(viewMember.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              )}
+
+              {/* Recovery email */}
+              {viewMember.recoveryEmail && (
+                <div className="flex items-center gap-3">
+                  <AtSign className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span className="text-zinc-500 dark:text-zinc-400 w-16 shrink-0">Recovery</span>
+                  <span className="text-zinc-800 dark:text-zinc-200 truncate">{viewMember.recoveryEmail}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setViewMember(null)}
+                className="px-4 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-medium transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
