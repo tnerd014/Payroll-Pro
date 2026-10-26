@@ -796,13 +796,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={onNavigateToExcel}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition-colors"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Excel Sync</span>
-            </button>
+
             <button
               onClick={() => { setEditingEmp(null); setModalTab('quick'); setIsModalOpen(true); }}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none cursor-pointer"

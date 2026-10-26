@@ -176,4 +176,21 @@ code, .font-mono {
     page-break-after: auto !important;
     break-after: auto !important;
   }
+
+  /* Bring off-screen all-payslips container back into flow during print */
+  .print-all-payslips {
+    position: static !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    display: block !important;
+    overflow: visible !important;
+    z-index: auto !important;
+    visibility: visible !important;
+  }
+
+  /* Hide the screen-only voucher wrappers (they duplicate what's in print-all-payslips) */
+  .screen-voucher {
+    display: none !important;
+  }
 }

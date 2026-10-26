@@ -409,6 +409,11 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
   const handlePrint = () => {
     if (selectedEmployees.length === 0) return;
+    const beforePrint = () => document.body.classList.add('print-portal-active');
+    const afterPrint = () => document.body.classList.remove('print-portal-active');
+    window.addEventListener('beforeprint', beforePrint, { once: true });
+    window.addEventListener('afterprint', afterPrint, { once: true });
+    document.body.classList.add('print-portal-active');
     window.print();
   };
 
@@ -459,7 +464,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
   }
 
   return createPortal(
-    <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-zinc-100 dark:bg-[#09090b] flex flex-col select-none print:top-0 print:inset-0">
+    <div className="print-modal-root fixed top-9 inset-x-0 bottom-0 z-50 bg-zinc-100 dark:bg-[#09090b] flex flex-col select-none print:top-0 print:inset-0">
       
       {/* ── Minimalist Top Header Bar ── */}
       <div className="no-print h-11 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 flex items-center gap-2 text-zinc-900 dark:text-zinc-100 shrink-0">
@@ -1084,36 +1089,12 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
               {/* ── Payslips for the active period only ── */}
               {activePeriod && (
                 <div className="flex flex-col items-center gap-8 print:gap-0">
-                  {/* Print: render ALL periods stacked (hidden on screen) */}
-                  <div className="hidden print:contents">
-                    {periodPayslips.map(period =>
-                      period.items.map(item => (
-                        <div
-                          key={`print-${period.periodKey}-${item.employeeId}`}
-                          className="w-full flex flex-col items-center print-page"
-                        >
-                          <div className="w-full bg-white">
-                            <CustomizablePayslipView
-                              item={item}
-                              company={company}
-                              monthLabel={period.monthLabel}
-                              year={period.year}
-                              config={config}
-                              isCol={isCol}
-                              visibleColumns={selectedColumns}
-                            />
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
                   {/* Screen: only active period */}
                   {activePeriod.items.map((item) => (
                     <div
                       key={`${activePeriod.periodKey}-${item.employeeId}`}
                       id={`voucher-${item.employeeId}`}
-                      className="w-full flex flex-col items-center print:hidden scroll-mt-6"
+                      className="screen-voucher w-full flex flex-col items-center scroll-mt-6"
                     >
                       {/* Per-payslip indicator — only shown when multiple employees */}
                       {activePeriod.items.length > 1 && (
@@ -1142,6 +1123,42 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
           )}
         </div>
 
+      </div>
+
+      {/* ── Print-only: ALL selected payslips, always rendered off-screen so the browser lays them out ── */}
+      <div
+        aria-hidden="true"
+        className="print-all-payslips no-select"
+        style={{
+          position: 'fixed',
+          left: '-99999px',
+          top: 0,
+          width: '210mm',
+          pointerEvents: 'none',
+          zIndex: -1,
+          visibility: 'hidden',
+        }}
+      >
+        {periodPayslips.map(period =>
+          period.items.map(item => (
+            <div
+              key={`print-${period.periodKey}-${item.employeeId}`}
+              className="w-full flex flex-col items-center print-page"
+            >
+              <div className="w-full bg-white">
+                <CustomizablePayslipView
+                  item={item}
+                  company={company}
+                  monthLabel={period.monthLabel}
+                  year={period.year}
+                  config={config}
+                  isCol={isCol}
+                  visibleColumns={selectedColumns}
+                />
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
     </div>,
