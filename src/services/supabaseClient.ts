@@ -15,6 +15,37 @@ import {
 
 export const SUPABASE_CONFIG_STORAGE_KEY = 'PAYROLL_PRO_SUPABASE_CONFIG_V1';
 export const ACTIVE_TEAM_MEMBER_STORAGE_KEY = 'PAYROLL_PRO_ACTIVE_MEMBER_V1';
+export const STANDALONE_OFFLINE_MODE_KEY = 'PAYROLL_PRO_STANDALONE_OFFLINE_MODE_V1';
+
+export const LOCAL_STANDALONE_ADMIN: TeamMember = {
+  id: 'local_offline_operator',
+  name: 'Local Administrator',
+  email: 'offline@device',
+  username: 'admin',
+  role: 'Admin',
+  isActive: true,
+  mustChangePassword: false,
+};
+
+export function isStandaloneOfflineMode(): boolean {
+  try {
+    return localStorage.getItem(STANDALONE_OFFLINE_MODE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setStandaloneOfflineMode(enabled: boolean): void {
+  try {
+    if (enabled) {
+      localStorage.setItem(STANDALONE_OFFLINE_MODE_KEY, 'true');
+    } else {
+      localStorage.removeItem(STANDALONE_OFFLINE_MODE_KEY);
+    }
+  } catch (e) {
+    console.warn('Failed to toggle standalone offline mode:', e);
+  }
+}
 
 export interface SupabaseCloudConfig {
   url: string;
@@ -57,6 +88,9 @@ export function getSavedCloudConfig(): SupabaseCloudConfig {
 export function saveCloudConfig(config: SupabaseCloudConfig): void {
   try {
     localStorage.setItem(SUPABASE_CONFIG_STORAGE_KEY, JSON.stringify(config));
+    if (config.isEnabled && config.url && config.anonKey) {
+      setStandaloneOfflineMode(false);
+    }
     // Invalidate cached client so it re-initializes
     globalForSupabase.__supabaseClient = null;
     globalForSupabase.__supabaseUrl = '';
@@ -468,33 +502,12 @@ export async function uploadCompanyDataToSupabase(
         updated_at: new Date().toISOString(),
       }));
 
-      // 1. Upsert all current employees in a single batch API call
+      // Upsert all current employees in a single batch API call.
+      // NOTE: This bulk sync intentionally NEVER deletes cloud employees. Individual deletions
+      // go through deleteEmployeeFromCloud(). Pruning here caused total data loss whenever a
+      // device uploaded an empty or stale local copy (e.g. a fresh device opening a company).
       const { error: empErr } = await client.from('employees').upsert(empRows);
       if (empErr) throw new Error(`Employees upsert failed: ${empErr.message}`);
-
-      // 2. Prune any stale IDs that are no longer in the local employee list
-      const { data: cloudEmps } = await client
-        .from('employees')
-        .select('id')
-        .eq('company_id', companyId);
-
-      if (cloudEmps && cloudEmps.length > 0) {
-        const currentSet = new Set(currentEmpIds);
-        const toDeleteIds = cloudEmps
-          .map(ce => ce.id)
-          .filter(id => !currentSet.has(id));
-
-        if (toDeleteIds.length > 0) {
-          await client
-            .from('employees')
-            .delete()
-            .eq('company_id', companyId)
-            .in('id', toDeleteIds);
-        }
-      }
-    } else {
-      // All employees removed from company
-      await client.from('employees').delete().eq('company_id', companyId);
     }
 
     // 4. Upsert Payroll Variables
@@ -947,13 +960,111 @@ export async function uploadAllLocalCompaniesToSupabase(companies: CompanyAccoun
   }
 }
 
+export const LOGOUT_ON_CLOSE_STORAGE_KEY = 'payroll_pro_logout_on_close';
+export const SESSION_ACTIVE_FLAG_KEY = 'payroll_pro_session_active_window';
+export const INACTIVITY_LOCK_MINUTES_KEY = 'payroll_pro_inactivity_lock_minutes';
+export const PRIVACY_MASK_KEY = 'payroll_pro_privacy_mask_salaries';
+
 /**
- * Gets currently active team member from session
+ * Returns whether the user has configured the app to log out on app close
+ */
+export function getLogoutOnClosePreference(): boolean {
+  try {
+    return localStorage.getItem(LOGOUT_ON_CLOSE_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Updates the log out on app close preference
+ */
+export function setLogoutOnClosePreference(enabled: boolean): void {
+  try {
+    if (enabled) {
+      localStorage.setItem(LOGOUT_ON_CLOSE_STORAGE_KEY, 'true');
+      // Ensure the current window retains its active session flag
+      sessionStorage.setItem(SESSION_ACTIVE_FLAG_KEY, 'true');
+    } else {
+      localStorage.removeItem(LOGOUT_ON_CLOSE_STORAGE_KEY);
+    }
+  } catch (e) {
+    console.warn('Failed to save logout on close preference:', e);
+  }
+}
+
+/**
+ * Inactivity lock timeout in minutes (0 = disabled)
+ */
+export function getInactivityLockMinutes(): number {
+  try {
+    const raw = localStorage.getItem(INACTIVITY_LOCK_MINUTES_KEY);
+    return raw ? parseInt(raw, 10) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function setInactivityLockMinutes(minutes: number): void {
+  try {
+    if (minutes > 0) {
+      localStorage.setItem(INACTIVITY_LOCK_MINUTES_KEY, minutes.toString());
+    } else {
+      localStorage.removeItem(INACTIVITY_LOCK_MINUTES_KEY);
+    }
+  } catch (e) {
+    console.warn('Failed to save inactivity lock minutes:', e);
+  }
+}
+
+/**
+ * Privacy mask preference (blur sensitive salary numbers)
+ */
+export function getPrivacyMaskPreference(): boolean {
+  try {
+    return localStorage.getItem(PRIVACY_MASK_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setPrivacyMaskPreference(enabled: boolean): void {
+  try {
+    if (enabled) {
+      localStorage.setItem(PRIVACY_MASK_KEY, 'true');
+    } else {
+      localStorage.removeItem(PRIVACY_MASK_KEY);
+    }
+  } catch (e) {
+    console.warn('Failed to save privacy mask preference:', e);
+  }
+}
+
+/**
+ * Gets currently active team member from session.
+ * If logout-on-close is enabled and the app is newly launched (sessionStorage is empty),
+ * returns null so the user is required to sign in with credentials.
  */
 export function getActiveTeamMember(): TeamMember | null {
   try {
+    const isLogoutOnClose = getLogoutOnClosePreference();
+    if (isLogoutOnClose) {
+      const isSessionActive = sessionStorage.getItem(SESSION_ACTIVE_FLAG_KEY);
+      if (!isSessionActive) {
+        // Window/app was closed and reopened: purge persistent storage and force login
+        localStorage.removeItem(ACTIVE_TEAM_MEMBER_STORAGE_KEY);
+        return null;
+      }
+    }
+
     const raw = localStorage.getItem(ACTIVE_TEAM_MEMBER_STORAGE_KEY);
     if (raw) return JSON.parse(raw);
+
+    // If user previously selected standalone offline mode and no cloud server is enabled,
+    // restore the local administrator session automatically
+    if (isStandaloneOfflineMode() && !getSavedCloudConfig().isEnabled) {
+      return LOCAL_STANDALONE_ADMIN;
+    }
   } catch (e) {
     console.warn('Failed to get active member session:', e);
   }
@@ -966,8 +1077,10 @@ export function getActiveTeamMember(): TeamMember | null {
 export function setActiveTeamMember(member: TeamMember | null): void {
   try {
     if (member) {
+      sessionStorage.setItem(SESSION_ACTIVE_FLAG_KEY, 'true');
       localStorage.setItem(ACTIVE_TEAM_MEMBER_STORAGE_KEY, JSON.stringify(member));
     } else {
+      sessionStorage.removeItem(SESSION_ACTIVE_FLAG_KEY);
       localStorage.removeItem(ACTIVE_TEAM_MEMBER_STORAGE_KEY);
     }
   } catch (e) {
@@ -1075,15 +1188,21 @@ export async function fetchTeamMembers(): Promise<{
       name: row.name,
       email: row.email,
       username: row.username,
+      phone: row.phone || '',
+      avatarColor: row.avatar_color || '',
       role: row.role,
       pin: row.pin,
       password: row.password,
+      passwordHint: row.password_hint || '',
       securityQuestion: row.security_question,
       securityAnswer: row.security_answer,
       recoveryEmail: row.recovery_email,
       tempPassword: row.temp_password,
       mustChangePassword: Boolean(row.must_change_password),
       isActive: Boolean(row.is_active),
+      twoFactorEnabled: Boolean(row.two_factor_enabled),
+      twoFactorSecret: row.two_factor_secret || '',
+      biometricEnabled: Boolean(row.biometric_enabled),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
@@ -1117,17 +1236,50 @@ export async function saveTeamMemberToCloud(member: TeamMember): Promise<{
       updated_at: new Date().toISOString(),
     };
 
+    if (member.phone !== undefined) payload.phone = member.phone;
+    if (member.avatarColor !== undefined) payload.avatar_color = member.avatarColor;
+    if (member.twoFactorEnabled !== undefined) payload.two_factor_enabled = member.twoFactorEnabled;
+    if (member.twoFactorSecret !== undefined) payload.two_factor_secret = member.twoFactorSecret;
+    if (member.biometricEnabled !== undefined) payload.biometric_enabled = member.biometricEnabled;
+
     if (member.password !== undefined) {
       payload.password = member.password;
       payload.pin = member.password;
     }
+    if (member.passwordHint !== undefined) payload.password_hint = member.passwordHint;
     if (member.securityQuestion !== undefined) payload.security_question = member.securityQuestion;
     if (member.securityAnswer !== undefined) payload.security_answer = member.securityAnswer;
     if (member.recoveryEmail !== undefined) payload.recovery_email = member.recoveryEmail;
     if (member.tempPassword !== undefined) payload.temp_password = member.tempPassword;
     if (member.mustChangePassword !== undefined) payload.must_change_password = member.mustChangePassword;
 
-    const { error } = await client.from('team_members').upsert(payload);
+    let { error } = await client.from('team_members').upsert(payload);
+
+    // If error was due to missing newly added columns in legacy schema, fallback to base columns
+    if (error && (error.message?.includes('column') || error.code === '42703')) {
+      const basePayload: any = {
+        id: member.id,
+        name: member.name,
+        email: member.email || '',
+        username: member.username || member.email?.split('@')[0] || '',
+        role: member.role,
+        pin: member.pin || member.password || '1234',
+        is_active: member.isActive,
+        updated_at: new Date().toISOString(),
+      };
+      if (member.password !== undefined) {
+        basePayload.password = member.password;
+        basePayload.pin = member.password;
+      }
+      if (member.securityQuestion !== undefined) basePayload.security_question = member.securityQuestion;
+      if (member.securityAnswer !== undefined) basePayload.security_answer = member.securityAnswer;
+      if (member.recoveryEmail !== undefined) basePayload.recovery_email = member.recoveryEmail;
+      if (member.tempPassword !== undefined) basePayload.temp_password = member.tempPassword;
+      if (member.mustChangePassword !== undefined) basePayload.must_change_password = member.mustChangePassword;
+
+      const fallbackRes = await client.from('team_members').upsert(basePayload);
+      error = fallbackRes.error;
+    }
 
     if (error) throw error;
 

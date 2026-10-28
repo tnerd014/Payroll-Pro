@@ -7,6 +7,7 @@ interface CompanySettingsModalProps {
   onClose: () => void;
   company: CompanyProfile;
   onSave: (profile: Partial<CompanyProfile>) => void;
+  isReadOnly?: boolean;
 }
 
 export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
@@ -14,6 +15,7 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
   onClose,
   company,
   onSave,
+  isReadOnly = false,
 }) => {
   const [formData, setFormData] = useState<CompanyProfile>(company);
   const [showPassword, setShowPassword] = useState(false);
@@ -40,6 +42,7 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     setPasswordError(null);
 
     if (formData.hasPassword) {
@@ -291,20 +294,29 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
           </div>
 
           {/* Always-Visible Fixed Footer */}
-          <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/80 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3.5 py-1.5 rounded-md text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 font-medium transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-1.5 rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition shadow-xs"
-            >
-              Save Profile
-            </button>
+          <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/80 shrink-0">
+            {isReadOnly ? (
+              <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                Offline Mode &bull; Read-Only
+              </span>
+            ) : <span />}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3.5 py-1.5 rounded-md text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 font-medium transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isReadOnly}
+                title={isReadOnly ? 'Saving is disabled in offline read-only mode' : undefined}
+                className="px-4 py-1.5 rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Save Profile
+              </button>
+            </div>
           </div>
         </form>
 

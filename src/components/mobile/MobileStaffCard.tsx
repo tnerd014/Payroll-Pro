@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Employee } from '../../types';
 import { formatNaira } from '../../engine/payePensionEngine';
+import { formatDate } from '../../engine/dateUtils';
 
 interface MobileStaffCardProps {
   employee: Employee;
@@ -47,6 +48,18 @@ export const MobileStaffCard: React.FC<MobileStaffCardProps> = ({
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 break-words">
               {employee.position || 'Staff Member'} &bull; <span className="font-medium text-zinc-700 dark:text-zinc-300">{employee.department || 'General'}</span>
             </p>
+
+            {(employee.startDate || employee.endDate) && (
+              <p className="text-[10px] text-zinc-400 font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
+                {employee.startDate && <span>Joined {formatDate(employee.startDate)}</span>}
+                {employee.startDate && employee.endDate && <span>&bull;</span>}
+                {employee.endDate && (
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                    Exit {formatDate(employee.endDate)}
+                  </span>
+                )}
+              </p>
+            )}
           </div>
         </div>
 

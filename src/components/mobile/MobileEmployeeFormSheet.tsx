@@ -18,7 +18,8 @@ import {
   Phone,
   Mail,
   Building2,
-  Briefcase
+  Briefcase,
+  Calendar
 } from 'lucide-react';
 import { Employee, EmploymentTypeRule } from '../../types';
 import { formatNaira, DEFAULT_EMPLOYMENT_TYPE_RULES } from '../../engine/payePensionEngine';
@@ -106,6 +107,10 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
 
+  // Employment Tenure Dates
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
   // Quick accordion toggle for secondary sections
   const [showAdvancedStatutory, setShowAdvancedStatutory] = useState(false);
   const [showBankDetails, setShowBankDetails] = useState(false);
@@ -148,6 +153,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       setPhone(editingEmployee.phone || '');
       setEmail(editingEmployee.email || '');
       setStatus(editingEmployee.status || 'Active');
+      setStartDate(editingEmployee.startDate || '');
+      setEndDate(editingEmployee.endDate || '');
       setShowAdvancedStatutory(Boolean(editingEmployee.payeNumber || editingEmployee.pensionNumber));
       setShowBankDetails(Boolean(editingEmployee.accountNumber || editingEmployee.phone || editingEmployee.email));
     } else {
@@ -172,6 +179,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       setPhone('');
       setEmail('');
       setStatus('Active');
+      setStartDate('');
+      setEndDate('');
       setShowAdvancedStatutory(false);
       setShowBankDetails(false);
 
@@ -223,9 +232,9 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       status,
       monthlySalaries: editingEmployee?.monthlySalaries || {},
       stints: editingEmployee?.stints || [],
-      startDate: editingEmployee?.startDate || '',
-      endDate: editingEmployee?.endDate || '',
-      originalHireDate: editingEmployee?.originalHireDate || '',
+      startDate: startDate.trim(),
+      endDate: endDate.trim(),
+      originalHireDate: editingEmployee?.originalHireDate || startDate.trim(),
     };
   };
 
@@ -631,6 +640,69 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                 </div>
               </div>
 
+              {/* Employment Tenure & Dates */}
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Tenure Dates</span>
+                  </span>
+                  <span className="text-[10px] text-zinc-400">Controls payroll inclusion</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">
+                      Start Date (Hire Date)
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">
+                      End Date (Exit Date)
+                    </label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEndDate(val);
+                        if (val) {
+                          setStatus('Inactive');
+                        }
+                      }}
+                      className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {endDate ? (
+                  <p className="text-[10px] text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg leading-relaxed">
+                    💡 <strong>Payroll Rule:</strong> Staff is paid in their exit month and automatically excluded from all subsequent pay runs.
+                  </p>
+                ) : null}
+
+                {editingEmployee?.stints && editingEmployee.stints.length > 0 && (
+                  <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 rounded-xl p-2.5 text-[10px] space-y-1">
+                    <span className="font-semibold text-zinc-600 dark:text-zinc-400 block">
+                      Previous Tenures ({editingEmployee.stints.length})
+                    </span>
+                    {editingEmployee.stints.map((st, idx) => (
+                      <div key={st.stintId || idx} className="flex justify-between text-zinc-500">
+                        <span>Stint #{idx + 1}: {st.startDate || '—'} → {st.endDate || 'Active'}</span>
+                        {st.exitReason && <span className="text-zinc-400">({st.exitReason})</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
 
             {/* ── CARD 2: Compensation ── */}
@@ -735,147 +807,143 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
 
             </div>
 
-            {/* ── CARD 3: Statutory Rules (PAYE Tax & Pension) ── */}
-            <div className="bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-xs">
+            {/* ── CARD 3: Statutory Rules & Tax Registration ── */}
+            <div className="bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3.5 shadow-xs">
               <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/60 pb-2.5">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                     <ShieldCheck className="w-3.5 h-3.5" />
                   </div>
                   <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                    Statutory Rules
+                    Statutory Rules &amp; Tax IDs
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedStatutory(!showAdvancedStatutory)}
-                  className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5 cursor-pointer"
-                >
-                  <span>{showAdvancedStatutory ? 'Hide IDs' : 'Tax & RSA IDs'}</span>
-                  {showAdvancedStatutory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </button>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold border border-zinc-200/60 dark:border-zinc-700/60">
+                  {employmentType} Rule
+                </span>
               </div>
 
-              {/* PAYE Tax Switch */}
-              <div className="flex items-center justify-between py-1">
-                <div>
-                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
-                    PAYE Income Tax
-                  </span>
-                  <span className="text-[10px] text-zinc-400">
-                    Apply CRA &amp; PITA Tax Bands
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setHasPaye(!hasPaye)}
-                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                    hasPaye ? 'bg-emerald-600' : 'bg-zinc-200 dark:bg-zinc-700'
-                  }`}
-                >
-                  <div
-                    className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transition-transform absolute top-0.75 ${
-                      hasPaye ? 'right-1' : 'left-1'
+              {/* PAYE Income Tax Block */}
+              <div className="space-y-2 bg-zinc-50/70 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
+                      PAYE Income Tax
+                    </span>
+                    <span className="text-[10px] text-zinc-400">
+                      CRA Reliefs &amp; Statutory PITA Tax Brackets
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHasPaye(!hasPaye)}
+                    className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                      hasPaye ? 'bg-emerald-600' : 'bg-zinc-200 dark:bg-zinc-700'
                     }`}
-                  />
-                </button>
-              </div>
-
-              {/* Pension Switch */}
-              <div className="flex items-center justify-between py-1 border-t border-zinc-100 dark:border-zinc-800/50">
-                <div>
-                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
-                    Pension Scheme (8% RSA)
-                  </span>
-                  <span className="text-[10px] text-zinc-400">
-                    Statutory 8% Employee + 10% Employer
-                  </span>
+                  >
+                    <div
+                      className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transition-transform absolute top-0.75 ${
+                        hasPaye ? 'right-1' : 'left-1'
+                      }`}
+                    />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setHasPension(!hasPension)}
-                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                    hasPension ? 'bg-emerald-600' : 'bg-zinc-200 dark:bg-zinc-700'
-                  }`}
-                >
-                  <div
-                    className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transition-transform absolute top-0.75 ${
-                      hasPension ? 'right-1' : 'left-1'
-                    }`}
-                  />
-                </button>
-              </div>
 
-              {/* Advanced IDs (Taxpayer ID, State, PFA, RSA PIN) */}
-              {showAdvancedStatutory && (
-                <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60 space-y-2.5 animate-in fade-in duration-150">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="text-[10px] font-semibold text-zinc-500 block mb-1">
-                        State of Residence (IRS)
-                      </label>
-                      <select
-                        value={stateOfResidence}
-                        onChange={(e) => setStateOfResidence(e.target.value)}
-                        className="w-full h-9 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none"
-                      >
-                        {NIGERIAN_STATES.map((st) => (
-                          <option key={st} value={st}>
-                            {st}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-semibold text-zinc-500 block mb-1">
-                        Taxpayer ID / PAYE No
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. N-1849204"
-                        value={payeNumber}
-                        onChange={(e) => setPayeNumber(e.target.value)}
-                        className="w-full h-9 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
+                {/* State of Residence & Tax ID Inputs */}
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50">
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">
+                      State of Residence (IRS)
+                    </label>
+                    <select
+                      value={stateOfResidence}
+                      onChange={(e) => setStateOfResidence(e.target.value)}
+                      className="w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                    >
+                      {NIGERIAN_STATES.map((st) => (
+                        <option key={st} value={st}>
+                          {st}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="text-[10px] font-semibold text-zinc-500 block mb-1">
-                        Pension Fund (PFA)
-                      </label>
-                      <select
-                        value={pfaName}
-                        onChange={(e) => setPfaName(e.target.value)}
-                        className="w-full h-9 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none"
-                      >
-                        <option value="">Select PFA...</option>
-                        {NIGERIAN_PFAS.map((pfa) => (
-                          <option key={pfa} value={pfa}>
-                            {pfa}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-semibold text-zinc-500 block mb-1">
-                        RSA PIN / Pension No
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="PEN100..."
-                        value={pensionNumber}
-                        onChange={(e) => setPensionNumber(e.target.value)}
-                        className="w-full h-9 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">
+                      Taxpayer ID / PAYE No
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. N-1849204"
+                      value={payeNumber}
+                      onChange={(e) => setPayeNumber(e.target.value)}
+                      className="w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                    />
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* Pension Scheme Block */}
+              <div className="space-y-2 bg-zinc-50/70 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
+                      Pension Scheme (8% RSA)
+                    </span>
+                    <span className="text-[10px] text-zinc-400">
+                      Statutory 8% Employee + 10% Employer
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHasPension(!hasPension)}
+                    className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                      hasPension ? 'bg-emerald-600' : 'bg-zinc-200 dark:bg-zinc-700'
+                    }`}
+                  >
+                    <div
+                      className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transition-transform absolute top-0.75 ${
+                        hasPension ? 'right-1' : 'left-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* PFA & RSA PIN Inputs */}
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-200/50 dark:border-zinc-800/50">
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">
+                      Pension Fund (PFA)
+                    </label>
+                    <select
+                      value={pfaName}
+                      onChange={(e) => setPfaName(e.target.value)}
+                      className="w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="">Select PFA...</option>
+                      {NIGERIAN_PFAS.map((pfa) => (
+                        <option key={pfa} value={pfa}>
+                          {pfa}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">
+                      Pension RSA PIN
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. PEN100829104"
+                      value={pensionNumber}
+                      onChange={(e) => setPensionNumber(e.target.value)}
+                      className="w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
 
             </div>
 

@@ -41,7 +41,10 @@ import {
   setActiveTeamMember,
   joinPresenceChannel,
   leavePresenceChannel,
-  SupabaseCloudConfig 
+  SupabaseCloudConfig,
+  isStandaloneOfflineMode,
+  setStandaloneOfflineMode,
+  LOCAL_STANDALONE_ADMIN
 } from '../../services/supabaseClient';
 import { loadCompaniesRegistry } from '../../store/usePayrollStore';
 import { SUPABASE_SQL_SCHEMA } from '../../constants/supabaseSchema';
@@ -164,6 +167,8 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
   const [confirmPersonalPassword, setConfirmPersonalPassword] = useState('');
   const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [showNewPersonalPassword, setShowNewPersonalPassword] = useState(false);
+  const [showConfirmPersonalPassword, setShowConfirmPersonalPassword] = useState(false);
 
   useEffect(() => {
     checkGatewayState();
@@ -174,6 +179,13 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
     setConnectError(null);
 
     const cfg = getSavedCloudConfig();
+    // If user previously selected standalone offline mode, bypass server connect gate
+    if (isStandaloneOfflineMode() && !cfg.isEnabled) {
+      const localAdmin = getActiveTeamMember() || LOCAL_STANDALONE_ADMIN;
+      onAuthenticated(localAdmin, loadCompaniesRegistry());
+      return;
+    }
+
     if (!cfg.isEnabled || !cfg.url || !cfg.anonKey) {
       setViewMode('connect_server');
       setIsLoadingCheck(false);
@@ -308,6 +320,12 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
     }
   };
 
+  const handleContinueOffline = () => {
+    setStandaloneOfflineMode(true);
+    setActiveTeamMember(LOCAL_STANDALONE_ADMIN);
+    onAuthenticated(LOCAL_STANDALONE_ADMIN, loadCompaniesRegistry());
+  };
+
   const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginIdentifier.trim() || !loginPassword.trim()) {
@@ -384,6 +402,16 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
     } else {
       setPasswordChangeError(res.error || 'Failed to update password');
     }
+  };
+
+  const handleCancelPasswordChange = () => {
+    setNewPersonalPassword('');
+    setConfirmPersonalPassword('');
+    setPasswordChangeError(null);
+    setShowNewPersonalPassword(false);
+    setShowConfirmPersonalPassword(false);
+    setCurrentMember(null);
+    setViewMode('staff_login');
   };
 
   const handleOpenForgotModal = () => {
@@ -729,13 +757,21 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   )}
                 </button>
 
-                <div className="flex items-center justify-center pt-2 text-[11px]">
+                <div className="flex items-center justify-between pt-2 text-[11px]">
                   <button
                     type="button"
                     onClick={() => setViewMode('connect_server')}
                     className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition cursor-pointer"
                   >
                     Change Server
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleContinueOffline}
+                    className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition cursor-pointer flex items-center gap-1"
+                  >
+                    <WifiOff className="w-3 h-3 text-zinc-400" />
+                    <span>Work Offline</span>
                   </button>
                 </div>
               </form>
@@ -804,26 +840,26 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   )}
                 </button>
 
-                {connectError && loadCompaniesRegistry().length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const localMember: TeamMember = {
-                        id: 'offline-operator',
-                        name: 'Local Offline Operator',
-                        email: 'offline@device',
-                        role: 'Admin',
-                        mustChangePassword: false,
-                        isActive: true,
-                      };
-                      onAuthenticated(localMember, []);
-                    }}
-                    className="w-full h-9 mt-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-700 dark:text-zinc-200 font-medium rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <WifiOff className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Continue in Offline Mode (Local Data)</span>
-                  </button>
-                )}
+                <div className="relative my-3">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-semibold">
+                    <span className="bg-white dark:bg-[#121215] px-2 text-zinc-400">or work offline</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleContinueOffline}
+                  className="w-full h-9 bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-medium rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-2 border border-zinc-200/80 dark:border-zinc-700/60 shadow-2xs"
+                >
+                  <WifiOff className="w-3.5 h-3.5 text-zinc-500" />
+                  <span>Continue in Offline / Standalone Mode</span>
+                </button>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center">
+                  Store company records privately on this device. No server required.
+                </p>
 
                 <div className="pt-2 flex items-center justify-between text-[11px]">
                   {cloudConfig.url && (
@@ -1001,6 +1037,19 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
           {/* ================= 4. MUST CHANGE PASSWORD VIEW ================= */}
           {viewMode === 'must_change_password' && (
             <>
+              {/* Back navigation at top */}
+              <div className="w-full flex items-center justify-start mb-2">
+                <button
+                  type="button"
+                  onClick={handleCancelPasswordChange}
+                  className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-xs flex items-center gap-1 transition cursor-pointer p-1 -ml-1 rounded"
+                  title="Back to Sign In"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back</span>
+                </button>
+              </div>
+
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 text-center tracking-tight mb-0.5">
                 Set Personal Password
               </h2>
@@ -1009,26 +1058,42 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
               </p>
 
               <form onSubmit={handleUpdatePassword} className="w-full space-y-2.5">
-                <div>
+                <div className="relative flex items-center">
                   <input
-                    type="password"
+                    type={showNewPersonalPassword ? 'text' : 'password'}
                     required
                     placeholder="New password (min 6 chars)"
                     value={newPersonalPassword}
                     onChange={(e) => setNewPersonalPassword(e.target.value)}
-                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
+                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg pl-3 pr-9 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPersonalPassword(v => !v)}
+                    className="absolute right-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 cursor-pointer"
+                    title={showNewPersonalPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showNewPersonalPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
 
-                <div>
+                <div className="relative flex items-center">
                   <input
-                    type="password"
+                    type={showConfirmPersonalPassword ? 'text' : 'password'}
                     required
                     placeholder="Repeat new password"
                     value={confirmPersonalPassword}
                     onChange={(e) => setConfirmPersonalPassword(e.target.value)}
-                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
+                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg pl-3 pr-9 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPersonalPassword(v => !v)}
+                    className="absolute right-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 cursor-pointer"
+                    title={showConfirmPersonalPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPersonalPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
 
                 {passwordChangeError && (
@@ -1052,6 +1117,18 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                     </>
                   )}
                 </button>
+
+                {/* Back to sign in link */}
+                <div className="flex items-center justify-center pt-2 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={handleCancelPasswordChange}
+                    className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-3 h-3" />
+                    <span>Back to Sign In</span>
+                  </button>
+                </div>
               </form>
             </>
           )}

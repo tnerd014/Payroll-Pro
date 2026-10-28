@@ -15,7 +15,7 @@ import {
   ChevronUp,
   Edit3
 } from 'lucide-react';
-import { Employee, EmployeeLoan, LoanType, LoanStatus, CalculatedPayrollItem, CompanyProfile } from '../../types';
+import { Employee, EmployeeLoan, LoanType, LoanStatus, CalculatedPayrollItem, CompanyProfile, TeamMember } from '../../types';
 import { formatNaira, formatDate } from '../../engine/payePensionEngine';
 import { TablePagination } from '../common/TablePagination';
 
@@ -34,6 +34,7 @@ interface LoansAdvancesViewProps {
   onRecordManualPayment: (id: string, amount: number, notes?: string, reference?: string) => void;
   onApplyLoanDeduction?: (loanId: string, periodKey?: string) => void;
   onApplyAllLoanDeductions?: (periodKey?: string) => void;
+  currentUser?: TeamMember | null;
 }
 
 export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
@@ -49,7 +50,9 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   onRecordManualPayment,
   onApplyLoanDeduction,
   onApplyAllLoanDeductions,
+  currentUser,
 }) => {
+  const isAuditor = currentUser?.role === 'Auditor';
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'All' | LoanType>('All');
@@ -378,14 +381,16 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleOpenAddModal}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors cursor-pointer shadow-none"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Loan / Advance</span>
-            </button>
+            {!isAuditor && (
+              <button
+                type="button"
+                onClick={handleOpenAddModal}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors cursor-pointer shadow-none"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Loan / Advance</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -515,7 +520,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                           ? 'No staff loans or salary advances registered yet.' 
                           : 'No facilities match your search.'}
                       </p>
-                      {loans.length === 0 && (
+                      {loans.length === 0 && !isAuditor && (
                         <button
                           type="button"
                           onClick={handleOpenAddModal}
@@ -679,21 +684,23 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                               className="fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left loan-actions-dropdown"
                             >
                               {/* 1. Edit Facility */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveMenuLoanId(null);
-                                  setMenuCoords(null);
-                                  setEditingLoan(loan);
-                                }}
-                                className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                              >
-                                <Edit3 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                                <span>Edit Facility</span>
-                              </button>
+                              {!isAuditor && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuLoanId(null);
+                                    setMenuCoords(null);
+                                    setEditingLoan(loan);
+                                  }}
+                                  className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                  <span>Edit Facility</span>
+                                </button>
+                              )}
 
                               {/* 2. Pause / Resume Deductions */}
-                              {!isPaid && (
+                              {!isPaid && !isAuditor && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -731,23 +738,26 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                                 <span>Repayment Ledger</span>
                               </button>
 
-                              <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
-
                               {/* 4. Delete Facility */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveMenuLoanId(null);
-                                  setMenuCoords(null);
-                                  if (window.confirm(`Delete ${loan.type} record for ${empFullName}?`)) {
-                                    onDeleteLoan(loan.id);
-                                  }
-                                }}
-                                className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                <span>Delete Facility</span>
-                              </button>
+                              {!isAuditor && (
+                                <>
+                                  <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuLoanId(null);
+                                      setMenuCoords(null);
+                                      if (window.confirm(`Delete ${loan.type} record for ${empFullName}?`)) {
+                                        onDeleteLoan(loan.id);
+                                      }
+                                    }}
+                                    className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                    <span>Delete Facility</span>
+                                  </button>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>

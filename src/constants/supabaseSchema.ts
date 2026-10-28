@@ -254,12 +254,17 @@ ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Payroll Officer';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS pin TEXT DEFAULT '1234';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS password TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS password_hint TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS security_question TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS security_answer TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS recovery_email TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS temp_password TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;
-ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS avatar_color TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS two_factor_secret TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS biometric_enabled BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Audit Logs columns

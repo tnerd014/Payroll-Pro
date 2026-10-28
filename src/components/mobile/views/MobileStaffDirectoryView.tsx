@@ -10,7 +10,7 @@ import {
   ChevronDown,
   CheckCircle2
 } from 'lucide-react';
-import { Employee, EmploymentTypeRule, SalaryCalculationMode } from '../../../types';
+import { Employee, EmploymentTypeRule, SalaryCalculationMode, TeamMember } from '../../../types';
 import { MobileStaffCard } from '../MobileStaffCard';
 import { MobileStaffDetailSheet } from '../MobileStaffDetailSheet';
 import { MobileEmployeeFormSheet } from '../MobileEmployeeFormSheet';
@@ -26,6 +26,7 @@ interface MobileStaffDirectoryViewProps {
   employmentTypeRules?: EmploymentTypeRule[];
   currentMonth?: string;
   currentYear?: number;
+  currentUser?: TeamMember | null;
 }
 
 export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> = ({
@@ -38,7 +39,9 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
   employmentTypeRules,
   currentMonth,
   currentYear,
+  currentUser,
 }) => {
+  const isAuditor = currentUser?.role === 'Auditor';
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedDept, setSelectedDept] = useState('ALL');
@@ -71,11 +74,13 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
   const activeCount = safeEmployees.filter(e => e.status === 'Active').length;
 
   const handleOpenAdd = () => {
+    if (isAuditor) return;
     setEditingEmp(null);
     setIsFormModalOpen(true);
   };
 
   const handleEdit = (emp: Employee) => {
+    if (isAuditor) return;
     setEditingEmp(emp);
     setIsFormModalOpen(true);
   };
@@ -213,17 +218,19 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
       </div>
 
       {/* ── Android Material 3 Floating Action Button (FAB) ── */}
-      <div className="fixed bottom-[80px] right-4 z-50 pointer-events-auto">
-        <button
-          type="button"
-          onClick={handleOpenAdd}
-          className="w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10"
-          title="Add Staff Member"
-          aria-label="Add Staff Member"
-        >
-          <Plus className="w-7 h-7" />
-        </button>
-      </div>
+      {!isAuditor && (
+        <div className="fixed bottom-[80px] right-4 z-50 pointer-events-auto">
+          <button
+            type="button"
+            onClick={handleOpenAdd}
+            className="w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10"
+            title="Add Staff Member"
+            aria-label="Add Staff Member"
+          >
+            <Plus className="w-7 h-7" />
+          </button>
+        </div>
+      )}
 
       {/* ── Safe Read-Only Staff Profile Detail Sheet ── */}
       {selectedStaff && (
@@ -236,6 +243,7 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
             handleEdit(emp);
           }}
           onDelete={onDeleteEmployee}
+          isReadOnly={isAuditor}
         />
       )}
 

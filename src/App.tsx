@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Save, Smartphone } from 'lucide-react';
+import { AlertTriangle, Save, Smartphone, Lock, Fingerprint, WifiOff, RefreshCw } from 'lucide-react';
 import { usePayrollStore } from './store/usePayrollStore';
 import { DesktopTitleBar } from './components/layout/DesktopTitleBar';
 import { SidebarNav } from './components/layout/SidebarNav';
@@ -17,9 +17,22 @@ import { AppView, CompanyAccount, TeamMember } from './types';
 import { CloudStaffGate } from './components/auth/CloudStaffGate';
 import { MobileAppShell } from './components/mobile/MobileAppShell';
 import { AndroidDeviceFrame } from './components/mobile/AndroidDeviceFrame';
+import { UserProfilePage } from './components/profile/UserProfilePage';
 import { Capacitor } from '@capacitor/core';
-import { getActiveTeamMember, setActiveTeamMember, saveCloudConfig, leavePresenceChannel, joinPresenceChannel, fetchCompaniesFromSupabase, getSupabaseClient, subscribeToMemberUpdates } from './services/supabaseClient';
-import { purgeAllLocalDataOnDisconnect } from './store/usePayrollStore';
+import { 
+  getActiveTeamMember, 
+  setActiveTeamMember, 
+  saveCloudConfig, 
+  leavePresenceChannel, 
+  joinPresenceChannel, 
+  fetchCompaniesFromSupabase, 
+  getSupabaseClient, 
+  subscribeToMemberUpdates,
+  getInactivityLockMinutes,
+  setStandaloneOfflineMode,
+} from './services/supabaseClient';
+import { verifyBiometric } from './utils/security';
+import { purgeAllLocalDataOnDisconnect, confirmDisconnectWithPendingSync } from './store/usePayrollStore';
 
 export const App: React.FC = () => {
   const [authenticatedMember, setAuthenticatedMember] = useState<TeamMember | null>(() => getActiveTeamMember());
@@ -27,19 +40,94 @@ export const App: React.FC = () => {
   const authenticatedMemberRef = useRef<TeamMember | null>(authenticatedMember);
   useEffect(() => { authenticatedMemberRef.current = authenticatedMember; }, [authenticatedMember]);
 
+
+
   const handleSignOut = () => {
     leavePresenceChannel();
+    setStandaloneOfflineMode(false);
     setActiveTeamMember(null);
     setAuthenticatedMember(null);
   };
 
+  // Inactivity Auto-Lock State & Timers
+  const [isScreenLocked, setIsScreenLocked] = useState(false);
+  const [lockPinAttempt, setLockPinAttempt] = useState('');
+  const [lockError, setLockError] = useState<string | null>(null);
+  const [isBiometricTesting, setIsBiometricTesting] = useState(false);
+  const lastActivityRef = useRef(Date.now());
+
+  useEffect(() => {
+    const updateActivity = () => { lastActivityRef.current = Date.now(); };
+    window.addEventListener('mousemove', updateActivity);
+    window.addEventListener('mousedown', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('touchstart', updateActivity);
+    window.addEventListener('scroll', updateActivity);
+
+    const interval = setInterval(() => {
+      const lockMins = getInactivityLockMinutes();
+      if (lockMins > 0 && authenticatedMemberRef.current) {
+        const elapsed = (Date.now() - lastActivityRef.current) / 1000 / 60;
+        if (elapsed >= lockMins && !isScreenLocked) {
+          setIsScreenLocked(true);
+        }
+      }
+    }, 15000);
+
+    return () => {
+      window.removeEventListener('mousemove', updateActivity);
+      window.removeEventListener('mousedown', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('touchstart', updateActivity);
+      window.removeEventListener('scroll', updateActivity);
+      clearInterval(interval);
+    };
+  }, [isScreenLocked]);
+
+  const handleUnlockScreen = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLockError(null);
+    if (!authenticatedMember) {
+      setIsScreenLocked(false);
+      return;
+    }
+    const cleanAttempt = lockPinAttempt.trim();
+    const isPinMatch = Boolean(authenticatedMember.pin && authenticatedMember.pin === cleanAttempt);
+    const isPassMatch = Boolean(authenticatedMember.password && authenticatedMember.password === cleanAttempt);
+    if (isPinMatch || isPassMatch) {
+      setIsScreenLocked(false);
+      setLockPinAttempt('');
+      lastActivityRef.current = Date.now();
+    } else {
+      setLockError('Incorrect PIN or password');
+    }
+  };
+
+  const handleBiometricUnlock = async () => {
+    if (!authenticatedMember) return;
+    setIsBiometricTesting(true);
+    setLockError(null);
+    const res = await verifyBiometric(authenticatedMember.id);
+    setIsBiometricTesting(false);
+    if (res.success) {
+      setIsScreenLocked(false);
+      setLockPinAttempt('');
+      lastActivityRef.current = Date.now();
+    } else {
+      setLockError(res.error || 'Biometric scan failed');
+    }
+  };
+
   const handleDisconnectServer = () => {
+    if (!confirmDisconnectWithPendingSync()) return;
     leavePresenceChannel();
     purgeAllLocalDataOnDisconnect();
+    setStandaloneOfflineMode(false);
     setActiveTeamMember(null);
     setAuthenticatedMember(null);
     saveCloudConfig({ url: '', anonKey: '', isEnabled: false });
     setCompaniesList([]);
+    window.location.reload();
   };
 
   // Rejoin presence channel when the app loads with an existing session.
@@ -90,9 +178,13 @@ export const App: React.FC = () => {
       const newEmail = row.email ?? current.email;
       const newIsActive = row.is_active !== undefined ? Boolean(row.is_active) : current.isActive;
 
+      const roleChanged = newRole !== current.role;
+
+
+
       // Only re-render if something actually changed
       if (
-        newRole !== current.role ||
+        roleChanged ||
         newName !== current.name ||
         newEmail !== current.email ||
         newIsActive !== current.isActive
@@ -192,6 +284,12 @@ export const App: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticatedMember?.id]);
 
+  const handleUpdateCurrentUser = (updated: TeamMember) => {
+    authenticatedMemberRef.current = updated;
+    setAuthenticatedMember(updated);
+    setActiveTeamMember(updated);
+  };
+
   const {
     state,
     companies,
@@ -238,7 +336,13 @@ export const App: React.FC = () => {
     applyAllPeriodLoanDeductions,
     resetAllData,
     reloadFromStorage,
+    isWorkspaceLoading,
+    isCloudOffline,
   } = usePayrollStore();
+
+  const effectiveMember = isCloudOffline && authenticatedMember
+    ? { ...authenticatedMember, role: 'Auditor' as const }
+    : authenticatedMember;
 
   const [refreshTick, setRefreshTick] = useState(0);
   const [addEmployeeTrigger, setAddEmployeeTrigger] = useState(0);
@@ -411,6 +515,7 @@ export const App: React.FC = () => {
         onToggleTheme={toggleTheme}
         onCompaniesSynced={setCompaniesList}
         currentUser={authenticatedMember}
+        onUpdateCurrentUser={handleUpdateCurrentUser}
         onSignOut={handleSignOut}
         onDisconnectServer={handleDisconnectServer}
         isMobileView={isMobileViewport || isSimulatorMode}
@@ -433,6 +538,54 @@ export const App: React.FC = () => {
   if (isMobileViewport || isSimulatorMode) {
     return (
       <div className={`fixed inset-0 w-full h-full overflow-hidden flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
+        {/* Mobile Offline Read-Only Banner */}
+        {isCloudOffline && (
+          <div className="no-print bg-amber-500 text-white dark:bg-amber-600 px-3 py-1.5 text-[11px] font-semibold flex items-center justify-between shadow-xs shrink-0 z-30">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <WifiOff className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">
+                Offline Mode (Read-Only) &bull; Cloud connection offline.
+              </span>
+            </div>
+            <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-600/60 shrink-0">
+              Read-Only
+            </span>
+          </div>
+        )}
+
+        {/* Mobile Workspace Loading Transition */}
+        {isWorkspaceLoading && activeCompanyId && (
+          <div className="fixed inset-0 z-[9999] bg-[#fbfbfb]/90 dark:bg-[#09090b]/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 animate-in fade-in duration-150">
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl flex flex-col items-center max-w-xs w-full text-center space-y-4 animate-in zoom-in-95">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 border border-zinc-200/90 dark:border-zinc-700 shadow-md flex items-center justify-center text-zinc-900 dark:text-zinc-100 font-bold text-2xl relative">
+                {state.company?.logoUrl ? (
+                  <img src={state.company.logoUrl} alt="" className="w-12 h-12 object-contain rounded-xl" />
+                ) : (
+                  state.company?.name?.charAt(0) || 'P'
+                )}
+                <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 ring-2 ring-white dark:ring-zinc-900"></span>
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate max-w-[240px]">
+                  {state.company?.name || 'Workspace'}
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Synchronizing records from cloud...
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1 text-[11px] text-zinc-400 font-mono">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                <span>Verifying database records</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <MobileAppShell
           activeView={state.activeView}
           onNavigate={handleRequestNavigate}
@@ -468,7 +621,8 @@ export const App: React.FC = () => {
           isLocked={Boolean(activeSnapshot?.isLocked)}
           isDarkTheme={isDarkTheme}
           onToggleTheme={toggleTheme}
-          currentUser={authenticatedMember}
+          currentUser={effectiveMember}
+          onUpdateCurrentUser={handleUpdateCurrentUser}
           onSignOut={handleSignOut}
           payrollItems={currentPayrollItems}
           employees={state.employees}
@@ -476,12 +630,17 @@ export const App: React.FC = () => {
           snapshots={state.snapshots}
           loans={state.loans || []}
           departments={state.departments || []}
+          onAddDepartment={addDepartment}
+          onUpdateDepartment={updateDepartment}
+          onDeleteDepartment={deleteDepartment}
           payrollVariables={state.payrollVariables}
           payeTaxVariables={state.payeTaxVariables}
           payslipDesign={state.payslipDesign}
           savedPresets={savedPayslipPresets}
           onUpdatePayslipDesign={updatePayslipDesign}
           onResetPayslipDesign={resetPayslipDesign}
+          onSavePreset={savePayslipPreset}
+          onDeletePreset={deletePayslipPreset}
           onFinalizeAndLock={finalizeAndLockPayroll}
           onUnlock={unlockPayroll}
           onAddEmployee={addEmployee}
@@ -498,6 +657,8 @@ export const App: React.FC = () => {
           isPhoneFramePreview={isSimulatorMode && !isMobileViewport}
           onTogglePhoneFrame={toggleSimulatorMode}
         />
+
+
       </div>
     );
   }
@@ -505,6 +666,8 @@ export const App: React.FC = () => {
   return (
     <div className={`h-screen w-screen flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
       
+
+
       {/* Desktop Native Title Bar with Menu Bar */}
       <ErrorBoundary
         fallback={
@@ -566,10 +729,25 @@ export const App: React.FC = () => {
           onSoftReload={handleSoftReload}
           onTriggerAddEmployee={handleTriggerAddEmployee}
           onLockOrSwitchCompany={handleExplicitLockOrSwitch}
-          currentUser={authenticatedMember}
+          currentUser={effectiveMember}
           onSignOut={handleSignOut}
         />
       </ErrorBoundary>
+
+      {/* Desktop Offline Read-Only Banner */}
+      {isCloudOffline && (
+        <div className="no-print bg-amber-500 text-white dark:bg-amber-600 px-4 py-1.5 text-xs font-semibold flex items-center justify-between shadow-xs shrink-0 z-30 animate-in fade-in">
+          <div className="flex items-center gap-2 min-w-0">
+            <WifiOff className="w-4 h-4 shrink-0 text-amber-100" />
+            <span className="truncate">
+              Offline Mode (Read-Only) &bull; Cloud connection is offline. Changes are disabled to protect data integrity.
+            </span>
+          </div>
+          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-600/60 dark:bg-amber-700/60 shrink-0">
+            Read-Only
+          </span>
+        </div>
+      )}
 
       {/* Main Window Body (Sidebar + Content) */}
       <div className="flex-1 flex overflow-hidden">
@@ -626,6 +804,7 @@ export const App: React.FC = () => {
                 employmentTypeRules={state.payrollVariables.employmentTypeRules}
                 addEmployeeTrigger={addEmployeeTrigger}
                 loans={state.loans || []}
+                currentUser={effectiveMember}
               />
             ) : state.activeView === 'payroll' ? (
               <PayrollProcessingView
@@ -653,6 +832,7 @@ export const App: React.FC = () => {
                 onSavePreset={savePayslipPreset}
                 onDeletePreset={deletePayslipPreset}
                 loans={state.loans || []}
+                currentUser={effectiveMember}
               />
             ) : state.activeView === 'loans' ? (
               <LoansAdvancesView
@@ -670,6 +850,7 @@ export const App: React.FC = () => {
                 onRecordManualPayment={recordManualLoanRepayment}
                 onApplyLoanDeduction={applyPeriodLoanDeduction}
                 onApplyAllLoanDeductions={applyAllPeriodLoanDeductions}
+                currentUser={effectiveMember}
               />
             ) : (
               <div className="max-w-6xl mx-auto space-y-4">
@@ -687,6 +868,16 @@ export const App: React.FC = () => {
                     payrollVariables={state.payrollVariables}
                     payeTaxVariables={state.payeTaxVariables}
                     onPeriodChange={setSelectedPeriod}
+                  />
+                )}
+
+                {state.activeView === 'profile' && (
+                  <UserProfilePage
+                    currentUser={authenticatedMember}
+                    onBack={() => handleRequestNavigate('dashboard')}
+                    onUpdateCurrentUser={handleUpdateCurrentUser}
+                    onSignOut={handleSignOut}
+                    isMobileView={false}
                   />
                 )}
 
@@ -742,7 +933,7 @@ export const App: React.FC = () => {
                   onNavigate={handleRequestNavigate}
                   onRegisterDirtyState={setUnsavedSettingsInfo}
                   onRefreshData={handleSoftReload}
-                  currentUser={authenticatedMember}
+                  currentUser={effectiveMember}
                 />
               )}
             </div>
@@ -758,6 +949,7 @@ export const App: React.FC = () => {
           isOpen={isCompanySettingsOpen}
           company={state.company}
           onSave={updateCompanyProfile}
+          isReadOnly={isCloudOffline}
           onClose={() => setIsCompanySettingsOpen(false)}
         />
       )}
@@ -845,6 +1037,126 @@ export const App: React.FC = () => {
             <Smartphone className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
             <span>Android Mobile View</span>
           </button>
+        </div>
+      )}
+
+      {/* ================= INACTIVITY WORKSTATION LOCK OVERLAY ================= */}
+      {isScreenLocked && authenticatedMember && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl text-center space-y-5">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center mx-auto shadow-inner">
+              <Lock className="w-6 h-6 text-amber-500" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                Workstation Locked
+              </h3>
+              <p className="text-xs text-zinc-400">
+                Screen locked due to inactivity. Enter your PIN or password to resume.
+              </p>
+            </div>
+
+            {/* User Badge */}
+            <div className="flex items-center justify-center gap-2.5 py-2 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-100 dark:border-zinc-800">
+              <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
+                {(authenticatedMember.name || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="text-left min-w-0">
+                <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                  {authenticatedMember.name}
+                </p>
+                <p className="text-[10px] text-zinc-400 truncate">
+                  {authenticatedMember.role}
+                </p>
+              </div>
+            </div>
+
+            {lockError && (
+              <p className="text-xs text-rose-500 font-medium animate-in fade-in">
+                {lockError}
+              </p>
+            )}
+
+            <form onSubmit={handleUnlockScreen} className="space-y-3">
+              <input
+                type="password"
+                autoFocus
+                placeholder="Enter 4-digit PIN or password"
+                value={lockPinAttempt}
+                onChange={(e) => setLockPinAttempt(e.target.value)}
+                className="w-full h-11 text-center font-mono text-base font-bold tracking-widest bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400 transition"
+              />
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={!lockPinAttempt}
+                  className="flex-1 h-10 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-40"
+                >
+                  Unlock Workstation
+                </button>
+
+                {authenticatedMember.biometricEnabled && (
+                  <button
+                    type="button"
+                    onClick={handleBiometricUnlock}
+                    disabled={isBiometricTesting}
+                    title="Unlock with Biometric Passkey"
+                    className="w-10 h-10 bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 rounded-xl flex items-center justify-center cursor-pointer hover:bg-violet-100 transition shrink-0"
+                  >
+                    <Fingerprint className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            </form>
+
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsScreenLocked(false);
+                  handleSignOut();
+                }}
+                className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer font-medium"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Workspace Loading Transition */}
+      {isWorkspaceLoading && activeCompanyId && (
+        <div className="fixed inset-0 z-[9999] bg-[#fbfbfb]/90 dark:bg-[#09090b]/90 backdrop-blur-xs flex flex-col items-center justify-center p-8 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl flex flex-col items-center max-w-sm w-full text-center space-y-5 animate-in zoom-in-95">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 border border-zinc-200/90 dark:border-zinc-700 shadow-md flex items-center justify-center text-zinc-900 dark:text-zinc-100 font-bold text-3xl relative">
+              {state.company?.logoUrl ? (
+                <img src={state.company.logoUrl} alt="" className="w-16 h-16 object-contain rounded-xl" />
+              ) : (
+                state.company?.name?.charAt(0) || 'P'
+              )}
+              <span className="absolute -bottom-1 -right-1 flex h-5 w-5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-5 w-5 bg-emerald-500 ring-2 ring-white dark:ring-zinc-900"></span>
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="font-bold text-base text-zinc-900 dark:text-zinc-100 truncate max-w-[280px]">
+                {state.company?.name || 'Workspace'}
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Synchronizing records from cloud...
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1 text-xs text-zinc-400 font-mono">
+              <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
+              <span>Verifying database records</span>
+            </div>
+          </div>
         </div>
       )}
 

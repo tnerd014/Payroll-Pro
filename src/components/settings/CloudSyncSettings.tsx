@@ -24,7 +24,7 @@ import {
   setActiveTeamMember,
   SupabaseCloudConfig 
 } from '../../services/supabaseClient';
-import { purgeAllLocalDataOnDisconnect } from '../../store/usePayrollStore';
+import { purgeAllLocalDataOnDisconnect, confirmDisconnectWithPendingSync } from '../../store/usePayrollStore';
 import { CompanyProfile, Employee, PayrollVariables, PayeTaxVariables, EmployeeLoan, PayrollSnapshot, PayslipDesignConfig } from '../../types';
 
 interface CloudSyncSettingsProps {
@@ -116,6 +116,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
   };
 
   const handleDisableCloud = () => {
+    if (!confirmDisconnectWithPendingSync()) return;
     const newConfig: SupabaseCloudConfig = {
       ...config,
       isEnabled: false,

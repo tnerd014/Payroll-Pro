@@ -12,10 +12,12 @@ import {
   Banknote, 
   AlertTriangle,
   BadgeCheck,
-  UserCheck
+  UserCheck,
+  Calendar
 } from 'lucide-react';
 import { Employee } from '../../types';
 import { formatNaira } from '../../engine/payePensionEngine';
+import { formatDate } from '../../engine/dateUtils';
 import { MobileBottomSheet } from './MobileBottomSheet';
 
 interface MobileStaffDetailSheetProps {
@@ -24,6 +26,7 @@ interface MobileStaffDetailSheetProps {
   employee: Employee | null;
   onEdit: (emp: Employee) => void;
   onDelete?: (id: string) => void;
+  isReadOnly?: boolean;
 }
 
 export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
@@ -32,6 +35,7 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
   employee,
   onEdit,
   onDelete,
+  isReadOnly = false,
 }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -67,27 +71,29 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
       maxHeight="max-h-[90vh]"
       bodyClassName="px-5 py-4 overflow-y-auto flex-1 space-y-5"
       footer={
-        <div className="flex items-center gap-2.5 w-full">
-          {onDelete && !showDeleteConfirm && (
+        !isReadOnly ? (
+          <div className="flex items-center gap-2.5 w-full">
+            {onDelete && !showDeleteConfirm && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-12 h-12 rounded-2xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                title="Delete Personnel"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="w-12 h-12 rounded-2xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
-              title="Delete Personnel"
+              onClick={handleStartEdit}
+              className="flex-1 h-12 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
             >
-              <Trash2 className="w-4 h-4" />
+              <Edit3 className="w-4 h-4" />
+              <span>Edit Profile</span>
             </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleStartEdit}
-            className="flex-1 h-12 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
-          >
-            <Edit3 className="w-4 h-4" />
-            <span>Edit Profile</span>
-          </button>
-        </div>
+          </div>
+        ) : undefined
       }
     >
       <div className="space-y-5 select-none text-zinc-900 dark:text-zinc-100 pb-2">
@@ -210,32 +216,145 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
           </div>
         </div>
 
-        {/* ── 4. Statutory & Tax Registration (Clean List Rows) ── */}
+        {/* ── 4. Employment Tenure Dates ── */}
         <div className="space-y-2.5">
           <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1">
-            Statutory Credentials
+            Employment Tenure &amp; Dates
           </span>
 
           <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs shadow-2xs">
-            
-            {/* PAYE Tax ID */}
+            {/* Start Date / Hire Date */}
             <div className="flex items-center justify-between p-3.5">
-              <span className="text-zinc-500 dark:text-zinc-400">PAYE Tax ID</span>
+              <span className="text-zinc-500 dark:text-zinc-400">Start Date (Hire)</span>
               <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200">
-                {employee.hasPaye !== false 
-                  ? (employee.payeNumber || 'Enrolled') 
-                  : 'Statutory Exempt'}
+                {employee.startDate ? formatDate(employee.startDate) : 'Not Specified'}
               </span>
             </div>
 
-            {/* Pension / RSA */}
+            {/* Exit Date / Ongoing */}
             <div className="flex items-center justify-between p-3.5">
-              <span className="text-zinc-500 dark:text-zinc-400">Pension (PFA / RSA)</span>
-              <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200 text-right truncate max-w-[220px]">
-                {employee.hasPension !== false
-                  ? (employee.pfaName ? `${employee.pfaName} ${employee.pensionNumber ? `(${employee.pensionNumber})` : ''}` : (employee.pensionNumber || 'Enrolled'))
-                  : 'Statutory Exempt'}
+              <span className="text-zinc-500 dark:text-zinc-400">Exit Date</span>
+              <span className={`font-mono font-semibold ${employee.endDate ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                {employee.endDate ? formatDate(employee.endDate) : 'Active & Ongoing'}
               </span>
+            </div>
+
+            {/* Multi-stint History */}
+            {employee.stints && employee.stints.length > 0 && (
+              <div className="p-3.5 space-y-1.5 bg-zinc-50/50 dark:bg-zinc-900/40">
+                <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
+                  Tenure History ({employee.stints.length} stints)
+                </span>
+                {employee.stints.map((st, idx) => (
+                  <div key={st.stintId || idx} className="flex items-center justify-between text-[11px] text-zinc-600 dark:text-zinc-400 font-mono">
+                    <span>#{idx + 1}: {formatDate(st.startDate)} → {st.endDate ? formatDate(st.endDate) : 'Active'}</span>
+                    {st.exitReason && <span className="text-zinc-400 text-[10px] font-sans">({st.exitReason})</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── 5. Statutory & Tax Registration (Clean List Rows) ── */}
+        <div className="space-y-2.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1">
+            Statutory Credentials &amp; Tax IDs
+          </span>
+
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs shadow-2xs">
+            {/* State of Residence */}
+            <div className="flex items-center justify-between p-3.5">
+              <span className="text-zinc-500 dark:text-zinc-400">State of Residence (IRS)</span>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                {employee.stateOfResidence || 'Lagos State'}
+              </span>
+            </div>
+
+            {/* PAYE Income Tax & Status */}
+            <div className="flex items-center justify-between p-3.5">
+              <div>
+                <span className="text-zinc-500 dark:text-zinc-400 block">PAYE Income Tax</span>
+                <span className="text-[10px] text-zinc-400">
+                  {employee.hasPaye !== false ? 'Standard CRA & PITA Brackets' : 'Exempt from Tax Deductions'}
+                </span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                employee.hasPaye !== false
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-200 dark:border-zinc-700'
+              }`}>
+                {employee.hasPaye !== false ? 'Enrolled' : 'Exempt'}
+              </span>
+            </div>
+
+            {/* Taxpayer ID / PAYE No */}
+            <div className="flex items-center justify-between p-3.5">
+              <span className="text-zinc-500 dark:text-zinc-400">Taxpayer ID (PAYE No)</span>
+              <button
+                type="button"
+                disabled={!employee.payeNumber}
+                onClick={() => employee.payeNumber && handleCopy(employee.payeNumber, 'paye')}
+                className="inline-flex items-center gap-1.5 font-mono font-semibold text-zinc-800 dark:text-zinc-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition cursor-pointer"
+              >
+                <span>{employee.payeNumber || 'Not Registered'}</span>
+                {employee.payeNumber && (
+                  copiedField === 'paye' ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded font-sans">
+                      <Check className="w-3 h-3" /> Copied
+                    </span>
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                  )
+                )}
+              </button>
+            </div>
+
+            {/* Pension Scheme & Status */}
+            <div className="flex items-center justify-between p-3.5">
+              <div>
+                <span className="text-zinc-500 dark:text-zinc-400 block">Pension Scheme</span>
+                <span className="text-[10px] text-zinc-400">
+                  {employee.hasPension !== false ? '8% Employee + 10% Employer' : 'Exempt from Pension Scheme'}
+                </span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                employee.hasPension !== false
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-200 dark:border-zinc-700'
+              }`}>
+                {employee.hasPension !== false ? 'Enrolled' : 'Exempt'}
+              </span>
+            </div>
+
+            {/* Pension PFA */}
+            <div className="flex items-center justify-between p-3.5">
+              <span className="text-zinc-500 dark:text-zinc-400">Pension Fund (PFA)</span>
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-right truncate max-w-[200px]">
+                {employee.pfaName || 'Not Assigned'}
+              </span>
+            </div>
+
+            {/* Pension RSA PIN */}
+            <div className="flex items-center justify-between p-3.5">
+              <span className="text-zinc-500 dark:text-zinc-400">Pension RSA PIN</span>
+              <button
+                type="button"
+                disabled={!employee.pensionNumber}
+                onClick={() => employee.pensionNumber && handleCopy(employee.pensionNumber, 'rsa')}
+                className="inline-flex items-center gap-1.5 font-mono font-semibold text-zinc-800 dark:text-zinc-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition cursor-pointer"
+              >
+                <span>{employee.pensionNumber || 'Not Registered'}</span>
+                {employee.pensionNumber && (
+                  copiedField === 'rsa' ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded font-sans">
+                      <Check className="w-3 h-3" /> Copied
+                    </span>
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                  )
+                )}
+              </button>
             </div>
 
           </div>

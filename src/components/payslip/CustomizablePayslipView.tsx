@@ -331,9 +331,21 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
             </div>
             <div className="sm:text-right">
               {showTitle && (
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/70 block">
-                  {config.payslipTitle}
-                </span>
+                interactive && onUpdateConfig ? (
+                  <input
+                    type="text"
+                    value={config.payslipTitle}
+                    onChange={(e) => onUpdateConfig({ payslipTitle: e.target.value })}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[10px] font-semibold uppercase tracking-wider text-white/90 bg-transparent border-b border-dashed border-white/40 hover:border-white focus:border-white focus:outline-none transition block sm:text-right"
+                    placeholder="OFFICIAL SALARY ADVICE"
+                    title="Tap to edit Document Title directly"
+                  />
+                ) : (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/70 block">
+                    {config.payslipTitle}
+                  </span>
+                )
               )}
               {showPeriod && (
                 <span className="text-sm font-bold font-mono">
@@ -341,9 +353,21 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
                 </span>
               )}
               {showPayslipSubtitle && (
-                <span className="text-[10px] text-white/70 block mt-0.5 italic">
-                  {config.payslipSubtitle}
-                </span>
+                interactive && onUpdateConfig ? (
+                  <input
+                    type="text"
+                    value={config.payslipSubtitle}
+                    onChange={(e) => onUpdateConfig({ payslipSubtitle: e.target.value })}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[10px] text-white/80 bg-transparent border-b border-dashed border-white/40 hover:border-white focus:border-white focus:outline-none transition block mt-0.5 italic sm:text-right"
+                    placeholder="e.g. Strictly Private & Confidential"
+                    title="Tap to edit Document Subtitle directly"
+                  />
+                ) : (
+                  <span className="text-[10px] text-white/70 block mt-0.5 italic">
+                    {config.payslipSubtitle}
+                  </span>
+                )
               )}
             </div>
           </div>
@@ -383,13 +407,45 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
           )}
           {(showTitle || showPeriod) && (
             <div className="pt-2">
-              <span style={themeStyles.accentBadge} className="inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full">
-                {[showTitle ? config.payslipTitle : '', showPeriod ? `${monthLabel.toUpperCase()} ${year}` : ''].filter(Boolean).join(' • ')}
-              </span>
+              {interactive && onUpdateConfig && showTitle ? (
+                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                  <input
+                    type="text"
+                    value={config.payslipTitle}
+                    onChange={(e) => onUpdateConfig({ payslipTitle: e.target.value })}
+                    onClick={(e) => e.stopPropagation()}
+                    style={themeStyles.accentBadge}
+                    className="px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest rounded-full bg-transparent border-b border-dashed border-current/30 text-center"
+                    placeholder="OFFICIAL SALARY ADVICE"
+                    title="Tap to edit Document Title directly"
+                  />
+                  {showPeriod && (
+                    <span style={themeStyles.accentBadge} className="inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full">
+                      {monthLabel.toUpperCase()} {year}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span style={themeStyles.accentBadge} className="inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full">
+                  {[showTitle ? config.payslipTitle : '', showPeriod ? `${monthLabel.toUpperCase()} ${year}` : ''].filter(Boolean).join(' • ')}
+                </span>
+              )}
             </div>
           )}
           {showPayslipSubtitle && (
-            <p className="text-[10px] text-zinc-400 italic">{config.payslipSubtitle}</p>
+            interactive && onUpdateConfig ? (
+              <input
+                type="text"
+                value={config.payslipSubtitle}
+                onChange={(e) => onUpdateConfig({ payslipSubtitle: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] text-zinc-400 bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition block mx-auto text-center mt-0.5 italic"
+                placeholder="e.g. Strictly Private & Confidential"
+                title="Tap to edit Document Subtitle directly"
+              />
+            ) : (
+              <p className="text-[10px] text-zinc-400 italic">{config.payslipSubtitle}</p>
+            )
           )}
         </div>
       ));
@@ -429,9 +485,21 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
         </div>
         <div className="sm:text-right shrink-0">
           {showTitle && (
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 block">
-              {config.payslipTitle}
-            </span>
+            interactive && onUpdateConfig ? (
+              <input
+                type="text"
+                value={config.payslipTitle}
+                onChange={(e) => onUpdateConfig({ payslipTitle: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition block sm:text-right"
+                placeholder="OFFICIAL SALARY ADVICE"
+                title="Tap to edit Document Title directly"
+              />
+            ) : (
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 block">
+                {config.payslipTitle}
+              </span>
+            )
           )}
           {showPeriod && (
             <span className="text-xs font-bold font-mono text-zinc-900 dark:text-zinc-100 block mt-0.5">
@@ -439,9 +507,21 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
             </span>
           )}
           {showPayslipSubtitle && (
-            <span className="text-[10px] text-zinc-400 block mt-0.5 italic">
-              {config.payslipSubtitle}
-            </span>
+            interactive && onUpdateConfig ? (
+              <input
+                type="text"
+                value={config.payslipSubtitle}
+                onChange={(e) => onUpdateConfig({ payslipSubtitle: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] text-zinc-400 bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition block mt-0.5 italic sm:text-right"
+                placeholder="e.g. Strictly Private & Confidential"
+                title="Tap to edit Document Subtitle directly"
+              />
+            ) : (
+              <span className="text-[10px] text-zinc-400 block mt-0.5 italic">
+                {config.payslipSubtitle}
+              </span>
+            )
           )}
         </div>
       </div>
@@ -625,8 +705,20 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
             </div>
           ))}
           {isCol('gross_pay') && (
-            <div className={`flex justify-between font-bold text-zinc-900 dark:text-zinc-100 ${breakdownClasses.totalRow} border-t border-zinc-200 dark:border-zinc-800 px-1.5`}>
-              <span>{config.grossPayLabel || 'Total Gross Remuneration'}:</span>
+            <div className={`flex justify-between items-center font-bold text-zinc-900 dark:text-zinc-100 ${breakdownClasses.totalRow} border-t border-zinc-200 dark:border-zinc-800 px-1.5`}>
+              {interactive && onUpdateConfig ? (
+                <input
+                  type="text"
+                  value={config.grossPayLabel || 'Total Gross Remuneration'}
+                  onChange={(e) => onUpdateConfig({ grossPayLabel: e.target.value })}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition max-w-[240px] text-xs font-bold text-zinc-900 dark:text-zinc-100"
+                  placeholder="Total Gross Remuneration"
+                  title="Tap to edit Gross Pay Label directly"
+                />
+              ) : (
+                <span>{config.grossPayLabel || 'Total Gross Remuneration'}:</span>
+              )}
               <span className={`font-mono ${breakdownClasses.totalNumber}`}>{formatNaira(item.monthlyGross)}</span>
             </div>
           )}
@@ -709,8 +801,20 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
             </div>
           ))}
           {isCol('total_deductions') && (
-            <div className={`flex justify-between font-bold text-zinc-900 dark:text-zinc-100 ${breakdownClasses.totalRow} border-t border-zinc-200 dark:border-zinc-800 px-1.5`}>
-              <span>{config.totalDeductionsLabel || 'Total Deductions'}:</span>
+            <div className={`flex justify-between items-center font-bold text-zinc-900 dark:text-zinc-100 ${breakdownClasses.totalRow} border-t border-zinc-200 dark:border-zinc-800 px-1.5`}>
+              {interactive && onUpdateConfig ? (
+                <input
+                  type="text"
+                  value={config.totalDeductionsLabel || 'Total Deductions'}
+                  onChange={(e) => onUpdateConfig({ totalDeductionsLabel: e.target.value })}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition max-w-[240px] text-xs font-bold text-zinc-900 dark:text-zinc-100"
+                  placeholder="Total Deductions"
+                  title="Tap to edit Total Deductions Label directly"
+                />
+              ) : (
+                <span>{config.totalDeductionsLabel || 'Total Deductions'}:</span>
+              )}
               <span className={`font-mono text-rose-600 dark:text-rose-400 ${breakdownClasses.totalNumber}`}>-{formatNaira(item.totalDeductions)}</span>
             </div>
           )}
@@ -818,7 +922,19 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
         )}
         {isCol('employer_cost') && (
           <div>
-            <span>{config.employerCostLabel || 'Total Monthly Emolument Cost'}: </span>
+            {interactive && onUpdateConfig ? (
+              <input
+                type="text"
+                value={config.employerCostLabel || 'Total Monthly Emolument Cost'}
+                onChange={(e) => onUpdateConfig({ employerCostLabel: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition text-[11px] text-zinc-500 max-w-[200px]"
+                placeholder="Total Monthly Emolument Cost"
+                title="Tap to edit Employer Cost Label directly"
+              />
+            ) : (
+              <span>{config.employerCostLabel || 'Total Monthly Emolument Cost'}: </span>
+            )}
             <strong className="font-mono text-zinc-900 dark:text-zinc-100">{formatNaira(item.employerTotalCost || (item.monthlyGross + item.employerPension))}</strong>
           </div>
         )}
@@ -888,9 +1004,21 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
     if (!isCol('footer_notes')) return null;
     return renderSectionWrapper('footer_notes', (
       <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-400 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <p className="italic max-w-xl">
-          {config.footerNote}
-        </p>
+        {interactive && onUpdateConfig ? (
+          <input
+            type="text"
+            value={config.footerNote}
+            onChange={(e) => onUpdateConfig({ footerNote: e.target.value })}
+            onClick={(e) => e.stopPropagation()}
+            className="italic flex-1 w-full bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition text-[10px] text-zinc-400"
+            placeholder="Computer-generated payslip footnote..."
+            title="Tap to edit Footer Note directly"
+          />
+        ) : (
+          <p className="italic max-w-xl">
+            {config.footerNote}
+          </p>
+        )}
         <span className="font-mono text-[9px] text-zinc-400 shrink-0">
           SECURE PAYSLIP ID: {item.employeeCode}-{year}-{monthLabel.toUpperCase()}
         </span>
@@ -951,7 +1079,7 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
   const isTwoColBreakdown = config.breakdownLayout === 'two-column' && earningsEnabled && deductionsEnabled;
 
   return (
-    <div className={`w-full relative bg-white text-zinc-900 ${scaleClass} ${fontClass} ${roundedClass} ${borderClass} ${densityStyles.padding} ${densityStyles.spacing} shadow-sm print:shadow-none print:break-inside-avoid overflow-hidden print:overflow-visible select-none transition-all`}>
+    <div className={`w-full relative bg-white text-zinc-900 ${scaleClass} ${fontClass} ${roundedClass} ${borderClass} ${densityStyles.padding} ${densityStyles.spacing} shadow-sm print:shadow-none print:break-inside-avoid overflow-hidden print:overflow-visible select-none transition-colors duration-150`}>
       {isCustomScaled && (
         <style>{`
           .${scaleClass} { font-size: ${Math.round(13 * fontScaleRatio * 10) / 10}px; }
@@ -995,7 +1123,7 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
               return null; // already rendered in the two-column container
             }
             return (
-              <div key="two-col-breakdown" className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div key="two-col-breakdown" className="grid grid-cols-2 gap-4 sm:gap-6">
                 {renderSectionWrapper('earnings', renderEarnings())}
                 {renderSectionWrapper('deductions', renderDeductions())}
               </div>

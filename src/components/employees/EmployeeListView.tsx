@@ -24,9 +24,10 @@ import {
   Calendar,
   AlertTriangle,
   RotateCcw,
-  LogOut
+  LogOut,
+  Eye
 } from 'lucide-react';
-import { Employee, SalaryCalculationMode, EmploymentTypeRule, EmployeeLoan } from '../../types';
+import { Employee, SalaryCalculationMode, EmploymentTypeRule, EmployeeLoan, TeamMember } from '../../types';
 import { formatNaira, getEmployeeGrossForPeriod, formatDate } from '../../engine/payePensionEngine';
 import { EmployeeFormModal } from './EmployeeFormModal';
 import { TablePagination } from '../common/TablePagination';
@@ -49,6 +50,7 @@ interface EmployeeViewModalProps {
   currentYear?: number;
   onClose: () => void;
   onEdit: (emp: Employee) => void;
+  isReadOnly?: boolean;
 }
 
 const InfoRow: React.FC<{ label: string; value: React.ReactNode; icon?: React.ReactNode; mono?: boolean; wide?: boolean }> =
@@ -64,7 +66,7 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode; icon?: React.Re
     </div>
   );
 
-const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth, currentYear, onClose, onEdit }) => {
+const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth, currentYear, onClose, onEdit, isReadOnly }) => {
   // Active payroll cycle month/year for highlighting
   const now = new Date();
   const activeCycleYear = currentYear || now.getFullYear();
@@ -365,14 +367,16 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
             Viewing comprehensive staff record &bull; <span className="font-mono text-zinc-600 dark:text-zinc-400 font-medium">[{emp.code}]</span>
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            <button
-              type="button"
-              onClick={() => onEdit(emp)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold transition cursor-pointer shadow-xs"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Profile</span>
-            </button>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={() => onEdit(emp)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold transition cursor-pointer shadow-xs"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Profile</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -656,6 +660,7 @@ interface EmployeeListViewProps {
   salaryCalculationMode?: SalaryCalculationMode;
   employmentTypeRules?: EmploymentTypeRule[];
   addEmployeeTrigger?: number;
+  currentUser?: TeamMember | null;
 }
 
 export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
@@ -672,7 +677,9 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
   salaryCalculationMode = 'gross-to-net',
   employmentTypeRules,
   addEmployeeTrigger,
+  currentUser,
 }) => {
+  const isAuditor = currentUser?.role === 'Auditor';
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [selectedType, setSelectedType] = useState('ALL');
@@ -932,14 +939,15 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-
-            <button
-              onClick={() => { setEditingEmp(null); setModalTab('quick'); setIsModalOpen(true); }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none cursor-pointer"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Add Employee</span>
-            </button>
+            {!isAuditor && (
+              <button
+                onClick={() => { setEditingEmp(null); setModalTab('quick'); setIsModalOpen(true); }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Add Employee</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1182,19 +1190,23 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                       </td>
                       <td className="py-2.5 px-3.5 text-center">
                         <button
+                          disabled={isAuditor}
                           onClick={() => {
+                            if (isAuditor) return;
                             if (emp.status === 'Active') {
                               setExitingEmp(emp);
                             } else {
                               setReactivatingEmp(emp);
                             }
                           }}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition cursor-pointer border ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition border ${
+                            isAuditor ? 'cursor-default opacity-90' : 'cursor-pointer'
+                          } ${
                             emp.status === 'Active' 
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/20' 
-                              : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/20 border-zinc-500/20'
+                              ? `bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ${!isAuditor ? 'hover:bg-emerald-500/20' : ''} border-emerald-500/20` 
+                              : `bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 ${!isAuditor ? 'hover:bg-zinc-500/20' : ''} border-zinc-500/20`
                           }`}
-                          title={emp.status === 'Active' ? 'Click to mark as inactive / exited' : 'Click to re-activate / re-hire'}
+                          title={isAuditor ? `Status: ${emp.status}` : (emp.status === 'Active' ? 'Click to mark as inactive / exited' : 'Click to re-activate / re-hire')}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${emp.status === 'Active' ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
                           <span>{emp.status}</span>
@@ -1246,56 +1258,73 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                                 onClick={() => {
                                   setActiveMenuEmpId(null);
                                   setMenuCoords(null);
-                                  handleEdit(emp);
+                                  setViewingEmp(emp);
                                 }}
                                 className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
                               >
-                                <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
-                                <span>Edit Employee</span>
+                                <Eye className="w-3.5 h-3.5 text-zinc-400" />
+                                <span>View Profile</span>
                               </button>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveMenuEmpId(null);
-                                  setMenuCoords(null);
-                                  if (emp.status === 'Active') {
-                                    setExitingEmp(emp);
-                                  } else {
-                                    setReactivatingEmp(emp);
-                                  }
-                                }}
-                                className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                              >
-                                {emp.status === 'Active' ? (
-                                  <>
-                                    <UserX className="w-3.5 h-3.5 text-amber-500" />
-                                    <span>Mark Inactive</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
-                                    <span>Mark Active</span>
-                                  </>
-                                )}
-                              </button>
+                              {!isAuditor && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuEmpId(null);
+                                      setMenuCoords(null);
+                                      handleEdit(emp);
+                                    }}
+                                    className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
+                                    <span>Edit Employee</span>
+                                  </button>
 
-                              <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuEmpId(null);
+                                      setMenuCoords(null);
+                                      if (emp.status === 'Active') {
+                                        setExitingEmp(emp);
+                                      } else {
+                                        setReactivatingEmp(emp);
+                                      }
+                                    }}
+                                    className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                  >
+                                    {emp.status === 'Active' ? (
+                                      <>
+                                        <UserX className="w-3.5 h-3.5 text-amber-500" />
+                                        <span>Mark Inactive</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span>Mark Active</span>
+                                      </>
+                                    )}
+                                  </button>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveMenuEmpId(null);
-                                  setMenuCoords(null);
-                                  if (confirm(`Are you sure you want to delete ${emp.firstName} ${emp.lastName}?`)) {
-                                    onDeleteEmployee(emp.id);
-                                  }
-                                }}
-                                className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete Employee</span>
-                              </button>
+                                  <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuEmpId(null);
+                                      setMenuCoords(null);
+                                      if (confirm(`Are you sure you want to delete ${emp.firstName} ${emp.lastName}?`)) {
+                                        onDeleteEmployee(emp.id);
+                                      }
+                                    }}
+                                    className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Delete Employee</span>
+                                  </button>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1345,6 +1374,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
           currentYear={currentYear}
           onClose={() => setViewingEmp(null)}
           onEdit={(e) => { setViewingEmp(null); handleEdit(e); }}
+          isReadOnly={isAuditor}
         />
       )}
 

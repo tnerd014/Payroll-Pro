@@ -23,7 +23,8 @@ import {
   PayrollVariables, 
   PayeTaxVariables, 
   CompanyProfile,
-  PayslipDesignConfig 
+  PayslipDesignConfig,
+  TeamMember
 } from '../../../types';
 import { formatNaira, formatCompactNaira } from '../../../engine/payePensionEngine';
 import { MobilePayrollCard } from '../MobilePayrollCard';
@@ -44,6 +45,7 @@ interface MobilePayrollRunViewProps {
   payslipDesign?: PayslipDesignConfig;
   departments?: string[];
   onNavigate?: (view: any) => void;
+  currentUser?: TeamMember | null;
 }
 
 export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
@@ -57,7 +59,9 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
   payslipDesign,
   departments = [],
   onNavigate,
+  currentUser,
 }) => {
+  const isAuditor = currentUser?.role === 'Auditor';
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedDept, setSelectedDept] = useState('ALL');
@@ -155,7 +159,14 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                 </button>
 
                 {/* Finalize & Lock / Unlock Quick Action */}
-                {!isLocked ? (
+                {isAuditor ? (
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60"
+                    title={isLocked ? 'Payroll Locked (Auditor View - Read Only)' : 'Payroll Draft (Auditor View - Read Only)'}
+                  >
+                    {isLocked ? <Lock className="w-3.5 h-3.5 text-zinc-400" /> : <Unlock className="w-3.5 h-3.5 text-zinc-400" />}
+                  </div>
+                ) : !isLocked ? (
                   <button
                     type="button"
                     onClick={() => setIsLockModalOpen(true)}
@@ -252,7 +263,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
         )}
         <button
           type="button"
-          onClick={() => onNavigate?.('payslip-designer')}
+          onClick={() => onNavigate?.('payslips')}
           className="w-12 h-12 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 shadow-xl border border-zinc-700/50 dark:border-zinc-200/50 flex items-center justify-center cursor-pointer active:scale-90 transition-all group"
           title="Open Payslips"
           aria-label="Open Payslips"

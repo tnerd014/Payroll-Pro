@@ -24,7 +24,13 @@ import {
   X,
   History,
   AlertOctagon,
-  Info
+  Info,
+  Plus,
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Edit2
 } from 'lucide-react';
 import { 
   CompanyProfile, 
@@ -38,9 +44,13 @@ import {
   EmployeeLoan,
   TeamMember,
   AuditLogEntry,
-  ResetOptions
+  ResetOptions,
+  TaxBracket,
+  ExtraReliefCondition,
+  SalaryCalculationMode,
+  DEFAULT_SECURITY_QUESTIONS
 } from '../../../types';
-import { DEFAULT_EMPLOYMENT_TYPE_RULES } from '../../../engine/payePensionEngine';
+import { DEFAULT_EMPLOYMENT_TYPE_RULES, DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES } from '../../../engine/payePensionEngine';
 import { 
   exportPayrollProToExcel, 
   parseEmployeesFromExcel, 
@@ -62,6 +72,9 @@ interface MobileSettingsViewProps {
   onUpdatePayrollVariables: (v: Partial<PayrollVariables>) => void;
   onUpdatePayeTaxVariables: (v: Partial<PayeTaxVariables>) => void;
   departments?: string[];
+  onAddDepartment?: (name: string) => void;
+  onUpdateDepartment?: (oldName: string, newName: string) => void;
+  onDeleteDepartment?: (name: string) => void;
   employees?: Employee[];
   payrollItems?: CalculatedPayrollItem[];
   monthLabel: string;
@@ -85,6 +98,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   onUpdatePayrollVariables,
   onUpdatePayeTaxVariables,
   departments = [],
+  onAddDepartment,
+  onUpdateDepartment,
+  onDeleteDepartment,
   employees = [],
   payrollItems = [],
   monthLabel,
@@ -98,6 +114,8 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   onResetAllData,
   onNavigate,
 }) => {
+  const isAdmin = currentUser?.role === 'Admin';
+  const isAuditor = currentUser?.role === 'Auditor';
   const [activeTab, setActiveTab] = useState<MobileSettingsTab>(initialTab || 'profile');
 
   // Sync external initialTab if requested
@@ -113,6 +131,22 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   const [tvForm, setTvForm] = useState<PayeTaxVariables>(payeTaxVariables);
   const [savedToast, setSavedToast] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Department management state
+  const [newDeptInput, setNewDeptInput] = useState('');
+  const [editingDeptName, setEditingDeptName] = useState<string | null>(null);
+  const [editingDeptVal, setEditingDeptVal] = useState('');
+
+  // Password protection state
+  const [showPassword, setShowPassword] = useState(false);
+  const [isCustomSecurityQuestion, setIsCustomSecurityQuestion] = useState(() => {
+    return Boolean(company.securityQuestion && !DEFAULT_SECURITY_QUESTIONS.slice(0, 4).includes(company.securityQuestion));
+  });
+  const [customSecurityQuestionText, setCustomSecurityQuestionText] = useState(() => {
+    return (company.securityQuestion && !DEFAULT_SECURITY_QUESTIONS.slice(0, 4).includes(company.securityQuestion))
+      ? company.securityQuestion
+      : '';
+  });
 
   // --- EXCEL SYNC STATE ---
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -277,6 +311,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   });
 
   const handleTriggerReset = () => {
+    if (!isAdmin) return;
     if (resetConfirmationText.trim() !== 'RESET') return;
     if (onResetAllData) {
       onResetAllData(resetOptions);
@@ -292,6 +327,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   // Sync external props when unmodified
   useEffect(() => {
     setCompanyForm(company);
+    const isCustom = Boolean(company.securityQuestion && !DEFAULT_SECURITY_QUESTIONS.slice(0, 4).includes(company.securityQuestion));
+    setIsCustomSecurityQuestion(isCustom);
+    setCustomSecurityQuestionText(isCustom ? (company.securityQuestion || '') : '');
   }, [company]);
 
   useEffect(() => {
@@ -307,21 +345,34 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       (companyForm.address || '').trim() !== (company.address || '').trim() ||
       (companyForm.phone || '').trim() !== (company.phone || '').trim() ||
       (companyForm.email || '').trim() !== (company.email || '').trim() ||
-      (companyForm.logoUrl || '') !== (company.logoUrl || '')
+      (companyForm.logoUrl || '') !== (company.logoUrl || '') ||
+      Boolean(companyForm.hasPassword) !== Boolean(company.hasPassword) ||
+      (companyForm.password || '') !== (company.password || '') ||
+      (companyForm.passwordHint || '') !== (company.passwordHint || '') ||
+      (companyForm.securityQuestion || '') !== (company.securityQuestion || '') ||
+      (companyForm.securityAnswer || '').trim() !== (company.securityAnswer || '').trim()
     );
   }, [companyForm, company]);
 
   const isPayrollDirty = useMemo(() => {
-    return (
+    const pvChanged = 
       pvForm.basic !== payrollVariables.basic ||
       pvForm.housing !== payrollVariables.housing ||
       pvForm.transport !== payrollVariables.transport ||
       pvForm.otherAllowances !== payrollVariables.otherAllowances ||
       pvForm.employeePensionRate !== payrollVariables.employeePensionRate ||
       pvForm.employerPensionRate !== payrollVariables.employerPensionRate ||
+      (pvForm.salaryCalculationMode || 'gross-to-net') !== (payrollVariables.salaryCalculationMode || 'gross-to-net') ||
+      JSON.stringify(pvForm.employmentTypeRules || []) !== JSON.stringify(payrollVariables.employmentTypeRules || []);
+
+    const tvChanged = 
       tvForm.craBase !== payeTaxVariables.craBase ||
-      JSON.stringify(pvForm.employmentTypeRules || []) !== JSON.stringify(payrollVariables.employmentTypeRules || [])
-    );
+      tvForm.rentReliefRate !== payeTaxVariables.rentReliefRate ||
+      tvForm.rentReliefCap !== payeTaxVariables.rentReliefCap ||
+      JSON.stringify(tvForm.taxBrackets || []) !== JSON.stringify(payeTaxVariables.taxBrackets || []) ||
+      JSON.stringify(tvForm.extraConditions || []) !== JSON.stringify(payeTaxVariables.extraConditions || []);
+
+    return pvChanged || tvChanged;
   }, [pvForm, tvForm, payrollVariables, payeTaxVariables]);
 
   const isAnyDirty = isProfileDirty || isPayrollDirty;
@@ -337,14 +388,36 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
   // Save all modifications
   const handleSaveAll = () => {
+    if (isAuditor) return;
     if (!isAllowanceValid) {
       alert(`Allowance allocation sum must equal exactly 100%. Current sum: ${allowanceSum}%`);
       setActiveTab('payroll');
       return;
     }
 
+    if (companyForm.hasPassword) {
+      if (!companyForm.password?.trim()) {
+        alert('Please enter a company password or PIN, or disable password protection.');
+        setActiveTab('profile');
+        return;
+      }
+      if (!companyForm.securityAnswer?.trim()) {
+        alert('Please provide a security answer for password recovery.');
+        setActiveTab('profile');
+        return;
+      }
+    }
+
     if (isProfileDirty) {
-      onUpdateCompany(companyForm);
+      const payload: Partial<CompanyProfile> = {
+        ...companyForm,
+        hasPassword: Boolean(companyForm.hasPassword && companyForm.password),
+        password: companyForm.hasPassword ? companyForm.password : '',
+        passwordHint: companyForm.hasPassword ? (companyForm.passwordHint || '') : '',
+        securityQuestion: companyForm.hasPassword ? (companyForm.securityQuestion || DEFAULT_SECURITY_QUESTIONS[0]) : '',
+        securityAnswer: companyForm.hasPassword ? (companyForm.securityAnswer?.trim() || '') : '',
+      };
+      onUpdateCompany(payload);
     }
     if (isPayrollDirty) {
       onUpdatePayrollVariables(pvForm);
@@ -359,6 +432,55 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
     setCompanyForm(company);
     setPvForm(payrollVariables);
     setTvForm(payeTaxVariables);
+  };
+
+  // Department Management handlers
+  const handleAddDept = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isAuditor) return;
+    const trimmed = newDeptInput.trim();
+    if (!trimmed) return;
+    if (departments.some(d => d.toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Department "${trimmed}" already exists.`);
+      return;
+    }
+    if (onAddDepartment) {
+      onAddDepartment(trimmed);
+      setNewDeptInput('');
+    }
+  };
+
+  const handleStartEditDept = (dept: string) => {
+    setEditingDeptName(dept);
+    setEditingDeptVal(dept);
+  };
+
+  const handleSaveEditDept = (oldName: string) => {
+    const trimmed = editingDeptVal.trim();
+    if (!trimmed || trimmed === oldName) {
+      setEditingDeptName(null);
+      return;
+    }
+    if (departments.some(d => d.toLowerCase() === trimmed.toLowerCase() && d.toLowerCase() !== oldName.toLowerCase())) {
+      alert(`Department "${trimmed}" already exists.`);
+      return;
+    }
+    if (onUpdateDepartment) {
+      onUpdateDepartment(oldName, trimmed);
+    }
+    setEditingDeptName(null);
+  };
+
+  const handleDeleteDept = (dept: string) => {
+    const assignedCount = employees.filter(e => (e.department || '').toLowerCase() === dept.toLowerCase()).length;
+    const msg = assignedCount > 0
+      ? `"${dept}" is currently assigned to ${assignedCount} employee(s). Are you sure you want to remove it?`
+      : `Remove department "${dept}"?`;
+    if (confirm(msg)) {
+      if (onDeleteDepartment) {
+        onDeleteDepartment(dept);
+      }
+    }
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -383,14 +505,113 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
     setPvForm(prev => ({ ...prev, employmentTypeRules: updated }));
   };
 
-  const handlePresetAllowances = (b: number, h: number, t: number, o: number) => {
-    setPvForm(prev => ({
+  // Tax bracket handlers
+  const handleAddBracket = () => {
+    const newId = `tier_${Date.now()}`;
+    const newBracket: TaxBracket = {
+      id: newId,
+      rate: 0.25,
+      upTo: null,
+      label: 'Additional Tax Tier'
+    };
+    setTvForm(prev => ({
       ...prev,
-      basic: b,
-      housing: h,
-      transport: t,
-      otherAllowances: o
+      taxBrackets: [...(prev.taxBrackets || DEFAULT_PAYE_VARIABLES.taxBrackets), newBracket]
     }));
+  };
+
+  const handleRemoveBracket = (id: string) => {
+    const currentBrackets = tvForm.taxBrackets || DEFAULT_PAYE_VARIABLES.taxBrackets;
+    if (currentBrackets.length <= 1) {
+      alert('You must have at least one tax bracket');
+      return;
+    }
+    setTvForm(prev => ({
+      ...prev,
+      taxBrackets: currentBrackets.filter(b => b.id !== id)
+    }));
+  };
+
+  const handleUpdateBracket = (index: number, updates: Partial<TaxBracket>) => {
+    setTvForm(prev => {
+      const updated = [...(prev.taxBrackets || DEFAULT_PAYE_VARIABLES.taxBrackets)];
+      updated[index] = { ...updated[index], ...updates };
+      return { ...prev, taxBrackets: updated };
+    });
+  };
+
+  // Extra relief condition handlers
+  const handleToggleExtraCondition = (condId: string) => {
+    setTvForm(prev => {
+      const base = prev.extraConditions && prev.extraConditions.length > 0 
+        ? prev.extraConditions 
+        : DEFAULT_PAYE_VARIABLES.extraConditions;
+      const updated = base.map(c =>
+        c.id === condId ? { ...c, enabled: !c.enabled } : c
+      );
+      return { ...prev, extraConditions: updated };
+    });
+  };
+
+  const handleUpdateExtraConditionAmount = (condId: string, amount: number) => {
+    setTvForm(prev => {
+      const base = prev.extraConditions && prev.extraConditions.length > 0 
+        ? prev.extraConditions 
+        : DEFAULT_PAYE_VARIABLES.extraConditions;
+      const updated = base.map(c =>
+        c.id === condId ? { ...c, amount } : c
+      );
+      return { ...prev, extraConditions: updated };
+    });
+  };
+
+  // Custom employment categories
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newTypePaye, setNewTypePaye] = useState(true);
+  const [newTypePension, setNewTypePension] = useState(true);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+
+  const handleAddEmploymentRule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isAuditor) return;
+    const trimmed = newTypeName.trim();
+    if (!trimmed) return;
+    if (activeRules.some(r => r.name.toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Employment category "${trimmed}" already exists.`);
+      return;
+    }
+    const newRule: EmploymentTypeRule = {
+      id: 'et-' + Date.now(),
+      name: trimmed,
+      hasPayeDefault: newTypePaye,
+      hasPensionDefault: newTypePension,
+      description: `Custom employment category. Default statutory PAYE: ${newTypePaye ? 'YES' : 'EXEMPT'}, Pension: ${newTypePension ? 'YES' : 'EXEMPT'}.`
+    };
+    const updated = [...activeRules, newRule];
+    setPvForm(prev => ({ ...prev, employmentTypeRules: updated }));
+    setNewTypeName('');
+    setNewTypePaye(true);
+    setNewTypePension(true);
+    setIsAddingCategory(false);
+  };
+
+  const handleDeleteEmploymentRule = (ruleId: string) => {
+    if (isAuditor) return;
+    const target = activeRules.find(r => r.id === ruleId);
+    if (!target) return;
+    if (confirm(`Remove the employment type "${target.name}"? Existing employees assigned to this type will retain their current settings.`)) {
+      const updated = activeRules.filter(r => r.id !== ruleId);
+      setPvForm(prev => ({ ...prev, employmentTypeRules: updated }));
+    }
+  };
+
+  // Reset all tax and payroll variables to statutory defaults
+  const handleResetTaxDefaults = () => {
+    if (isAuditor) return;
+    if (confirm('Reset all allowance variables and PAYE tax brackets to Nigerian statutory defaults?')) {
+      setPvForm(DEFAULT_PAYROLL_VARIABLES);
+      setTvForm(DEFAULT_PAYE_VARIABLES);
+    }
   };
 
   const handleExportBackup = () => {
@@ -431,14 +652,16 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               </div>
             )}
             
-            <button
-              type="button"
-              onClick={() => logoInputRef.current?.click()}
-              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center shadow-xs cursor-pointer active:scale-90 transition-transform"
-              title="Upload Logo"
-            >
-              <Upload className="w-2.5 h-2.5" />
-            </button>
+            {!isAuditor && (
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center shadow-xs cursor-pointer active:scale-90 transition-transform"
+                title="Upload Logo"
+              >
+                <Upload className="w-2.5 h-2.5" />
+              </button>
+            )}
             <input
               ref={logoInputRef}
               type="file"
@@ -458,7 +681,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
         </div>
 
-        {companyForm.logoUrl && (
+        {!isAuditor && companyForm.logoUrl && (
           <button
             type="button"
             onClick={handleRemoveLogo}
@@ -646,12 +869,322 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             </div>
           </div>
 
+          {/* Card 3: Departments & Organizational Divisions */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs space-y-3 p-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                  Departments &amp; Divisions
+                </span>
+                <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                  {departments.length} Registered {departments.length === 1 ? 'Department' : 'Departments'}
+                </span>
+              </div>
+            </div>
+
+            {/* Add Department Input */}
+            <form onSubmit={handleAddDept} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newDeptInput}
+                onChange={(e) => setNewDeptInput(e.target.value)}
+                placeholder="New department name..."
+                className="flex-1 h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={!newDeptInput.trim()}
+                className="h-9 px-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 font-bold text-xs flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer active:scale-95 shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add</span>
+              </button>
+            </form>
+
+            {/* List of Departments */}
+            <div className="space-y-1.5 pt-1">
+              {departments.length === 0 ? (
+                <p className="text-[11px] text-zinc-400 text-center py-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl">
+                  No departments created yet. Add one above.
+                </p>
+              ) : (
+                departments.map((dept) => {
+                  const assignedCount = employees.filter(
+                    e => (e.department || '').toLowerCase() === dept.toLowerCase()
+                  ).length;
+                  const isEditing = editingDeptName === dept;
+
+                  return (
+                    <div
+                      key={dept}
+                      className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2"
+                    >
+                      {isEditing ? (
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          <input
+                            type="text"
+                            value={editingDeptVal}
+                            autoFocus
+                            onChange={(e) => setEditingDeptVal(e.target.value)}
+                            className="flex-1 h-7 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-emerald-500 text-xs font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEditDept(dept)}
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg cursor-pointer"
+                            title="Save"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDeptName(null)}
+                            className="p-1.5 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg cursor-pointer"
+                            title="Cancel"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                              {dept}
+                            </span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-zinc-200/60 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 shrink-0">
+                              {assignedCount} {assignedCount === 1 ? 'staff' : 'staff'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditDept(dept)}
+                              className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-200/60 dark:hover:bg-zinc-700 transition cursor-pointer"
+                              title="Edit department name"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDept(dept)}
+                              className="p-1.5 text-zinc-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                              title="Delete department"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Card 4: Security & Access Protection */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs p-3.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+                    Password Protection
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    Require PIN/Password on app launch or company switch
+                  </p>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={Boolean(companyForm.hasPassword)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setCompanyForm(prev => ({
+                      ...prev,
+                      hasPassword: checked,
+                      password: checked ? prev.password || '' : '',
+                      passwordHint: checked ? prev.passwordHint || '' : '',
+                      securityQuestion: checked ? prev.securityQuestion || DEFAULT_SECURITY_QUESTIONS[0] : '',
+                      securityAnswer: checked ? prev.securityAnswer || '' : '',
+                    }));
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {companyForm.hasPassword && (
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 space-y-3 animate-in fade-in duration-150">
+                {/* Password / PIN input */}
+                <div>
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                    Company Password / PIN
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={companyForm.password || ''}
+                      onChange={(e) => setCompanyForm(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Enter 4-8 digit PIN or password"
+                      className="w-full h-9 px-3 pr-10 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Password Hint */}
+                <div>
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                    Password Hint (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={companyForm.passwordHint || ''}
+                    onChange={(e) => setCompanyForm(prev => ({ ...prev, passwordHint: e.target.value }))}
+                    placeholder="e.g. CAC registration year"
+                    className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Security Question */}
+                <div>
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                    Security Recovery Question
+                  </label>
+                  <select
+                    value={isCustomSecurityQuestion ? DEFAULT_SECURITY_QUESTIONS[4] : (companyForm.securityQuestion || DEFAULT_SECURITY_QUESTIONS[0])}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === DEFAULT_SECURITY_QUESTIONS[4]) {
+                        setIsCustomSecurityQuestion(true);
+                        setCompanyForm(prev => ({ ...prev, securityQuestion: customSecurityQuestionText }));
+                      } else {
+                        setIsCustomSecurityQuestion(false);
+                        setCompanyForm(prev => ({ ...prev, securityQuestion: val }));
+                      }
+                    }}
+                    className="w-full h-9 px-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    {DEFAULT_SECURITY_QUESTIONS.map((q, idx) => (
+                      <option key={idx} value={q}>{q}</option>
+                    ))}
+                  </select>
+
+                  {isCustomSecurityQuestion && (
+                    <input
+                      type="text"
+                      value={customSecurityQuestionText}
+                      onChange={(e) => {
+                        setCustomSecurityQuestionText(e.target.value);
+                        setCompanyForm(prev => ({ ...prev, securityQuestion: e.target.value }));
+                      }}
+                      placeholder="Enter your custom recovery question..."
+                      className="w-full h-9 px-3 mt-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  )}
+                </div>
+
+                {/* Security Answer */}
+                <div>
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                    Security Answer (Recovery)
+                  </label>
+                  <input
+                    type="text"
+                    value={companyForm.securityAnswer || ''}
+                    onChange={(e) => setCompanyForm(prev => ({ ...prev, securityAnswer: e.target.value }))}
+                    placeholder="Enter answer (case-insensitive for reset)"
+                    className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    Used to reset PIN if forgotten without losing company data.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
       )}
 
       {/* ── TAB 2: Payroll & Tax Rules ── */}
       {activeTab === 'payroll' && (
         <div className="space-y-3.5 animate-in fade-in duration-150">
+          
+          {/* Section 0: Salary Calculation Mode */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-2.5">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Salary Calculation Mode
+              </h3>
+              <p className="text-[10px] text-zinc-400 mt-0.5">Choose how employee salaries are interpreted</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPvForm(prev => ({ ...prev, salaryCalculationMode: 'gross-to-net' }))}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  (pvForm.salaryCalculationMode || 'gross-to-net') === 'gross-to-net'
+                    ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-500/70 text-blue-900 dark:text-blue-100 shadow-xs'
+                    : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/60 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold">Gross to Net</span>
+                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                    (pvForm.salaryCalculationMode || 'gross-to-net') === 'gross-to-net'
+                      ? 'border-blue-600 bg-blue-600 dark:border-blue-400 dark:bg-blue-400'
+                      : 'border-zinc-300 dark:border-zinc-600'
+                  }`}>
+                    {(pvForm.salaryCalculationMode || 'gross-to-net') === 'gross-to-net' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                    )}
+                  </span>
+                </div>
+                <p className="text-[9px] text-zinc-400 leading-tight">Standard: deductions subtracted from gross</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPvForm(prev => ({ ...prev, salaryCalculationMode: 'net-to-gross' }))}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  (pvForm.salaryCalculationMode || 'gross-to-net') === 'net-to-gross'
+                    ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500/70 text-amber-900 dark:text-amber-100 shadow-xs'
+                    : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/60 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold">Net to Gross</span>
+                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                    (pvForm.salaryCalculationMode || 'gross-to-net') === 'net-to-gross'
+                      ? 'border-amber-600 bg-amber-600 dark:border-amber-400 dark:bg-amber-400'
+                      : 'border-zinc-300 dark:border-zinc-600'
+                  }`}>
+                    {(pvForm.salaryCalculationMode || 'gross-to-net') === 'net-to-gross' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                    )}
+                  </span>
+                </div>
+                <p className="text-[9px] text-zinc-400 leading-tight">Take-home: gross is back-calculated</p>
+              </button>
+            </div>
+          </div>
           
           {/* Section 1: Salary Allocation Matrix */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
@@ -754,25 +1287,6 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 </div>
               </div>
             </div>
-
-            {/* Quick 1-Tap Presets */}
-            <div className="flex items-center gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
-              <span className="text-[10px] text-zinc-400 font-medium">Presets:</span>
-              <button
-                type="button"
-                onClick={() => handlePresetAllowances(40, 20, 15, 25)}
-                className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 cursor-pointer active:scale-95 transition-all"
-              >
-                Standard (40/20/15/25)
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePresetAllowances(50, 25, 15, 10)}
-                className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-700 dark:text-zinc-300 cursor-pointer active:scale-95 transition-all"
-              >
-                Executive (50/25/15/10)
-              </button>
-            </div>
           </div>
 
           {/* Section 2: Statutory Pension Rates (PRA 2014) */}
@@ -827,85 +1341,351 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Consolidated Relief Allowance (CRA Base) */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-2">
+          {/* Section 3: PITA Tax Relief Parameters & Caps */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                PITA Tax Relief Parameters
+              </h3>
+              <p className="text-[10px] text-zinc-400 mt-0.5">Nigeria Personal Income Tax Act (PITA) statutory reliefs &amp; caps</p>
+            </div>
+
+            {/* CRA Base */}
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 p-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">
+                  CRA Base Statutory (₦)
+                </span>
+                <span className="text-[9px] font-mono text-zinc-400 font-semibold">+20% Gross</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-mono font-bold text-zinc-400">₦</span>
+                <input
+                  type="number"
+                  value={tvForm.craBase}
+                  onChange={(e) => setTvForm(prev => ({ ...prev, craBase: Number(e.target.value) || 0 }))}
+                  className="w-full h-8 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-bold font-mono text-zinc-900 dark:text-zinc-100"
+                />
+              </div>
+              <p className="text-[9px] text-zinc-400 leading-tight">
+                Higher of ₦{(tvForm.craBase || 200000).toLocaleString()} or 1% of Gross + 20% of Gross.
+              </p>
+            </div>
+
+            {/* Rent Relief Rate & Cap Grid */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 block truncate">
+                  Rent Relief Rate
+                </span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    value={Math.round((tvForm.rentReliefRate ?? 0.20) * 100)}
+                    onChange={(e) => setTvForm(prev => ({ ...prev, rentReliefRate: (Number(e.target.value) || 0) / 100 }))}
+                    className="w-full h-8 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-bold font-mono text-zinc-900 dark:text-zinc-100"
+                  />
+                  <span className="text-xs font-bold text-zinc-400">%</span>
+                </div>
+                <span className="text-[9px] text-zinc-400 mt-0.5 block">Standard 20%</span>
+              </div>
+
+              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 block truncate">
+                  Rent Max Cap (₦)
+                </span>
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-xs font-mono font-bold text-zinc-400">₦</span>
+                  <input
+                    type="number"
+                    value={tvForm.rentReliefCap ?? 500000}
+                    onChange={(e) => setTvForm(prev => ({ ...prev, rentReliefCap: Number(e.target.value) || 0 }))}
+                    className="w-full h-8 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-bold font-mono text-zinc-900 dark:text-zinc-100"
+                  />
+                </div>
+                <span className="text-[9px] text-zinc-400 mt-0.5 block truncate">Max annual relief</span>
+              </div>
+            </div>
+
+            {/* Extra Statutory Reliefs (Life Assurance, NHF) */}
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                Additional Statutory Tax Reliefs
+              </span>
+
+              {(tvForm.extraConditions && tvForm.extraConditions.length > 0 
+                ? tvForm.extraConditions 
+                : DEFAULT_PAYE_VARIABLES.extraConditions
+              ).map((cond) => (
+                <div 
+                  key={cond.id}
+                  className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                      {cond.label}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleExtraCondition(cond.id)}
+                      className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${
+                        cond.enabled
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/70'
+                          : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
+                      }`}
+                    >
+                      {cond.enabled ? 'ACTIVE' : 'OFF'}
+                    </button>
+                  </div>
+
+                  {cond.enabled && (
+                    <div className="flex items-center gap-2 pt-1 border-t border-zinc-200/40 dark:border-zinc-700/40">
+                      <span className="text-[10px] text-zinc-400 font-medium shrink-0">Annual Amount (₦):</span>
+                      <input
+                        type="number"
+                        value={cond.amount || ''}
+                        placeholder="0"
+                        onChange={(e) => handleUpdateExtraConditionAmount(cond.id, Number(e.target.value) || 0)}
+                        className="flex-1 h-7 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Section 4: Progressive PAYE Tax Brackets (Sixth Schedule) */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                  PAYE Tax Relief Base (CRA)
+                  PAYE Tax Brackets
                 </h3>
-                <p className="text-[10px] text-zinc-400 mt-0.5">Nigeria Personal Income Tax Act (PITA)</p>
+                <p className="text-[10px] text-zinc-400 mt-0.5">Sixth Schedule sequential tax tiers</p>
               </div>
-              <span className="text-[10px] font-mono font-semibold text-zinc-500">
-                +20% Gross
-              </span>
+
+              <button
+                type="button"
+                onClick={handleAddBracket}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[10px] font-bold cursor-pointer active:scale-95 transition-all"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Add Tier</span>
+              </button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-zinc-400">₦</span>
-              <input
-                type="number"
-                value={tvForm.craBase}
-                onChange={(e) => setTvForm(prev => ({ ...prev, craBase: Number(e.target.value) || 0 }))}
-                className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700 text-xs font-bold font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-              />
-            </div>
-            <p className="text-[10px] text-zinc-400 leading-tight">
-              Higher of ₦{(tvForm.craBase || 200000).toLocaleString()} or 1% of Gross + 20% of Gross Income.
-            </p>
-          </div>
-
-          {/* Section 4: Employment Demarcation Category Rules */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-2.5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-              Employment Demarcations
-            </h3>
-
-            <div className="space-y-1.5">
-              {activeRules.map((rule) => (
+            <div className="space-y-2">
+              {(tvForm.taxBrackets || DEFAULT_PAYE_VARIABLES.taxBrackets).map((bracket, index) => (
                 <div 
-                  key={rule.id}
-                  className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2"
+                  key={bracket.id}
+                  className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 space-y-2"
                 >
-                  <div className="min-w-0">
-                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate">
-                      {rule.name}
-                    </span>
-                    <span className="text-[9px] text-zinc-400 block truncate">
-                      {rule.description || 'Statutory category'}
-                    </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      value={bracket.label}
+                      onChange={(e) => handleUpdateBracket(index, { label: e.target.value })}
+                      placeholder="Tier Description (e.g. Next ₦9m)"
+                      className="flex-1 bg-transparent text-xs font-bold text-zinc-900 dark:text-zinc-100 border-b border-transparent hover:border-zinc-300 dark:hover:border-zinc-700 focus:border-emerald-500 focus:outline-none"
+                    />
+
+                    {(tvForm.taxBrackets || DEFAULT_PAYE_VARIABLES.taxBrackets).length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveBracket(bracket.id)}
+                        className="p-1 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition cursor-pointer"
+                        title="Remove bracket tier"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleRule(rule.id, 'hasPayeDefault')}
-                      className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${
-                        rule.hasPayeDefault
-                          ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200/70'
-                          : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
-                      }`}
-                      title="Toggle PAYE Tax"
-                    >
-                      PAYE: {rule.hasPayeDefault ? 'YES' : 'NO'}
-                    </button>
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-200/40 dark:border-zinc-700/40">
+                    <div>
+                      <span className="text-[9px] font-semibold text-zinc-400 block mb-1">
+                        Band Chunk (₦)
+                      </span>
+                      <input
+                        type="number"
+                        placeholder="No limit (balance)"
+                        value={bracket.upTo === null ? '' : bracket.upTo}
+                        onChange={(e) => handleUpdateBracket(index, { upTo: e.target.value === '' ? null : Number(e.target.value) })}
+                        className="w-full h-7 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 placeholder:font-normal"
+                      />
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleToggleRule(rule.id, 'hasPensionDefault')}
-                      className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${
-                        rule.hasPensionDefault
-                          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200/70'
-                          : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
-                      }`}
-                      title="Toggle Pension"
-                    >
-                      PEN: {rule.hasPensionDefault ? 'YES' : 'NO'}
-                    </button>
+                    <div>
+                      <span className="text-[9px] font-semibold text-zinc-400 block mb-1">
+                        Tax Rate (%)
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          value={Math.round((bracket.rate || 0) * 100 * 10) / 10}
+                          onChange={(e) => handleUpdateBracket(index, { rate: (Number(e.target.value) || 0) / 100 })}
+                          className="w-full h-7 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100"
+                        />
+                        <span className="text-xs font-bold text-zinc-400">%</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Section 5: Employment Demarcation Category Rules */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                  Employment Demarcations
+                </h3>
+                <p className="text-[10px] text-zinc-400 mt-0.5">Statutory PAYE &amp; pension rules per category</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAddingCategory(!isAddingCategory)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[10px] font-bold cursor-pointer active:scale-95 transition-all"
+              >
+                <Plus className="w-3 h-3" />
+                <span>{isAddingCategory ? 'Close' : 'Add'}</span>
+              </button>
+            </div>
+
+            {/* Add Category Form (Collapsible) */}
+            {isAddingCategory && (
+              <form onSubmit={handleAddEmploymentRule} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700 space-y-2.5">
+                <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 block">
+                  New Custom Category
+                </span>
+                <input
+                  type="text"
+                  value={newTypeName}
+                  onChange={(e) => setNewTypeName(e.target.value)}
+                  placeholder="Category name (e.g. Expatriate, Consultant)..."
+                  className="w-full h-8 px-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1 text-[11px] font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newTypePaye}
+                        onChange={(e) => setNewTypePaye(e.target.checked)}
+                        className="rounded text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span>PAYE</span>
+                    </label>
+                    <label className="flex items-center gap-1 text-[11px] font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newTypePension}
+                        onChange={(e) => setNewTypePension(e.target.checked)}
+                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span>Pension</span>
+                    </label>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!newTypeName.trim()}
+                    className="px-3 py-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-bold disabled:opacity-40 cursor-pointer active:scale-95 transition-all"
+                  >
+                    Add
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div className="space-y-1.5">
+              {activeRules.map((rule) => {
+                const isCoreType = ['Full-Time', 'Part-Time', 'Contract', 'Intern / NYSC'].includes(rule.name);
+                return (
+                  <div 
+                    key={rule.id}
+                    className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate">
+                          {rule.name}
+                        </span>
+                        {isCoreType && (
+                          <span className="text-[8px] font-semibold uppercase px-1 py-0.2 rounded bg-zinc-200/60 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400">
+                            Core
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] text-zinc-400 block truncate">
+                        {rule.description || 'Statutory category'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRule(rule.id, 'hasPayeDefault')}
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${
+                          rule.hasPayeDefault
+                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200/70'
+                            : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
+                        }`}
+                        title="Toggle PAYE Tax"
+                      >
+                        PAYE: {rule.hasPayeDefault ? 'YES' : 'NO'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRule(rule.id, 'hasPensionDefault')}
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${
+                          rule.hasPensionDefault
+                            ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200/70'
+                            : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
+                        }`}
+                        title="Toggle Pension"
+                      >
+                        PEN: {rule.hasPensionDefault ? 'YES' : 'NO'}
+                      </button>
+
+                      {!isCoreType && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteEmploymentRule(rule.id)}
+                          className="p-1 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition cursor-pointer"
+                          title={`Delete ${rule.name}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 6: Reset to Statutory Defaults Action */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={handleResetTaxDefaults}
+              className="w-full h-10 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-zinc-500" />
+              <span>Reset to Statutory Defaults</span>
+            </button>
           </div>
 
         </div>
@@ -1002,13 +1782,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 className="hidden"
                 id="mobile-excel-import-file"
               />
-              <label
-                htmlFor="mobile-excel-import-file"
-                className="h-10 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 text-center"
-              >
-                <Upload className="w-3.5 h-3.5 shrink-0" />
-                <span>Upload File</span>
-              </label>
+              {!isAuditor && (
+                <label
+                  htmlFor="mobile-excel-import-file"
+                  className="h-10 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 text-center"
+                >
+                  <Upload className="w-3.5 h-3.5 shrink-0" />
+                  <span>Upload File</span>
+                </label>
+              )}
 
               <button
                 type="button"
@@ -1209,67 +1991,34 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Danger Zone: Selective System Reset */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-rose-200/70 dark:border-rose-900/60 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-1.5 border-b border-rose-100 dark:border-rose-950/60">
-              <div className="flex items-center gap-2">
-                <AlertOctagon className="w-4 h-4 text-rose-500 shrink-0" />
-                <div>
-                  <h4 className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
-                    Selective System Reset
-                  </h4>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">Purge employee records or payroll history</p>
+          {isAdmin && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-rose-200/70 dark:border-rose-900/60 shadow-xs space-y-3">
+              <div className="flex items-center justify-between pb-1.5 border-b border-rose-100 dark:border-rose-950/60">
+                <div className="flex items-center gap-2">
+                  <AlertOctagon className="w-4 h-4 text-rose-500 shrink-0" />
+                  <div>
+                    <h4 className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
+                      Selective System Reset
+                    </h4>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">Purge employee records or payroll history</p>
+                  </div>
                 </div>
               </div>
+
+              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                Clear employee directories or monthly payroll history without losing your company tax variables or formulas.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(true)}
+                className="w-full h-10 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Configure System Reset...</span>
+              </button>
             </div>
-
-            <p className="text-[11px] text-zinc-500 leading-relaxed">
-              Clear employee directories or monthly payroll history without losing your company tax variables or formulas.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => setIsResetModalOpen(true)}
-              className="w-full h-10 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Configure System Reset...</span>
-            </button>
-          </div>
-
-          {/* Quick Shortcuts */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-1.5">
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-1">
-              Quick Shortcuts
-            </h4>
-            
-            <button
-              type="button"
-              onClick={() => onNavigate('payslip-designer')}
-              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left flex items-center justify-between transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <Sliders className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                  Payslip Designer Studio
-                </span>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigate('employees')}
-              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left flex items-center justify-between transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                  Manage Staff Directory
-                </span>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-          </div>
+          )}
 
         </div>
       )}
@@ -1506,7 +2255,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       )}
 
       {/* ── 4. Floating Thumb-Zone Save Bar (Floats Safely Above Bottom Nav) ── */}
-      {isAnyDirty && (
+      {isAnyDirty && !isAuditor && (
         <div className="fixed bottom-[80px] left-4 right-4 z-50 max-w-md mx-auto p-2.5 px-3 rounded-2xl bg-zinc-900/95 dark:bg-zinc-100/95 text-white dark:text-zinc-900 shadow-2xl backdrop-blur-md border border-zinc-700/60 dark:border-zinc-300/60 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 animate-pulse" />

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 interface PinchZoomContainerProps {
@@ -19,31 +19,90 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
   showFloatingControls = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentMeasureRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState<number>(850);
+  const [viewportDimensions, setViewportDimensions] = useState<{ width: number; height: number }>({
+    width: 380,
+    height: 0,
+  });
 
-  // Measured width of the available screen viewport
-  const [viewportWidth, setViewportWidth] = useState<number>(380);
-
-  // Measure container width on mount and resize
-  useEffect(() => {
+  // Measure container dimensions on mount and resize
+  useLayoutEffect(() => {
     if (!containerRef.current) return;
-    const updateWidth = () => {
+    const updateDimensions = () => {
       if (containerRef.current) {
         const w = containerRef.current.clientWidth;
-        if (w > 0) setViewportWidth(w);
+        const h = containerRef.current.clientHeight;
+        if (w > 0) {
+          setViewportDimensions({ width: w, height: h });
+        }
       }
     };
-    updateWidth();
-    window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
+    updateDimensions();
+
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0) {
+          setViewportDimensions({
+            width: Math.round(width),
+            height: Math.round(height),
+          });
+        }
+      }
+    });
+    ro.observe(containerRef.current);
+    window.addEventListener('resize', updateDimensions);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateDimensions);
+    };
   }, []);
 
-  // Base scale to fit screen exactly with 12px horizontal padding
+  // Measure natural unconstrained content height at fixed contentWidth (700px)
+  useLayoutEffect(() => {
+    if (!contentMeasureRef.current) return;
+    const measure = () => {
+      if (contentMeasureRef.current) {
+        const h = contentMeasureRef.current.scrollHeight || contentMeasureRef.current.offsetHeight;
+        if (h > 150) {
+          setContentHeight(prev => (Math.abs(prev - h) > 4 ? h : prev));
+        }
+      }
+    };
+    measure();
+
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const h = Math.round(entry.contentRect.height);
+        if (h > 150) {
+          setContentHeight(prev => (Math.abs(prev - h) > 4 ? h : prev));
+        }
+      }
+    });
+    ro.observe(contentMeasureRef.current);
+    return () => ro.disconnect();
+  }, [children]);
+
+  // Determine whether the container is height-constrained (e.g. h-[340px] mini canvas)
+  const isConstrainedHeight = Boolean(
+    viewportDimensions.height > 100 && (className.includes('h-full') || className.includes('h-'))
+  );
+
+  // Base scale to fit available viewport cleanly with horizontal and vertical margins
   const baseFitScale = useMemo(() => {
-    if (viewportWidth > 0) {
-      return Math.min(1.0, Math.max(0.35, (viewportWidth - 16) / contentWidth));
+    const w = viewportDimensions.width;
+    const h = viewportDimensions.height;
+    if (w > 0) {
+      const scaleW = Math.max(0.3, (w - 16) / contentWidth);
+      if (isConstrainedHeight && h > 100 && contentHeight > 150) {
+        const scaleH = Math.max(0.25, (h - 20) / contentHeight);
+        return Math.min(scaleW, scaleH);
+      }
+      return Math.min(1.0, scaleW);
     }
-    return 0.5;
-  }, [viewportWidth, contentWidth]);
+    return 0.48;
+  }, [viewportDimensions, contentWidth, isConstrainedHeight, contentHeight]);
 
   // Current user zoom multiplier (1.0 = baseFitScale)
   const [zoomFactor, setZoomFactor] = useState(1.0);
@@ -72,7 +131,7 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
     }, 1200);
   }, []);
 
-  // Gesture tracking refs (avoids React render cycle overhead on raw touch events)
+  // Gesture tracking refs
   const gestureRef = useRef<{
     initialDist: number;
     initialZoom: number;
@@ -95,20 +154,28 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
     rafId: null,
   });
 
-  // Calculate distance between two touches
   const getDistance = (t1: React.Touch, t2: React.Touch) => {
     const dx = t1.clientX - t2.clientX;
     const dy = t1.clientY - t2.clientY;
     return Math.sqrt(dx * dx + dy * dy);
   };
 
+  const currentScale = baseFitScale * zoomFactor;
+  const currentPercent = Math.round(zoomFactor * 100);
+
+  const scaledWidth = Math.round(contentWidth * baseFitScale);
+  const scaledHeight = Math.round(contentHeight * baseFitScale);
+
   // Max pan calculation
   const getMaxPan = useCallback((scale: number) => {
     const renderedW = contentWidth * scale;
-    const maxPanX = Math.max(0, (renderedW - viewportWidth) / 2 + 40);
-    const maxPanY = Math.max(0, renderedW * 0.7);
+    const renderedH = contentHeight * scale;
+    const viewW = isConstrainedHeight ? viewportDimensions.width : scaledWidth;
+    const viewH = isConstrainedHeight ? viewportDimensions.height : scaledHeight;
+    const maxPanX = Math.max(0, (renderedW - viewW) / 2 + 30);
+    const maxPanY = Math.max(0, (renderedH - viewH) / 2 + 30);
     return { maxPanX, maxPanY };
-  }, [contentWidth, viewportWidth]);
+  }, [contentWidth, contentHeight, isConstrainedHeight, viewportDimensions, scaledWidth, scaledHeight]);
 
   // Touch Start
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -138,8 +205,8 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
           setPan({ x: 0, y: 0 });
           if (onZoomModeChange) onZoomModeChange('fit');
         } else {
-          // Smooth zoom to 2.2x
-          setZoomFactor(2.2);
+          // Smooth zoom to 2.0x
+          setZoomFactor(2.0);
           setPan({ x: 0, y: 0 });
           if (onZoomModeChange) onZoomModeChange('full');
         }
@@ -247,9 +314,6 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
     triggerBadge();
   };
 
-  const currentScale = baseFitScale * zoomFactor;
-  const currentPercent = Math.round(zoomFactor * 100);
-
   return (
     <div 
       ref={containerRef}
@@ -258,14 +322,14 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
       onWheel={handleWheel}
-      className={`relative w-full flex flex-col items-center justify-start overflow-hidden select-none ${className}`}
+      className={`relative w-full flex flex-col items-center justify-center overflow-hidden select-none ${className}`}
       style={{
         touchAction: zoomFactor > 1.05 ? 'none' : 'pan-y',
       }}
     >
       {/* ── Floating Zoom HUD Controls ── */}
       {showFloatingControls && (
-        <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-1.5 py-1 rounded-xl border border-zinc-200/90 dark:border-zinc-800/90 shadow-md">
+        <div className="no-print absolute top-2.5 right-2.5 z-20 flex items-center gap-1 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-1.5 py-1 rounded-xl border border-zinc-200/90 dark:border-zinc-800/90 shadow-md">
           <button
             type="button"
             onClick={zoomOut}
@@ -311,9 +375,9 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
         </div>
       )}
 
-      {/* Floating Magnification Badge ("no need to remoev this zoom tag.") */}
+      {/* Floating Magnification Badge */}
       {showBadge && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-20 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+        <div className="no-print absolute top-12 left-1/2 -translate-x-1/2 z-20 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-zinc-900/95 dark:bg-zinc-100/95 text-white dark:text-zinc-900 px-3 py-1 rounded-full text-xs font-mono font-bold shadow-lg backdrop-blur-md flex items-center gap-1.5 border border-white/10 dark:border-black/10">
             <span>🔍</span>
             <span>{currentPercent}%</span>
@@ -324,24 +388,51 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
         </div>
       )}
 
-      {/* ── GPU-Accelerated Scaled Viewport Container (Fixed width, zero DOM reflow on pinch) ── */}
+      {/* ── GPU-Accelerated Scaled Viewport Container (Snug fit, zero blank space, zero glitching) ── */}
       <div 
-        className="w-full flex justify-center py-2 overflow-visible"
+        className="w-full flex items-center justify-center overflow-hidden py-0.5"
         style={{
-          minHeight: '440px',
+          height: isConstrainedHeight ? '100%' : `${scaledHeight}px`,
+          position: 'relative',
         }}
       >
+        {/* Sizer Box defining exact scaled footprint */}
         <div
           style={{
-            width: `${contentWidth}px`,
-            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${currentScale})`,
-            transformOrigin: 'top center',
-            transition: isInteracting ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-            willChange: 'transform',
+            width: `${scaledWidth}px`,
+            height: `${scaledHeight}px`,
+            position: 'relative',
+            flexShrink: 0,
+            overflow: 'visible',
           }}
-          className="shrink-0"
         >
-          {children}
+          {/* Centered GPU Transformation Stage */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              width: `${contentWidth}px`,
+              height: `${contentHeight}px`,
+              transform: `translate(-50%, -50%) translate3d(${pan.x}px, ${pan.y}px, 0) scale(${currentScale})`,
+              transformOrigin: 'center center',
+              transition: isInteracting ? 'none' : 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+              willChange: 'transform',
+            }}
+          >
+            {/* Natural Unconstrained Content Layer */}
+            <div
+              ref={contentMeasureRef}
+              style={{
+                width: `${contentWidth}px`,
+                height: 'max-content',
+                minHeight: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
+              {children}
+            </div>
+          </div>
         </div>
       </div>
     </div>

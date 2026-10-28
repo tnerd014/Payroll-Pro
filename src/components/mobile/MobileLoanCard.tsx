@@ -16,6 +16,7 @@ interface MobileLoanCardProps {
   employeeName: string;
   onPauseResume: (id: string) => void;
   onRecordPayment: (loan: EmployeeLoan) => void;
+  isReadOnly?: boolean;
 }
 
 export const MobileLoanCard: React.FC<MobileLoanCardProps> = ({
@@ -23,6 +24,7 @@ export const MobileLoanCard: React.FC<MobileLoanCardProps> = ({
   employeeName,
   onPauseResume,
   onRecordPayment,
+  isReadOnly = false,
 }) => {
   const percentRepaid = loan.principalAmount > 0 
     ? Math.min(100, Math.round((loan.totalRepaid / loan.principalAmount) * 100))
@@ -60,7 +62,7 @@ export const MobileLoanCard: React.FC<MobileLoanCardProps> = ({
         </div>
 
         {/* Pause/Resume Switch */}
-        {!isPaid && (
+        {!isPaid && !isReadOnly && (
           <button
             type="button"
             onClick={() => onPauseResume(loan.id)}
@@ -109,7 +111,7 @@ export const MobileLoanCard: React.FC<MobileLoanCardProps> = ({
       </div>
 
       {/* Action Row */}
-      {!isPaid && (
+      {!isPaid && !isReadOnly && (
         <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex gap-2">
           <button
             type="button"

@@ -13,6 +13,7 @@ import {
   ExternalLink,
   ShieldCheck,
   User,
+  UserCircle,
   LogOut,
   Cloud,
   RefreshCw,
@@ -30,7 +31,7 @@ import { exportPayrollProToExcel, ExportOptions } from '../../engine/excelEngine
 import { ExportScopeModal } from '../excel/ExportScopeModal';
 import { MONTHS } from '../../store/usePayrollStore';
 import { Employee, CalculatedPayrollItem, PayrollVariables, PayeTaxVariables, PayrollSnapshot, AppView, CompanyProfile, CompanyAccount, TeamMember, EmployeeLoan, EmploymentTypeRule } from '../../types';
-import { checkRealConnectivity } from '../../services/supabaseClient';
+import { checkRealConnectivity, getSavedCloudConfig } from '../../services/supabaseClient';
 import appLogo from '../../../assets/icon.png';
 
 interface DesktopTitleBarProps {
@@ -87,8 +88,10 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   departments = [],
   employmentTypeRules = [],
 }) => {
+  const isAuditor = currentUser?.role === 'Auditor';
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [workspaceDropdownOpen, setWorkspaceDropdownOpen] = useState(false);
@@ -320,7 +323,9 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
 
       if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
         e.preventDefault();
-        onTriggerAddEmployee?.();
+        if (!isAuditor) {
+          onTriggerAddEmployee?.();
+        }
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
         onNavigate('payroll');
@@ -343,6 +348,10 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         else if (e.key === '=' || e.key === '+') { e.preventDefault(); handleZoomIn(); }
         else if (e.key === '-' || e.key === '_') { e.preventDefault(); handleZoomOut(); }
         else if (e.key === '0') { e.preventDefault(); handleResetZoom(); }
+      } else if (e.key === 'Escape') {
+        setActiveMenu(null);
+        setWorkspaceDropdownOpen(false);
+        setUserMenuOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -367,7 +376,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   ]);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setActiveMenu(null);
       }
@@ -375,9 +384,16 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         setWorkspaceDropdownOpen(false);
         setWorkspaceSearch('');
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   return (
@@ -412,13 +428,15 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
 
           {activeMenu === 'file' && (
             <div className="absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
-              <button
-                onClick={() => { onTriggerAddEmployee?.(); setActiveMenu(null); }}
-                className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
-              >
-                <span>Add Employee</span>
-                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+N</span>
-              </button>
+              {!isAuditor && (
+                <button
+                  onClick={() => { onTriggerAddEmployee?.(); setActiveMenu(null); }}
+                  className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
+                >
+                  <span>Add Employee</span>
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">Ctrl+N</span>
+                </button>
+              )}
 
               <button
                 onClick={() => { setIsExportModalOpen(true); setActiveMenu(null); }}
@@ -732,7 +750,15 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
       <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: "no-drag" } as any}>
         
         {/* Network / Offline & Sync Status Indicator */}
-        {!isOnline ? (
+        {!getSavedCloudConfig().isEnabled ? (
+          <div 
+            title="Local Database — records are stored privately on this device"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400 select-none"
+          >
+            <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-500 shrink-0" />
+            <span>Local Database</span>
+          </div>
+        ) : !isOnline ? (
           <div 
             title="Offline — changes saved locally and will sync when reconnected"
             className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
@@ -762,7 +788,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         )}
 
         {currentUser && (
-          <div className="relative">
+          <div className="relative" ref={userMenuRef}>
             <button
               type="button"
               onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -773,10 +799,23 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs">
-                <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400">
-                  Staff: <strong>{currentUser.email || currentUser.username}</strong>
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
+                  <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 truncate">
+                    {currentUser.name || currentUser.username || currentUser.email}
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    onNavigate('profile');
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
+                >
+                  <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Profile</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -786,7 +825,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
                   className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Switch Staff User</span>
+                  <span>Sign Out</span>
                 </button>
               </div>
             )}

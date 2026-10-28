@@ -1,0 +1,743 @@
+2026/10/22-16:42:48.024 8c8 Reusing MANIFEST C:\Users\USER\AppData\Roaming\payroll-pro\Local Storage\leveldb/MANIFEST-000001
+2026/10/22-16:42:48.036 8c8 Recovering log #557
+2026/10/22-16:42:48.038 8c8 Reusing old log C:\Users\USER\AppData\Roaming\payroll-pro\Local Storage\leveldb/000557.log 
+2026/10/23-07:48:21.680 63fc Level-0 table #561: started
+2026/10/23-07:48:21.690 63fc Level-0 table #561: 25913 bytes OK
+2026/10/23-07:48:21.694 63fc Delete type=0 #557
+2026/10/23-07:56:51.204 63fc Level-0 table #563: started
+2026/10/23-07:56:51.211 63fc Level-0 table #563: 31517 bytes OK
+2026/10/23-07:56:51.214 63fc Delete type=0 #560
+2026/10/23-07:56:51.216 63fc Compacting 4@0 + 1@1 files
+2026/10/23-07:56:51.225 63fc Generated table #564@0: 32 keys, 11344 bytes
+2026/10/23-07:56:51.225 63fc Compacted 4@0 + 1@1 files => 11344 bytes
+2026/10/23-07:56:51.228 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/23-07:56:51.229 63fc Delete type=2 #554
+2026/10/23-07:56:51.230 63fc Delete type=2 #556
+2026/10/23-07:56:51.230 63fc Delete type=2 #558
+2026/10/23-07:56:51.230 63fc Delete type=2 #561
+2026/10/23-07:56:51.230 63fc Delete type=2 #563
+2026/10/23-08:18:01.113 63fc Level-0 table #566: started
+2026/10/23-08:18:01.133 63fc Level-0 table #566: 31659 bytes OK
+2026/10/23-08:18:01.137 63fc Delete type=0 #562
+2026/10/23-09:12:44.967 63fc Level-0 table #568: started
+2026/10/23-09:12:44.979 63fc Level-0 table #568: 32792 bytes OK
+2026/10/23-09:12:44.983 63fc Delete type=0 #565
+2026/10/23-09:15:29.127 63fc Level-0 table #570: started
+2026/10/23-09:15:29.140 63fc Level-0 table #570: 30917 bytes OK
+2026/10/23-09:15:29.144 63fc Delete type=0 #567
+2026/10/23-10:16:54.977 63fc Level-0 table #572: started
+2026/10/23-10:16:54.982 63fc Level-0 table #572: 30933 bytes OK
+2026/10/23-10:16:54.985 63fc Delete type=0 #569
+2026/10/23-10:16:54.987 63fc Compacting 4@0 + 1@1 files
+2026/10/23-10:16:54.995 63fc Generated table #573@0: 32 keys, 11204 bytes
+2026/10/23-10:16:54.995 63fc Compacted 4@0 + 1@1 files => 11204 bytes
+2026/10/23-10:16:54.997 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/23-10:16:54.998 63fc Delete type=2 #564
+2026/10/23-10:16:54.998 63fc Delete type=2 #566
+2026/10/23-10:16:54.999 63fc Delete type=2 #568
+2026/10/23-10:16:54.999 63fc Delete type=2 #570
+2026/10/23-10:16:54.999 63fc Delete type=2 #572
+2026/10/23-10:18:22.229 63fc Level-0 table #575: started
+2026/10/23-10:18:22.240 63fc Level-0 table #575: 31582 bytes OK
+2026/10/23-10:18:22.242 63fc Delete type=0 #571
+2026/10/23-10:18:34.575 63fc Level-0 table #577: started
+2026/10/23-10:18:34.585 63fc Level-0 table #577: 22285 bytes OK
+2026/10/23-10:18:34.588 63fc Delete type=0 #574
+2026/10/23-10:19:09.565 63fc Level-0 table #579: started
+2026/10/23-10:19:09.575 63fc Level-0 table #579: 22277 bytes OK
+2026/10/23-10:19:09.577 63fc Delete type=0 #576
+2026/10/23-10:21:56.139 63fc Level-0 table #581: started
+2026/10/23-10:21:56.149 63fc Level-0 table #581: 22277 bytes OK
+2026/10/23-10:21:56.152 63fc Delete type=0 #578
+2026/10/23-10:21:56.153 63fc Compacting 4@0 + 1@1 files
+2026/10/23-10:21:56.158 63fc Generated table #582@0: 32 keys, 14608 bytes
+2026/10/23-10:21:56.158 63fc Compacted 4@0 + 1@1 files => 14608 bytes
+2026/10/23-10:21:56.161 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/23-10:21:56.162 63fc Delete type=2 #573
+2026/10/23-10:21:56.162 63fc Delete type=2 #575
+2026/10/23-10:21:56.162 63fc Delete type=2 #577
+2026/10/23-10:21:56.162 63fc Delete type=2 #579
+2026/10/23-10:21:56.162 63fc Delete type=2 #581
+2026/10/23-10:22:16.198 63fc Level-0 table #584: started
+2026/10/23-10:22:16.209 63fc Level-0 table #584: 25000 bytes OK
+2026/10/23-10:22:16.212 63fc Delete type=0 #580
+2026/10/23-10:23:10.312 63fc Level-0 table #586: started
+2026/10/23-10:23:10.322 63fc Level-0 table #586: 26101 bytes OK
+2026/10/23-10:23:10.324 63fc Delete type=0 #583
+2026/10/23-10:25:10.212 63fc Level-0 table #588: started
+2026/10/23-10:25:10.223 63fc Level-0 table #588: 26097 bytes OK
+2026/10/23-10:25:10.227 63fc Delete type=0 #585
+2026/10/23-10:26:01.693 63fc Level-0 table #590: started
+2026/10/23-10:26:01.704 63fc Level-0 table #590: 26059 bytes OK
+2026/10/23-10:26:01.707 63fc Delete type=0 #587
+2026/10/23-10:26:01.708 63fc Compacting 4@0 + 1@1 files
+2026/10/23-10:26:01.716 63fc Generated table #591@0: 32 keys, 16310 bytes
+2026/10/23-10:26:01.716 63fc Compacted 4@0 + 1@1 files => 16310 bytes
+2026/10/23-10:26:01.717 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/23-10:26:01.718 63fc Delete type=2 #582
+2026/10/23-10:26:01.718 63fc Delete type=2 #584
+2026/10/23-10:26:01.718 63fc Delete type=2 #586
+2026/10/23-10:26:01.718 63fc Delete type=2 #588
+2026/10/23-10:26:01.718 63fc Delete type=2 #590
+2026/10/23-10:26:44.145 63fc Level-0 table #593: started
+2026/10/23-10:26:44.159 63fc Level-0 table #593: 26065 bytes OK
+2026/10/23-10:26:44.163 63fc Delete type=0 #589
+2026/10/23-10:28:27.801 63fc Level-0 table #595: started
+2026/10/23-10:28:27.811 63fc Level-0 table #595: 26077 bytes OK
+2026/10/23-10:28:27.813 63fc Delete type=0 #592
+2026/10/23-10:31:09.044 63fc Level-0 table #597: started
+2026/10/23-10:31:09.055 63fc Level-0 table #597: 26098 bytes OK
+2026/10/23-10:31:09.058 63fc Delete type=0 #594
+2026/10/23-10:32:19.241 63fc Level-0 table #599: started
+2026/10/23-10:32:19.258 63fc Level-0 table #599: 26120 bytes OK
+2026/10/23-10:32:19.261 63fc Delete type=0 #596
+2026/10/23-10:32:19.262 63fc Compacting 4@0 + 1@1 files
+2026/10/23-10:32:19.269 63fc Generated table #600@0: 32 keys, 16354 bytes
+2026/10/23-10:32:19.269 63fc Compacted 4@0 + 1@1 files => 16354 bytes
+2026/10/23-10:32:19.271 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/23-10:32:19.271 63fc Delete type=2 #591
+2026/10/23-10:32:19.271 63fc Delete type=2 #593
+2026/10/23-10:32:19.272 63fc Delete type=2 #595
+2026/10/23-10:32:19.272 63fc Delete type=2 #597
+2026/10/23-10:32:19.272 63fc Delete type=2 #599
+2026/10/23-10:35:02.417 63fc Level-0 table #602: started
+2026/10/23-10:35:02.425 63fc Level-0 table #602: 26154 bytes OK
+2026/10/23-10:35:02.428 63fc Delete type=0 #598
+2026/10/23-10:44:50.494 63fc Level-0 table #604: started
+2026/10/23-10:44:50.500 63fc Level-0 table #604: 26605 bytes OK
+2026/10/23-10:44:50.503 63fc Delete type=0 #601
+2026/10/23-14:04:44.313 63fc Level-0 table #606: started
+2026/10/23-14:04:44.331 63fc Level-0 table #606: 26122 bytes OK
+2026/10/23-14:04:44.335 63fc Delete type=0 #603
+2026/10/23-14:05:18.365 63fc Level-0 table #608: started
+2026/10/23-14:05:18.378 63fc Level-0 table #608: 26291 bytes OK
+2026/10/23-14:05:18.382 63fc Delete type=0 #605
+2026/10/23-14:05:18.383 63fc Compacting 4@0 + 1@1 files
+2026/10/23-14:05:18.397 63fc Generated table #609@0: 32 keys, 16522 bytes
+2026/10/23-14:05:18.397 63fc Compacted 4@0 + 1@1 files => 16522 bytes
+2026/10/23-14:05:18.400 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/23-14:05:18.401 63fc Delete type=2 #600
+2026/10/23-14:05:18.404 63fc Delete type=2 #602
+2026/10/23-14:05:18.405 63fc Delete type=2 #604
+2026/10/23-14:05:18.405 63fc Delete type=2 #606
+2026/10/23-14:05:18.405 63fc Delete type=2 #608
+2026/10/23-14:48:40.652 63fc Level-0 table #611: started
+2026/10/23-14:48:40.671 63fc Level-0 table #611: 28985 bytes OK
+2026/10/23-14:48:40.676 63fc Delete type=0 #607
+2026/10/23-15:06:54.134 63fc Level-0 table #613: started
+2026/10/23-15:06:54.152 63fc Level-0 table #613: 31382 bytes OK
+2026/10/23-15:06:54.157 63fc Delete type=0 #610
+2026/10/23-16:35:05.206 63fc Level-0 table #615: started
+2026/10/23-16:35:05.228 63fc Level-0 table #615: 31434 bytes OK
+2026/10/23-16:35:05.233 63fc Delete type=0 #612
+2026/10/23-23:12:33.530 63fc Level-0 table #617: started
+2026/10/23-23:12:33.545 63fc Level-0 table #617: 24842 bytes OK
+2026/10/23-23:12:33.553 63fc Delete type=0 #614
+2026/10/23-23:12:33.557 63fc Compacting 4@0 + 1@1 files
+2026/10/23-23:12:33.572 63fc Generated table #618@0: 33 keys, 13139 bytes
+2026/10/23-23:12:33.572 63fc Compacted 4@0 + 1@1 files => 13139 bytes
+2026/10/23-23:12:33.574 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/23-23:12:33.575 63fc Delete type=2 #609
+2026/10/23-23:12:33.576 63fc Delete type=2 #611
+2026/10/23-23:12:33.577 63fc Delete type=2 #613
+2026/10/23-23:12:33.578 63fc Delete type=2 #615
+2026/10/23-23:12:33.579 63fc Delete type=2 #617
+2026/10/23-23:45:51.542 63fc Level-0 table #620: started
+2026/10/23-23:45:51.578 63fc Level-0 table #620: 31743 bytes OK
+2026/10/23-23:45:51.587 63fc Delete type=0 #616
+2026/10/24-14:18:21.897 63fc Level-0 table #622: started
+2026/10/24-14:18:21.923 63fc Level-0 table #622: 26139 bytes OK
+2026/10/24-14:18:21.929 63fc Delete type=0 #619
+2026/10/24-14:28:29.501 63fc Level-0 table #624: started
+2026/10/24-14:28:29.518 63fc Level-0 table #624: 26401 bytes OK
+2026/10/24-14:28:29.526 63fc Delete type=0 #621
+2026/10/24-14:38:10.748 63fc Level-0 table #626: started
+2026/10/24-14:38:10.766 63fc Level-0 table #626: 26891 bytes OK
+2026/10/24-14:38:10.772 63fc Delete type=0 #623
+2026/10/24-14:38:10.777 63fc Compacting 4@0 + 1@1 files
+2026/10/24-14:38:10.795 63fc Generated table #627@0: 34 keys, 12426 bytes
+2026/10/24-14:38:10.795 63fc Compacted 4@0 + 1@1 files => 12426 bytes
+2026/10/24-14:38:10.797 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-14:38:10.800 63fc Delete type=2 #618
+2026/10/24-14:38:10.802 63fc Delete type=2 #620
+2026/10/24-14:38:10.802 63fc Delete type=2 #622
+2026/10/24-14:38:10.802 63fc Delete type=2 #624
+2026/10/24-14:38:10.802 63fc Delete type=2 #626
+2026/10/24-14:38:49.460 63fc Level-0 table #629: started
+2026/10/24-14:38:49.470 63fc Level-0 table #629: 28396 bytes OK
+2026/10/24-14:38:49.474 63fc Delete type=0 #625
+2026/10/24-14:39:13.828 63fc Level-0 table #631: started
+2026/10/24-14:39:13.845 63fc Level-0 table #631: 26964 bytes OK
+2026/10/24-14:39:13.850 63fc Delete type=0 #628
+2026/10/24-14:39:43.609 63fc Level-0 table #633: started
+2026/10/24-14:39:43.624 63fc Level-0 table #633: 26680 bytes OK
+2026/10/24-14:39:43.629 63fc Delete type=0 #630
+2026/10/24-14:40:06.357 63fc Level-0 table #635: started
+2026/10/24-14:40:06.378 63fc Level-0 table #635: 26679 bytes OK
+2026/10/24-14:40:06.385 63fc Delete type=0 #632
+2026/10/24-14:40:06.387 63fc Compacting 4@0 + 1@1 files
+2026/10/24-14:40:06.403 63fc Generated table #636@0: 34 keys, 12452 bytes
+2026/10/24-14:40:06.404 63fc Compacted 4@0 + 1@1 files => 12452 bytes
+2026/10/24-14:40:06.407 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-14:40:06.409 63fc Delete type=2 #627
+2026/10/24-14:40:06.410 63fc Delete type=2 #629
+2026/10/24-14:40:06.410 63fc Delete type=2 #631
+2026/10/24-14:40:06.410 63fc Delete type=2 #633
+2026/10/24-14:40:06.410 63fc Delete type=2 #635
+2026/10/24-14:40:26.343 63fc Level-0 table #638: started
+2026/10/24-14:40:26.360 63fc Level-0 table #638: 26679 bytes OK
+2026/10/24-14:40:26.365 63fc Delete type=0 #634
+2026/10/24-14:40:49.580 63fc Level-0 table #640: started
+2026/10/24-14:40:49.596 63fc Level-0 table #640: 26679 bytes OK
+2026/10/24-14:40:49.601 63fc Delete type=0 #637
+2026/10/24-14:41:09.630 63fc Level-0 table #642: started
+2026/10/24-14:41:09.640 63fc Level-0 table #642: 26679 bytes OK
+2026/10/24-14:41:09.644 63fc Delete type=0 #639
+2026/10/24-14:41:39.662 63fc Level-0 table #644: started
+2026/10/24-14:41:39.672 63fc Level-0 table #644: 26679 bytes OK
+2026/10/24-14:41:39.678 63fc Delete type=0 #641
+2026/10/24-14:41:39.685 63fc Compacting 4@0 + 1@1 files
+2026/10/24-14:41:39.697 63fc Generated table #645@0: 34 keys, 12452 bytes
+2026/10/24-14:41:39.697 63fc Compacted 4@0 + 1@1 files => 12452 bytes
+2026/10/24-14:41:39.699 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-14:41:39.701 63fc Delete type=2 #636
+2026/10/24-14:41:39.701 63fc Delete type=2 #638
+2026/10/24-14:41:39.701 63fc Delete type=2 #640
+2026/10/24-14:41:39.701 63fc Delete type=2 #642
+2026/10/24-14:41:39.702 63fc Delete type=2 #644
+2026/10/24-14:42:16.663 63fc Level-0 table #647: started
+2026/10/24-14:42:16.671 63fc Level-0 table #647: 26679 bytes OK
+2026/10/24-14:42:16.673 63fc Delete type=0 #643
+2026/10/24-14:43:12.843 63fc Level-0 table #649: started
+2026/10/24-14:43:12.854 63fc Level-0 table #649: 26679 bytes OK
+2026/10/24-14:43:12.859 63fc Delete type=0 #646
+2026/10/24-14:43:43.316 63fc Level-0 table #651: started
+2026/10/24-14:43:43.324 63fc Level-0 table #651: 26681 bytes OK
+2026/10/24-14:43:43.327 63fc Delete type=0 #648
+2026/10/24-14:44:17.979 63fc Level-0 table #653: started
+2026/10/24-14:44:17.988 63fc Level-0 table #653: 26679 bytes OK
+2026/10/24-14:44:17.993 63fc Delete type=0 #650
+2026/10/24-14:44:17.994 63fc Compacting 4@0 + 1@1 files
+2026/10/24-14:44:18.004 63fc Generated table #654@0: 34 keys, 12452 bytes
+2026/10/24-14:44:18.004 63fc Compacted 4@0 + 1@1 files => 12452 bytes
+2026/10/24-14:44:18.007 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-14:44:18.009 63fc Delete type=2 #645
+2026/10/24-14:44:18.009 63fc Delete type=2 #647
+2026/10/24-14:44:18.009 63fc Delete type=2 #649
+2026/10/24-14:44:18.010 63fc Delete type=2 #651
+2026/10/24-14:44:18.010 63fc Delete type=2 #653
+2026/10/24-14:50:36.270 63fc Level-0 table #656: started
+2026/10/24-14:50:36.283 63fc Level-0 table #656: 24063 bytes OK
+2026/10/24-14:50:36.289 63fc Delete type=0 #652
+2026/10/24-14:52:26.482 63fc Level-0 table #658: started
+2026/10/24-14:52:26.490 63fc Level-0 table #658: 16703 bytes OK
+2026/10/24-14:52:26.494 63fc Delete type=0 #655
+2026/10/24-14:58:46.945 63fc Level-0 table #660: started
+2026/10/24-14:58:46.952 63fc Level-0 table #660: 17667 bytes OK
+2026/10/24-14:58:46.956 63fc Delete type=0 #657
+2026/10/24-15:02:36.922 63fc Level-0 table #662: started
+2026/10/24-15:02:36.927 63fc Level-0 table #662: 32561 bytes OK
+2026/10/24-15:02:36.931 63fc Delete type=0 #659
+2026/10/24-15:02:36.932 63fc Compacting 4@0 + 1@1 files
+2026/10/24-15:02:36.941 63fc Generated table #663@0: 35 keys, 17004 bytes
+2026/10/24-15:02:36.941 63fc Compacted 4@0 + 1@1 files => 17004 bytes
+2026/10/24-15:02:36.944 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:02:36.945 63fc Delete type=2 #654
+2026/10/24-15:02:36.945 63fc Delete type=2 #656
+2026/10/24-15:02:36.945 63fc Delete type=2 #658
+2026/10/24-15:02:36.945 63fc Delete type=2 #660
+2026/10/24-15:02:36.945 63fc Delete type=2 #662
+2026/10/24-15:03:09.381 63fc Level-0 table #665: started
+2026/10/24-15:03:09.388 63fc Level-0 table #665: 18116 bytes OK
+2026/10/24-15:03:09.391 63fc Delete type=0 #661
+2026/10/24-15:03:26.591 63fc Level-0 table #667: started
+2026/10/24-15:03:26.616 63fc Level-0 table #667: 18117 bytes OK
+2026/10/24-15:03:26.618 63fc Delete type=0 #664
+2026/10/24-15:03:52.489 63fc Level-0 table #669: started
+2026/10/24-15:03:52.494 63fc Level-0 table #669: 18117 bytes OK
+2026/10/24-15:03:52.496 63fc Delete type=0 #666
+2026/10/24-15:04:10.476 63fc Level-0 table #671: started
+2026/10/24-15:04:10.481 63fc Level-0 table #671: 18117 bytes OK
+2026/10/24-15:04:10.488 63fc Delete type=0 #668
+2026/10/24-15:04:10.488 63fc Compacting 4@0 + 1@1 files
+2026/10/24-15:04:10.497 63fc Generated table #672@0: 35 keys, 17069 bytes
+2026/10/24-15:04:10.497 63fc Compacted 4@0 + 1@1 files => 17069 bytes
+2026/10/24-15:04:10.504 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:04:10.505 63fc Delete type=2 #663
+2026/10/24-15:04:10.505 63fc Delete type=2 #665
+2026/10/24-15:04:10.505 63fc Delete type=2 #667
+2026/10/24-15:04:10.505 63fc Delete type=2 #669
+2026/10/24-15:04:10.505 63fc Delete type=2 #671
+2026/10/24-15:04:26.232 63fc Level-0 table #674: started
+2026/10/24-15:04:26.242 63fc Level-0 table #674: 18117 bytes OK
+2026/10/24-15:04:26.244 63fc Delete type=0 #670
+2026/10/24-15:04:44.229 63fc Level-0 table #676: started
+2026/10/24-15:04:44.234 63fc Level-0 table #676: 18117 bytes OK
+2026/10/24-15:04:44.236 63fc Delete type=0 #673
+2026/10/24-15:05:02.433 63fc Level-0 table #678: started
+2026/10/24-15:05:02.443 63fc Level-0 table #678: 18117 bytes OK
+2026/10/24-15:05:02.446 63fc Delete type=0 #675
+2026/10/24-15:05:19.718 63fc Level-0 table #680: started
+2026/10/24-15:05:19.723 63fc Level-0 table #680: 18117 bytes OK
+2026/10/24-15:05:19.725 63fc Delete type=0 #677
+2026/10/24-15:05:19.725 63fc Compacting 4@0 + 1@1 files
+2026/10/24-15:05:19.729 63fc Generated table #681@0: 35 keys, 17069 bytes
+2026/10/24-15:05:19.729 63fc Compacted 4@0 + 1@1 files => 17069 bytes
+2026/10/24-15:05:19.731 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:05:19.732 63fc Delete type=2 #672
+2026/10/24-15:05:19.732 63fc Delete type=2 #674
+2026/10/24-15:05:19.732 63fc Delete type=2 #676
+2026/10/24-15:05:19.732 63fc Delete type=2 #678
+2026/10/24-15:05:19.732 63fc Delete type=2 #680
+2026/10/24-15:05:46.343 63fc Level-0 table #683: started
+2026/10/24-15:05:46.356 63fc Level-0 table #683: 18119 bytes OK
+2026/10/24-15:05:46.358 63fc Delete type=0 #679
+2026/10/24-15:06:04.428 63fc Level-0 table #685: started
+2026/10/24-15:06:04.433 63fc Level-0 table #685: 18117 bytes OK
+2026/10/24-15:06:04.435 63fc Delete type=0 #682
+2026/10/24-15:06:21.113 63fc Level-0 table #687: started
+2026/10/24-15:06:21.121 63fc Level-0 table #687: 18117 bytes OK
+2026/10/24-15:06:21.129 63fc Delete type=0 #684
+2026/10/24-15:07:41.376 63fc Level-0 table #689: started
+2026/10/24-15:07:41.381 63fc Level-0 table #689: 18529 bytes OK
+2026/10/24-15:07:41.384 63fc Delete type=0 #686
+2026/10/24-15:07:41.384 8c8 Compacting 4@0 + 1@1 files
+2026/10/24-15:07:41.391 8c8 Generated table #690@0: 35 keys, 17080 bytes
+2026/10/24-15:07:41.391 8c8 Compacted 4@0 + 1@1 files => 17080 bytes
+2026/10/24-15:07:41.393 8c8 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:07:41.395 8c8 Delete type=2 #681
+2026/10/24-15:07:41.395 8c8 Delete type=2 #683
+2026/10/24-15:07:41.395 8c8 Delete type=2 #685
+2026/10/24-15:07:41.395 8c8 Delete type=2 #687
+2026/10/24-15:07:41.395 8c8 Delete type=2 #689
+2026/10/24-15:09:12.111 63fc Level-0 table #692: started
+2026/10/24-15:09:12.122 63fc Level-0 table #692: 19435 bytes OK
+2026/10/24-15:09:12.126 63fc Delete type=0 #688
+2026/10/24-15:09:32.940 63fc Level-0 table #694: started
+2026/10/24-15:09:32.955 63fc Level-0 table #694: 19861 bytes OK
+2026/10/24-15:09:32.959 63fc Delete type=0 #691
+2026/10/24-15:15:24.941 63fc Level-0 table #696: started
+2026/10/24-15:15:24.960 63fc Level-0 table #696: 20282 bytes OK
+2026/10/24-15:15:24.968 63fc Delete type=0 #693
+2026/10/24-15:15:46.324 63fc Level-0 table #698: started
+2026/10/24-15:15:46.395 63fc Level-0 table #698: 19941 bytes OK
+2026/10/24-15:15:46.398 63fc Delete type=0 #695
+2026/10/24-15:15:46.400 63fc Compacting 4@0 + 1@1 files
+2026/10/24-15:15:46.412 63fc Generated table #699@0: 35 keys, 17976 bytes
+2026/10/24-15:15:46.412 63fc Compacted 4@0 + 1@1 files => 17976 bytes
+2026/10/24-15:15:46.415 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:15:46.416 63fc Delete type=2 #690
+2026/10/24-15:15:46.416 63fc Delete type=2 #692
+2026/10/24-15:15:46.416 63fc Delete type=2 #694
+2026/10/24-15:15:46.416 63fc Delete type=2 #696
+2026/10/24-15:15:46.416 63fc Delete type=2 #698
+2026/10/24-15:17:31.942 63fc Level-0 table #701: started
+2026/10/24-15:17:31.950 63fc Level-0 table #701: 19938 bytes OK
+2026/10/24-15:17:31.952 63fc Delete type=0 #697
+2026/10/24-15:19:40.157 63fc Level-0 table #703: started
+2026/10/24-15:19:40.163 63fc Level-0 table #703: 19303 bytes OK
+2026/10/24-15:19:40.166 63fc Delete type=0 #700
+2026/10/24-15:20:00.965 63fc Level-0 table #705: started
+2026/10/24-15:20:00.975 63fc Level-0 table #705: 19829 bytes OK
+2026/10/24-15:20:00.977 63fc Delete type=0 #702
+2026/10/24-15:21:21.307 63fc Level-0 table #707: started
+2026/10/24-15:21:21.314 63fc Level-0 table #707: 24565 bytes OK
+2026/10/24-15:21:21.318 63fc Delete type=0 #704
+2026/10/24-15:21:21.320 63fc Compacting 4@0 + 1@1 files
+2026/10/24-15:21:21.330 63fc Generated table #708@0: 35 keys, 17906 bytes
+2026/10/24-15:21:21.330 63fc Compacted 4@0 + 1@1 files => 17906 bytes
+2026/10/24-15:21:21.332 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:21:21.333 63fc Delete type=2 #699
+2026/10/24-15:21:21.333 63fc Delete type=2 #701
+2026/10/24-15:21:21.333 63fc Delete type=2 #703
+2026/10/24-15:21:21.333 63fc Delete type=2 #705
+2026/10/24-15:21:21.333 63fc Delete type=2 #707
+2026/10/24-15:28:53.349 63fc Level-0 table #710: started
+2026/10/24-15:28:53.359 63fc Level-0 table #710: 20215 bytes OK
+2026/10/24-15:28:53.364 63fc Delete type=0 #706
+2026/10/24-15:32:02.774 63fc Level-0 table #712: started
+2026/10/24-15:32:02.785 63fc Level-0 table #712: 20163 bytes OK
+2026/10/24-15:32:02.788 63fc Delete type=0 #709
+2026/10/24-15:35:03.718 63fc Level-0 table #714: started
+2026/10/24-15:35:03.731 63fc Level-0 table #714: 24075 bytes OK
+2026/10/24-15:35:03.734 63fc Delete type=0 #711
+2026/10/24-15:35:23.508 63fc Level-0 table #716: started
+2026/10/24-15:35:23.519 63fc Level-0 table #716: 11991 bytes OK
+2026/10/24-15:35:23.522 63fc Delete type=0 #713
+2026/10/24-15:35:23.524 63fc Compacting 4@0 + 1@1 files
+2026/10/24-15:35:23.536 63fc Generated table #717@0: 35 keys, 19877 bytes
+2026/10/24-15:35:23.536 63fc Compacted 4@0 + 1@1 files => 19877 bytes
+2026/10/24-15:35:23.538 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:35:23.539 63fc Delete type=2 #708
+2026/10/24-15:35:23.539 63fc Delete type=2 #710
+2026/10/24-15:35:23.539 63fc Delete type=2 #712
+2026/10/24-15:35:23.539 63fc Delete type=2 #714
+2026/10/24-15:35:23.539 63fc Delete type=2 #716
+2026/10/24-15:35:38.385 63fc Level-0 table #719: started
+2026/10/24-15:35:38.395 63fc Level-0 table #719: 11956 bytes OK
+2026/10/24-15:35:38.398 63fc Delete type=0 #715
+2026/10/24-15:37:16.820 63fc Level-0 table #721: started
+2026/10/24-15:37:16.831 63fc Level-0 table #721: 11942 bytes OK
+2026/10/24-15:37:16.834 63fc Delete type=0 #718
+2026/10/24-15:37:56.748 63fc Level-0 table #723: started
+2026/10/24-15:37:56.757 63fc Level-0 table #723: 11960 bytes OK
+2026/10/24-15:37:56.760 63fc Delete type=0 #720
+2026/10/24-15:38:04.162 63fc Level-0 table #725: started
+2026/10/24-15:38:04.169 63fc Level-0 table #725: 11962 bytes OK
+2026/10/24-15:38:04.172 63fc Delete type=0 #722
+2026/10/24-15:38:04.173 63fc Compacting 4@0 + 1@1 files
+2026/10/24-15:38:04.180 63fc Generated table #726@0: 35 keys, 19820 bytes
+2026/10/24-15:38:04.180 63fc Compacted 4@0 + 1@1 files => 19820 bytes
+2026/10/24-15:38:04.183 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:38:04.184 63fc Delete type=2 #717
+2026/10/24-15:38:04.184 63fc Delete type=2 #719
+2026/10/24-15:38:04.184 63fc Delete type=2 #721
+2026/10/24-15:38:04.184 63fc Delete type=2 #723
+2026/10/24-15:38:04.184 63fc Delete type=2 #725
+2026/10/24-15:40:06.889 63fc Level-0 table #728: started
+2026/10/24-15:40:06.904 63fc Level-0 table #728: 11960 bytes OK
+2026/10/24-15:40:06.907 63fc Delete type=0 #724
+2026/10/24-15:41:03.169 63fc Level-0 table #730: started
+2026/10/24-15:41:03.181 63fc Level-0 table #730: 12246 bytes OK
+2026/10/24-15:41:03.183 63fc Delete type=0 #727
+2026/10/24-15:41:20.573 63fc Level-0 table #732: started
+2026/10/24-15:41:20.579 63fc Level-0 table #732: 11907 bytes OK
+2026/10/24-15:41:20.582 63fc Delete type=0 #729
+2026/10/24-15:43:35.720 63fc Level-0 table #734: started
+2026/10/24-15:43:35.729 63fc Level-0 table #734: 11893 bytes OK
+2026/10/24-15:43:35.733 63fc Delete type=0 #731
+2026/10/24-15:43:35.734 63fc Compacting 4@0 + 1@1 files
+2026/10/24-15:43:35.747 63fc Generated table #735@0: 35 keys, 19761 bytes
+2026/10/24-15:43:35.748 63fc Compacted 4@0 + 1@1 files => 19761 bytes
+2026/10/24-15:43:35.754 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:43:35.755 63fc Delete type=2 #726
+2026/10/24-15:43:35.755 63fc Delete type=2 #728
+2026/10/24-15:43:35.755 63fc Delete type=2 #730
+2026/10/24-15:43:35.755 63fc Delete type=2 #732
+2026/10/24-15:43:35.755 63fc Delete type=2 #734
+2026/10/24-15:43:48.010 63fc Level-0 table #737: started
+2026/10/24-15:43:48.022 63fc Level-0 table #737: 11909 bytes OK
+2026/10/24-15:43:48.025 63fc Delete type=0 #733
+2026/10/24-15:44:20.336 63fc Level-0 table #739: started
+2026/10/24-15:44:20.341 63fc Level-0 table #739: 11907 bytes OK
+2026/10/24-15:44:20.344 63fc Delete type=0 #736
+2026/10/24-15:53:35.148 63fc Level-0 table #741: started
+2026/10/24-15:53:35.165 63fc Level-0 table #741: 26081 bytes OK
+2026/10/24-15:53:35.172 63fc Delete type=0 #738
+2026/10/24-15:53:40.334 63fc Level-0 table #743: started
+2026/10/24-15:53:40.350 63fc Level-0 table #743: 11921 bytes OK
+2026/10/24-15:53:40.354 63fc Delete type=0 #740
+2026/10/24-15:53:40.358 63fc Compacting 4@0 + 1@1 files
+2026/10/24-15:53:40.402 63fc Generated table #744@0: 35 keys, 20356 bytes
+2026/10/24-15:53:40.402 63fc Compacted 4@0 + 1@1 files => 20356 bytes
+2026/10/24-15:53:40.405 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-15:53:40.409 63fc Delete type=2 #735
+2026/10/24-15:53:40.410 63fc Delete type=2 #737
+2026/10/24-15:53:40.410 63fc Delete type=2 #739
+2026/10/24-15:53:40.411 63fc Delete type=2 #741
+2026/10/24-15:53:40.411 63fc Delete type=2 #743
+2026/10/24-16:02:47.795 63fc Level-0 table #746: started
+2026/10/24-16:02:47.814 63fc Level-0 table #746: 27287 bytes OK
+2026/10/24-16:02:47.817 63fc Delete type=0 #742
+2026/10/24-16:06:04.890 63fc Level-0 table #748: started
+2026/10/24-16:06:04.898 63fc Level-0 table #748: 13074 bytes OK
+2026/10/24-16:06:04.902 63fc Delete type=0 #745
+2026/10/24-16:06:29.324 63fc Level-0 table #750: started
+2026/10/24-16:06:29.333 63fc Level-0 table #750: 11918 bytes OK
+2026/10/24-16:06:29.337 63fc Delete type=0 #747
+2026/10/24-16:06:34.853 63fc Level-0 table #752: started
+2026/10/24-16:06:34.863 63fc Level-0 table #752: 11923 bytes OK
+2026/10/24-16:06:34.867 63fc Delete type=0 #749
+2026/10/24-16:06:34.869 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:06:34.876 63fc Generated table #753@0: 35 keys, 20049 bytes
+2026/10/24-16:06:34.876 63fc Compacted 4@0 + 1@1 files => 20049 bytes
+2026/10/24-16:06:34.878 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:06:34.879 63fc Delete type=2 #744
+2026/10/24-16:06:34.879 63fc Delete type=2 #746
+2026/10/24-16:06:34.879 63fc Delete type=2 #748
+2026/10/24-16:06:34.879 63fc Delete type=2 #750
+2026/10/24-16:06:34.879 63fc Delete type=2 #752
+2026/10/24-16:07:04.248 63fc Level-0 table #755: started
+2026/10/24-16:07:04.255 63fc Level-0 table #755: 11907 bytes OK
+2026/10/24-16:07:04.258 63fc Delete type=0 #751
+2026/10/24-16:07:27.125 63fc Level-0 table #757: started
+2026/10/24-16:07:27.138 63fc Level-0 table #757: 11907 bytes OK
+2026/10/24-16:07:27.141 63fc Delete type=0 #754
+2026/10/24-16:08:02.090 63fc Level-0 table #759: started
+2026/10/24-16:08:02.099 63fc Level-0 table #759: 11921 bytes OK
+2026/10/24-16:08:02.103 63fc Delete type=0 #756
+2026/10/24-16:08:07.818 63fc Level-0 table #761: started
+2026/10/24-16:08:07.822 63fc Level-0 table #761: 11918 bytes OK
+2026/10/24-16:08:07.824 63fc Delete type=0 #758
+2026/10/24-16:08:07.824 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:08:07.829 63fc Generated table #762@0: 35 keys, 20051 bytes
+2026/10/24-16:08:07.829 63fc Compacted 4@0 + 1@1 files => 20051 bytes
+2026/10/24-16:08:07.830 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:08:07.831 63fc Delete type=2 #753
+2026/10/24-16:08:07.831 63fc Delete type=2 #755
+2026/10/24-16:08:07.831 63fc Delete type=2 #757
+2026/10/24-16:08:07.831 63fc Delete type=2 #759
+2026/10/24-16:08:07.831 63fc Delete type=2 #761
+2026/10/24-16:08:16.142 63fc Level-0 table #764: started
+2026/10/24-16:08:16.148 63fc Level-0 table #764: 11927 bytes OK
+2026/10/24-16:08:16.153 63fc Delete type=0 #760
+2026/10/24-16:18:57.604 63fc Level-0 table #766: started
+2026/10/24-16:18:57.624 63fc Level-0 table #766: 27340 bytes OK
+2026/10/24-16:18:57.628 63fc Delete type=0 #763
+2026/10/24-16:19:23.306 63fc Level-0 table #768: started
+2026/10/24-16:19:23.312 63fc Level-0 table #768: 27265 bytes OK
+2026/10/24-16:19:23.316 63fc Delete type=0 #765
+2026/10/24-16:20:37.939 63fc Level-0 table #770: started
+2026/10/24-16:20:37.952 63fc Level-0 table #770: 26681 bytes OK
+2026/10/24-16:20:37.955 63fc Delete type=0 #767
+2026/10/24-16:20:37.958 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:20:37.966 63fc Generated table #771@0: 35 keys, 18532 bytes
+2026/10/24-16:20:37.966 63fc Compacted 4@0 + 1@1 files => 18532 bytes
+2026/10/24-16:20:37.969 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:20:37.970 63fc Delete type=2 #762
+2026/10/24-16:20:37.970 63fc Delete type=2 #764
+2026/10/24-16:20:37.970 63fc Delete type=2 #766
+2026/10/24-16:20:37.970 63fc Delete type=2 #768
+2026/10/24-16:20:37.970 63fc Delete type=2 #770
+2026/10/24-16:20:45.341 63fc Level-0 table #773: started
+2026/10/24-16:20:45.353 63fc Level-0 table #773: 44011 bytes OK
+2026/10/24-16:20:45.355 63fc Delete type=0 #769
+2026/10/24-16:20:53.220 63fc Level-0 table #775: started
+2026/10/24-16:20:53.232 63fc Level-0 table #775: 44042 bytes OK
+2026/10/24-16:20:53.236 63fc Delete type=0 #772
+2026/10/24-16:21:02.054 63fc Level-0 table #777: started
+2026/10/24-16:21:02.066 63fc Level-0 table #777: 12268 bytes OK
+2026/10/24-16:21:02.069 63fc Delete type=0 #774
+2026/10/24-16:21:07.367 63fc Level-0 table #779: started
+2026/10/24-16:21:07.388 63fc Level-0 table #779: 44322 bytes OK
+2026/10/24-16:21:07.392 63fc Delete type=0 #776
+2026/10/24-16:21:07.392 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:21:07.401 63fc Generated table #780@0: 35 keys, 54585 bytes
+2026/10/24-16:21:07.401 63fc Compacted 4@0 + 1@1 files => 54585 bytes
+2026/10/24-16:21:07.404 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:21:07.404 63fc Delete type=2 #771
+2026/10/24-16:21:07.404 63fc Delete type=2 #773
+2026/10/24-16:21:07.405 63fc Delete type=2 #775
+2026/10/24-16:21:07.405 63fc Delete type=2 #777
+2026/10/24-16:21:07.405 63fc Delete type=2 #779
+2026/10/24-16:22:04.513 63fc Level-0 table #782: started
+2026/10/24-16:22:04.528 63fc Level-0 table #782: 39949 bytes OK
+2026/10/24-16:22:04.532 63fc Delete type=0 #778
+2026/10/24-16:22:19.876 63fc Level-0 table #784: started
+2026/10/24-16:22:19.887 63fc Level-0 table #784: 39958 bytes OK
+2026/10/24-16:22:19.889 63fc Delete type=0 #781
+2026/10/24-16:22:42.065 63fc Level-0 table #786: started
+2026/10/24-16:22:42.076 63fc Level-0 table #786: 39949 bytes OK
+2026/10/24-16:22:42.078 63fc Delete type=0 #783
+2026/10/24-16:23:05.050 63fc Level-0 table #788: started
+2026/10/24-16:23:05.061 63fc Level-0 table #788: 39958 bytes OK
+2026/10/24-16:23:05.064 63fc Delete type=0 #785
+2026/10/24-16:23:05.065 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:23:05.071 63fc Generated table #789@0: 35 keys, 50498 bytes
+2026/10/24-16:23:05.071 63fc Compacted 4@0 + 1@1 files => 50498 bytes
+2026/10/24-16:23:05.074 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:23:05.074 63fc Delete type=2 #780
+2026/10/24-16:23:05.075 63fc Delete type=2 #782
+2026/10/24-16:23:05.075 63fc Delete type=2 #784
+2026/10/24-16:23:05.075 63fc Delete type=2 #786
+2026/10/24-16:23:05.075 63fc Delete type=2 #788
+2026/10/24-16:24:13.033 63fc Level-0 table #791: started
+2026/10/24-16:24:13.044 63fc Level-0 table #791: 39949 bytes OK
+2026/10/24-16:24:13.047 63fc Delete type=0 #787
+2026/10/24-16:24:33.207 63fc Level-0 table #793: started
+2026/10/24-16:24:33.219 63fc Level-0 table #793: 39958 bytes OK
+2026/10/24-16:24:33.222 63fc Delete type=0 #790
+2026/10/24-16:26:12.285 63fc Level-0 table #795: started
+2026/10/24-16:26:12.292 63fc Level-0 table #795: 39949 bytes OK
+2026/10/24-16:26:12.294 63fc Delete type=0 #792
+2026/10/24-16:26:17.361 63fc Level-0 table #797: started
+2026/10/24-16:26:17.372 63fc Level-0 table #797: 40210 bytes OK
+2026/10/24-16:26:17.375 63fc Delete type=0 #794
+2026/10/24-16:26:17.375 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:26:17.382 63fc Generated table #798@0: 35 keys, 50481 bytes
+2026/10/24-16:26:17.382 63fc Compacted 4@0 + 1@1 files => 50481 bytes
+2026/10/24-16:26:17.385 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:26:17.386 63fc Delete type=2 #789
+2026/10/24-16:26:17.386 63fc Delete type=2 #791
+2026/10/24-16:26:17.386 63fc Delete type=2 #793
+2026/10/24-16:26:17.386 63fc Delete type=2 #795
+2026/10/24-16:26:17.386 63fc Delete type=2 #797
+2026/10/24-16:26:23.955 63fc Level-0 table #800: started
+2026/10/24-16:26:23.970 63fc Level-0 table #800: 39867 bytes OK
+2026/10/24-16:26:23.973 63fc Delete type=0 #796
+2026/10/24-16:26:37.223 63fc Level-0 table #802: started
+2026/10/24-16:26:37.234 63fc Level-0 table #802: 39898 bytes OK
+2026/10/24-16:26:37.236 63fc Delete type=0 #799
+2026/10/24-16:26:42.232 63fc Level-0 table #804: started
+2026/10/24-16:26:42.242 63fc Level-0 table #804: 39960 bytes OK
+2026/10/24-16:26:42.244 63fc Delete type=0 #801
+2026/10/24-16:27:33.121 63fc Level-0 table #806: started
+2026/10/24-16:27:33.140 63fc Level-0 table #806: 39966 bytes OK
+2026/10/24-16:27:33.144 63fc Delete type=0 #803
+2026/10/24-16:27:33.145 8c8 Compacting 4@0 + 1@1 files
+2026/10/24-16:27:33.155 8c8 Generated table #807@0: 35 keys, 50500 bytes
+2026/10/24-16:27:33.155 8c8 Compacted 4@0 + 1@1 files => 50500 bytes
+2026/10/24-16:27:33.157 8c8 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:27:33.158 8c8 Delete type=2 #798
+2026/10/24-16:27:33.158 8c8 Delete type=2 #800
+2026/10/24-16:27:33.158 8c8 Delete type=2 #802
+2026/10/24-16:27:33.159 8c8 Delete type=2 #804
+2026/10/24-16:27:33.159 8c8 Delete type=2 #806
+2026/10/24-16:40:52.569 63fc Level-0 table #809: started
+2026/10/24-16:40:52.581 63fc Level-0 table #809: 44382 bytes OK
+2026/10/24-16:40:52.587 63fc Delete type=0 #805
+2026/10/24-16:41:15.664 63fc Level-0 table #811: started
+2026/10/24-16:41:15.683 63fc Level-0 table #811: 52444 bytes OK
+2026/10/24-16:41:15.685 63fc Delete type=0 #808
+2026/10/24-16:43:03.565 63fc Level-0 table #813: started
+2026/10/24-16:43:03.577 63fc Level-0 table #813: 58025 bytes OK
+2026/10/24-16:43:03.579 63fc Delete type=0 #810
+2026/10/24-16:43:11.005 63fc Level-0 table #815: started
+2026/10/24-16:43:11.022 63fc Level-0 table #815: 50727 bytes OK
+2026/10/24-16:43:11.025 63fc Delete type=0 #812
+2026/10/24-16:43:11.025 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:43:11.032 63fc Generated table #816@0: 35 keys, 57435 bytes
+2026/10/24-16:43:11.032 63fc Compacted 4@0 + 1@1 files => 57435 bytes
+2026/10/24-16:43:11.034 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:43:11.034 63fc Delete type=2 #807
+2026/10/24-16:43:11.035 63fc Delete type=2 #809
+2026/10/24-16:43:11.035 63fc Delete type=2 #811
+2026/10/24-16:43:11.035 63fc Delete type=2 #813
+2026/10/24-16:43:11.035 63fc Delete type=2 #815
+2026/10/24-16:43:27.744 63fc Level-0 table #818: started
+2026/10/24-16:43:27.756 63fc Level-0 table #818: 38007 bytes OK
+2026/10/24-16:43:27.758 63fc Delete type=0 #814
+2026/10/24-16:43:34.077 63fc Level-0 table #820: started
+2026/10/24-16:43:34.083 63fc Level-0 table #820: 15659 bytes OK
+2026/10/24-16:43:34.085 63fc Delete type=0 #817
+2026/10/24-16:44:07.852 63fc Level-0 table #822: started
+2026/10/24-16:44:07.857 63fc Level-0 table #822: 15656 bytes OK
+2026/10/24-16:44:07.859 63fc Delete type=0 #819
+2026/10/24-16:44:16.521 63fc Level-0 table #824: started
+2026/10/24-16:44:16.529 63fc Level-0 table #824: 15656 bytes OK
+2026/10/24-16:44:16.535 63fc Delete type=0 #821
+2026/10/24-16:44:16.536 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:44:16.542 63fc Generated table #825@0: 36 keys, 53383 bytes
+2026/10/24-16:44:16.542 63fc Compacted 4@0 + 1@1 files => 53383 bytes
+2026/10/24-16:44:16.549 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:44:16.550 63fc Delete type=2 #816
+2026/10/24-16:44:16.550 63fc Delete type=2 #818
+2026/10/24-16:44:16.550 63fc Delete type=2 #820
+2026/10/24-16:44:16.550 63fc Delete type=2 #822
+2026/10/24-16:44:16.550 63fc Delete type=2 #824
+2026/10/24-16:46:07.630 63fc Level-0 table #827: started
+2026/10/24-16:46:07.652 63fc Level-0 table #827: 66814 bytes OK
+2026/10/24-16:46:07.660 63fc Delete type=0 #823
+2026/10/24-16:47:08.680 63fc Level-0 table #829: started
+2026/10/24-16:47:08.695 63fc Level-0 table #829: 71227 bytes OK
+2026/10/24-16:47:08.698 63fc Delete type=0 #826
+2026/10/24-16:48:21.951 63fc Level-0 table #831: started
+2026/10/24-16:48:21.962 63fc Level-0 table #831: 66814 bytes OK
+2026/10/24-16:48:21.964 63fc Delete type=0 #828
+2026/10/24-16:49:34.594 63fc Level-0 table #833: started
+2026/10/24-16:49:34.599 63fc Level-0 table #833: 66814 bytes OK
+2026/10/24-16:49:34.601 63fc Delete type=0 #830
+2026/10/24-16:49:34.604 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:49:34.614 63fc Generated table #834@0: 36 keys, 53391 bytes
+2026/10/24-16:49:34.614 63fc Compacted 4@0 + 1@1 files => 53391 bytes
+2026/10/24-16:49:34.616 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:49:34.617 63fc Delete type=2 #825
+2026/10/24-16:49:34.617 63fc Delete type=2 #827
+2026/10/24-16:49:34.617 63fc Delete type=2 #829
+2026/10/24-16:49:34.617 63fc Delete type=2 #831
+2026/10/24-16:49:34.617 63fc Delete type=2 #833
+2026/10/24-16:51:02.836 63fc Level-0 table #836: started
+2026/10/24-16:51:02.845 63fc Level-0 table #836: 66814 bytes OK
+2026/10/24-16:51:02.852 63fc Delete type=0 #832
+2026/10/24-16:52:13.879 63fc Level-0 table #838: started
+2026/10/24-16:52:13.889 63fc Level-0 table #838: 66814 bytes OK
+2026/10/24-16:52:13.892 63fc Delete type=0 #835
+2026/10/24-16:53:55.569 63fc Level-0 table #840: started
+2026/10/24-16:53:55.581 63fc Level-0 table #840: 66813 bytes OK
+2026/10/24-16:53:55.583 63fc Delete type=0 #837
+2026/10/24-16:56:13.776 63fc Level-0 table #842: started
+2026/10/24-16:56:13.787 63fc Level-0 table #842: 66814 bytes OK
+2026/10/24-16:56:13.789 63fc Delete type=0 #839
+2026/10/24-16:56:13.789 63fc Compacting 4@0 + 1@1 files
+2026/10/24-16:56:13.798 63fc Generated table #843@0: 36 keys, 53391 bytes
+2026/10/24-16:56:13.799 63fc Compacted 4@0 + 1@1 files => 53391 bytes
+2026/10/24-16:56:13.801 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-16:56:13.801 63fc Delete type=2 #834
+2026/10/24-16:56:13.802 63fc Delete type=2 #836
+2026/10/24-16:56:13.802 63fc Delete type=2 #838
+2026/10/24-16:56:13.802 63fc Delete type=2 #840
+2026/10/24-16:56:13.802 63fc Delete type=2 #842
+2026/10/24-16:57:13.075 63fc Level-0 table #845: started
+2026/10/24-16:57:13.086 63fc Level-0 table #845: 66814 bytes OK
+2026/10/24-16:57:13.088 63fc Delete type=0 #841
+2026/10/24-21:02:32.047 63fc Level-0 table #847: started
+2026/10/24-21:02:32.057 63fc Level-0 table #847: 62553 bytes OK
+2026/10/24-21:02:32.060 63fc Delete type=0 #844
+2026/10/24-21:02:41.100 63fc Level-0 table #849: started
+2026/10/24-21:02:41.109 63fc Level-0 table #849: 56394 bytes OK
+2026/10/24-21:02:41.112 63fc Delete type=0 #846
+2026/10/24-21:03:21.074 63fc Level-0 table #851: started
+2026/10/24-21:03:21.091 63fc Level-0 table #851: 63281 bytes OK
+2026/10/24-21:03:21.094 63fc Delete type=0 #848
+2026/10/24-21:03:21.097 63fc Compacting 4@0 + 1@1 files
+2026/10/24-21:03:21.111 63fc Generated table #852@0: 36 keys, 70895 bytes
+2026/10/24-21:03:21.112 63fc Compacted 4@0 + 1@1 files => 70895 bytes
+2026/10/24-21:03:21.114 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-21:03:21.115 63fc Delete type=2 #843
+2026/10/24-21:03:21.116 63fc Delete type=2 #845
+2026/10/24-21:03:21.116 63fc Delete type=2 #847
+2026/10/24-21:03:21.116 63fc Delete type=2 #849
+2026/10/24-21:03:21.116 63fc Delete type=2 #851
+2026/10/24-21:04:05.051 63fc Level-0 table #854: started
+2026/10/24-21:04:05.072 63fc Level-0 table #854: 63281 bytes OK
+2026/10/24-21:04:05.078 63fc Delete type=0 #850
+2026/10/24-21:04:51.032 63fc Level-0 table #856: started
+2026/10/24-21:04:51.051 63fc Level-0 table #856: 63281 bytes OK
+2026/10/24-21:04:51.057 63fc Delete type=0 #853
+2026/10/24-21:05:36.038 63fc Level-0 table #858: started
+2026/10/24-21:05:36.057 63fc Level-0 table #858: 63281 bytes OK
+2026/10/24-21:05:36.062 63fc Delete type=0 #855
+2026/10/24-21:06:21.079 8c8 Level-0 table #860: started
+2026/10/24-21:06:21.097 8c8 Level-0 table #860: 63281 bytes OK
+2026/10/24-21:06:21.101 8c8 Delete type=0 #857
+2026/10/24-21:06:21.102 8c8 Compacting 4@0 + 1@1 files
+2026/10/24-21:06:21.139 8c8 Generated table #861@0: 36 keys, 70895 bytes
+2026/10/24-21:06:21.139 8c8 Compacted 4@0 + 1@1 files => 70895 bytes
+2026/10/24-21:06:21.141 8c8 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-21:06:21.144 8c8 Delete type=2 #852
+2026/10/24-21:06:21.144 8c8 Delete type=2 #854
+2026/10/24-21:06:21.144 8c8 Delete type=2 #856
+2026/10/24-21:06:21.145 8c8 Delete type=2 #858
+2026/10/24-21:06:21.145 8c8 Delete type=2 #860
+2026/10/24-21:07:06.076 63fc Level-0 table #863: started
+2026/10/24-21:07:06.095 63fc Level-0 table #863: 63281 bytes OK
+2026/10/24-21:07:06.099 63fc Delete type=0 #859
+2026/10/24-21:07:50.823 63fc Level-0 table #865: started
+2026/10/24-21:07:50.839 63fc Level-0 table #865: 63281 bytes OK
+2026/10/24-21:07:50.843 63fc Delete type=0 #862
+2026/10/24-21:08:34.352 63fc Level-0 table #867: started
+2026/10/24-21:08:34.367 63fc Level-0 table #867: 63280 bytes OK
+2026/10/24-21:08:34.371 63fc Delete type=0 #864
+2026/10/24-21:09:19.609 63fc Level-0 table #869: started
+2026/10/24-21:09:19.623 63fc Level-0 table #869: 63280 bytes OK
+2026/10/24-21:09:19.629 63fc Delete type=0 #866
+2026/10/24-21:09:19.631 63fc Compacting 4@0 + 1@1 files
+2026/10/24-21:09:19.649 63fc Generated table #870@0: 36 keys, 70896 bytes
+2026/10/24-21:09:19.649 63fc Compacted 4@0 + 1@1 files => 70896 bytes
+2026/10/24-21:09:19.653 63fc compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/10/24-21:09:19.654 63fc Delete type=2 #861
+2026/10/24-21:09:19.654 63fc Delete type=2 #863
+2026/10/24-21:09:19.655 63fc Delete type=2 #865
+2026/10/24-21:09:19.655 63fc Delete type=2 #867
+2026/10/24-21:09:19.655 63fc Delete type=2 #869
+2026/10/24-21:10:05.157 63fc Level-0 table #872: started
+2026/10/24-21:10:05.175 63fc Level-0 table #872: 63279 bytes OK
+2026/10/24-21:10:05.180 63fc Delete type=0 #868
+2026/10/24-21:12:25.704 8c8 Level-0 table #874: started
+2026/10/24-21:12:25.722 8c8 Level-0 table #874: 63281 bytes OK
+2026/10/24-21:12:25.728 8c8 Delete type=0 #871
+2026/10/24-21:13:12.910 63fc Level-0 table #876: started
+2026/10/24-21:13:12.923 63fc Level-0 table #876: 63281 bytes OK
+2026/10/24-21:13:12.926 63fc Delete type=0 #873
+2026/10/24-21:19:05.324 6a10 Level-0 table #878: started
+2026/10/24-21:19:05.350 6a10 Level-0 table #878: 77438 bytes OK

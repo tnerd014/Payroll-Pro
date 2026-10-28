@@ -132,13 +132,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser
 }) => {
   const isAdmin = currentUser?.role === 'Admin';
+  const isAuditor = currentUser?.role === 'Auditor';
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
-    if (initialTab === 'audit_team' && !isAdmin) return 'branding';
+    if ((initialTab === 'audit_team' || initialTab === 'reset') && !isAdmin) return 'branding';
     return initialTab;
   });
 
   useEffect(() => {
-    if (!isAdmin && activeTab === 'audit_team') {
+    if (!isAdmin && (activeTab === 'audit_team' || activeTab === 'reset')) {
       setActiveTab('branding');
     }
   }, [isAdmin, activeTab]);
@@ -166,6 +167,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   }, [companyForm, company]);
 
   const saveBranding = (): boolean => {
+    if (isAuditor) {
+      alert('Read-Only Mode: Modifying settings is disabled while offline or in read-only mode.');
+      return false;
+    }
     onUpdateCompany(companyForm);
     setBrandingSaved(true);
     setTimeout(() => setBrandingSaved(false), 2500);
@@ -228,6 +233,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   }, [pv, tv, payrollVariables, payeTaxVariables]);
 
   const saveTax = (): boolean => {
+    if (isAuditor) {
+      alert('Read-Only Mode: Modifying tax variables is disabled while offline or in read-only mode.');
+      return false;
+    }
     if (!isPercentageValid) {
       alert('Allowances percentage sum must equal exactly 100%');
       return false;
@@ -654,7 +663,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           {/* Always-Visible Save Action */}
           <div className="flex items-center gap-2 shrink-0">
-            {activeTab === 'branding' && (
+            {activeTab === 'branding' && !isAuditor && (
               <>
                 {brandingSaved && (
                   <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in duration-200">
@@ -681,7 +690,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </>
             )}
 
-            {activeTab === 'tax' && (
+            {activeTab === 'tax' && !isAuditor && (
               <>
                 {taxSaved && (
                   <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in duration-200">
@@ -768,17 +777,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </button>
           )}
 
-          <button
-            onClick={() => handleTabChange('reset')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition ml-auto shrink-0 cursor-pointer focus:outline-none ${
-              activeTab === 'reset'
-                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 font-semibold'
-                : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20'
-            }`}
-          >
-            <AlertOctagon className="w-3.5 h-3.5" />
-            <span>Reset System</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => handleTabChange('reset')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition ml-auto shrink-0 cursor-pointer focus:outline-none ${
+                activeTab === 'reset'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 font-semibold'
+                  : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20'
+              }`}
+            >
+              <AlertOctagon className="w-3.5 h-3.5" />
+              <span>Reset System</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -816,24 +827,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   id="settings-logo-upload"
                 />
 
-                <div className="flex items-center gap-2 pt-2">
-                  <label
-                    htmlFor="settings-logo-upload"
-                    className="px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs cursor-pointer hover:opacity-90 inline-flex items-center gap-1.5 transition"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload Logo</span>
-                  </label>
-                  {companyForm.logoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setCompanyForm(prev => ({ ...prev, logoUrl: '' }))}
-                      className="px-3 py-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 text-xs transition"
+                {!isAuditor && (
+                  <div className="flex items-center gap-2 pt-2">
+                    <label
+                      htmlFor="settings-logo-upload"
+                      className="px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs cursor-pointer hover:opacity-90 inline-flex items-center gap-1.5 transition"
                     >
-                      Remove Logo
-                    </button>
-                  )}
-                </div>
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload Logo</span>
+                    </label>
+                    {companyForm.logoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setCompanyForm(prev => ({ ...prev, logoUrl: '' }))}
+                        className="px-3 py-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 text-xs transition cursor-pointer"
+                      >
+                        Remove Logo
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -907,7 +920,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition"
+              disabled={isAuditor}
+              title={isAuditor ? 'Editing is disabled in offline read-only mode' : undefined}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save Company Branding</span>
@@ -1287,55 +1302,57 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             {/* Add Custom Employment Category Form */}
-            <form onSubmit={handleAddEmploymentRule} className="bg-zinc-50/70 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-2.5">
-              <span className="font-semibold text-zinc-700 dark:text-zinc-300 text-xs flex items-center gap-1.5">
-                <Plus className="w-3.5 h-3.5 text-zinc-500" />
-                Add Custom Employment Category
-              </span>
+            {!isAuditor && (
+              <form onSubmit={handleAddEmploymentRule} className="bg-zinc-50/70 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-2.5">
+                <span className="font-semibold text-zinc-700 dark:text-zinc-300 text-xs flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5 text-zinc-500" />
+                  Add Custom Employment Category
+                </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center">
-                <input
-                  type="text"
-                  value={newTypeName}
-                  onChange={e => setNewTypeName(e.target.value)}
-                  placeholder="Category Name (e.g. Expatriate, Consultant)..."
-                  className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-center">
+                  <input
+                    type="text"
+                    value={newTypeName}
+                    onChange={e => setNewTypeName(e.target.value)}
+                    placeholder="Category Name (e.g. Expatriate, Consultant)..."
+                    className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                  />
 
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-1.5 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
-                    <input
-                      type="checkbox"
-                      checked={newTypePaye}
-                      onChange={e => setNewTypePaye(e.target.checked)}
-                      className="rounded text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span>PAYE Deducted</span>
-                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={newTypePaye}
+                        onChange={e => setNewTypePaye(e.target.checked)}
+                        className="rounded text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span>PAYE Deducted</span>
+                    </label>
 
-                  <label className="flex items-center gap-1.5 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
-                    <input
-                      type="checkbox"
-                      checked={newTypePension}
-                      onChange={e => setNewTypePension(e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>Pension Deducted</span>
-                  </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-zinc-700 dark:text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={newTypePension}
+                        onChange={e => setNewTypePension(e.target.checked)}
+                        className="rounded text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>Pension Deducted</span>
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={!newTypeName.trim()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 disabled:opacity-40 transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Category</span>
+                    </button>
+                  </div>
                 </div>
-
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={!newTypeName.trim()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 disabled:opacity-40 transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Category</span>
-                  </button>
-                </div>
-              </div>
-            </form>
+              </form>
+            )}
           </div>
 
           {/* Statutory Allowances Ratio */}
@@ -1604,7 +1621,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleSaveTax}
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition"
+                disabled={isAuditor}
+                title={isAuditor ? 'Editing is disabled in offline read-only mode' : undefined}
+                className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>Save Tax Variables</span>
@@ -1698,13 +1717,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className="hidden"
                     id="settings-excel-import-file"
                   />
-                  <label
-                    htmlFor="settings-excel-import-file"
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 rounded-lg font-medium text-xs cursor-pointer transition text-center"
-                  >
-                    <Upload className="w-3.5 h-3.5 shrink-0" />
-                    <span>Upload File</span>
-                  </label>
+                  {!isAuditor && (
+                    <label
+                      htmlFor="settings-excel-import-file"
+                      className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 rounded-lg font-medium text-xs cursor-pointer transition text-center"
+                    >
+                      <Upload className="w-3.5 h-3.5 shrink-0" />
+                      <span>Upload File</span>
+                    </label>
+                  )}
 
                   <button
                     type="button"

@@ -17,7 +17,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { CalculatedPayrollItem, PayrollSnapshot, Employee, PayrollVariables, PayeTaxVariables, CompanyProfile, PayslipDesignConfig, PayslipCustomPreset, EmployeeLoan } from '../../types';
+import { CalculatedPayrollItem, PayrollSnapshot, Employee, PayrollVariables, PayeTaxVariables, CompanyProfile, PayslipDesignConfig, PayslipCustomPreset, EmployeeLoan, TeamMember } from '../../types';
 import { formatNaira, formatCompactNaira, formatDateTime } from '../../engine/payePensionEngine';
 import { FinalizeLockModal } from './FinalizeLockModal';
 import { UnlockPayrollModal } from './UnlockPayrollModal';
@@ -56,6 +56,7 @@ interface PayrollProcessingViewProps {
   onSavePreset?: (name: string, config: PayslipDesignConfig) => void;
   onDeletePreset?: (id: string) => void;
   loans?: EmployeeLoan[];
+  currentUser?: TeamMember | null;
 }
 
 export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
@@ -83,7 +84,9 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   onSavePreset,
   onDeletePreset,
   loans = [],
+  currentUser,
 }) => {
+  const isAuditor = currentUser?.role === 'Auditor';
   const [activeSubTab, setActiveSubTab] = useState<'processing' | 'paye' | 'pension'>('processing');
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
@@ -397,28 +400,42 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
               <span>Back to v{activeSnapshot?.version || nextVersion}</span>
             </button>
           ) : isLocked ? (
-            <button
-              type="button"
-              onClick={() => setIsUnlockModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition shadow-xs whitespace-nowrap"
-              title="Unlock to make changes to employee salaries and create a new version"
-            >
-              <Unlock className="w-3.5 h-3.5" />
-              <span>Unlock to Edit</span>
-            </button>
+            !isAuditor ? (
+              <button
+                type="button"
+                onClick={() => setIsUnlockModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition shadow-xs whitespace-nowrap cursor-pointer"
+                title="Unlock to make changes to employee salaries and create a new version"
+              >
+                <Unlock className="w-3.5 h-3.5" />
+                <span>Unlock to Edit</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-200 dark:border-zinc-700 select-none">
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                <span>Locked (Auditor View)</span>
+              </div>
+            )
           ) : (
-            <button
-              type="button"
-              onClick={() => setIsLockModalOpen(true)}
-              className={`flex items-center gap-1.5 px-3 h-8 rounded-md font-medium text-xs transition shadow-xs whitespace-nowrap ${
-                snapshotsForPeriod.length > 0
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90'
-              }`}
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Finalize &amp; Lock (v{nextVersion})</span>
-            </button>
+            !isAuditor ? (
+              <button
+                type="button"
+                onClick={() => setIsLockModalOpen(true)}
+                className={`flex items-center gap-1.5 px-3 h-8 rounded-md font-medium text-xs transition shadow-xs whitespace-nowrap cursor-pointer ${
+                  snapshotsForPeriod.length > 0
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Finalize &amp; Lock (v{nextVersion})</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-200 dark:border-zinc-700 select-none">
+                <Unlock className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Draft (Auditor View)</span>
+              </div>
+            )
           )}
 
           {/* Payslips Button */}
@@ -937,7 +954,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           activeSnapshot={activeSnapshot}
           isLocked={isLocked}
           onSelectVersion={(vKey) => setSelectedVersionKey(vKey)}
-          onDeleteSnapshot={handleDeleteSnapshot}
+          onDeleteSnapshot={isAuditor ? undefined : handleDeleteSnapshot}
         />
       )}
 

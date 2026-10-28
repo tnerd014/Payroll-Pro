@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   ArrowLeft,
-  Share2, 
   Printer, 
   Check, 
   Lock, 
@@ -42,7 +41,6 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
 }) => {
   const config = payslipDesign || DEFAULT_PAYSLIP_DESIGN;
 
-  const [copiedShare, setCopiedShare] = useState(false);
   const [zoomMode, setZoomMode] = useState<'fit' | 'full'>('fit');
 
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -108,33 +106,20 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
 
   if (!isOpen || !item) return null;
 
-  const handleShare = () => {
-    const text = `*OFFICIAL SALARY PAYSLIP*\n` +
-      `Company: ${company.name}\n` +
-      `Staff: ${item.fullName} (${item.employeeCode})\n` +
-      `Period: ${monthLabel} ${year}\n` +
-      `---------------------------\n` +
-      `Gross Salary: ${formatNaira(item.monthlyGross)}\n` +
-      `Total Deductions: -${formatNaira(item.totalDeductions)}\n` +
-      `*NET TAKE-HOME: ${formatNaira(item.netTakeHome)}*\n` +
-      `Status: ${isLocked ? 'Approved & Disbursed' : 'Active Draft'}`;
-
-    if (navigator.share) {
-      navigator.share({
-        title: `Payslip - ${item.fullName} (${monthLabel} ${year})`,
-        text: text,
-      }).catch(() => {});
-    } else {
-      navigator.clipboard?.writeText(text);
-      setCopiedShare(true);
-      setTimeout(() => setCopiedShare(false), 2000);
-    }
-  };
-
-  // High-fidelity native print: print pure official document unscaled, without screen scaling artifacts
+  // High-fidelity native print: print pure official document unscaled, supporting AndroidPrinter
   const handlePrint = () => {
     document.body.classList.add('print-portal-active');
-    window.print();
+    const androidPrinter = (window as any).AndroidPrinter;
+    if (androidPrinter && typeof androidPrinter.print === 'function') {
+      try {
+        androidPrinter.print();
+      } catch (err) {
+        console.warn('AndroidPrinter invocation fallback to window.print:', err);
+        window.print();
+      }
+    } else {
+      window.print();
+    }
     setTimeout(() => {
       document.body.classList.remove('print-portal-active');
     }, 1500);
@@ -203,7 +188,7 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
         <PinchZoomContainer
           zoomMode={zoomMode}
           onZoomModeChange={setZoomMode}
-          className="my-2 shadow-lg rounded-2xl bg-white dark:bg-[#18181d] border border-zinc-200/80 dark:border-zinc-800"
+          className="my-2 w-full flex justify-center"
         >
           <CustomizablePayslipView
             item={item}
@@ -229,40 +214,31 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
         />
       </div>
 
-      {/* ── 4. Bottom Fixed Action Dock (Icon-First Minimalist Dock) ── */}
+      {/* ── 4. Bottom Fixed Action Dock ── */}
       <footer className="no-print shrink-0 p-3.5 bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800/80 z-20">
-        <div className="flex items-center justify-center gap-4 max-w-xs mx-auto w-full">
-          {/* Share Icon Button */}
-          <button
-            type="button"
-            onClick={handleShare}
-            className="w-13 h-12 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs shrink-0"
-            title="Share Payslip"
-            aria-label="Share Payslip"
-          >
-            {copiedShare ? <Check className="w-5 h-5 text-emerald-500" /> : <Share2 className="w-5 h-5" />}
-          </button>
-
-          {/* Print Icon Button (Primary Emerald) */}
+        <div className="flex items-center justify-between gap-3 max-w-sm mx-auto w-full">
+          {/* Primary Print Button */}
           <button
             type="button"
             onClick={handlePrint}
-            className="w-16 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+            className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
             title="Print Official Payslip"
             aria-label="Print Official Payslip"
           >
-            <Printer className="w-5 h-5" />
+            <Printer className="w-4 h-4" />
+            <span>Print Payslip (A4)</span>
           </button>
 
-          {/* Done / Close Icon Button */}
+          {/* Done / Close Button */}
           <button
             type="button"
             onClick={onClose}
-            className="w-13 h-12 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-2xs shrink-0"
-            title="Done"
-            aria-label="Done"
+            className="h-12 px-5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs shrink-0"
+            title="Close Preview"
+            aria-label="Close Preview"
           >
-            <Check className="w-5 h-5 text-zinc-700 dark:text-zinc-300" />
+            <Check className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+            <span>Done</span>
           </button>
         </div>
       </footer>

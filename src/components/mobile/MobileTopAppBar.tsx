@@ -9,6 +9,7 @@ import {
   Smartphone,
   LogOut,
   User,
+  UserCircle,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
@@ -161,29 +162,33 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
             </button>
 
             {isUserMenuOpen && (
-              <>
-                {/* Full-screen tap-catcher backdrop */}
-                <div 
-                  className="fixed inset-0 z-40 bg-transparent"
-                  onClick={() => setIsUserMenuOpen(false)}
-                  onTouchStart={() => setIsUserMenuOpen(false)}
-                />
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-3 z-50 space-y-2 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="flex items-center gap-2.5 pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                    <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
-                      {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                        {currentUser?.name || 'Administrator'}
-                      </p>
-                      <p className="text-[10px] text-zinc-500 truncate">
-                        {currentUser?.email || 'admin@payrollpro.app'}
-                      </p>
-                    </div>
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-3 z-50 space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center gap-2.5 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
+                    {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
                   </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                      {currentUser?.name || 'Administrator'}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 truncate">
+                      {currentUser?.email || 'admin@payrollpro.app'}
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="space-y-1">
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onNavigate('profile');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer font-medium"
+                  >
+                    <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Profile</span>
+                  </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -208,9 +213,8 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
                     </button>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
+              )}
+            </div>
         </div>
 
       </div>

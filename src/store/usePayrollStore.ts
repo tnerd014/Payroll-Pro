@@ -256,6 +256,114 @@ export function purgeAllLocalDataOnDisconnect(): void {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// OFFLINE PENDING-SYNC HELPERS
+// ─────────────────────────────────────────────────────────────
+
+export function hasPendingOfflineSync(companyId: string): boolean {
+  try {
+    return localStorage.getItem(PENDING_OFFLINE_SYNC_PREFIX + companyId) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/** Returns IDs of every company that has local changes not yet uploaded to the cloud. */
+export function getCompaniesWithPendingSync(): string[] {
+  const ids: string[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(PENDING_OFFLINE_SYNC_PREFIX) && localStorage.getItem(key) === 'true') {
+        ids.push(key.slice(PENDING_OFFLINE_SYNC_PREFIX.length));
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to read pending sync flags:', e);
+  }
+  return ids;
+}
+
+/**
+ * Asks the user to confirm before a disconnect that would purge unsynced offline work.
+ * Returns true if it is safe (or the user explicitly accepted the data loss).
+ */
+export function confirmDisconnectWithPendingSync(): boolean {
+  const pendingIds = getCompaniesWithPendingSync();
+  if (pendingIds.length === 0) return true;
+  const registry = loadCompaniesRegistry();
+  const names = pendingIds.map(id => registry.find(c => c.id === id)?.name || id);
+  return window.confirm(
+    `WARNING: The following companies have offline changes that have NOT been synced to the cloud yet:\n\n` +
+    names.map(n => `  • ${n}`).join('\n') +
+    `\n\nDisconnecting will permanently delete these unsynced changes from this device.\n\n` +
+    `Reconnect to the internet and wait for sync to finish first (recommended).\n\n` +
+    `Click OK only if you want to discard these changes and disconnect anyway.`
+  );
+}
+
+let isSyncingAllPending = false;
+
+/**
+ * Uploads the locally stored data of EVERY company flagged as pending (not just the
+ * active one). Clears each flag only after a successful upload.
+ */
+export async function syncAllPendingCompanies(): Promise<{ synced: string[]; failed: string[] }> {
+  const result = { synced: [] as string[], failed: [] as string[] };
+  if (isSyncingAllPending) return result;
+  if (!getSavedCloudConfig().isEnabled) return result;
+
+  const pendingIds = getCompaniesWithPendingSync();
+  if (pendingIds.length === 0) return result;
+
+  isSyncingAllPending = true;
+  try {
+    const registry = loadCompaniesRegistry();
+    for (const companyId of pendingIds) {
+      // Only upload companies that actually have local data saved
+      if (!localStorage.getItem(COMPANY_DATA_PREFIX + companyId)) {
+        localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + companyId);
+        continue;
+      }
+      const account = registry.find(c => c.id === companyId);
+      const data = loadCompanyData(companyId, account);
+      const company = { ...data.company, id: companyId };
+      try {
+        const res = await uploadCompanyDataToSupabase(
+          company,
+          data.employees,
+          data.departments,
+          data.payrollVariables,
+          data.payeTaxVariables,
+          data.loans || [],
+          data.snapshots,
+          data.payslipDesign,
+          data.savedPayslipPresets || []
+        );
+        if (res.success) {
+          localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + companyId);
+          result.synced.push(companyId);
+          logAuditEvent(
+            companyId,
+            company.name,
+            'Offline Sync Completed',
+            'Offline changes automatically synchronized to cloud upon reconnect'
+          );
+        } else {
+          result.failed.push(companyId);
+        }
+      } catch (err) {
+        console.warn(`Pending sync failed for company ${companyId}:`, err);
+        result.failed.push(companyId);
+      }
+    }
+  } finally {
+    isSyncingAllPending = false;
+    window.dispatchEvent(new Event('payroll-sync-status-changed'));
+  }
+  return result;
+}
+
 export function loadCompaniesRegistry(): CompanyAccount[] {
   let accounts: CompanyAccount[] = [];
 
@@ -398,6 +506,8 @@ export function loadPersistedState(): AppState {
 export function usePayrollStore() {
   const [companies, setCompanies] = useState<CompanyAccount[]>(() => loadCompaniesRegistry());
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
+  const [isWorkspaceLoading, setIsWorkspaceLoading] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
 
   const [isDarkTheme, setIsDarkTheme] = useState<boolean>(() => {
     return localStorage.getItem(THEME_PREFERENCE_KEY) === 'dark';
@@ -487,6 +597,30 @@ export function usePayrollStore() {
     };
   }, []);
 
+  // Global Real Connectivity Tracker
+  useEffect(() => {
+    let cancelled = false;
+    const updateOnlineStatus = async () => {
+      const real = await checkRealConnectivity();
+      if (!cancelled) setIsOnline(real);
+    };
+    updateOnlineStatus();
+    const interval = setInterval(updateOnlineStatus, 12000);
+    const handleOnline = () => { updateOnlineStatus(); };
+    const handleOffline = () => { setIsOnline(false); };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const cloudCfg = getSavedCloudConfig();
+  const isCloudOffline = Boolean(cloudCfg.isEnabled && !isOnline);
+
   // On startup: Ensure all loans are synchronized up to the active period
   useEffect(() => {
     setState(s => {
@@ -523,6 +657,12 @@ export function usePayrollStore() {
   const isFirstRender = useRef(true);
   const isLocalUploadInProgressRef = useRef(false);
   const lastLocalUploadTimeRef = useRef(0);
+  // True once the active company's cloud copy has been loaded (or there is nothing to load).
+  // Until then we must NEVER upload, otherwise an empty/stale local copy overwrites the cloud.
+  const cloudReadyRef = useRef(true);
+  // Set right before programmatic state loads (company open / cloud download) so they
+  // are not mistaken for user edits and uploaded back.
+  const skipNextAutoSyncRef = useRef(false);
 
   // Auto-sync state changes: immediate local save, debounced upload when online, or queue if offline
   useEffect(() => {
@@ -538,6 +678,19 @@ export function usePayrollStore() {
 
     // ISOLATION GUARD: Never upload data if state belongs to a different company than activeCompanyId
     if (state.company?.id && state.company.id !== activeCompanyId) {
+      return;
+    }
+
+    // LOAD GUARD: this state change came from opening a company / applying a cloud download
+    if (skipNextAutoSyncRef.current) {
+      skipNextAutoSyncRef.current = false;
+      return;
+    }
+
+    // HYDRATION GUARD: cloud copy not loaded yet — queue the edit instead of uploading
+    if (!cloudReadyRef.current) {
+      localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+      window.dispatchEvent(new Event('payroll-sync-status-changed'));
       return;
     }
 
@@ -573,8 +726,12 @@ export function usePayrollStore() {
         ).then(res => {
           if (res.success) {
             localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId);
-            window.dispatchEvent(new Event('payroll-sync-status-changed'));
+          } else {
+            // Upload failed without throwing (e.g. connection dropped mid-sync) — keep it queued
+            console.warn('Auto-sync upload failed:', res.error);
+            localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
           }
+          window.dispatchEvent(new Event('payroll-sync-status-changed'));
         }).catch(err => {
           console.warn('Auto-sync upload error:', err);
           localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
@@ -592,46 +749,37 @@ export function usePayrollStore() {
     };
   }, [state, activeCompanyId]);
 
-  // Reconnection listener: auto-sync pending offline changes immediately upon network restoration
+  // Reconnection sync: upload pending offline changes for ALL companies (not only the active one).
+  // Triggered by the browser 'online' event AND a 20s connectivity poll, because in Electron the
+  // 'online' event is unreliable (it only tracks LAN, not real internet reachability).
   useEffect(() => {
-    const handleReconnect = () => {
-      const cfg = getSavedCloudConfig();
-      if (!cfg.isEnabled || !activeCompanyId) return;
+    let cancelled = false;
 
-      const hasPending = localStorage.getItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId) === 'true';
-      if (hasPending) {
-        isLocalUploadInProgressRef.current = true;
-        uploadCompanyDataToSupabase(
-          state.company,
-          state.employees,
-          state.departments,
-          state.payrollVariables,
-          state.payeTaxVariables,
-          state.loans || [],
-          state.snapshots,
-          state.payslipDesign,
-          state.savedPayslipPresets || []
-        ).then(res => {
-          if (res.success) {
-            localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId);
-            window.dispatchEvent(new Event('payroll-sync-status-changed'));
-            logAuditEvent(
-              activeCompanyId,
-              state.company.name,
-              'Offline Sync Completed',
-              'Offline changes automatically synchronized to cloud upon reconnect'
-            );
-          }
-        }).finally(() => {
-          lastLocalUploadTimeRef.current = Date.now();
-          isLocalUploadInProgressRef.current = false;
-        });
+    const trySyncPending = async () => {
+      if (!getSavedCloudConfig().isEnabled) return;
+      if (getCompaniesWithPendingSync().length === 0) return;
+
+      const online = await checkRealConnectivity();
+      if (!online || cancelled) return;
+
+      isLocalUploadInProgressRef.current = true;
+      try {
+        await syncAllPendingCompanies();
+      } finally {
+        lastLocalUploadTimeRef.current = Date.now();
+        isLocalUploadInProgressRef.current = false;
       }
     };
 
-    window.addEventListener('online', handleReconnect);
-    return () => window.removeEventListener('online', handleReconnect);
-  }, [activeCompanyId, state]);
+    trySyncPending();
+    const pollTimer = setInterval(trySyncPending, 20_000);
+    window.addEventListener('online', trySyncPending);
+    return () => {
+      cancelled = true;
+      clearInterval(pollTimer);
+      window.removeEventListener('online', trySyncPending);
+    };
+  }, []);
 
   // Live Supabase Cloud Realtime Channel
   useEffect(() => {
@@ -643,6 +791,11 @@ export function usePayrollStore() {
     const debouncedSyncFromCloud = () => {
       // 1. Do not process incoming realtime echoes while our own upload is active or within 4s of completion
       if (isLocalUploadInProgressRef.current || (Date.now() - lastLocalUploadTimeRef.current < 4000)) {
+        return;
+      }
+
+      // 1b. Never overwrite local offline edits that haven't been uploaded yet
+      if (hasPendingOfflineSync(activeCompanyId)) {
         return;
       }
 
@@ -817,6 +970,10 @@ export function usePayrollStore() {
     }
 
     const loadedData = loadCompanyData(companyId, targetComp);
+    const hasCachedRecords = Boolean(
+      (loadedData.employees && loadedData.employees.length > 0) || 
+      (loadedData.snapshots && loadedData.snapshots.length > 0)
+    );
     const safeData: AppState = {
       ...loadedData,
       company: { ...loadedData.company, id: companyId, name: targetComp.name },
@@ -826,9 +983,23 @@ export function usePayrollStore() {
     setState(safeData);
     setActiveCompanyId(companyId);
 
-    // If cloud is connected, immediately fetch the verified employees for this specific company
+    // If cloud is connected, check whether we should display workspace loader
     const cfg = getSavedCloudConfig();
-    if (cfg.isEnabled) {
+    if (cfg.isEnabled && !hasCachedRecords) {
+      setIsWorkspaceLoading(true);
+    } else {
+      setIsWorkspaceLoading(false);
+    }
+
+    if (cfg.isEnabled && hasPendingOfflineSync(companyId)) {
+      // This company has unsynced offline edits on this device. Do NOT download cloud data
+      // over them — push the local copy up first (if online). The pending flag stays set
+      // until the upload succeeds, so nothing is lost if we're still offline.
+      checkRealConnectivity().then(online => {
+        if (online) syncAllPendingCompanies().catch(() => {});
+      });
+      setIsWorkspaceLoading(false);
+    } else if (cfg.isEnabled) {
       downloadCompanyDataFromSupabase(companyId).then(res => {
         if (!res.success) return;
         setState(prev => {
@@ -847,7 +1018,14 @@ export function usePayrollStore() {
             savedPayslipPresets: res.savedPayslipPresets || prev.savedPayslipPresets,
           };
         });
-      }).catch(() => {});
+      }).finally(() => {
+        setIsWorkspaceLoading(false);
+      });
+
+      // 3.5s safety timeout to ensure loader never hangs if connection stalls
+      setTimeout(() => {
+        setIsWorkspaceLoading(false);
+      }, 3500);
     }
 
     setCompanies(prev => {
@@ -865,6 +1043,7 @@ export function usePayrollStore() {
       clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = null;
     }
+    setIsWorkspaceLoading(false);
     setActiveCompanyId(null);
   };
 
@@ -1710,5 +1889,8 @@ export function usePayrollStore() {
     applyAllPeriodLoanDeductions,
     resetAllData,
     reloadFromStorage,
+    isWorkspaceLoading,
+    isOnline,
+    isCloudOffline,
   };
 }

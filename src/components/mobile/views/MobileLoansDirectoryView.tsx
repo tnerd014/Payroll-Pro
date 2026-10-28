@@ -10,7 +10,7 @@ import {
   PlusCircle,
   Calendar
 } from 'lucide-react';
-import { EmployeeLoan, Employee, CalculatedPayrollItem, CompanyProfile, LoanType, LoanStatus } from '../../../types';
+import { EmployeeLoan, Employee, CalculatedPayrollItem, CompanyProfile, LoanType, LoanStatus, TeamMember } from '../../../types';
 import { formatNaira, formatCompactNaira } from '../../../engine/payePensionEngine';
 import { MobileLoanCard } from '../MobileLoanCard';
 import { MobileBottomSheet } from '../MobileBottomSheet';
@@ -26,6 +26,7 @@ interface MobileLoansDirectoryViewProps {
   onAddLoan: (loan: Omit<EmployeeLoan, 'id' | 'totalRepaid' | 'remainingBalance' | 'status' | 'createdAt' | 'history'>) => void;
   onPauseResumeLoan: (id: string) => void;
   onRecordManualPayment: (id: string, amount: number, notes?: string, reference?: string) => void;
+  currentUser?: TeamMember | null;
 }
 
 export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> = ({
@@ -37,7 +38,9 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
   onAddLoan,
   onPauseResumeLoan,
   onRecordManualPayment,
+  currentUser,
 }) => {
+  const isAuditor = currentUser?.role === 'Auditor';
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'All' | LoanStatus>('All');
 
@@ -78,6 +81,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
   }, [loans, empMap, searchQuery, filterStatus]);
 
   const handleConfirmPayment = () => {
+    if (isAuditor) return;
     if (!payingLoan || !paymentAmount) return;
     const amt = parseFloat(paymentAmount);
     if (isNaN(amt) || amt <= 0) return;
@@ -88,6 +92,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
   };
 
   const handleCreateLoan = () => {
+    if (isAuditor) return;
     if (!newEmpId || !newPrincipal || !newMonthly) return;
     const principal = parseFloat(newPrincipal);
     const monthly = parseFloat(newMonthly);
@@ -201,23 +206,26 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               employeeName={empMap.get(loan.employeeId) || 'Unknown Staff'}
               onPauseResume={(id) => onPauseResumeLoan(id)}
               onRecordPayment={(l) => setPayingLoan(l)}
+              isReadOnly={isAuditor}
             />
           ))
         )}
       </div>
 
       {/* ── Android Material 3 FAB ── */}
-      <div className="fixed bottom-[80px] right-4 z-50 pointer-events-auto">
-        <button
-          type="button"
-          onClick={() => setIsAddOpen(true)}
-          className="w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10"
-          title="Issue New Loan"
-          aria-label="Issue New Loan"
-        >
-          <Plus className="w-7 h-7" />
-        </button>
-      </div>
+      {!isAuditor && (
+        <div className="fixed bottom-[80px] right-4 z-50 pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => setIsAddOpen(true)}
+            className="w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10"
+            title="Issue New Loan"
+            aria-label="Issue New Loan"
+          >
+            <Plus className="w-7 h-7" />
+          </button>
+        </div>
+      )}
 
       {/* ── Record Payment Bottom Sheet ── */}
       <MobileBottomSheet

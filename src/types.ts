@@ -216,10 +216,12 @@ export type AppView =
   | 'payroll' 
   | 'loans'
   | 'payslip-designer'
+  | 'payslips'
   | 'analytics' 
   | 'settings' 
   | 'variables' 
-  | 'excel';
+  | 'excel'
+  | 'profile';
 
 export type PayslipSectionId = 
   | 'company_header'
@@ -475,15 +477,23 @@ export interface TeamMember {
   name: string;
   email?: string;
   username?: string;
+  phone?: string;
+  avatarColor?: string;
   role: TeamMemberRole;
   pin?: string;
   password?: string;
+  passwordHint?: string;
   securityQuestion?: string;
   securityAnswer?: string;
   recoveryEmail?: string;
   tempPassword?: string;
   mustChangePassword?: boolean;
   isActive: boolean;
+  twoFactorEnabled?: boolean;
+  twoFactorSecret?: string;
+  twoFactorBackupCodes?: string[];
+  biometricEnabled?: boolean;
+  biometricDeviceName?: string;
   createdAt?: string;
   updatedAt?: string;
 }

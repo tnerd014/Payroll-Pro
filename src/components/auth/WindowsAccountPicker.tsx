@@ -22,11 +22,13 @@ import {
   AlertTriangle,
   HelpCircle,
   Search,
+  Check,
   CheckCircle2,
   ShieldAlert,
   ShieldCheck,
   Cloud,
   User,
+  UserCircle,
   Users,
   LogOut,
   Smartphone,
@@ -36,6 +38,7 @@ import { formatDate } from '../../engine/dateUtils';
 import appLogo from '../../../assets/icon.png';
 import { GlobalCloudModal } from './GlobalCloudModal';
 import { TeamMembersPage } from '../team/TeamMembersPage';
+import { UserProfilePage } from '../profile/UserProfilePage';
 import { getSavedCloudConfig, SupabaseCloudConfig } from '../../services/supabaseClient';
 
 interface WindowsAccountPickerProps {
@@ -52,6 +55,7 @@ interface WindowsAccountPickerProps {
   onToggleTheme: () => void;
   onCompaniesSynced?: (companies: CompanyAccount[]) => void;
   currentUser?: TeamMember | null;
+  onUpdateCurrentUser?: (member: TeamMember) => void;
   onSignOut?: () => void;
   onDisconnectServer?: () => void;
   isMobileView?: boolean;
@@ -73,6 +77,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   onToggleTheme,
   onCompaniesSynced,
   currentUser,
+  onUpdateCurrentUser,
   onSignOut,
   onDisconnectServer,
   isMobileView,
@@ -93,10 +98,34 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
   const isMobile = isMobileView ?? internalIsMobile;
   const isElectron = typeof window !== 'undefined' && (Boolean((window as any).electronAPI) || /electron/i.test(navigator.userAgent));
+  const isAdmin = currentUser?.role === 'Admin';
+  const isAuditor = currentUser?.role === 'Auditor';
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isTeamPageOpen, setIsTeamPageOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [cloudConfig, setCloudConfig] = useState<SupabaseCloudConfig>(() => getSavedCloudConfig());
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isUserMenuOpen]);
 
   const handleCompaniesSynced = (updated: CompanyAccount[]) => {
     setCloudConfig(getSavedCloudConfig());
@@ -183,6 +212,9 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   const [pwdModalSecurityAnswer, setPwdModalSecurityAnswer] = useState('');
   const [pwdModalError, setPwdModalError] = useState<string | null>(null);
   const [showModalNewPwd, setShowModalNewPwd] = useState(false);
+  const [showModalCurrentPwd, setShowModalCurrentPwd] = useState(false);
+  const [showModalSecurityAnswer, setShowModalSecurityAnswer] = useState(false);
+  const [showFormSecurityAnswer, setShowFormSecurityAnswer] = useState(false);
 
   const passwordFieldRef = useRef<HTMLInputElement>(null);
 
@@ -301,6 +333,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
   // Open Create Modal
   const openCreateModal = () => {
+    if (isAuditor) return;
     setFormName('');
     setFormSubtitle('');
     setFormAddress('');
@@ -320,6 +353,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
   // Open Edit Profile Modal (Strictly company profile details)
   const openEditModal = (comp: CompanyAccount) => {
+    if (isAuditor) return;
     setEditingCompany(comp);
     setFormName(comp.name);
     setFormSubtitle(comp.subtitle || '');
@@ -333,6 +367,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
   // Open Dedicated Password / PIN Modal (Strictly security & recovery, no company profile inputs)
   const openPasswordModal = (comp: CompanyAccount) => {
+    if (!isAdmin) return;
     setPasswordModalCompany(comp);
     setPwdModalHasPassword(Boolean(comp.hasPassword));
     setPwdModalCurrentPassword('');
@@ -348,9 +383,12 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
       setPwdModalSecurityQuestion(existingQ || DEFAULT_SECURITY_QUESTIONS[0]);
       setPwdModalCustomQuestion('');
     }
-    setPwdModalSecurityAnswer(comp.securityAnswer || '');
+    // SECURITY: Never pre-populate the stored answer into the UI
+    setPwdModalSecurityAnswer('');
     setPwdModalError(null);
     setShowModalNewPwd(false);
+    setShowModalCurrentPwd(false);
+    setShowModalSecurityAnswer(false);
     setActionMenuOpenId(null);
   };
 
@@ -364,8 +402,12 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
     // Turning off password protection
     if (!pwdModalHasPassword) {
       if (passwordModalCompany.hasPassword && passwordModalCompany.password) {
-        if (pwdModalCurrentPassword !== passwordModalCompany.password) {
+        if (!pwdModalCurrentPassword) {
           setPwdModalError('Please enter your current password to disable protection.');
+          return;
+        }
+        if (pwdModalCurrentPassword !== passwordModalCompany.password) {
+          setPwdModalError('Current password is incorrect.');
           return;
         }
       }
@@ -382,6 +424,10 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
     // Changing existing password requires verifying current password
     if (passwordModalCompany.hasPassword && passwordModalCompany.password) {
+      if (!pwdModalCurrentPassword) {
+        setPwdModalError('Please enter your current password.');
+        return;
+      }
       if (pwdModalCurrentPassword !== passwordModalCompany.password) {
         setPwdModalError('Current password is incorrect.');
         return;
@@ -398,11 +444,6 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
       return;
     }
 
-    if (!pwdModalSecurityAnswer.trim()) {
-      setPwdModalError('Please provide a security answer for password recovery.');
-      return;
-    }
-
     const finalQuestion = pwdModalSecurityQuestion === 'Write your own custom question...'
       ? pwdModalCustomQuestion.trim()
       : pwdModalSecurityQuestion;
@@ -412,12 +453,31 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
       return;
     }
 
+    // Determine security answer:
+    // If the user typed an answer, use it.
+    // If left blank, retain the existing stored answer (only if question didn't change).
+    const questionChanged = finalQuestion !== (passwordModalCompany.securityQuestion || '');
+    let finalAnswer = pwdModalSecurityAnswer.trim();
+
+    if (!finalAnswer) {
+      if (passwordModalCompany.securityAnswer && !questionChanged) {
+        finalAnswer = passwordModalCompany.securityAnswer;
+      } else {
+        setPwdModalError(
+          questionChanged
+            ? 'The security question changed. Please enter a new security answer.'
+            : 'Please provide a security answer for password recovery.'
+        );
+        return;
+      }
+    }
+
     onUpdateCompany(passwordModalCompany.id, {
       hasPassword: true,
       password: pwdModalNewPassword,
       passwordHint: pwdModalHint.trim(),
       securityQuestion: finalQuestion,
-      securityAnswer: pwdModalSecurityAnswer.trim(),
+      securityAnswer: finalAnswer,
     });
 
     setPasswordModalCompany(null);
@@ -553,7 +613,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
               </button>
 
               {currentUser && (
-                <div className="relative">
+                <div className="relative" ref={userMenuRef}>
                   <button
                     type="button"
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -564,10 +624,23 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                   </button>
 
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs">
-                      <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400">
-                        Signed in as <strong>{currentUser.email || currentUser.username}</strong>
+                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                      <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 truncate">
+                          {currentUser.name || currentUser.username || currentUser.email}
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsProfileOpen(true);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
+                      >
+                        <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Profile</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -577,20 +650,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                         className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
                       >
                         <LogOut className="w-3.5 h-3.5 text-zinc-400" />
-                        <span>Switch Staff User</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          if (confirm('Disconnect from server?')) {
-                            onDisconnectServer?.();
-                          }
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
-                      >
-                        <Cloud className="w-3.5 h-3.5" />
-                        <span>Disconnect Server</span>
+                        <span>Sign Out</span>
                       </button>
                     </div>
                   )}
@@ -659,7 +719,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
             </button>
 
             {currentUser && (
-              <div className="relative">
+              <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -670,10 +730,23 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs">
-                    <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400">
-                      Signed in as <strong>{currentUser.email || currentUser.username}</strong>
+                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
+                      <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 truncate">
+                        {currentUser.name || currentUser.username || currentUser.email}
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsProfileOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
+                    >
+                      <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Profile</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -683,20 +756,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Switch Staff User</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        if (confirm('Disconnect from server?')) {
-                          onDisconnectServer?.();
-                        }
-                      }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
-                    >
-                      <Cloud className="w-3.5 h-3.5" />
-                      <span>Disconnect Server</span>
+                      <span>Sign Out</span>
                     </button>
                   </div>
                 )}
@@ -1031,8 +1091,17 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
             </div>
           </div>
+        ) : isProfileOpen ? (
+          /* VIEW 2: USER PERSONALISED PROFILE & SECURITY */
+          <UserProfilePage
+            currentUser={currentUser || null}
+            onBack={() => setIsProfileOpen(false)}
+            onUpdateCurrentUser={onUpdateCurrentUser}
+            onSignOut={onSignOut}
+            isMobileView={isMobile}
+          />
         ) : isTeamPageOpen ? (
-          /* VIEW 2: FULL PAGE AUTHORIZED TEAM MEMBERS */
+          /* VIEW 3: FULL PAGE AUTHORIZED TEAM MEMBERS */
           <TeamMembersPage
             onBack={() => setIsTeamPageOpen(false)}
             currentUser={currentUser || null}
@@ -1077,13 +1146,15 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                     <span>Authorized Staff</span>
                   </button>
                 )}
-                <button
-                  onClick={openCreateModal}
-                  className="flex-1 sm:flex-none h-9 sm:h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Company</span>
-                </button>
+                {!isAuditor && (
+                  <button
+                    onClick={openCreateModal}
+                    className="flex-1 sm:flex-none h-9 sm:h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Company</span>
+                  </button>
+                )}
               </div>
 
             </div>
@@ -1122,12 +1193,14 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                           <Cloud className="w-3.5 h-3.5 text-emerald-400" />
                           <span>Connect Team Server</span>
                         </button>
-                        <button
-                          onClick={openCreateModal}
-                          className="w-full py-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer"
-                        >
-                          + Create New Company
-                        </button>
+                        {!isAuditor && (
+                          <button
+                            onClick={openCreateModal}
+                            className="w-full py-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer"
+                          >
+                            + Create New Company
+                          </button>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -1141,13 +1214,15 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                           Connected to cloud server. Create your first company workspace to get started.
                         </p>
                       </div>
-                      <button
-                        onClick={openCreateModal}
-                        className="w-full py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-semibold hover:opacity-90 transition cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add First Company</span>
-                      </button>
+                      {!isAuditor && (
+                        <button
+                          onClick={openCreateModal}
+                          className="w-full py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-semibold hover:opacity-90 transition cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add First Company</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1164,55 +1239,59 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       onClick={() => handleCompanyClick(comp)}
                     >
                       {/* Top Action Options Button */}
-                      <div 
-                        className="absolute top-2.5 right-2.5 z-20"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={() => setActionMenuOpenId(isMenuOpen ? null : comp.id)}
-                          className="p-1.5 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition opacity-100 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
-                          title="Options"
+                      {!isAuditor && (
+                        <div 
+                          className="absolute top-2.5 right-2.5 z-20"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
+                          <button
+                            onClick={() => setActionMenuOpenId(isMenuOpen ? null : comp.id)}
+                            className="p-1.5 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition opacity-100 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
+                            title="Options"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
 
-                        {isMenuOpen && (
-                          <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs text-left z-30 animate-in fade-in">
-                            <button
-                              onClick={() => openEditModal(comp)}
-                              className="w-full px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
-                            >
-                              <Edit3 className="w-3 h-3 text-zinc-400" />
-                              <span>Edit Details</span>
-                            </button>
-                            
-                            <button
-                              onClick={() => openPasswordModal(comp)}
-                              className="w-full px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
-                            >
-                              <KeyRound className="w-3 h-3 text-zinc-400" />
-                              <span>{comp.hasPassword ? 'Change PIN' : 'Set Password'}</span>
-                            </button>
-
-                            {companies.length > 1 && (
-                              <>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-1" />
+                          {isMenuOpen && (
+                            <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs text-left z-30 animate-in fade-in">
+                              <button
+                                onClick={() => openEditModal(comp)}
+                                className="w-full px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
+                              >
+                                <Edit3 className="w-3 h-3 text-zinc-400" />
+                                <span>Edit Details</span>
+                              </button>
+                              
+                              {isAdmin && (
                                 <button
-                                  onClick={() => {
-                                    setDeletingCompany(comp);
-                                    setDeleteConfirmText('');
-                                    setActionMenuOpenId(null);
-                                  }}
-                                  className="w-full px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
+                                  onClick={() => openPasswordModal(comp)}
+                                  className="w-full px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
                                 >
-                                  <Trash2 className="w-3 h-3" />
-                                  <span>Delete Company</span>
+                                  <KeyRound className="w-3 h-3 text-zinc-400" />
+                                  <span>{comp.hasPassword ? 'Change PIN' : 'Set Password'}</span>
                                 </button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                              )}
+
+                              {isAdmin && companies.length > 1 && (
+                                <>
+                                  <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-1" />
+                                  <button
+                                    onClick={() => {
+                                      setDeletingCompany(comp);
+                                      setDeleteConfirmText('');
+                                      setActionMenuOpenId(null);
+                                    }}
+                                    className="w-full px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Delete Company</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Header Avatar & Details */}
                       <div>
@@ -1263,20 +1342,22 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 })}
 
                 {/* Add Company Card */}
-                <div
-                  onClick={openCreateModal}
-                  className="border border-dashed border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/40 rounded-xl p-3.5 flex flex-col items-center justify-center text-center transition cursor-pointer min-h-[155px]"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 flex items-center justify-center mb-1.5">
-                    <Plus className="w-4 h-4" />
+                {!isAuditor && (
+                  <div
+                    onClick={openCreateModal}
+                    className="border border-dashed border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/40 rounded-xl p-3.5 flex flex-col items-center justify-center text-center transition cursor-pointer min-h-[155px]"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 flex items-center justify-center mb-1.5">
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-semibold text-xs text-zinc-700 dark:text-zinc-300 tracking-tight">
+                      Add Company
+                    </h3>
+                    <p className="text-[10px] text-zinc-400">
+                      New workspace
+                    </p>
                   </div>
-                  <h3 className="font-semibold text-xs text-zinc-700 dark:text-zinc-300 tracking-tight">
-                    Add Company
-                  </h3>
-                  <p className="text-[10px] text-zinc-400">
-                    New workspace
-                  </p>
-                </div>
+                )}
 
               </div>
             )}
@@ -1509,13 +1590,24 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                           <label className="block text-[10px] text-zinc-500 mb-1">
                             Security Answer <span className="text-rose-500">*</span>
                           </label>
-                          <input
-                            type="text"
-                            placeholder="Answer for password recovery (e.g. RC-10294 or Lagos)"
-                            value={formSecurityAnswer}
-                            onChange={(e) => setFormSecurityAnswer(e.target.value)}
-                            className="w-full h-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                          />
+                          <div className="relative">
+                            <input
+                              type={showFormSecurityAnswer ? 'text' : 'password'}
+                              placeholder="Answer for password recovery (e.g. RC-10294 or Lagos)"
+                              value={formSecurityAnswer}
+                              onChange={(e) => setFormSecurityAnswer(e.target.value)}
+                              className="w-full h-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded pl-2 pr-6 text-xs text-zinc-900 dark:text-white focus:outline-none"
+                              autoComplete="off"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowFormSecurityAnswer(v => !v)}
+                              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 cursor-pointer"
+                              title={showFormSecurityAnswer ? 'Hide answer' : 'Show answer'}
+                            >
+                              {showFormSecurityAnswer ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            </button>
+                          </div>
                           <span className="text-[9px] text-zinc-400 mt-0.5 block">
                             Required to verify your identity and reset your PIN if forgotten.
                           </span>
@@ -1677,14 +1769,27 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                     {/* Current password (only if one already exists) */}
                     {passwordModalCompany.hasPassword && passwordModalCompany.password && (
                       <div>
-                        <label className="block text-[10px] text-zinc-500 mb-1">Current Password</label>
-                        <input
-                          type="password"
-                          placeholder="Enter current password"
-                          value={pwdModalCurrentPassword}
-                          onChange={(e) => setPwdModalCurrentPassword(e.target.value)}
-                          className="w-full h-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                        />
+                        <label className="block text-[10px] text-zinc-500 mb-1">
+                          Current Password <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showModalCurrentPwd ? 'text' : 'password'}
+                            placeholder="Enter current password"
+                            value={pwdModalCurrentPassword}
+                            onChange={(e) => setPwdModalCurrentPassword(e.target.value)}
+                            className="w-full h-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded pl-2 pr-6 text-xs text-zinc-900 dark:text-white focus:outline-none"
+                            autoComplete="current-password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowModalCurrentPwd(v => !v)}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 cursor-pointer"
+                            title={showModalCurrentPwd ? 'Hide password' : 'Show password'}
+                          >
+                            {showModalCurrentPwd ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -1760,18 +1865,47 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
                     {/* Security Answer */}
                     <div>
-                      <label className="block text-[10px] text-zinc-500 mb-1">
-                        Security Answer <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Answer used for password recovery"
-                        value={pwdModalSecurityAnswer}
-                        onChange={(e) => setPwdModalSecurityAnswer(e.target.value)}
-                        className="w-full h-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                      />
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[10px] text-zinc-500">
+                          Security Answer{' '}
+                          {Boolean(passwordModalCompany.securityAnswer) ? (
+                            <span className="text-zinc-400 font-normal">(Leave blank to keep current)</span>
+                          ) : (
+                            <span className="text-rose-500">*</span>
+                          )}
+                        </label>
+                        {Boolean(passwordModalCompany.securityAnswer) && (
+                          <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-0.5">
+                            <Check className="w-2.5 h-2.5" /> Configured
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showModalSecurityAnswer ? 'text' : 'password'}
+                          placeholder={
+                            passwordModalCompany.securityAnswer
+                              ? '•••••••• (Enter new answer to update)'
+                              : 'Answer used for password recovery'
+                          }
+                          value={pwdModalSecurityAnswer}
+                          onChange={(e) => setPwdModalSecurityAnswer(e.target.value)}
+                          className="w-full h-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded pl-2 pr-6 text-xs text-zinc-900 dark:text-white focus:outline-none"
+                          autoComplete="off"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowModalSecurityAnswer(v => !v)}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 cursor-pointer"
+                          title={showModalSecurityAnswer ? 'Hide answer' : 'Show answer'}
+                        >
+                          {showModalSecurityAnswer ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                        </button>
+                      </div>
                       <span className="text-[9px] text-zinc-400 mt-0.5 block">
-                        Required to verify your identity and reset your PIN if forgotten.
+                        {passwordModalCompany.securityAnswer
+                          ? 'Protected: stored securely and hidden from view to prevent unauthorized resets.'
+                          : 'Required to verify your identity and reset your PIN if forgotten.'}
                       </span>
                     </div>
 
@@ -1781,14 +1915,26 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 {/* Disable protection: verify current password before removing */}
                 {!pwdModalHasPassword && passwordModalCompany.hasPassword && passwordModalCompany.password && (
                   <div className="animate-in fade-in">
-                    <label className="block text-[10px] text-zinc-500 mb-1">Enter current password to disable protection</label>
-                    <input
-                      type="password"
-                      placeholder="Current password"
-                      value={pwdModalCurrentPassword}
-                      onChange={(e) => setPwdModalCurrentPassword(e.target.value)}
-                      className="w-full h-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                    />
+                    <label className="block text-[10px] text-zinc-500 mb-1">
+                      Enter current password to disable protection <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showModalCurrentPwd ? 'text' : 'password'}
+                        placeholder="Current password"
+                        value={pwdModalCurrentPassword}
+                        onChange={(e) => setPwdModalCurrentPassword(e.target.value)}
+                        className="w-full h-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded pl-2 pr-6 text-xs text-zinc-900 dark:text-white focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowModalCurrentPwd(v => !v)}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 cursor-pointer"
+                        title={showModalCurrentPwd ? 'Hide password' : 'Show password'}
+                      >
+                        {showModalCurrentPwd ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      </button>
+                    </div>
                   </div>
                 )}
 
