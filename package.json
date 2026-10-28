@@ -5,14 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && node --max-old-space-size=1024 ./node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
     "electron:dev": "electron .",
     "electron:build": "npm run build && electron-builder --win --x64",
     "electron:build:portable": "npm run build && electron-builder --win portable --x64",
-    "electron:build:dir": "npm run build && electron-builder --win --x64 --dir"
+    "electron:build:dir": "npm run build && electron-builder --win --x64 --dir",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build": "npm run build && npx cap sync android && cd android && gradlew.bat assembleDebug && cd .."
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "@supabase/supabase-js": "^2.118.0",
     "lucide-react": "^1.16.0",
     "react": "^18.3.1",

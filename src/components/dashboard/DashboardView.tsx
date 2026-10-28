@@ -51,8 +51,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   items: initialItems,
   staffCount,
   monthLabel: initialMonthLabel,
-  selectedMonth: initialSelectedMonth = 'jan',
-  year: initialYear,
+  selectedMonth: initialSelectedMonth = (MONTHS[new Date().getMonth()]?.key || 'oct'),
+  year: initialYear = new Date().getFullYear(),
   activeSnapshot,
   onNavigate,
   departments = [],
@@ -61,13 +61,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   payeTaxVariables,
   onPeriodChange,
 }) => {
-  // Local or connected filters for Dashboard
-  const [filterMonth, setFilterMonth] = useState<string>(initialSelectedMonth);
-  const [filterYear, setFilterYear] = useState<number>(initialYear);
+  const currentRealMonthKey = useMemo(() => MONTHS[new Date().getMonth()]?.key || 'oct', []);
+  const currentRealYear = useMemo(() => new Date().getFullYear(), []);
+
+  // Local filters for Dashboard — always defaults to current real-world month and year
+  const [filterMonth, setFilterMonth] = useState<string>(() => currentRealMonthKey);
+  const [filterYear, setFilterYear] = useState<number>(() => currentRealYear);
   const [filterDept, setFilterDept] = useState<string>('ALL');
   const [filterEmpType, setFilterEmpType] = useState<string>('ALL');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
+
+  // On initial mount, ensure store period aligns with current real-world month and year
+  useEffect(() => {
+    if (onPeriodChange && (initialSelectedMonth !== currentRealMonthKey || initialYear !== currentRealYear)) {
+      onPeriodChange(currentRealMonthKey, currentRealYear);
+    }
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -81,7 +91,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isFilterOpen]);
 
-  const years = [2024, 2025, 2026, 2027, 2028];
+  const years = useMemo(() => {
+    const cy = new Date().getFullYear();
+    const set = new Set([cy - 2, cy - 1, cy, cy + 1, cy + 2, 2024, 2025, 2026, 2027, 2028]);
+    return Array.from(set).sort((a, b) => a - b);
+  }, []);
+
   const isAllMonths = filterMonth === 'ALL';
   const currentMonthObj = MONTHS.find(m => m.key === filterMonth);
   const activeMonthLabel = isAllMonths ? 'All Months' : (currentMonthObj?.label || initialMonthLabel);
@@ -197,7 +212,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return Array.from(annualMap.values());
   }, [isAllMonths, initialItems, filterMonth, filterYear, initialSelectedMonth, initialYear, employees, payrollVariables, payeTaxVariables, filterDept, filterEmpType]);
 
-  const isLocked = Boolean(activeSnapshot?.isLocked && !isAllMonths && filterMonth === initialSelectedMonth && filterYear === initialYear);
+  const isLocked = Boolean(activeSnapshot?.isLocked && !isAllMonths && filterMonth === (activeSnapshot?.monthKey || initialSelectedMonth) && filterYear === (activeSnapshot?.year || initialYear));
 
   // Aggregated totals
   const totalGross = activeItems.reduce((s, i) => s + i.monthlyGross, 0);
@@ -253,14 +268,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     })).sort((a, b) => b.gross - a.gross);
   }, [activeItems, totalGross]);
 
-  const hasActiveFilters = filterDept !== 'ALL' || filterEmpType !== 'ALL' || filterMonth !== initialSelectedMonth || filterYear !== initialYear;
+  const hasActiveFilters = 
+    filterDept !== 'ALL' || 
+    filterEmpType !== 'ALL' || 
+    filterMonth !== currentRealMonthKey || 
+    filterYear !== currentRealYear;
 
   const handleResetFilters = () => {
-    setFilterMonth(initialSelectedMonth);
-    setFilterYear(initialYear);
+    setFilterMonth(currentRealMonthKey);
+    setFilterYear(currentRealYear);
     setFilterDept('ALL');
     setFilterEmpType('ALL');
-    onPeriodChange?.(initialSelectedMonth, initialYear);
+    onPeriodChange?.(currentRealMonthKey, currentRealYear);
   };
 
   const handleMonthChange = (newMonth: string) => {
@@ -272,7 +291,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const handleYearChange = (newYear: number) => {
     setFilterYear(newYear);
-    onPeriodChange?.(filterMonth, newYear);
+    if (filterMonth !== 'ALL') {
+      onPeriodChange?.(filterMonth, newYear);
+    } else {
+      onPeriodChange?.(currentRealMonthKey, newYear);
+    }
   };
 
   return (
@@ -352,7 +375,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         All Months (Full Year)
                       </option>
                       {MONTHS.map(m => (
-                        <option key={m.key} value={m.key} className="dark:bg-zinc-900">{m.label}</option>
+                        <option key={m.key} value={m.key} className="dark:bg-zinc-900">
+                          {m.label}{m.key === currentRealMonthKey ? ' (Current)' : ''}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -369,12 +394,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       className="bg-transparent text-zinc-800 dark:text-zinc-200 text-xs font-medium focus:outline-none cursor-pointer w-full"
                     >
                       {years.map(y => (
-                        <option key={y} value={y} className="dark:bg-zinc-900">{y}</option>
+                        <option key={y} value={y} className="dark:bg-zinc-900">
+                          {y}{y === currentRealYear ? ' (Current)' : ''}
+                        </option>
                       ))}
                     </select>
                   </div>
                 </div>
               </div>
+
+              {/* Quick Reset to Current Period if Month or Year differs */}
+              {(filterMonth !== currentRealMonthKey || filterYear !== currentRealYear) && (
+                <div className="flex justify-end -mt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleMonthChange(currentRealMonthKey);
+                      handleYearChange(currentRealYear);
+                    }}
+                    className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                  >
+                    Reset to Current Period ({MONTHS.find(m => m.key === currentRealMonthKey)?.label} {currentRealYear})
+                  </button>
+                </div>
+              )}
 
               {/* Department Filter */}
               <div>
@@ -554,7 +597,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span className="font-medium text-zinc-800 dark:text-zinc-200 uppercase tracking-wide">
                       {dept.name}
                     </span>
-                    <span className="text-[10px] text-zinc-400 font-mono">({dept.count} staff)</span>
+                    <span className="text-[11px] text-zinc-400 font-mono">({dept.count} staff)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
@@ -594,15 +637,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div key={type.name} className="space-y-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${
-                      type.name === 'Full-Time' ? 'bg-emerald-500' :
-                      type.name === 'Contract' ? 'bg-blue-500' :
-                      type.name === 'Part-Time' ? 'bg-purple-500' : 'bg-amber-500'
-                    }`} />
+                    <span className="w-2 h-2 rounded-full bg-zinc-500 dark:bg-zinc-400" />
                     <span className="font-medium text-zinc-800 dark:text-zinc-200">
                       {type.name}
                     </span>
-                    <span className="text-[10px] text-zinc-400 font-mono">({type.count} staff)</span>
+                    <span className="text-[11px] text-zinc-400 font-mono">({type.count} staff)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
@@ -615,11 +654,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                   <div 
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      type.name === 'Full-Time' ? 'bg-emerald-500' :
-                      type.name === 'Contract' ? 'bg-blue-500' :
-                      type.name === 'Part-Time' ? 'bg-purple-500' : 'bg-amber-500'
-                    }`}
+                    className="bg-zinc-700 dark:bg-zinc-400 h-1.5 rounded-full transition-all duration-300"
                     style={{ width: `${type.percentage}%` }}
                   />
                 </div>

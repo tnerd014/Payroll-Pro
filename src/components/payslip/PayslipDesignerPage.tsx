@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Palette, 
   Layers, 
@@ -76,6 +76,7 @@ interface PayslipDesignerPageProps {
   onSavePreset?: (name: string, config: PayslipDesignConfig, presetId?: string) => void;
   onDeletePreset?: (id: string) => void;
   loans?: EmployeeLoan[];
+  isMobile?: boolean;
 }
 
 export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
@@ -94,7 +95,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
   onSavePreset,
   onDeletePreset,
   loans = [],
+  isMobile: isMobileProp,
 }) => {
+  const isMobile = isMobileProp ?? (typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
+  const [mobileViewMode, setMobileViewMode] = useState<'preview' | 'controls'>('preview');
   const [activeTab, setActiveTab] = useState<'layout' | 'theme' | 'text' | 'presets'>('layout');
   const [selectedEmpId, setSelectedEmpId] = useState<string>(() => employees[0]?.id || 'sample');
 
@@ -104,9 +108,49 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
     }
   }, [employees, selectedEmpId]);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [zoomFit, setZoomFit] = useState<boolean>(true);
   const [customPresetName, setCustomPresetName] = useState<string>('');
   const [showSaveThemeModal, setShowSaveThemeModal] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<string>('');
+
+  // Mobile and responsive canvas width tracking
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const payslipContentRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [payslipHeight, setPayslipHeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (!canvasContainerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    ro.observe(canvasContainerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!payslipContentRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setPayslipHeight(entry.contentRect.height);
+      }
+    });
+    ro.observe(payslipContentRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Calculate effective visual scale to ensure payslip NEVER spills out of bounds
+  const effectiveScale = useMemo(() => {
+    if (zoomFit) {
+      if (containerWidth > 0) {
+        return Math.min(1.0, Math.max(0.32, (containerWidth - 20) / 700));
+      }
+      return isMobile ? 0.48 : 1.0;
+    }
+    return zoomLevel / 100;
+  }, [zoomFit, containerWidth, isMobile, zoomLevel]);
 
   // Active custom preset tracker (remembers which preset is being edited)
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
@@ -515,33 +559,35 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-36px)] overflow-hidden bg-zinc-50/50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100">
+    <div className={`flex flex-col ${isMobile ? 'h-full min-h-0' : 'h-[calc(100vh-36px)]'} overflow-hidden bg-zinc-50/50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 select-none`}>
       
-      {/* Top Header Bar - Fixed at top */}
-      <div className="shrink-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md px-4 sm:px-6 py-2 border-b border-zinc-200 dark:border-zinc-800 no-print">
-        <div className="flex flex-row justify-between items-center gap-3 whitespace-nowrap">
-          <div className="flex items-center gap-3 shrink-0">
+      {/* Top Header Bar - Responsive, fits without blowout */}
+      <div className="shrink-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md px-3 sm:px-6 py-2 border-b border-zinc-200 dark:border-zinc-800 no-print">
+        <div className="flex items-center justify-between gap-2">
+          
+          {/* Left: Back button + Title */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
               onClick={onBackToPayroll}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-md text-xs font-semibold border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer shrink-0 active:scale-95"
               title="Back to Payroll"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back</span>
             </button>
-            <div className="flex items-center gap-2">
-              <Palette className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
-              <h1 className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+            <div className="flex items-center gap-1.5">
+              <Palette className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <h1 className="text-xs sm:text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate max-w-[130px] sm:max-w-none">
                 Payslip Designer
               </h1>
             </div>
           </div>
 
-          {/* Top Actions */}
-          <div className="flex items-center gap-2 flex-nowrap min-w-0">
+          {/* Right: Actions (Theme Selector & Save) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Status message */}
             {saveMessage && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-medium animate-in fade-in">
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-medium animate-in fade-in">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 <span>{saveMessage}</span>
               </div>
@@ -566,15 +612,16 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
             {/* Save / Update Theme Action */}
             {activeCustomPreset ? (
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={() => handleUpdateCurrentPreset(activeCustomPreset)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer shrink-0"
+                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer shrink-0 active:scale-95"
                   title={`Update and overwrite saved theme "${activeCustomPreset.name}" with current changes`}
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Update "{activeCustomPreset.name}"</span>
+                  <span className="hidden sm:inline">Update "{activeCustomPreset.name}"</span>
+                  <span className="sm:hidden">Update</span>
                 </button>
 
                 <button
@@ -583,55 +630,88 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                     setCustomPresetName('');
                     setShowSaveThemeModal(true);
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors shadow-2xs cursor-pointer shrink-0"
+                  className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors shadow-2xs cursor-pointer shrink-0"
                   title="Save current styling & layout as a new separate theme"
                 >
                   <Plus className="w-3 h-3" />
-                  <span className="hidden sm:inline">Save as New</span>
+                  <span>Save as New</span>
                 </button>
               </div>
             ) : (
               <button
                 type="button"
                 onClick={() => setShowSaveThemeModal(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer shrink-0"
+                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer shrink-0 active:scale-95"
                 title="Save current styling & layout as a reusable theme"
               >
                 <Bookmark className="w-3.5 h-3.5" />
-                <span>Save Theme</span>
+                <span className="hidden sm:inline">Save Theme</span>
+                <span className="sm:hidden">Save</span>
               </button>
             )}
 
-            {/* Reset Template */}
+            {/* Reset Template (hidden on mobile, visible on sm+) */}
             <button
               type="button"
               onClick={onResetPayslipDesign}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer shrink-0"
+              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer shrink-0"
               title="Reset to default design"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Reset</span>
+              <span>Reset</span>
             </button>
 
-            {/* Import Design */}
+            {/* Import Design (hidden on mobile, visible on sm+) */}
             <button
               type="button"
               onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-2xs cursor-pointer shrink-0"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-2xs cursor-pointer shrink-0"
               title="Import design from another company"
             >
               <FolderInput className="w-3.5 h-3.5" />
-              <span>Import Design</span>
+              <span>Import</span>
             </button>
           </div>
         </div>
       </div>
 
+      {/* ── Mobile Mode Segmented Switcher (Live Preview vs Customizer) ── */}
+      <div className="flex lg:hidden items-center justify-center p-2 bg-zinc-100/70 dark:bg-zinc-900/70 border-b border-zinc-200/80 dark:border-zinc-800/80 shrink-0">
+        <div className="inline-flex p-1 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 shadow-2xs text-xs font-semibold w-full max-w-xs">
+          <button
+            type="button"
+            onClick={() => setMobileViewMode('preview')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+              mobileViewMode === 'preview'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Live Preview</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileViewMode('controls')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+              mobileViewMode === 'controls'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Customize</span>
+          </button>
+        </div>
+      </div>
+
       {/* Main Two-Column Studio Layout: Studio columns have independent scroll! */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 p-4 sm:p-5 overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 p-2 sm:p-5 overflow-hidden">
         
         {/* Left Control Panel (5 Cols) - Scrollable independently */}
-        <div className="lg:col-span-5 h-full overflow-y-auto bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-5 shadow-2xs no-print pr-3">
+        <div className={`lg:col-span-5 h-full overflow-y-auto bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 space-y-4 shadow-2xs no-print pr-3 ${
+          mobileViewMode === 'controls' ? 'block' : 'hidden lg:block'
+        }`}>
           
           {/* Sub Navigation Tabs */}
           <div className="flex border-b border-zinc-200 dark:border-zinc-800 text-xs font-medium gap-4">
@@ -1854,28 +1934,42 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
             </div>
           )}
 
+          {/* Mobile Switch to Live Preview CTA */}
+          <div className="w-full flex lg:hidden items-center justify-center pt-3 pb-6">
+            <button
+              type="button"
+              onClick={() => setMobileViewMode('preview')}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md active:scale-98 transition-all cursor-pointer"
+            >
+              <Eye className="w-4 h-4" />
+              <span>View Live Preview</span>
+            </button>
+          </div>
+
         </div>
 
         {/* Right Preview Canvas (7 Cols) - Stationary / Independent scroll */}
-        <div className="lg:col-span-7 h-full overflow-y-auto flex flex-col items-center pr-1">
+        <div className={`lg:col-span-7 h-full overflow-y-auto flex flex-col items-center pr-1 ${
+          mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'
+        }`}>
           
           {/* Zoom and Preview Toolbar */}
-          <div className="w-full flex items-center justify-between mb-2 px-1 text-xs text-zinc-500 no-print shrink-0">
+          <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-2 px-1 text-xs text-zinc-500 no-print shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-zinc-700 dark:text-zinc-300 text-[11px] uppercase tracking-wider">
+              <span className="font-bold text-zinc-800 dark:text-zinc-200 text-[11px] uppercase tracking-wider">
                 Live Interactive Canvas
               </span>
-              <span className="text-zinc-400">&bull; Hover sections to move or toggle</span>
+              <span className="hidden sm:inline text-zinc-400">&bull; Hover sections to move or toggle</span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {/* Text & Font Size Quick Tool */}
-              <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-1.5 py-0.5 shadow-2xs">
+              <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-1.5 py-0.5 shadow-2xs">
                 <Type className="w-3 h-3 text-zinc-400 ml-0.5" />
                 <button
                   type="button"
                   onClick={() => handleAdjustFontScale(-4)}
-                  className="px-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-bold text-xs cursor-pointer"
+                  className="px-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-bold text-xs cursor-pointer active:scale-95"
                   title="Decrease Text Font Size (A-)"
                 >
                   A-
@@ -1886,7 +1980,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                 <button
                   type="button"
                   onClick={() => handleAdjustFontScale(4)}
-                  className="px-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-bold text-xs cursor-pointer"
+                  className="px-1 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-bold text-xs cursor-pointer active:scale-95"
                   title="Increase Text Font Size (A+)"
                 >
                   A+
@@ -1903,57 +1997,114 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                 )}
               </div>
 
-              {/* Canvas Zoom Controls */}
-              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-1.5 py-0.5 shadow-2xs">
+              {/* Canvas Zoom & Fit Controls */}
+              <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-1.5 py-0.5 shadow-2xs">
                 <button
                   type="button"
-                  onClick={() => setZoomLevel(Math.max(70, zoomLevel - 10))}
-                  className="p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer"
+                  onClick={() => setZoomFit(true)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                    zoomFit
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                  }`}
+                  title="Auto-fit payslip to phone/screen width"
+                >
+                  Fit
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoomFit(false);
+                    setZoomLevel(100);
+                  }}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                    !zoomFit && zoomLevel === 100
+                      ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                  }`}
+                  title="100% full print size"
+                >
+                  100%
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoomFit(false);
+                    setZoomLevel(Math.max(50, zoomLevel - 10));
+                  }}
+                  className="p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer active:scale-95"
                   title="Zoom Out Canvas"
                 >
                   <ZoomOut className="w-3 h-3" />
                 </button>
-                <span className="font-mono text-[11px] w-9 text-center text-zinc-700 dark:text-zinc-300">
-                  {zoomLevel}%
+                <span className="font-mono text-[10px] w-8 text-center text-zinc-700 dark:text-zinc-300 font-medium">
+                  {zoomFit ? `${Math.round(effectiveScale * 100)}%` : `${zoomLevel}%`}
                 </span>
                 <button
                   type="button"
-                  onClick={() => setZoomLevel(Math.min(130, zoomLevel + 10))}
-                  className="p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer"
+                  onClick={() => {
+                    setZoomFit(false);
+                    setZoomLevel(Math.min(150, zoomLevel + 10));
+                  }}
+                  className="p-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer active:scale-95"
                   title="Zoom In Canvas"
                 >
                   <ZoomIn className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setZoomLevel(100)}
-                  className="text-[10px] px-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 border-l border-zinc-200 dark:border-zinc-800 pl-1.5 cursor-pointer"
-                >
-                  100%
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Scaled Preview Canvas Wrapper */}
-          <div className="w-full flex justify-center bg-zinc-200/50 dark:bg-zinc-950 p-4 sm:p-6 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-x-auto min-h-[600px] mb-8">
+          {/* Scaled Preview Canvas Wrapper - Measured and auto-fitted */}
+          <div 
+            ref={canvasContainerRef}
+            className="w-full flex flex-col items-center justify-start bg-zinc-200/50 dark:bg-zinc-950 p-2 sm:p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-x-auto min-h-[480px] mb-4"
+          >
             <div 
-              style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
-              className="w-full max-w-[700px] transition-transform duration-150"
+              style={{ 
+                width: `${Math.round(700 * effectiveScale)}px`, 
+                height: payslipHeight ? `${Math.round(payslipHeight * effectiveScale)}px` : 'auto',
+                maxWidth: '100%' 
+              }}
+              className="relative mx-auto transition-all duration-150 overflow-hidden"
             >
-              <CustomizablePayslipView
-                item={previewItem}
-                company={company}
-                monthLabel={monthLabel}
-                year={year}
-                config={payslipDesign}
-                interactive={true}
-                onMoveSectionUp={(id) => handleMoveSection(id, 'up')}
-                onMoveSectionDown={(id) => handleMoveSection(id, 'down')}
-                onToggleSection={handleToggleSection}
-                onUpdateConfig={onUpdatePayslipDesign}
-              />
+              <div
+                ref={payslipContentRef}
+                style={{
+                  width: '700px',
+                  transform: `scale(${effectiveScale})`,
+                  transformOrigin: 'top left',
+                }}
+                className="shrink-0"
+              >
+                <CustomizablePayslipView
+                  item={previewItem}
+                  company={company}
+                  monthLabel={monthLabel}
+                  year={year}
+                  config={payslipDesign}
+                  interactive={true}
+                  onMoveSectionUp={(id) => handleMoveSection(id, 'up')}
+                  onMoveSectionDown={(id) => handleMoveSection(id, 'down')}
+                  onToggleSection={handleToggleSection}
+                  onUpdateConfig={onUpdatePayslipDesign}
+                />
+              </div>
             </div>
+          </div>
+
+          {/* Mobile Switch to Customizer CTA */}
+          <div className="w-full flex lg:hidden items-center justify-center pt-2 pb-6">
+            <button
+              type="button"
+              onClick={() => setMobileViewMode('controls')}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md active:scale-98 transition-all cursor-pointer"
+            >
+              <Sliders className="w-4 h-4" />
+              <span>Customize Styling &amp; Layout</span>
+            </button>
           </div>
 
         </div>

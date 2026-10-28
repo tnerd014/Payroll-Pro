@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Payroll Pro — Complete Instruction Manual & Reference Guide</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    @page {
+      size: A4;
+      margin: 14mm 14mm 16mm 14mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      background-color: #ffffff;
+      line-height: 1.55;
+      font-size: 10pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .avoid-break {
+      page-break-inside: avoid;
+    }
+
+    /* Cover Page */
+    .cover-container {
+      height: 250mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 25mm 15mm 15mm 15mm;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cover-top-accent {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, #059669 0%, #0284c7 100%);
+    }
+
+    .cover-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .cover-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 14px;
+      background: #0f172a;
+      padding: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    }
+
+    .cover-brand {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cover-brand-title {
+      font-size: 20pt;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #0f172a;
+    }
+
+    .cover-brand-subtitle {
+      font-size: 10pt;
+      color: #059669;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .cover-body {
+      margin-top: 40px;
+    }
+
+    .cover-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: #ecfdf5;
+      color: #065f46;
+      font-weight: 700;
+      font-size: 9pt;
+      border: 1px solid #a7f3d0;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .cover-title {
+      font-size: 30pt;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      margin-bottom: 14px;
+    }
+
+    .cover-desc {
+      font-size: 12pt;
+      color: #475569;
+      max-width: 480px;
+      line-height: 1.5;
+    }
+
+    .cover-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      padding: 18px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+
+    .cover-meta-item label {
+      display: block;
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #64748b;
+      margin-bottom: 2px;
+      letter-spacing: 0.5px;
+    }
+
+    .cover-meta-item span {
+      font-size: 9.5pt;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .cover-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 15px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 8pt;
+      color: #64748b;
+    }
+
+    /* Standard Content Styling */
+    h1 {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.4px;
+    }
+
+    h1 .section-num {
+      background: #0f172a;
+      color: #ffffff;
+      font-size: 10pt;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      letter-spacing: -0.2px;
+    }
+
+    h3 {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #334155;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+
+    p {
+      margin-bottom: 8px;
+      color: #334155;
+    }
+
+    ul, ol {
+      margin-left: 20px;
+      margin-bottom: 10px;
+      color: #334155;
+    }
+
+    li {
+      margin-bottom: 4px;
+    }
+
+    /* Header & Footer in Pages */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 7.5pt;
+      color: #94a3b8;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .page-header-title {
+      color: #059669;
+      font-weight: 700;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px 0;
+      font-size: 8.5pt;
+    }
+
+    th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      text-align: left;
+      padding: 6px 10px;
+      border: 1px solid #cbd5e1;
+      text-transform: uppercase;
+      font-size: 7.5pt;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 6px 10px;
+      border: 1px solid #e2e8f0;
+      color: #334155;
+      vertical-align: middle;
+    }
+
+    tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8pt;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 600;
+    }
+
+    .badge-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-blue { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+    .badge-amber { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .badge-slate { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+
+    /* Callouts */
+    .callout {
+      border-left: 3.5px solid;
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+      margin: 10px 0;
+      font-size: 9pt;
+    }
+
+    .callout-info {
+      background-color: #f0fdf4;
+      border-color: #059669;
+      color: #065f46;
+    }
+
+    .callout-info strong {
+      color: #047857;
+    }
+
+    .callout-warning {
+      background-color: #fffbeb;
+      border-color: #d97706;
+      color: #92400e;
+    }
+
+    .callout-tip {
+      background-color: #f0f9ff;
+      border-color: #0284c7;
+      color: #075985;
+    }
+
+    /* Cards & Grids */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .feature-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px;
+      background: #ffffff;
+    }
+
+    .feature-card h4 {
+      font-size: 9.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .feature-card p {
+      font-size: 8.5pt;
+      color: #64748b;
+      margin-bottom: 0;
+      line-height: 1.4;
+    }
+
+    /* Math Box */
+    .math-box {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5pt;
+      margin: 8px 0;
+      line-height: 1.45;
+    }
+
+    .math-box .hl { color: #34d399; font-weight: 600; }
+    .math-box .op { color: #38bdf8; }
+    .math-box .rem { color: #94a3b8; font-style: italic; }
+
+    /* Steps */
+    .step-list {
+      list-style: none;
+      margin-left: 0;
+      counter-reset: step-counter;
+    }
+
+    .step-list li {
+      position: relative;
+      padding-left: 28px;
+      margin-bottom: 8px;
+      font-size: 9pt;
+    }
+
+    .step-list li::before {
+      content: counter(step-counter);
+      counter-increment: step-counter;
+      position: absolute;
+      left: 0;
+      top: 1px;
+      width: 20px;
+      height: 20px;
+      background: #0f172a;
+      color: #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-align: center;
+      line-height: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== COVER PAGE ==================== -->
+  <div class="cover-container">
+    <div class="cover-top-accent"></div>
+    
+    <div class="cover-header">
+      <img src="data:image/png;base64,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" class="cover-logo" alt="Payroll Pro Logo" />
+      <div class="cover-brand">
+        <div class="cover-brand-title">PAYROLL PRO</div>
+        <div class="cover-brand-subtitle">Enterprise Desktop & Cloud Suite</div>
+      </div>
+    </div>
+
+    <div class="cover-body">
+      <div class="cover-tag">Official Operational Documentation</div>
+      <div class="cover-title">Instruction Manual &<br>Statutory Reference Guide</div>
+      <div class="cover-desc">
+        A comprehensive guide covering employee onboarding, monthly gross-to-net payroll computation, loan amortizations, payslip customization, corporate bank schedules, and statutory compliance under Nigerian tax laws.
+      </div>
+    </div>
+
+    <div class="cover-meta-grid">
+      <div class="cover-meta-item">
+        <label>Document Version</label>
+        <span>Release 1.0.2 (Production Stable)</span>
+      </div>
+      <div class="cover-meta-item">
+        <label>Primary Audience</label>
+        <span>Payroll Officers, HR Managers, Controllers</span>
+      </div>
+      <div class="cover-meta-item">
+        <label>Statutory Jurisdiction</label>
+        <span>Federal Republic of Nigeria (PITA / PRA 2014 / 2026 Tax Bill)</span>
+      </div>
+      <div class="cover-meta-item">
+        <label>System Architecture</label>
+        <span>Electron Native Desktop + Supabase Realtime Cloud</span>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <div>CONFIDENTIAL & PROPRIETARY — FOR AUTHORIZED COMPANY USE ONLY</div>
+      <div>PAYROLL PRO ENTERPRISE &copy; 2026</div>
+    </div>
+  </div>
+
+  <!-- ==================== TABLE OF CONTENTS ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Table of Contents</span>
+  </div>
+
+  <h1><span class="section-num">TOC</span> Table of Contents</h1>
+
+  <table style="margin-top: 14px;">
+    <thead>
+      <tr>
+        <th style="width: 12%;">Section</th>
+        <th style="width: 68%;">Module & Operational Topic</th>
+        <th style="width: 20%; text-align: right;">Target Audience</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Section 1</strong></td>
+        <td><strong>Executive Overview & System Architecture</strong><br><span style="color:#64748b; font-size:7.5pt;">Offline-first caching, Supabase Realtime sync, system specifications, and global navigation.</span></td>
+        <td style="text-align: right;"><span class="badge badge-slate">All Operators</span></td>
+      </tr>
+      <tr>
+        <td><strong>Section 2</strong></td>
+        <td><strong>Authentication & Multi-Company Workspaces</strong><br><span style="color:#64748b; font-size:7.5pt;">Cloud connection, Windows Account Picker, workspace PINs, and security question recovery.</span></td>
+        <td style="text-align: right;"><span class="badge badge-slate">Admins & Staff</span></td>
+      </tr>
+      <tr>
+        <td><strong>Section 3</strong></td>
+        <td><strong>Employee Directory & Staff Management</strong><br><span style="color:#64748b; font-size:7.5pt;">Quick-Add spreadsheet bulk entry, Standard Profile setup, Department select dropdown, and 360° modal.</span></td>
+        <td style="text-align: right;"><span class="badge badge-blue">HR & Payroll</span></td>
+      </tr>
+      <tr>
+        <td><strong>Section 4</strong></td>
+        <td><strong>Monthly Payroll Computation & Finalization</strong><br><span style="color:#64748b; font-size:7.5pt;">Gross-to-net computation, stint prorations, monthly overrides, period snapshot locking, and NUBAN bank schedules.</span></td>
+        <td style="text-align: right;"><span class="badge badge-green">Payroll & Finance</span></td>
+      </tr>
+      <tr>
+        <td><strong>Section 5</strong></td>
+        <td><strong>Loans & Salary Advances Ledger</strong><br><span style="color:#64748b; font-size:7.5pt;">Disbursing facilities, auto-deduction integration, pause/resume, and manual repayment entries.</span></td>
+        <td style="text-align: right;"><span class="badge badge-green">Finance & Accounts</span></td>
+      </tr>
+      <tr>
+        <td><strong>Section 6</strong></td>
+        <td><strong>WYSIWYG Payslip Designer & Batch Export</strong><br><span style="color:#64748b; font-size:7.5pt;">Layout presets (Modern, Classic, Compact), logo branding, cryptographic QR code verification, and PDF printing.</span></td>
+        <td style="text-align: right;"><span class="badge badge-blue">HR & Finance</span></td>
+      </tr>
+      <tr>
+        <td><strong>Section 7</strong></td>
+        <td><strong>Statutory Compliance & Mathematical Models</strong><br><span style="color:#64748b; font-size:7.5pt;">PITA 2011 & 2026 Tax Bill progressive bands, CRA formulas, PRA 2014 BHT 8%/10% Pension, and worked examples.</span></td>
+        <td style="text-align: right;"><span class="badge badge-amber">Compliance & Audit</span></td>
+      </tr>
+      <tr>
+        <td><strong>Section 8</strong></td>
+        <td><strong>Role-Based Access Control, Presence & Security Auditing</strong><br><span style="color:#64748b; font-size:7.5pt;">Admin vs Officer vs Auditor matrix, live operator presence, instant deactivation, and immutable audit logs.</span></td>
+        <td style="text-align: right;"><span class="badge badge-slate">System Admins</span></td>
+      </tr>
+      <tr>
+        <td><strong>Section 9</strong></td>
+        <td><strong>Troubleshooting, Data Backup & Disaster Recovery</strong><br><span style="color:#64748b; font-size:7.5pt;">Encrypted JSON backups, silent background sync, common edge-cases, and recovery workflows.</span></td>
+        <td style="text-align: right;"><span class="badge badge-slate">Admins & IT</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Global Keyboard Shortcuts</h2>
+  <p>Payroll Pro provides ergonomic keyboard triggers across all active workspaces:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Shortcut Key</th>
+        <th style="width: 35%;">Destination / Action</th>
+        <th style="width: 40%;">Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="mono">Alt + 1</span></td>
+        <td><strong>Executive Dashboard</strong></td>
+        <td>Navigate directly to payroll KPIs, total statutory liabilities, and department breakdown.</td>
+      </tr>
+      <tr>
+        <td><span class="mono">Alt + 2</span></td>
+        <td><strong>Staff Directory</strong></td>
+        <td>Open employee directory ledger, search filters, and bulk onboarding tools.</td>
+      </tr>
+      <tr>
+        <td><span class="mono">Alt + 3</span></td>
+        <td><strong>Payroll Processing</strong></td>
+        <td>Jump to current period gross-to-net computation ledger and bank exports.</td>
+      </tr>
+      <tr>
+        <td><span class="mono">Alt + 4</span></td>
+        <td><strong>Loans & Advances</strong></td>
+        <td>Open loan register, repayments, and facility disbursement form.</td>
+      </tr>
+      <tr>
+        <td><span class="mono">Alt + 5</span></td>
+        <td><strong>Payslip Designer</strong></td>
+        <td>Open visual WYSIWYG payslip customizer and layout templates.</td>
+      </tr>
+      <tr>
+        <td><span class="mono">Alt + 6</span></td>
+        <td><strong>Company Settings</strong></td>
+        <td>Manage company profile, tax rules, departments, backups, and audit trails.</td>
+      </tr>
+      <tr>
+        <td><span class="mono">Escape (Esc)</span></td>
+        <td><strong>Dismiss / Close</strong></td>
+        <td>Immediately dismiss any open modal, dialog, or floating action menu.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ==================== SECTION 1: EXECUTIVE OVERVIEW ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Section 1: Executive Overview</span>
+  </div>
+
+  <h1><span class="section-num">01</span> Executive Overview & System Architecture</h1>
+
+  <p>
+    <strong>Payroll Pro</strong> is a specialized enterprise application built to handle the complex statutory, tax, and pension realities of operating in Nigeria. It eliminates spreadsheet errors, enforces compliance with federal and state regulations, and streamlines disbursement through Nigerian commercial banks.
+  </p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>🔒 Dual-Mode Multi-Tenancy</h4>
+      <p>Operates fully offline on isolated local storage or connects seamlessly to private Supabase PostgreSQL instances for multi-branch team collaboration.</p>
+    </div>
+    <div class="feature-card">
+      <h4>⚡ Zero-Latency Role Enforcement</h4>
+      <p>Role promotions, demotions, and operator deactivations take effect across remote operator windows in sub-seconds via Supabase Realtime CDC.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🇳🇬 Complete Nigerian Compliance</h4>
+      <p>Built-in models for PITA 2011, Finance Act 2020, Pension Reform Act 2014, and the upcoming 2026 Nigerian Tax Reform Bill progressive brackets.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🛡️ Non-Destructive Background Sync</h4>
+      <p>Silent multi-layered polling and WebSocket updates refresh data in memory without table unmounting, layout shifting, or screen flickering.</p>
+    </div>
+  </div>
+
+  <h2>System Architecture & Data Flow</h2>
+  <div class="callout callout-info">
+    <strong>Offline-First Resilience:</strong> All changes made by operators are immediately written to local memory and persistent storage, followed by optimistic background synchronization to Supabase Cloud. If network connectivity drops, operators can continue processing payroll without interruption; changes sync automatically upon reconnection.
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Technology</th>
+        <th>Operational Function</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Desktop Shell</strong></td>
+        <td>Electron 44 (x64)</td>
+        <td>Provides high-performance native Windows integration, tray support, local file system access, and native print-to-PDF generation.</td>
+      </tr>
+      <tr>
+        <td><strong>User Interface</strong></td>
+        <td>React 18 &amp; Tailwind CSS</td>
+        <td>Reactive, dark-mode ready UI with zero third-party component bloat, tailored for high-volume tabular accounting operations.</td>
+      </tr>
+      <tr>
+        <td><strong>Computation Engine</strong></td>
+        <td>Pure TypeScript</td>
+        <td>Deterministic, audit-ready mathematical engine implementing Nigerian statutory emoluments, CRA formulas, and marginal tax bands.</td>
+      </tr>
+      <tr>
+        <td><strong>Cloud Database</strong></td>
+        <td>Supabase (PostgreSQL 14+)</td>
+        <td>Multi-tenant relational database with foreign key cascades, Row Level Security (RLS), and Realtime WebSocket replication.</td>
+      </tr>
+      <tr>
+        <td><strong>Export Engine</strong></td>
+        <td>SheetJS &amp; xlsx-js-style</td>
+        <td>Generates styled Excel corporate bank schedules (NUBAN format) and printable A4 payslips.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ==================== SECTION 2: WORKSPACE SETUP ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Section 2: Workspaces & Authentication</span>
+  </div>
+
+  <h1><span class="section-num">02</span> Authentication & Multi-Company Workspaces</h1>
+
+  <p>
+    Payroll Pro isolates data by legal corporate entities. Operators sign into the system with their verified credentials and then select or unlock their target company workspace.
+  </p>
+
+  <h2>2.1 Cloud Staff Access Gate</h2>
+  <p>Upon launching the application, the system presents the Cloud &amp; Staff Access Gate:</p>
+  <ul class="step-list">
+    <li><strong>Enter Operator Credentials:</strong> Enter your registered Work Email or Username and Password.</li>
+    <li><strong>Automatic Session Retention:</strong> Check <em>"Remember me on this workstation"</em> to bypass subsequent login prompts on secure company computers.</li>
+    <li><strong>First-Time Admin Setup:</strong> If connecting to a newly deployed database, the gate prompts you to register the Master Administrator with an initial security question and answer.</li>
+    <li><strong>Connecting a Private Server:</strong> Click <strong>Connect Server</strong> in the top-right corner to input your organization's private Supabase URL and Anon Public Key.</li>
+  </ul>
+
+  <h2>2.2 Windows OS-Style Account Picker</h2>
+  <p>Once authenticated, the system presents the interactive workspace gallery:</p>
+  <div class="callout callout-tip">
+    <strong>Multi-Entity Switching:</strong> Holding companies and accounting firms managing multiple subsidiaries can switch between workspaces in seconds. Each company maintains its own distinct logo, password, staff register, and locked historical snapshots.
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Workspace Feature</th>
+        <th>Description &amp; Operational Rule</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Company Profile Card</strong></td>
+        <td>Displays the company's legal name, logo, active staff count, and lock status.</td>
+      </tr>
+      <tr>
+        <td><strong>Workspace PIN / Password</strong></td>
+        <td>If a workspace has password protection enabled, clicking the card prompts for the confidential PIN/password before granting entry.</td>
+      </tr>
+      <tr>
+        <td><strong>+ Add Company Workspace</strong></td>
+        <td>Administrators can create a new entity by providing the legal business name, RC/CAC number, registered address, and default state of residence.</td>
+      </tr>
+      <tr>
+        <td><strong>Authorized Team Members</strong></td>
+        <td>Clicking <strong>Team Members</strong> in the top ribbon opens the central operator delegation ledger where roles and presence are administered.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2.3 Self-Service Password Recovery</h2>
+  <p>If an operator forgets their login credentials, they can perform self-service recovery:</p>
+  <ul class="step-list">
+    <li>Click <strong>Forgot Password?</strong> on the login screen.</li>
+    <li>Enter the registered <strong>Work Email or Username</strong>.</li>
+    <li>The system verifies the account and presents the confidential <strong>Security Question</strong> registered during onboarding.</li>
+    <li>Provide the exact <strong>Security Answer</strong> to immediately unlock the account and set a fresh confidential password.</li>
+  </ul>
+
+  <!-- ==================== SECTION 3: EMPLOYEE MANAGEMENT ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Section 3: Staff Management</span>
+  </div>
+
+  <h1><span class="section-num">03</span> Employee Directory & Staff Management</h1>
+
+  <p>
+    The Employee Directory is the operational center for personnel records, salary contracts, statutory tax and pension settings, and mid-month tenure stints.
+  </p>
+
+  <h2>3.1 Quick-Add Spreadsheet Form (Bulk Onboarding)</h2>
+  <p>
+    Designed specifically for rapidly populating staff registers during new company setup or bulk seasonal hiring.
+  </p>
+
+  <div class="callout callout-info">
+    <strong>Keyboard Power Workflow:</strong> Pressing <strong>Enter</strong> or <strong>Tab</strong> at the end of a row automatically validates the current staff member, commits the entry, and creates a fresh empty row with the cursor placed in the Full Name field.
+  </div>
+
+  <table style="margin-top: 8px;">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Column</th>
+        <th style="width: 25%;">Input Type</th>
+        <th style="width: 50%;">Rules &amp; Validation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Full Name</strong></td>
+        <td>Text</td>
+        <td>Required. Automatically parses First Name and Last Name.</td>
+      </tr>
+      <tr>
+        <td><strong>Monthly Salary (₦)</strong></td>
+        <td>Number / Currency</td>
+        <td>Monthly Gross. Supports arbitrary decimal precision and empty states while typing.</td>
+      </tr>
+      <tr>
+        <td><strong>Employment Type</strong></td>
+        <td>Select Dropdown</td>
+        <td>Select from Full-Time, Contract, Intern / NYSC, or Part-Time.</td>
+      </tr>
+      <tr>
+        <td><strong>Department</strong></td>
+        <td>Native Select Dropdown</td>
+        <td>Select from company operational units (Operations, Finance, Sales, Admin, IT).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3.2 Standard Employee Profile Modal</h2>
+  <p>
+    Used when detailed statutory registration or individual contract terms are required.
+  </p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>👤 Identity &amp; Role</h4>
+      <p>Staff ID Code, First Name, Last Name, native Department select dropdown, Job Title, Work Email, and Phone.</p>
+    </div>
+    <div class="feature-card">
+      <h4>💰 Compensation &amp; Rent</h4>
+      <p>Base Monthly Gross (₦), Annual Rent Emolument (for statutory Rent Relief), and monthly salary overrides.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🏛️ Statutory Tax &amp; Pension</h4>
+      <p>Subject to Pension (8%), Subject to PAYE, licensed PFA selection, 11-digit RSA Number, Taxpayer ID, and State of Residence.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🏦 Bank &amp; Disbursement</h4>
+      <p>Official Bank Name (from licensed Nigerian banking directory) and validated 10-digit NUBAN account number.</p>
+    </div>
+  </div>
+
+  <h2>3.3 Employee 360° Comprehensive View</h2>
+  <p>
+    Clicking any employee in the directory launches a balanced, high-fidelity <strong>50/50 two-column landscape dashboard</strong>:
+  </p>
+  <ul>
+    <li><strong>Left Column (Identity &amp; Profile):</strong> Staff avatar, contact cards with one-click copy, statutory registration numbers, and banking details.</li>
+    <li><strong>Right Column (Live Payroll Cycle &amp; Emoluments):</strong> Real-time month picker displaying exact emolument splits (Basic, Housing, Transport), CRA relief, PAYE tax, and net take-home pay for that specific cycle.</li>
+    <li><strong>Edit Launchpad:</strong> One-click button to jump directly into full profile editing.</li>
+  </ul>
+
+  <!-- ==================== SECTION 4: PAYROLL PROCESSING ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Section 4: Monthly Payroll Processing</span>
+  </div>
+
+  <h1><span class="section-num">04</span> Monthly Payroll Computation & Finalization</h1>
+
+  <p>
+    The Payroll Processing module computes gross-to-net calculations in real-time, factoring in mid-month stint prorations, monthly bonuses, loan repayments, and statutory tax deductions.
+  </p>
+
+  <h2>4.1 Computation Workflow</h2>
+  <ul class="step-list">
+    <li><strong>Select Cycle:</strong> Click the target month (e.g., <em>October</em>) and year from the top period ribbon.</li>
+    <li><strong>Review Prorations:</strong> Staff joining or leaving mid-month have their gross earnings automatically prorated by active calendar days.</li>
+    <li><strong>Apply Active Loan Deductions:</strong> Scheduled staff loan and advance deductions are automatically integrated into each employee's deductions column.</li>
+    <li><strong>Audit Ledger Figures:</strong> Inspect Gross Pay, CRA Relief, Taxable Income, PAYE Tax, Pension (8%), Employer Pension (10%), and Net Take-Home Pay.</li>
+    <li><strong>Lock Period Snapshot:</strong> Finalize the run to archive the numbers permanently against accidental retrospective modification.</li>
+    <li><strong>Generate Bank Schedule:</strong> Export the validated NUBAN schedule for corporate internet banking upload.</li>
+  </ul>
+
+  <h2>4.2 Stint & Proration Logic</h2>
+  <p>
+    When an employee has a recorded Start Date or Exit Date falling within the active processing month, Payroll Pro applies exact calendar proration:
+  </p>
+
+  <div class="math-box">
+    <span class="rem">// Calendar Day Tenure Proration Formula</span><br>
+    <span class="hl">Proration Factor</span> <span class="op">=</span> Active Days in Month <span class="op">/</span> Total Calendar Days in Month<br>
+    <span class="hl">Prorated Gross</span> <span class="op">=</span> Base Gross Salary <span class="op">*</span> Proration Factor
+  </div>
+
+  <h2>4.3 Period Snapshot Locking & Historical Archiving</h2>
+  <p>
+    To protect accounting integrity, completed payroll runs must be locked:
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 30%;">Snapshot Parameter</th>
+        <th style="width: 70%;">Compliance &amp; Operational Rule</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Lock Confirmation</strong></td>
+        <td>Presents an executive summary: Total Gross, Total PAYE, Total Pension, and Net Disbursed.</td>
+      </tr>
+      <tr>
+        <td><strong>Audit Attribution</strong></td>
+        <td>Records the authorizing operator's name, role, timestamp, and optional run notes.</td>
+      </tr>
+      <tr>
+        <td><strong>Immutable Lock State</strong></td>
+        <td>Once locked, the period displays a golden padlock (<span class="mono">🔒 Locked</span>). Subsequent changes to employee base salaries in future months will not alter this finalized historical ledger.</td>
+      </tr>
+      <tr>
+        <td><strong>Unlock Privilege</strong></td>
+        <td>Only Master Administrators can unlock a finalized run, and doing so generates an immediate priority entry in the system audit log.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4.4 Corporate Bank Schedule Generation (NUBAN)</h2>
+  <p>
+    Clicking <strong>Export Bank Schedule</strong> generates an Excel workbook (<span class="mono">.xlsx</span>) formatted to CBN electronic payment standards, pre-formatted for direct upload into:
+  </p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>🏦 AccessOnline / Access Bank</h4>
+      <p>Standard corporate batch disbursement template with 10-digit NUBAN and sort codes.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🏦 GTBank GAPS</h4>
+      <p>Guaranty Trust Automated Payment System corporate batch upload schedule.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🏦 Zenith Corporate iBank</h4>
+      <p>Zenith Bank electronic salary disbursement format with automated narration strings.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🏦 UBA BankCollect / FirstBank</h4>
+      <p>Compatible with United Bank for Africa and FirstBank FirstPay corporate salary portals.</p>
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 5: LOANS & ADVANCES ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Section 5: Loans & Advances</span>
+  </div>
+
+  <h1><span class="section-num">05</span> Loans & Salary Advances Ledger</h1>
+
+  <p>
+    Manage company lending programs, short-term salary advances, monthly payroll amortizations, and balance tracking without external spreadsheets.
+  </p>
+
+  <h2>5.1 Facility Types</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Facility Type</th>
+        <th style="width: 25%;">Standard Term</th>
+        <th style="width: 50%;">Operational Purpose &amp; Usage</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Salary Advance</strong></td>
+        <td>1 to 3 Months</td>
+        <td>Emergency mid-month advance deducted from upcoming salary cycles.</td>
+      </tr>
+      <tr>
+        <td><strong>Staff Loan</strong></td>
+        <td>6 to 24 Months</td>
+        <td>General personal loan amortized evenly across monthly payrolls.</td>
+      </tr>
+      <tr>
+        <td><strong>Vehicle / Car Loan</strong></td>
+        <td>12 to 48 Months</td>
+        <td>Automobile financing with scheduled monthly principal deductions.</td>
+      </tr>
+      <tr>
+        <td><strong>Housing Advance</strong></td>
+        <td>6 to 12 Months</td>
+        <td>Annual accommodation support facility amortized over the lease term.</td>
+      </tr>
+      <tr>
+        <td><strong>Emergency Loan</strong></td>
+        <td>1 to 6 Months</td>
+        <td>Compassionate relief facility with flexible repayment scheduling.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5.2 Disbursing a Loan Facility</h2>
+  <ul class="step-list">
+    <li>Navigate to <strong>Loans &amp; Advances</strong> (<span class="mono">Alt + 4</span>).</li>
+    <li>Click <strong>+ New Facility</strong>.</li>
+    <li>Select the <strong>Employee</strong> from the searchable dropdown.</li>
+    <li>Select the <strong>Facility Type</strong> and enter the <strong>Principal Amount (₦)</strong>.</li>
+    <li>Enter the <strong>Monthly Deduction Amount (₦)</strong> (or loan duration in months).</li>
+    <li>Select the <strong>Repayment Start Period</strong> (e.g., <span class="mono">2026-may</span>).</li>
+    <li>Click <strong>Create Facility</strong>. The monthly deduction automatically binds to payroll processing starting from the chosen cycle.</li>
+  </ul>
+
+  <h2>5.3 Auto-Deduction & Lifecycle Tracking</h2>
+  <div class="callout callout-info">
+    <strong>Automatic Completion:</strong> When a monthly payroll run is executed, active loan deductions are deducted from the employee's net pay. The facility's remaining balance decreases automatically. When the balance hits <strong>₦0.00</strong>, the facility status flips to <strong>Completed</strong> and deductions automatically cease.
+  </div>
+
+  <h2>5.4 Facility Actions: Pause, Resume &amp; Manual Payments</h2>
+  <p>Clicking the minimalist 3-dot action menu (<span class="mono">•••</span>) on any facility provides:</p>
+  <ul>
+    <li><strong>Pause Facility:</strong> Temporarily halts payroll deductions during staff hardship or special leave.</li>
+    <li><strong>Resume Facility:</strong> Restores monthly payroll amortizations.</li>
+    <li><strong>Record Manual Payment:</strong> If an employee repays cash directly, record the transaction to reduce the balance and log the receipt in the loan's audit history.</li>
+    <li><strong>Edit Facility:</strong> Adjust monthly deduction amounts, remaining balance, or facility terms.</li>
+  </ul>
+
+  <!-- ==================== SECTION 6: PAYSLIP DESIGNER ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Section 6: Payslip Customizer</span>
+  </div>
+
+  <h1><span class="section-num">06</span> WYSIWYG Payslip Designer & Batch Export</h1>
+
+  <p>
+    Design and distribute branded, tamper-evident payslips featuring corporate logos, custom color schemes, authorized digital signatures, and cryptographic QR verification.
+  </p>
+
+  <h2>6.1 Layout Templates</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>🎨 Modern Template</h4>
+      <p>Clean, borderless card structure with vibrant brand accents, bold net pay callouts, and modern typography.</p>
+    </div>
+    <div class="feature-card">
+      <h4>📋 Classic Corporate</h4>
+      <p>Traditional accounting ledger styling with formal table borders, comprehensive statutory disclosures, and signature lines.</p>
+    </div>
+    <div class="feature-card">
+      <h4>📄 Compact Format</h4>
+      <p>Space-efficient layout designed for high-volume printing, thermal slips, or fitting two payslips per standard A4 sheet.</p>
+    </div>
+    <div class="feature-card">
+      <h4>📑 Executive Statement</h4>
+      <p>Comprehensive layout with year-to-date (YTD) cumulative earnings, pension history, and tax deduction tracking.</p>
+    </div>
+  </div>
+
+  <h2>6.2 Branding, Watermarks & Cryptographic QR Codes</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 30%;">Security / Design Feature</th>
+        <th style="width: 70%;">Operational Benefit &amp; Implementation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>High-Res Company Logo</strong></td>
+        <td>Upload PNG/SVG logos for sharp rendering on both physical paper and digital PDF files.</td>
+      </tr>
+      <tr>
+        <td><strong>Authorized Signature Stamp</strong></td>
+        <td>Include official digital signature stamps and date lines for immediate bank/visa verification validity.</td>
+      </tr>
+      <tr>
+        <td><strong>Cryptographic QR Code</strong></td>
+        <td>Generates a tamper-evident QR code embedding the staff ID, month key, and hash signature. Scanning verifies authenticity and combats forged payslips.</td>
+      </tr>
+      <tr>
+        <td><strong>Confidential Watermark</strong></td>
+        <td>Subtle background watermark discouraging unauthorized duplication or external distribution.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>6.3 Single & Batch PDF Printing</h2>
+  <ul class="step-list">
+    <li><strong>Single Slip:</strong> In the Payroll computation ledger, click <strong>Print Payslip</strong> on any employee's row.</li>
+    <li><strong>Batch Slips:</strong> Click <strong>Batch Print / PDF</strong> in the payroll action ribbon to render an aggregated print-ready file. Each staff member's payslip is cleanly isolated with CSS page-break rules for standard A4 printing.</li>
+  </ul>
+
+  <!-- ==================== SECTION 7: STATUTORY COMPLIANCE ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Section 7: Statutory Compliance</span>
+  </div>
+
+  <h1><span class="section-num">07</span> Statutory Compliance & Mathematical Models</h1>
+
+  <p>
+    Payroll Pro implements the exact statutory calculation rules of the <strong>Personal Income Tax Act (PITA 2011)</strong>, the <strong>Pension Reform Act 2014 (PRA 2014)</strong>, and the <strong>2026 Nigerian Tax Reform Bill</strong>.
+  </p>
+
+  <h2>7.1 Emolument Allocations & BHT Base</h2>
+  <p>Gross earnings are automatically allocated into statutory allowances:</p>
+  <ul>
+    <li><strong>Basic Salary:</strong> 40% of Gross (Pensionable &amp; Taxable)</li>
+    <li><strong>Housing Allowance:</strong> 30% of Gross (Pensionable &amp; Taxable)</li>
+    <li><strong>Transport Allowance:</strong> 20% of Gross (Pensionable &amp; Taxable)</li>
+    <li><strong>Other Allowances:</strong> 10% of Gross (Non-Pensionable &amp; Taxable)</li>
+  </ul>
+  <p>The sum forms the statutory <strong>BHT Emolument</strong>: <span class="mono">BHT = Basic + Housing + Transport = 90% of Gross</span>.</p>
+
+  <h2>7.2 Statutory Pension (PRA 2014)</h2>
+  <div class="math-box">
+    <span class="hl">Employee Pension Deduction</span> <span class="op">=</span> BHT * 8% <span class="rem">(7.2% of Gross — 100% Tax Deductible)</span><br>
+    <span class="hl">Employer Pension Contribution</span> <span class="op">=</span> BHT * 10% <span class="rem">(9.0% of Gross — Company Expense)</span>
+  </div>
+
+  <h2>7.3 Consolidated Relief Allowance (CRA)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Statutory Regime</th>
+        <th>Annual CRA Formula</th>
+        <th>Monthly Equivalent</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>PITA 2011 / Finance Act</strong></td>
+        <td><span class="mono">max(₦200,000, 1% Gross) + 20% Gross</span></td>
+        <td><span class="mono">max(₦16,666.67, 1% Gross) + 20% Gross</span></td>
+      </tr>
+      <tr>
+        <td><strong>2026 Tax Reform Bill</strong></td>
+        <td><span class="mono">₦800,000 Base + 20% Gross</span></td>
+        <td><span class="mono">₦66,666.67 Base + 20% Gross</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>7.4 Progressive Tax Brackets (PITA 2011 vs 2026 Reform)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 30%;">PITA 2011 Band (Annual)</th>
+        <th style="width: 15%;">Rate</th>
+        <th style="width: 40%;">2026 Tax Reform Bill Band (Annual)</th>
+        <th style="width: 15%;">Rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>First ₦300,000 (₦25,000/mo)</td>
+        <td><strong>7%</strong></td>
+        <td>First ₦2,200,000 (₦183,333.33/mo)</td>
+        <td><strong>15%</strong></td>
+      </tr>
+      <tr>
+        <td>Next ₦300,000 (₦25,000/mo)</td>
+        <td><strong>11%</strong></td>
+        <td>Next ₦9,000,000 (₦750,000.00/mo)</td>
+        <td><strong>18%</strong></td>
+      </tr>
+      <tr>
+        <td>Next ₦500,000 (₦41,666.67/mo)</td>
+        <td><strong>15%</strong></td>
+        <td>Next ₦13,000,000 (₦1,083,333.33/mo)</td>
+        <td><strong>21%</strong></td>
+      </tr>
+      <tr>
+        <td>Next ₦500,000 (₦41,666.67/mo)</td>
+        <td><strong>19%</strong></td>
+        <td>Next ₦25,000,000 (₦2,083,333.33/mo)</td>
+        <td><strong>23%</strong></td>
+      </tr>
+      <tr>
+        <td>Next ₦1,600,000 (₦133,333.33/mo)</td>
+        <td><strong>21%</strong></td>
+        <td>Above ₦49,200,000 (₦4,100,000.00/mo)</td>
+        <td><strong>25%</strong></td>
+      </tr>
+      <tr>
+        <td>Above ₦3,200,000 (₦266,666.67/mo)</td>
+        <td><strong>24%</strong></td>
+        <td>—</td>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>7.5 Worked Numerical Example (₦500,000 Monthly Gross)</h2>
+  <div class="math-box">
+    <span class="hl">1. Monthly Gross:</span> ₦500,000.00 (Annual: ₦6,000,000.00)<br>
+    <span class="hl">2. BHT Emolument:</span> ₦450,000.00 (Basic ₦200k + Housing ₦150k + Transport ₦100k)<br>
+    <span class="hl">3. Employee Pension (8%):</span> ₦36,000.00 (Tax Deductible)<br>
+    <span class="hl">4. Employer Pension (10%):</span> ₦45,000.00 (Company Liability)<br>
+    <span class="hl">5. Monthly CRA Relief:</span> ₦116,666.67 (₦200k/12 + 20% of ₦500k)<br>
+    <span class="hl">6. Chargeable Taxable Income:</span> ₦500,000 - ₦36,000 - ₦116,666.67 = <span class="op">₦347,333.33</span><br>
+    <span class="hl">7. Monthly PAYE Tax (PITA):</span> <span class="op">₦66,026.67</span><br>
+    <span class="hl">8. Net Take-Home Pay:</span> ₦500,000 - ₦36,000 - ₦66,026.67 = <span class="hl">₦397,973.33</span>
+  </div>
+
+  <!-- ==================== SECTION 8: RBAC & AUDITING ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Section 8: RBAC & Security</span>
+  </div>
+
+  <h1><span class="section-num">08</span> Role-Based Access Control, Presence & Security Auditing</h1>
+
+  <p>
+    Payroll Pro enforces separation of duties through a three-tier Role-Based Access Control (RBAC) architecture.
+  </p>
+
+  <h2>8.1 Operator Access Matrix</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Operational Capability</th>
+        <th style="text-align: center;">Administrator</th>
+        <th style="text-align: center;">Payroll Officer</th>
+        <th style="text-align: center;">Auditor</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Configure Cloud Server &amp; Database Keys</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">❌ Denied</td>
+        <td style="text-align: center;">❌ Denied</td>
+      </tr>
+      <tr>
+        <td>Manage Operators, PINs &amp; Roles</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">❌ Denied</td>
+        <td style="text-align: center;">❌ Denied</td>
+      </tr>
+      <tr>
+        <td>Add, Edit &amp; Deactivate Staff Records</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">👁️ Read-Only</td>
+      </tr>
+      <tr>
+        <td>Run Monthly Payroll Calculations</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">👁️ Read-Only</td>
+      </tr>
+      <tr>
+        <td>Lock &amp; Finalize Historical Runs</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">❌ Denied</td>
+      </tr>
+      <tr>
+        <td>Export Bank NUBAN Schedules</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">👁️ Audit Copy</td>
+      </tr>
+      <tr>
+        <td>View System Security Audit Trail</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">❌ Denied</td>
+        <td style="text-align: center;">👁️ Read-Only</td>
+      </tr>
+      <tr>
+        <td>Modify Tax Variables &amp; CRA Formulas</td>
+        <td style="text-align: center;">✅ Full</td>
+        <td style="text-align: center;">❌ Denied</td>
+        <td style="text-align: center;">❌ Denied</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>8.2 Live Operator Presence & Real-Time Tracking</h2>
+  <p>
+    When authorized team members open Payroll Pro across different locations, WebSocket presence tracking broadcasts active sessions. The team ledger displays live green indicator pills (<span class="mono">● Online since 09:14 AM</span>) including the company workspace they are currently viewing.
+  </p>
+
+  <h2>8.3 Zero-Latency Forced Deactivation</h2>
+  <div class="callout callout-warning">
+    <strong>Security Enforcement:</strong> If an employee resigns or a security incident occurs, an Administrator can flip the operator's status to <strong>Deactivated</strong>. Within sub-seconds, the remote operator's application halts operations, displays a security alert, and forcibly signs out to the login gate.
+  </div>
+
+  <h2>8.4 Immutable Audit Logging</h2>
+  <p>
+    All sensitive actions are permanently logged in the <span class="mono">audit_logs</span> table:
+  </p>
+  <ul>
+    <li>Staff Created, Edited, Prorated, or Deactivated</li>
+    <li>Salary Overrides and Monthly Variations Recorded</li>
+    <li>Loan Facilities Disbursed, Paused, Resumed, or Manually Repaid</li>
+    <li>Payroll Periods Locked, Finalized, or Exported</li>
+    <li>Statutory Tax Parameters or CRA Formulas Modified</li>
+  </ul>
+
+  <!-- ==================== SECTION 9: TROUBLESHOOTING & BACKUP ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <span class="page-header-title">Payroll Pro — Instruction Manual</span>
+    <span>Section 9: Troubleshooting & Backups</span>
+  </div>
+
+  <h1><span class="section-num">09</span> Troubleshooting, Data Backup & Disaster Recovery</h1>
+
+  <p>
+    Procedures for system maintenance, encrypted local backups, and resolving common operational edge-cases.
+  </p>
+
+  <h2>9.1 Local Encrypted Backups</h2>
+  <p>
+    Under <strong>Settings -> Data Backup</strong>, administrators can generate an encrypted <span class="mono">.json</span> database dump containing all company entities, employees, loans, locked historical runs, and audit logs.
+  </p>
+  <div class="callout callout-info">
+    <strong>Recommended Backup Schedule:</strong> Export an encrypted local backup at the conclusion of every monthly payroll cycle immediately following period snapshot locking.
+  </div>
+
+  <h2>9.2 Disaster Recovery Procedure</h2>
+  <ul class="step-list">
+    <li>Deploy a fresh Supabase database instance.</li>
+    <li>Execute <span class="mono">schema.sql</span> via the Supabase SQL Editor to initialize relational tables.</li>
+    <li>Launch Payroll Pro and enter the new Supabase URL and Anon Key at the login gate.</li>
+    <li>Navigate to <strong>Settings -> Restore from Backup</strong> and select your latest verified <span class="mono">.json</span> backup file.</li>
+    <li>The system validates and restores all companies, employees, and historical snapshots within seconds.</li>
+  </ul>
+
+  <h2>9.3 Frequently Asked Questions &amp; Troubleshooting</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 30%;">Symptom / Question</th>
+        <th style="width: 70%;">Root Cause &amp; Resolution</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Why does a staff member's take-home pay appear lower than expected?</strong></td>
+        <td>Check the employee's profile for: (1) Mid-month Start or Exit date activating calendar day proration; (2) Scheduled loan/salary advance deduction; or (3) A monthly override value set for that cycle.</td>
+      </tr>
+      <tr>
+        <td><strong>Table flickering or reloading constantly?</strong></td>
+        <td>Resolved in version 1.0.2. Background synchronization and polling routines operate in silent mode, preserving table state and active row inputs without layout shifts.</td>
+      </tr>
+      <tr>
+        <td><strong>Can I edit a staff member's salary after locking a period?</strong></td>
+        <td>Yes. Updating base gross salary will update all future unlocked periods. The locked period snapshot remains permanently preserved as finalized.</td>
+      </tr>
+      <tr>
+        <td><strong>How do I change statutory pension rates?</strong></td>
+        <td>Administrators can navigate to <strong>Settings -> Variables</strong> to adjust Employee Pension (8%) and Employer Pension (10%) rates to match special collective bargaining agreements.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top: 30px; padding: 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; text-align: center; font-size: 8.5pt; color: #64748b;">
+    <strong>PAYROLL PRO ENTERPRISE</strong> &bull; OFFICIAL OPERATIONAL MANUAL &bull; RELEASE 1.0.2<br>
+    For technical support, database administration, or compliance inquiries, contact your company's System Administrator.
+  </div>
+
+</body>
+</html>

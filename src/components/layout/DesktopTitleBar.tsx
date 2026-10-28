@@ -802,30 +802,32 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           {isDarkTheme ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
         </button>
 
-        {/* Native Window Controls */}
-        <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1" style={{ WebkitAppRegion: "no-drag" } as any}>
-          <button 
-            onClick={() => (window as any).electronAPI?.windowMinimize?.()}
-            className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition"
-            title="Minimize"
-          >
-            <Minus className="w-3 h-3" />
-          </button>
-          <button 
-            onClick={() => (window as any).electronAPI?.windowMaximize?.()}
-            className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition"
-            title="Maximize"
-          >
-            <Square className="w-2.5 h-2.5" />
-          </button>
-          <button 
-            onClick={() => (window as any).electronAPI?.windowClose?.()}
-            className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition"
-            title="Close"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
+        {/* Native Window Controls - Only shown when running in Electron desktop */}
+        {Boolean((window as any).electronAPI) && (
+          <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1" style={{ WebkitAppRegion: "no-drag" } as any}>
+            <button 
+              onClick={() => (window as any).electronAPI?.windowMinimize?.()}
+              className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition"
+              title="Minimize"
+            >
+              <Minus className="w-3 h-3" />
+            </button>
+            <button 
+              onClick={() => (window as any).electronAPI?.windowMaximize?.()}
+              className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition"
+              title="Maximize"
+            >
+              <Square className="w-2.5 h-2.5" />
+            </button>
+            <button 
+              onClick={() => (window as any).electronAPI?.windowClose?.()}
+              className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition"
+              title="Close"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
 
       </div>
 

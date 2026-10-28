@@ -12,7 +12,8 @@ import {
   MoreVertical,
   CheckCircle2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Edit3
 } from 'lucide-react';
 import { Employee, EmployeeLoan, LoanType, LoanStatus, CalculatedPayrollItem, CompanyProfile } from '../../types';
 import { formatNaira, formatDate } from '../../engine/payePensionEngine';
@@ -42,6 +43,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   selectedMonth,
   selectedYear,
   onAddLoan,
+  onUpdateLoan,
   onDeleteLoan,
   onPauseResumeLoan,
   onRecordManualPayment,
@@ -67,7 +69,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
 
   // 3-dot dropdown menu state
   const [activeMenuLoanId, setActiveMenuLoanId] = useState<string | null>(null);
-  const [menuCoords, setMenuCoords] = useState<{ top: number; right: number } | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -101,6 +103,30 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedLoanForLedger, setSelectedLoanForLedger] = useState<EmployeeLoan | null>(null);
+  const [editingLoan, setEditingLoan] = useState<EmployeeLoan | null>(null);
+
+  // Edit Loan Form State
+  const [editPrincipal, setEditPrincipal] = useState<number | ''>('');
+  const [editMonthlyDeduction, setEditMonthlyDeduction] = useState<number | ''>('');
+  const [editRemainingBalance, setEditRemainingBalance] = useState<number | ''>('');
+  const [editType, setEditType] = useState<LoanType>('Staff Loan');
+  const [editStatus, setEditStatus] = useState<LoanStatus>('Active');
+  const [editDisbursementDate, setEditDisbursementDate] = useState<string>('');
+  const [editRepaymentDate, setEditRepaymentDate] = useState<string>('');
+  const [editNotes, setEditNotes] = useState<string>('');
+
+  useEffect(() => {
+    if (editingLoan) {
+      setEditPrincipal(editingLoan.principalAmount);
+      setEditMonthlyDeduction(editingLoan.monthlyDeduction);
+      setEditRemainingBalance(editingLoan.remainingBalance);
+      setEditType(editingLoan.type);
+      setEditStatus(editingLoan.status);
+      setEditDisbursementDate(editingLoan.disbursementDate || '');
+      setEditRepaymentDate(editingLoan.repaymentDate || editingLoan.repaymentStartDate || '');
+      setEditNotes(editingLoan.notes || '');
+    }
+  }, [editingLoan]);
 
   // Helper for computing end of month (YYYY-MM-DD)
   const getEndOfMonth = (dateStr: string) => {
@@ -146,9 +172,9 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   // New Loan Form State
   const [newEmployeeId, setNewEmployeeId] = useState(employees[0]?.id || '');
   const [newLoanType, setNewLoanType] = useState<LoanType>('Staff Loan');
-  const [newPrincipal, setNewPrincipal] = useState<number>(100000);
-  const [newMonthlyDeduction, setNewMonthlyDeduction] = useState<number>(20000);
-  const [newRepayMonths, setNewRepayMonths] = useState<number>(5);
+  const [newPrincipal, setNewPrincipal] = useState<number | ''>(100000);
+  const [newMonthlyDeduction, setNewMonthlyDeduction] = useState<number | ''>(20000);
+  const [newRepayMonths, setNewRepayMonths] = useState<number | ''>(5);
 
   const initialDates = getDefaultDatesForPeriod(selectedYear, selectedMonth);
   const [newDisbursementDate, setNewDisbursementDate] = useState<string>(initialDates.disbursed);
@@ -251,18 +277,21 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
       return;
     }
 
-    if (newPrincipal <= 0) {
+    const principalNum = Number(newPrincipal) || 0;
+    if (principalNum <= 0) {
       alert('Principal amount must be greater than zero.');
       return;
     }
 
-    const deduction = newMonthlyDeduction > 0 ? newMonthlyDeduction : Math.ceil(newPrincipal / (newRepayMonths || 1));
+    const deductionNum = Number(newMonthlyDeduction) || 0;
+    const monthsNum = Number(newRepayMonths) || 1;
+    const deduction = deductionNum > 0 ? deductionNum : Math.ceil(principalNum / monthsNum);
     const startPeriod = getPeriodKeyFromDate(newRepaymentDate || newDisbursementDate, newStartYear, newStartMonth);
 
     onAddLoan({
       employeeId: newEmployeeId,
       type: newLoanType,
-      principalAmount: newPrincipal,
+      principalAmount: principalNum,
       monthlyDeduction: deduction,
       disbursementDate: newDisbursementDate,
       repaymentDate: newRepaymentDate,
@@ -281,18 +310,57 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
     setNewNotes('');
   };
 
-  const handleRepayMonthsChange = (months: number) => {
+  const handleRepayMonthsChange = (val: string) => {
+    if (val === '') {
+      setNewRepayMonths('');
+      return;
+    }
+    const months = Number(val);
     setNewRepayMonths(months);
-    if (months > 0 && newPrincipal > 0) {
-      setNewMonthlyDeduction(Math.ceil(newPrincipal / months));
+    const princ = Number(newPrincipal) || 0;
+    if (months > 0 && princ > 0) {
+      setNewMonthlyDeduction(Math.ceil(princ / months));
     }
   };
 
-  const handlePrincipalChange = (amount: number) => {
-    setNewPrincipal(amount);
-    if (newRepayMonths > 0 && amount > 0) {
-      setNewMonthlyDeduction(Math.ceil(amount / newRepayMonths));
+  const handlePrincipalChange = (val: string) => {
+    if (val === '') {
+      setNewPrincipal('');
+      return;
     }
+    const amount = Number(val);
+    setNewPrincipal(amount);
+    const months = Number(newRepayMonths) || 1;
+    if (months > 0 && amount > 0) {
+      setNewMonthlyDeduction(Math.ceil(amount / months));
+    }
+  };
+
+  const handleSaveEditLoan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLoan || !onUpdateLoan) return;
+
+    const principalNum = editPrincipal === '' ? editingLoan.principalAmount : Number(editPrincipal);
+    const balanceNum = editRemainingBalance === '' ? editingLoan.remainingBalance : Number(editRemainingBalance);
+    const deductionNum = editMonthlyDeduction === '' ? editingLoan.monthlyDeduction : Number(editMonthlyDeduction);
+
+    const updatedStatus: LoanStatus = balanceNum <= 0 ? 'Paid' : editStatus;
+
+    onUpdateLoan(editingLoan.id, {
+      type: editType,
+      principalAmount: principalNum,
+      remainingBalance: balanceNum,
+      monthlyDeduction: deductionNum,
+      status: updatedStatus,
+      disbursementDate: editDisbursementDate,
+      repaymentDate: editRepaymentDate,
+      repaymentStartDate: editRepaymentDate,
+      notes: editNotes.trim() || undefined,
+    });
+
+    setToastMessage(`Updated ${editType} record successfully.`);
+    setTimeout(() => setToastMessage(''), 3000);
+    setEditingLoan(null);
   };
 
   return (
@@ -498,11 +566,11 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                           {loan.type}
                         </span>
                         {(loan.repaymentDate || loan.repaymentStartDate) ? (
-                          <div className="text-[10px] text-zinc-400 font-mono mt-0.5" title="Deduction / Repayment Date">
+                          <div className="text-[11px] text-zinc-400 font-mono mt-0.5" title="Deduction / Repayment Date">
                             Due: {formatDate(loan.repaymentDate || loan.repaymentStartDate)}
                           </div>
                         ) : loan.disbursementDate ? (
-                          <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                          <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
                             Disb: {formatDate(loan.disbursementDate)}
                           </div>
                         ) : null}
@@ -523,7 +591,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                             <span className="font-semibold text-zinc-800 dark:text-zinc-200">
                               {formatNaira(loan.totalRepaid || 0)}
                             </span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                            <span className={`text-[11px] font-bold px-1.5 py-0.2 rounded ${
                               isPaid 
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' 
                                 : 'text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800'
@@ -541,7 +609,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                             />
                           </div>
 
-                          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                          <div className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate">
                             {isPaid ? (
                               <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Fully Repaid</span>
                             ) : loan.type === 'Salary Advance' ? (
@@ -580,11 +648,12 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                                 setMenuCoords(null);
                               } else {
                                 const rect = e.currentTarget.getBoundingClientRect();
-                                const menuHeight = 180;
                                 const spaceBelow = window.innerHeight - rect.bottom;
-                                const openUp = spaceBelow < menuHeight && rect.top > menuHeight;
+                                const spaceAbove = rect.top;
+                                const openUp = spaceBelow < 170 && spaceAbove > spaceBelow;
                                 setMenuCoords({
-                                  top: openUp ? Math.max(10, rect.top - menuHeight) : rect.bottom + 4,
+                                  top: openUp ? undefined : rect.bottom + 4,
+                                  bottom: openUp ? Math.max(10, window.innerHeight - rect.top + 4) : undefined,
                                   right: Math.max(10, window.innerWidth - rect.right),
                                 });
                                 setActiveMenuLoanId(loan.id);
@@ -602,80 +671,83 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
 
                           {activeMenuLoanId === loan.id && menuCoords && (
                             <div
-                              style={{ top: `${menuCoords.top}px`, right: `${menuCoords.right}px` }}
-                              className="fixed w-52 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-fade-in text-left divide-y divide-zinc-100 dark:divide-zinc-800/60 loan-actions-dropdown"
+                              style={{ 
+                                top: menuCoords.top !== undefined ? `${menuCoords.top}px` : undefined,
+                                bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
+                                right: `${menuCoords.right}px` 
+                              }}
+                              className="fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left loan-actions-dropdown"
                             >
-                              <div className="py-0.5">
-                                {/* 1. Automated Deduction Status Indicator */}
-                                <div className="px-3 py-1.5 flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-[11px] select-none bg-zinc-50/50 dark:bg-zinc-900/50">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                                  <span>
-                                    {isPaid 
-                                      ? 'Fully Repaid' 
-                                      : isPaused 
-                                        ? 'Deductions Paused' 
-                                        : `Auto-deducted through ${monthLabel}`}
-                                  </span>
-                                </div>
+                              {/* 1. Edit Facility */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuLoanId(null);
+                                  setMenuCoords(null);
+                                  setEditingLoan(loan);
+                                }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                <span>Edit Facility</span>
+                              </button>
 
-                                {/* 2. Start / Pause Deductions */}
-                                {!isPaid && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveMenuLoanId(null);
-                                      onPauseResumeLoan(loan.id);
-                                    }}
-                                    className={`w-full px-3 py-1.5 flex items-center gap-2 font-medium transition cursor-pointer ${
-                                      isPaused
-                                        ? 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-                                        : 'text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40'
-                                    }`}
-                                  >
-                                    {isPaused ? (
-                                      <>
-                                        <PlayCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                                        <span>Start Deductions</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <PauseCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                        <span>Pause Deductions</span>
-                                      </>
-                                    )}
-                                  </button>
-                                )}
-
-                                {/* 3. Repayment Ledger */}
+                              {/* 2. Pause / Resume Deductions */}
+                              {!isPaid && (
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setActiveMenuLoanId(null);
-                                    setSelectedLoanForLedger(loan);
+                                    setMenuCoords(null);
+                                    onPauseResumeLoan(loan.id);
                                   }}
                                   className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
                                 >
-                                  <History className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                                  <span>Repayment Ledger</span>
+                                  {isPaused ? (
+                                    <>
+                                      <PlayCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                      <span>Resume Deductions</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <PauseCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                      <span>Pause Deductions</span>
+                                    </>
+                                  )}
                                 </button>
-                              </div>
+                              )}
+
+                              {/* 3. Repayment Ledger */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuLoanId(null);
+                                  setMenuCoords(null);
+                                  setSelectedLoanForLedger(loan);
+                                }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                              >
+                                <History className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                <span>Repayment Ledger</span>
+                              </button>
+
+                              <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
 
                               {/* 4. Delete Facility */}
-                              <div className="py-0.5">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveMenuLoanId(null);
-                                    if (window.confirm(`Delete ${loan.type} record for ${empFullName}?`)) {
-                                      onDeleteLoan(loan.id);
-                                    }
-                                  }}
-                                  className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                  <span>Delete Facility</span>
-                                </button>
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuLoanId(null);
+                                  setMenuCoords(null);
+                                  if (window.confirm(`Delete ${loan.type} record for ${empFullName}?`)) {
+                                    onDeleteLoan(loan.id);
+                                  }
+                                }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                <span>Delete Facility</span>
+                              </button>
                             </div>
                           )}
                         </div>
@@ -751,7 +823,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                         setNewMonthlyDeduction(newPrincipal);
                       } else {
                         setNewRepayMonths(6);
-                        setNewMonthlyDeduction(Math.ceil(newPrincipal / 6));
+                        const princ = Number(newPrincipal) || 0;
+                        setNewMonthlyDeduction(princ > 0 ? Math.ceil(princ / 6) : '');
                       }
                     }}
                     className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer"
@@ -768,8 +841,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                   <input
                     type="number"
                     value={newPrincipal}
-                    onChange={e => handlePrincipalChange(Number(e.target.value))}
-                    min="1"
+                    onChange={e => handlePrincipalChange(e.target.value)}
                     step="any"
                     className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none"
                     required
@@ -785,9 +857,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                   <input
                     type="number"
                     value={newRepayMonths}
-                    onChange={e => handleRepayMonthsChange(Number(e.target.value))}
-                    min="1"
-                    max="120"
+                    onChange={e => handleRepayMonthsChange(e.target.value)}
                     step="1"
                     className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                   />
@@ -800,8 +870,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                   <input
                     type="number"
                     value={newMonthlyDeduction}
-                    onChange={e => setNewMonthlyDeduction(Number(e.target.value))}
-                    min="1"
+                    onChange={e => setNewMonthlyDeduction(e.target.value === '' ? '' : Number(e.target.value))}
                     step="any"
                     className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none"
                     required
@@ -868,6 +937,162 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
         </div>
       )}
 
+      {/* ================= EDIT LOAN / ADVANCE MODAL ================= */}
+      {editingLoan && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-5 shadow-2xl animate-in zoom-in-95 duration-100 space-y-4">
+            <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800">
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  Edit {editingLoan.type}
+                </h2>
+                <p className="text-[11px] text-zinc-400">
+                  {employeeMap.get(editingLoan.employeeId)?.firstName} {employeeMap.get(editingLoan.employeeId)?.lastName} &bull; <span className="font-mono">{employeeMap.get(editingLoan.employeeId)?.code || 'Staff'}</span>
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setEditingLoan(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditLoan} className="space-y-3.5">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Facility Type
+                  </label>
+                  <select
+                    value={editType}
+                    onChange={e => setEditType(e.target.value as LoanType)}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer"
+                  >
+                    <option value="Staff Loan">Staff Loan</option>
+                    <option value="Salary Advance">Salary Advance</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Facility Status
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={e => setEditStatus(e.target.value as LoanStatus)}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Paused">Paused</option>
+                    <option value="Paid">Fully Paid</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Principal Amount (₦) *
+                  </label>
+                  <input
+                    type="number"
+                    value={editPrincipal}
+                    onChange={e => setEditPrincipal(e.target.value === '' ? '' : Number(e.target.value))}
+                    step="any"
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Remaining Balance (₦) *
+                  </label>
+                  <input
+                    type="number"
+                    value={editRemainingBalance}
+                    onChange={e => setEditRemainingBalance(e.target.value === '' ? '' : Number(e.target.value))}
+                    step="any"
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                  Monthly Deduction (₦) *
+                </label>
+                <input
+                  type="number"
+                  value={editMonthlyDeduction}
+                  onChange={e => setEditMonthlyDeduction(e.target.value === '' ? '' : Number(e.target.value))}
+                  step="any"
+                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Disbursed Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editDisbursementDate}
+                    onChange={e => setEditDisbursementDate(e.target.value)}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Repayment Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editRepaymentDate}
+                    onChange={e => setEditRepaymentDate(e.target.value)}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                  Note / Purpose
+                </label>
+                <input
+                  type="text"
+                  value={editNotes}
+                  onChange={e => setEditNotes(e.target.value)}
+                  placeholder="e.g. Relocation, Medical"
+                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-zinc-100 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingLoan(null)}
+                  className="px-3 py-1.5 rounded text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-3.5 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ================= REPAYMENT LEDGER / HISTORY MODAL ================= */}
       {selectedLoanForLedger && (

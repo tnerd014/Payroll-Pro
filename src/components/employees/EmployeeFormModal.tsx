@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Calendar, Copy, Check, ChevronDown, Zap, UserPlus, Trash2 } from 'lucide-react';
+import { X, Calendar, Copy, Check, ChevronDown, Zap, UserPlus, Trash2, User, Wallet, Landmark, ShieldCheck } from 'lucide-react';
 import { Employee, SalaryCalculationMode, EmploymentTypeRule } from '../../types';
 import { formatNaira, DEFAULT_EMPLOYMENT_TYPE_RULES } from '../../engine/payePensionEngine';
 import { NIGERIAN_BANKS, NIGERIAN_PFAS, NIGERIAN_STATES } from '../../constants/banks';
@@ -53,6 +53,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   const [activeTab, setActiveTab] = useState<'quick' | 'standard'>(
     editingEmployee ? 'standard' : (initialTab || 'quick')
   );
+  const [activeSection, setActiveSection] = useState<'all' | 'identity' | 'compensation' | 'statutory' | 'banking'>('all');
 
   useEffect(() => {
     if (editingEmployee) {
@@ -75,17 +76,22 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     ? employmentTypeRules
     : DEFAULT_EMPLOYMENT_TYPE_RULES;
 
-  const [formData, setFormData] = useState<Omit<Employee, 'id'>>({
+  type EmployeeFormData = Omit<Employee, 'id' | 'monthlyGross' | 'annualRent'> & {
+    monthlyGross: number | '';
+    annualRent: number | '';
+  };
+
+  const [formData, setFormData] = useState<EmployeeFormData>({
     code: editingEmployee?.code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
     firstName: editingEmployee?.firstName || '',
     lastName: editingEmployee?.lastName || '',
-    department: editingEmployee?.department || 'Operations',
+    department: editingEmployee?.department || (availableDepartments && availableDepartments.length > 0 ? availableDepartments[0] : DEFAULT_DEPARTMENTS[0] || 'OPERATIONS'),
     position: editingEmployee?.position || 'Staff Specialist',
     employmentType: editingEmployee?.employmentType || 'Full-Time',
     email: editingEmployee?.email || '',
     phone: editingEmployee?.phone || '',
-    monthlyGross: editingEmployee?.monthlyGross || 350000,
-    annualRent: editingEmployee?.annualRent || 0,
+    monthlyGross: editingEmployee?.monthlyGross ?? 350000,
+    annualRent: editingEmployee?.annualRent ? editingEmployee.annualRent : '',
     bankName: editingEmployee?.bankName || 'Access Bank',
     accountNumber: editingEmployee?.accountNumber || '',
     hasPension: editingEmployee?.hasPension ?? true,
@@ -102,7 +108,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   });
 
   const [activeYear, setActiveYear] = useState<number>(currentYear || 2026);
-  const [monthlySalaries, setMonthlySalaries] = useState<Record<string, number>>(
+  const [monthlySalaries, setMonthlySalaries] = useState<Record<string, number | ''>>(
     editingEmployee?.monthlySalaries || {}
   );
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
@@ -118,6 +124,29 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     }));
   };
 
+  const deptOptions = useMemo(() => {
+    const base = (availableDepartments && availableDepartments.length > 0)
+      ? availableDepartments
+      : DEFAULT_DEPARTMENTS;
+    const fromEmployees = (existingEmployees || []).map(e => e.department).filter(Boolean) as string[];
+    const current = formData.department ? [formData.department] : [];
+    
+    const map = new Map<string, string>();
+    [...base, ...fromEmployees, ...current].forEach(d => {
+      const trimmed = d?.trim();
+      if (trimmed && !map.has(trimmed.toUpperCase())) {
+        map.set(trimmed.toUpperCase(), trimmed);
+      }
+    });
+    return Array.from(map.values());
+  }, [availableDepartments, existingEmployees, formData.department]);
+
+  const selectedDepartment = useMemo(() => {
+    return deptOptions.find(
+      d => d.toLowerCase() === (formData.department || '').toLowerCase()
+    ) || formData.department || deptOptions[0] || 'OPERATIONS';
+  }, [deptOptions, formData.department]);
+
   // Sync state whenever editingEmployee or isOpen changes
   useEffect(() => {
     if (editingEmployee) {
@@ -130,8 +159,8 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         employmentType: editingEmployee.employmentType || 'Full-Time',
         email: editingEmployee.email,
         phone: editingEmployee.phone,
-        monthlyGross: editingEmployee.monthlyGross,
-        annualRent: editingEmployee.annualRent,
+        monthlyGross: editingEmployee.monthlyGross ?? '',
+        annualRent: editingEmployee.annualRent ? editingEmployee.annualRent : '',
         bankName: editingEmployee.bankName,
         accountNumber: editingEmployee.accountNumber,
         hasPension: editingEmployee.hasPension,
@@ -155,13 +184,13 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         code: `EMP-${Math.floor(100 + Math.random() * 900)}`,
         firstName: '',
         lastName: '',
-        department: 'Operations',
+        department: (availableDepartments && availableDepartments.length > 0 ? availableDepartments[0] : DEFAULT_DEPARTMENTS[0] || 'OPERATIONS'),
         position: 'Staff Specialist',
         employmentType: defaultRule?.name || 'Full-Time',
         email: '',
         phone: '',
         monthlyGross: 350000,
-        annualRent: 0,
+        annualRent: '',
         bankName: 'Access Bank',
         accountNumber: '',
         hasPension: defaultRule ? defaultRule.hasPensionDefault : true,
@@ -195,32 +224,33 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   // Retrieve gross salary for a specific month in activeYear
   const getMonthGross = (mKey: string): number => {
     const key = `${activeYear}-${mKey}`;
-    if (monthlySalaries[key] !== undefined) {
-      return monthlySalaries[key];
+    if (monthlySalaries[key] !== undefined && monthlySalaries[key] !== '') {
+      return Number(monthlySalaries[key]) || 0;
     }
-    if (monthlySalaries[mKey] !== undefined) {
-      return monthlySalaries[mKey];
+    if (monthlySalaries[mKey] !== undefined && monthlySalaries[mKey] !== '') {
+      return Number(monthlySalaries[mKey]) || 0;
     }
-    return formData.monthlyGross;
+    return Number(formData.monthlyGross) || 0;
   };
 
   // Update gross salary for a specific month in activeYear
-  const setMonthGross = (mKey: string, val: number) => {
+  const setMonthGross = (mKey: string, val: string | number) => {
     const key = `${activeYear}-${mKey}`;
     setMonthlySalaries(prev => ({
       ...prev,
-      [key]: val,
+      [key]: val === '' ? '' : Number(val),
     }));
   };
 
   // Copy base contractual gross to all 12 months of activeYear
   const handleCopyBaseToAllMonths = () => {
     const updated = { ...monthlySalaries };
+    const baseVal = Number(formData.monthlyGross) || 0;
     MONTHS_LIST.forEach(m => {
-      updated[`${activeYear}-${m.key}`] = formData.monthlyGross;
+      updated[`${activeYear}-${m.key}`] = baseVal;
     });
     setMonthlySalaries(updated);
-    setCopyFeedback(`Copied ₦${formatNaira(formData.monthlyGross)} to all 12 months (${activeYear})`);
+    setCopyFeedback(`Copied ₦${formatNaira(baseVal)} to all 12 months (${activeYear})`);
     setTimeout(() => setCopyFeedback(null), 2500);
   };
 
@@ -247,9 +277,17 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanMonthlySalaries: Record<string, number> = {};
+    Object.entries(monthlySalaries).forEach(([k, v]) => {
+      if (v !== '' && v !== undefined && !isNaN(Number(v))) {
+        cleanMonthlySalaries[k] = Number(v);
+      }
+    });
     onSave({
       ...formData,
-      monthlySalaries,
+      monthlyGross: Number(formData.monthlyGross) || 0,
+      annualRent: Number(formData.annualRent) || 0,
+      monthlySalaries: cleanMonthlySalaries,
     });
     onClose();
   };
@@ -270,7 +308,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 {editingEmployee ? 'Edit Staff Profile' : 'Add Employee'}
               </span>
               {editingEmployee && (
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
                   {formData.code}
                 </span>
               )}
@@ -314,6 +352,40 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
           </button>
         </div>
 
+        {/* Section Segmented Navigation for Detailed Form */}
+        {(activeTab === 'standard' || editingEmployee) && (
+          <div className="flex items-center gap-1.5 px-5 py-2 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/50 shrink-0 overflow-x-auto no-scrollbar">
+            <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mr-1 shrink-0">
+              Section:
+            </span>
+            {[
+              { id: 'all', label: 'All Sections' },
+              { id: 'identity', label: 'Identity & Role', icon: User },
+              { id: 'compensation', label: 'Compensation', icon: Wallet },
+              { id: 'statutory', label: 'Statutory & Tax', icon: ShieldCheck },
+              { id: 'banking', label: 'Banking', icon: Landmark },
+            ].map(sec => {
+              const Icon = sec.icon;
+              const isActive = activeSection === sec.id;
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onClick={() => setActiveSection(sec.id as any)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors shrink-0 cursor-pointer ${
+                    isActive
+                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 font-semibold'
+                      : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
+                  }`}
+                >
+                  {Icon && <Icon className="w-3 h-3 text-zinc-400" />}
+                  <span>{sec.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {activeTab === 'quick' && !editingEmployee ? (
           <QuickAddForm
             existingEmployees={existingEmployees}
@@ -331,11 +403,15 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
           <div className="p-5 space-y-4 overflow-y-auto flex-1">
           
             {/* Section 1: Employee Details */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                Employee Information
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(activeSection === 'all' || activeSection === 'identity') && (
+              <div className="bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                  <User className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                  <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    Employee Information
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                     First Name
@@ -366,20 +442,18 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                     Department
                   </label>
-                  <input 
-                    type="text" 
-                    list="employee-departments-datalist"
-                    value={formData.department} 
-                    onChange={e => setFormData({ ...formData, department: e.target.value.toUpperCase() })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                    placeholder="Select or type department..."
+                  <select 
+                    value={selectedDepartment} 
+                    onChange={e => setFormData({ ...formData, department: e.target.value })}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
                     required
-                  />
-                  <datalist id="employee-departments-datalist">
-                    {availableDepartments.map(dept => (
-                      <option key={dept} value={dept} />
+                  >
+                    {deptOptions.map(dept => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
@@ -469,7 +543,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 </div>
 
                 {formData.endDate ? (
-                  <p className="text-[10px] text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-md leading-relaxed">
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-md leading-relaxed">
                     💡 <strong>Payroll Rule:</strong> Staff is paid in their exit month and automatically excluded from all subsequent pay runs.
                   </p>
                 ) : null}
@@ -481,7 +555,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     </div>
                     <div className="space-y-1">
                       {formData.stints.map((st, idx) => (
-                        <div key={st.stintId || idx} className="text-zinc-500 dark:text-zinc-400 flex items-center justify-between text-[10px]">
+                        <div key={st.stintId || idx} className="text-zinc-500 dark:text-zinc-400 flex items-center justify-between text-[11px]">
                           <span>Stint #{idx + 1}: {st.startDate || '—'} → {st.endDate || 'Active'}</span>
                           {st.exitReason && <span className="text-zinc-400">({st.exitReason})</span>}
                         </div>
@@ -491,302 +565,333 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 )}
               </div>
             </div>
+            )}
 
             {/* Section 2: Compensation & Rent Relief */}
-            <div className="space-y-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                  Compensation &amp; Rent Relief
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowMonthlyBreakdown(!showMonthlyBreakdown)}
-                  className="text-[11px] font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>{showMonthlyBreakdown ? 'Hide 12-Month Schedule' : '12-Month Breakdown'}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showMonthlyBreakdown ? 'rotate-180' : ''}`} />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                    {salaryCalculationMode === 'net-to-gross' 
-                      ? 'Target Monthly Net Pay (Take-Home ₦)' 
-                      : 'Base Monthly Gross Salary (₦)'}
-                  </label>
-                  <input 
-                    type="number" 
-                    value={formData.monthlyGross} 
-                    onChange={e => setFormData({ ...formData, monthlyGross: Number(e.target.value) })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                    min="0"
-                    step="1000"
-                    required
-                  />
+            {(activeSection === 'all' || activeSection === 'compensation') && (
+              <div className="bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                    <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                      Compensation &amp; Rent Relief
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMonthlyBreakdown(!showMonthlyBreakdown)}
+                    className="text-[11px] font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>{showMonthlyBreakdown ? 'Hide 12-Month Schedule' : '12-Month Breakdown'}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showMonthlyBreakdown ? 'rotate-180' : ''}`} />
+                  </button>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
-                      Annual Rent Paid by Staff (₦)
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                      {salaryCalculationMode === 'net-to-gross' 
+                        ? 'Target Monthly Net Pay (Take-Home ₦)' 
+                        : 'Base Monthly Gross Salary (₦)'}
                     </label>
-                    <span className="text-[10px] text-zinc-400">20% CRA relief</span>
+                    <input 
+                      type="number" 
+                      value={formData.monthlyGross} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          monthlyGross: val === '' ? '' : Number(val),
+                        }));
+                      }}
+                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      step="any"
+                      placeholder="e.g. 350000"
+                      required
+                    />
                   </div>
-                  <input 
-                    type="number" 
-                    value={formData.annualRent} 
-                    onChange={e => setFormData({ ...formData, annualRent: Number(e.target.value) })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                    min="0"
-                    step="5000"
-                    placeholder="0"
-                  />
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+                        Annual Rent Paid by Staff (₦)
+                      </label>
+                      <span className="text-[11px] text-zinc-400">20% CRA relief</span>
+                    </div>
+                    <input 
+                      type="number" 
+                      value={formData.annualRent} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          annualRent: val === '' ? '' : Number(val),
+                        }));
+                      }}
+                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      step="any"
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Expandable 12-Month Schedule */}
-              {showMonthlyBreakdown && (
-                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-3 animate-in fade-in duration-150">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                        Year {activeYear} Schedule
-                      </span>
-                      <select
-                        value={activeYear}
-                        onChange={e => setActiveYear(Number(e.target.value))}
-                        className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none cursor-pointer"
-                      >
-                        {yearsOptions.map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={handleCopyBaseToAllMonths}
-                        className="text-[11px] px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium transition cursor-pointer"
-                      >
-                        Copy Base to All
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCopyJanToAllMonths}
-                        className="text-[11px] px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
-                      >
-                        Copy Jan to All
-                      </button>
-                    </div>
-                  </div>
-
-                  {copyFeedback && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in">
-                      <Check className="w-3 h-3" />
-                      <span>{copyFeedback}</span>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                    {MONTHS_LIST.map((m) => {
-                      const currentVal = getMonthGross(m.key);
-                      const isCustom = monthlySalaries[`${activeYear}-${m.key}`] !== undefined && 
-                                       monthlySalaries[`${activeYear}-${m.key}`] !== formData.monthlyGross;
-
-                      return (
-                        <div 
-                          key={m.key} 
-                          className={`p-1.5 rounded-lg border transition ${
-                            isCustom 
-                              ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800' 
-                              : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
-                          }`}
+                {/* Expandable 12-Month Schedule */}
+                {showMonthlyBreakdown && (
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-3 animate-in fade-in duration-150">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                          Year {activeYear} Schedule
+                        </span>
+                        <select
+                          value={activeYear}
+                          onChange={e => setActiveYear(Number(e.target.value))}
+                          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none cursor-pointer"
                         >
-                          <div className="flex justify-between items-center mb-0.5">
-                            <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
-                              {m.label}
-                            </span>
-                            {isCustom && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Custom" />
-                            )}
-                          </div>
-                          <input
-                            type="number"
-                            value={currentVal}
-                            onChange={e => setMonthGross(m.key, Number(e.target.value))}
-                            className="w-full bg-transparent font-mono text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none"
-                            min="0"
-                            step="1000"
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
+                          {yearsOptions.map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <div className="text-[11px] text-zinc-500 flex justify-between pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
-                    <span>Annual Total: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal)}</strong></span>
-                    <span>Monthly Avg: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal / 12)}</strong></span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleCopyBaseToAllMonths}
+                          className="text-[11px] px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium transition cursor-pointer"
+                        >
+                          Copy Base to All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyJanToAllMonths}
+                          className="text-[11px] px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
+                        >
+                          Copy Jan to All
+                        </button>
+                      </div>
+                    </div>
+
+                    {copyFeedback && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in">
+                        <Check className="w-3 h-3" />
+                        <span>{copyFeedback}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                      {MONTHS_LIST.map((m) => {
+                        const currentVal = getMonthGross(m.key);
+                        const isCustom = monthlySalaries[`${activeYear}-${m.key}`] !== undefined && 
+                                         monthlySalaries[`${activeYear}-${m.key}`] !== formData.monthlyGross;
+
+                        return (
+                          <div 
+                            key={m.key} 
+                            className={`p-1.5 rounded-lg border transition ${
+                              isCustom 
+                                ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800' 
+                                : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center mb-0.5">
+                              <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                                {m.label}
+                              </span>
+                              {isCustom && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Custom" />
+                              )}
+                            </div>
+                            <input
+                              type="number"
+                              value={
+                                monthlySalaries[`${activeYear}-${m.key}`] !== undefined
+                                  ? monthlySalaries[`${activeYear}-${m.key}`]
+                                  : formData.monthlyGross
+                              }
+                              onChange={e => setMonthGross(m.key, e.target.value)}
+                              className="w-full bg-transparent font-mono text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                              step="any"
+                              placeholder="0"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="text-[11px] text-zinc-500 flex justify-between pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
+                      <span>Annual Total: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal)}</strong></span>
+                      <span>Monthly Avg: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal / 12)}</strong></span>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Section 3: Statutory Deductions & Registration Numbers */}
-            <div className="space-y-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                  Statutory Deductions &amp; Credentials
-                </h3>
-                <span className="text-[10px] font-mono text-zinc-400">
-                  {formData.employmentType || 'Full-Time'}
-                </span>
+            {(activeSection === 'all' || activeSection === 'statutory') && (
+              <div className="bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                    <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                      Statutory Deductions &amp; Credentials
+                    </h3>
+                  </div>
+                  <span className="text-[11px] font-mono text-zinc-400">
+                    {formData.employmentType || 'Full-Time'}
+                  </span>
+                </div>
+
+                {/* Minimalist Checkbox Toggles */}
+                <div className="flex items-center gap-5 py-0.5 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      checked={formData.hasPension}
+                      onChange={e => setFormData({ ...formData, hasPension: e.target.checked })}
+                      className="w-4 h-4 rounded text-zinc-900 dark:text-zinc-100 focus:ring-0 cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+                    />
+                    <span className="text-zinc-800 dark:text-zinc-200 font-medium">Pension (8% / 10%)</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      checked={formData.hasPaye}
+                      onChange={e => setFormData({ ...formData, hasPaye: e.target.checked })}
+                      className="w-4 h-4 rounded text-zinc-900 dark:text-zinc-100 focus:ring-0 cursor-pointer accent-zinc-900 dark:accent-zinc-100"
+                    />
+                    <span className="text-zinc-800 dark:text-zinc-200 font-medium">PAYE Income Tax</span>
+                  </label>
+                </div>
+
+                {/* Registration Identification Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
+                  <div>
+                    <label 
+                      className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                      title="State of Residence for State PAYE Tax remittance"
+                    >
+                      State of Residence
+                    </label>
+                    <select
+                      value={formData.stateOfResidence || 'Lagos'}
+                      onChange={e => setFormData({ ...formData, stateOfResidence: e.target.value })}
+                      className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
+                    >
+                      {NIGERIAN_STATES.map(st => (
+                        <option key={st} value={st}>
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label 
+                      className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                      title="Tax Identification Number / State PAYE No"
+                    >
+                      Tax ID / State PAYE
+                    </label>
+                    <input 
+                      type="text" 
+                      value={formData.payeNumber} 
+                      onChange={e => setFormData({ ...formData, payeNumber: e.target.value })}
+                      className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      placeholder="e.g. PAYE-LAS-..."
+                    />
+                  </div>
+
+                  <div>
+                    <label 
+                      className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                      title="Pension Retirement Savings Account PIN"
+                    >
+                      Pension RSA PIN
+                    </label>
+                    <input 
+                      type="text" 
+                      value={formData.pensionNumber} 
+                      onChange={e => setFormData({ ...formData, pensionNumber: e.target.value })}
+                      className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      placeholder="e.g. PEN100..."
+                    />
+                  </div>
+
+                  <div>
+                    <label 
+                      className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                      title="Pension Fund Administrator (PFA)"
+                    >
+                      Pension PFA Name
+                    </label>
+                    <input 
+                      type="text" 
+                      list="nigerian-pfas-datalist"
+                      value={formData.pfaName} 
+                      onChange={e => setFormData({ ...formData, pfaName: e.target.value })}
+                      className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      placeholder="Select PFA..."
+                    />
+                    <datalist id="nigerian-pfas-datalist">
+                      {NIGERIAN_PFAS.map(pfa => (
+                        <option key={pfa} value={pfa} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
               </div>
-
-              {/* Minimalist Checkbox Toggles */}
-              <div className="flex items-center gap-5 py-0.5 text-xs">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input 
-                    type="checkbox"
-                    checked={formData.hasPension}
-                    onChange={e => setFormData({ ...formData, hasPension: e.target.checked })}
-                    className="w-4 h-4 rounded text-zinc-900 dark:text-zinc-100 focus:ring-0 cursor-pointer accent-zinc-900 dark:accent-zinc-100"
-                  />
-                  <span className="text-zinc-800 dark:text-zinc-200 font-medium">Pension (8% / 10%)</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input 
-                    type="checkbox"
-                    checked={formData.hasPaye}
-                    onChange={e => setFormData({ ...formData, hasPaye: e.target.checked })}
-                    className="w-4 h-4 rounded text-zinc-900 dark:text-zinc-100 focus:ring-0 cursor-pointer accent-zinc-900 dark:accent-zinc-100"
-                  />
-                  <span className="text-zinc-800 dark:text-zinc-200 font-medium">PAYE Income Tax</span>
-                </label>
-              </div>
-
-              {/* Registration Identification Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
-                <div>
-                  <label 
-                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
-                    title="State of Residence for State PAYE Tax remittance"
-                  >
-                    State of Residence
-                  </label>
-                  <select
-                    value={formData.stateOfResidence || 'Lagos'}
-                    onChange={e => setFormData({ ...formData, stateOfResidence: e.target.value })}
-                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
-                  >
-                    {NIGERIAN_STATES.map(st => (
-                      <option key={st} value={st}>
-                        {st}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label 
-                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
-                    title="Tax Identification Number / State PAYE No"
-                  >
-                    Tax ID / State PAYE
-                  </label>
-                  <input 
-                    type="text" 
-                    value={formData.payeNumber} 
-                    onChange={e => setFormData({ ...formData, payeNumber: e.target.value })}
-                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                    placeholder="e.g. PAYE-LAS-..."
-                  />
-                </div>
-
-                <div>
-                  <label 
-                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
-                    title="Pension Retirement Savings Account PIN"
-                  >
-                    Pension RSA PIN
-                  </label>
-                  <input 
-                    type="text" 
-                    value={formData.pensionNumber} 
-                    onChange={e => setFormData({ ...formData, pensionNumber: e.target.value })}
-                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                    placeholder="e.g. PEN100..."
-                  />
-                </div>
-
-                <div>
-                  <label 
-                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
-                    title="Pension Fund Administrator (PFA)"
-                  >
-                    Pension PFA Name
-                  </label>
-                  <input 
-                    type="text" 
-                    list="nigerian-pfas-datalist"
-                    value={formData.pfaName} 
-                    onChange={e => setFormData({ ...formData, pfaName: e.target.value })}
-                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                    placeholder="Select PFA..."
-                  />
-                  <datalist id="nigerian-pfas-datalist">
-                    {NIGERIAN_PFAS.map(pfa => (
-                      <option key={pfa} value={pfa} />
-                    ))}
-                  </datalist>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Section 4: Bank Details */}
-            <div className="space-y-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60">
-              <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                Bank &amp; Remittance Details
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                    Bank Name
-                  </label>
-                  <input 
-                    type="text" 
-                    list="nigerian-banks-datalist"
-                    value={formData.bankName} 
-                    onChange={e => setFormData({ ...formData, bankName: e.target.value })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                    placeholder="Select or type bank..."
-                    required
-                  />
-                  <datalist id="nigerian-banks-datalist">
-                    {NIGERIAN_BANKS.map(bank => (
-                      <option key={bank} value={bank} />
-                    ))}
-                  </datalist>
+            {(activeSection === 'all' || activeSection === 'banking') && (
+              <div className="bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                  <Landmark className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                  <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    Bank &amp; Remittance Details
+                  </h3>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                    Account Number (NUBAN)
-                  </label>
-                  <input 
-                    type="text" 
-                    value={formData.accountNumber} 
-                    onChange={e => setFormData({ ...formData, accountNumber: e.target.value })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                    placeholder="10-digit NUBAN"
-                    maxLength={10}
-                    required
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                      Bank Name
+                    </label>
+                    <input 
+                      type="text" 
+                      list="nigerian-banks-datalist"
+                      value={formData.bankName} 
+                      onChange={e => setFormData({ ...formData, bankName: e.target.value })}
+                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      placeholder="Select or type bank..."
+                      required
+                    />
+                    <datalist id="nigerian-banks-datalist">
+                      {NIGERIAN_BANKS.map(bank => (
+                        <option key={bank} value={bank} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                      Account Number (NUBAN)
+                    </label>
+                    <input 
+                      type="text" 
+                      value={formData.accountNumber} 
+                      onChange={e => setFormData({ ...formData, accountNumber: e.target.value })}
+                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      placeholder="10-digit NUBAN"
+                      maxLength={10}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
           </div>
 

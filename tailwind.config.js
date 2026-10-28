@@ -10,10 +10,10 @@ export default {
       colors: {
         dark: {
           bg: '#09090b',
-          surface: '#121215',
-          card: '#141418',
-          border: '#27272a',
-          hover: '#1e1e24',
+          surface: '#131317',
+          card: '#18181d',
+          border: '#2c2c34',
+          hover: '#22222a',
         },
         light: {
           bg: '#fbfbfb',

@@ -582,7 +582,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none cursor-pointer"
           >
             {departments.map(d => (
-              <option key={d} value={d}>Dept: {d}</option>
+              <option key={d} value={d}>{d === 'ALL' ? 'All Departments' : d}</option>
             ))}
           </select>
 
@@ -617,7 +617,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
       <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xs overflow-hidden">
         <div className={`overflow-x-auto overflow-y-auto ${showStats ? 'max-h-[calc(100vh-285px)]' : 'max-h-[calc(100vh-185px)]'}`}>
           <table className="w-full text-left border-collapse text-xs">
-          <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shadow-xs">
+          <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shadow-xs">
             <tr className="bg-zinc-50 dark:bg-zinc-900">
               <th className="px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-tl-lg">
                 <SortableHeader
@@ -771,7 +771,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                     </th>
                   </>
                 )}
-                <th className="px-3.5 py-2.5 text-center font-semibold uppercase tracking-wider text-[10px] text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900 rounded-tr-lg">
+                <th className="px-3.5 py-2.5 text-center font-semibold uppercase tracking-wider text-[11px] text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900 rounded-tr-lg">
                   Action
                 </th>
               </tr>
@@ -791,17 +791,17 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                       {item.fullName}
                     </div>
                     {activeSubTab === 'paye' ? (
-                      <div className="text-[10px] font-mono text-zinc-400">
+                      <div className="text-[11px] font-mono text-zinc-400">
                         {item.payeNumber ? `Tax ID: ${item.payeNumber}` : 'Tax ID: Not registered'}
                       </div>
                     ) : activeSubTab === 'pension' ? (
-                      <div className="text-[10px] font-mono text-zinc-400">
+                      <div className="text-[11px] font-mono text-zinc-400">
                         {item.pensionNumber ? `RSA: ${item.pensionNumber}` : 'RSA: Not registered'}
                         {item.pfaName && <span className="font-sans text-zinc-500 ml-1">({item.pfaName})</span>}
                       </div>
                     ) : (
                       !isCompactMode && (
-                        <div className="text-[10px] text-zinc-400">
+                        <div className="text-[11px] text-zinc-400">
                           {item.position}
                         </div>
                       )

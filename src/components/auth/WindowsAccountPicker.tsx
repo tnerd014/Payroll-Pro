@@ -28,7 +28,8 @@ import {
   Cloud,
   User,
   Users,
-  LogOut
+  LogOut,
+  Smartphone,
 } from 'lucide-react';
 import { CompanyAccount, DEFAULT_SECURITY_QUESTIONS, TeamMember } from '../../types';
 import { formatDate } from '../../engine/dateUtils';
@@ -53,6 +54,9 @@ interface WindowsAccountPickerProps {
   currentUser?: TeamMember | null;
   onSignOut?: () => void;
   onDisconnectServer?: () => void;
+  isMobileView?: boolean;
+  isSimulatorMode?: boolean;
+  onToggleSimulator?: () => void;
 }
 
 export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
@@ -71,7 +75,24 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   currentUser,
   onSignOut,
   onDisconnectServer,
+  isMobileView,
+  isSimulatorMode,
+  onToggleSimulator,
 }) => {
+  const [internalIsMobile, setInternalIsMobile] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setInternalIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = isMobileView ?? internalIsMobile;
+  const isElectron = typeof window !== 'undefined' && (Boolean((window as any).electronAPI) || /electron/i.test(navigator.userAgent));
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isTeamPageOpen, setIsTeamPageOpen] = useState(false);
@@ -497,129 +518,230 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   });
 
   return (
-    <div className={`relative w-screen h-screen overflow-hidden select-none flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
+    <div className={`relative w-full h-full overflow-hidden select-none flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
       
-      {/* Top Windows Native-Style Bar (Matching DesktopTitleBar exactly) */}
-      <header 
-        className="no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-3 select-none relative z-50 shrink-0 transition-colors"
-        style={{ WebkitAppRegion: 'drag' } as any}
-      >
-        {/* Left: App Title */}
-        <div className="flex items-center gap-2">
-          <img src={appLogo} alt="Payroll Pro" className="w-4 h-4 rounded object-contain shrink-0" />
-          <span className="font-semibold text-xs tracking-tight text-zinc-800 dark:text-zinc-200">Payroll Pro</span>
-          <span className="text-[10px] text-zinc-400 font-mono px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800">
-            Accounts
-          </span>
-        </div>
+      {/* Header: Android Material 3 Mobile Bar OR Desktop Native Title Bar */}
+      {isMobile ? (
+        <header className="no-print bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 select-none shrink-0 z-40 shadow-xs">
+          {/* Android Top App Bar */}
+          <div className="h-12 px-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center p-1 border border-emerald-500/20">
+                <img src={appLogo} alt="Payroll Pro" className="w-full h-full object-contain shrink-0" />
+              </div>
+              <div>
+                <span className="font-bold text-xs tracking-tight text-zinc-900 dark:text-zinc-100 block">
+                  Payroll Pro
+                </span>
+                <p className="text-[10px] text-zinc-400 font-medium">Select Company</p>
+              </div>
+            </div>
 
-        {/* Center: Quiet Clock */}
-        <div className="hidden sm:flex items-center gap-2 text-xs font-normal text-zinc-400 pointer-events-none">
-          <span className="font-mono text-zinc-600 dark:text-zinc-400">
-            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-          <span className="text-zinc-300 dark:text-zinc-700">&bull;</span>
-          <span className="text-zinc-400 text-[11px]">
-            {currentTime.toLocaleDateString('en-GB', { weekday: 'short' })} &bull; {formatDate(currentTime)}
-          </span>
-        </div>
+            <div className="flex items-center gap-1">
 
-        {/* Right: Cloud Gateway, Theme Toggle & Native Window Controls */}
-        <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          <button
-            onClick={() => setIsCloudModalOpen(true)}
-            title={cloudConfig.isEnabled ? 'Connected to Team Cloud Database' : 'Connect to Team Cloud Database'}
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
-              cloudConfig.isEnabled
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-            }`}
-          >
-            <Cloud className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="hidden sm:inline">{cloudConfig.isEnabled ? 'Cloud Live' : 'Cloud Setup'}</span>
-          </button>
-
-          {currentUser && (
-            <div className="relative">
               <button
                 type="button"
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                title={`${currentUser.name} (${currentUser.role})`}
-                className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+                onClick={() => setIsCloudModalOpen(true)}
+                title={cloudConfig.isEnabled ? 'Connected to Team Server' : 'Connect to Team Server'}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer ${
+                  cloudConfig.isEnabled
+                    ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
+                    : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
               >
-                <User className="w-3.5 h-3.5" />
+                <Cloud className="w-4 h-4" />
               </button>
 
-              {isUserMenuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs">
-                  <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400">
-                    Signed in as <strong>{currentUser.email || currentUser.username}</strong>
-                  </div>
+              {currentUser && (
+                <div className="relative">
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsUserMenuOpen(false);
-                      onSignOut?.();
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    title={`${currentUser.name} (${currentUser.role})`}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
                   >
-                    <LogOut className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Switch Staff User</span>
+                    <User className="w-4 h-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsUserMenuOpen(false);
-                      if (confirm('Disconnect from server?')) {
-                        onDisconnectServer?.();
-                      }
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
-                  >
-                    <Cloud className="w-3.5 h-3.5" />
-                    <span>Disconnect Server</span>
-                  </button>
+
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs">
+                      <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400">
+                        Signed in as <strong>{currentUser.email || currentUser.username}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onSignOut?.();
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
+                      >
+                        <LogOut className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Switch Staff User</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          if (confirm('Disconnect from server?')) {
+                            onDisconnectServer?.();
+                          }
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
+                      >
+                        <Cloud className="w-3.5 h-3.5" />
+                        <span>Disconnect Server</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
+
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                {isDarkTheme ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
             </div>
-          )}
-
-          <button
-            onClick={onToggleTheme}
-            title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-            className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-          >
-            {isDarkTheme ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-          </button>
-
-          <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1">
-            <button 
-              onClick={() => (window as any).electronAPI?.windowMinimize?.()}
-              className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
-              title="Minimize"
-            >
-              <Minus className="w-3 h-3" />
-            </button>
-            <button 
-              onClick={() => (window as any).electronAPI?.windowMaximize?.()}
-              className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
-              title="Maximize"
-            >
-              <Square className="w-2.5 h-2.5" />
-            </button>
-            <button 
-              onClick={() => (window as any).electronAPI?.windowClose?.()}
-              className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition cursor-pointer"
-              title="Close"
-            >
-              <X className="w-3 h-3" />
-            </button>
           </div>
-        </div>
-      </header>
+        </header>
+      ) : (
+        /* Top Windows Native-Style Bar for Desktop */
+        <header 
+          className="no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-3 select-none relative z-50 shrink-0 transition-colors"
+          style={{ WebkitAppRegion: 'drag' } as any}
+        >
+          {/* Left: App Title */}
+          <div className="flex items-center gap-2">
+            <img src={appLogo} alt="Payroll Pro" className="w-4 h-4 rounded object-contain shrink-0" />
+            <span className="font-semibold text-xs tracking-tight text-zinc-800 dark:text-zinc-200">Payroll Pro</span>
+          </div>
+
+          {/* Center: Quiet Clock */}
+          <div className="hidden sm:flex items-center gap-2 text-xs font-normal text-zinc-400 pointer-events-none">
+            <span className="font-mono text-zinc-600 dark:text-zinc-400">
+              {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <span className="text-zinc-300 dark:text-zinc-700">&bull;</span>
+            <span className="text-zinc-400 text-[11px]">
+              {currentTime.toLocaleDateString('en-GB', { weekday: 'short' })} &bull; {formatDate(currentTime)}
+            </span>
+          </div>
+
+          {/* Right: Simulator toggle, Cloud Gateway, Theme Toggle & Native Window Controls */}
+          <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            {onToggleSimulator && !isElectron && (
+              <button
+                type="button"
+                onClick={onToggleSimulator}
+                title={isSimulatorMode ? "Exit Android Phone Frame" : "Preview in Android Phone Frame"}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
+                <span className="hidden md:inline">Android View</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setIsCloudModalOpen(true)}
+              title={cloudConfig.isEnabled ? 'Connected to Team Cloud Database' : 'Connect to Team Cloud Database'}
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                cloudConfig.isEnabled
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+              }`}
+            >
+              <Cloud className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="hidden sm:inline">{cloudConfig.isEnabled ? 'Cloud Live' : 'Cloud Setup'}</span>
+            </button>
+
+            {currentUser && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  title={`${currentUser.name} (${currentUser.role})`}
+                  className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5" />
+                </button>
+
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs">
+                    <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400">
+                      Signed in as <strong>{currentUser.email || currentUser.username}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onSignOut?.();
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>Switch Staff User</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        if (confirm('Disconnect from server?')) {
+                          onDisconnectServer?.();
+                        }
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Cloud className="w-3.5 h-3.5" />
+                      <span>Disconnect Server</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={onToggleTheme}
+              title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+              className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+            >
+              {isDarkTheme ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            </button>
+
+            {isElectron && (
+              <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1">
+                <button 
+                  onClick={() => (window as any).electronAPI?.windowMinimize?.()}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
+                  title="Minimize"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <button 
+                  onClick={() => (window as any).electronAPI?.windowMaximize?.()}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
+                  title="Maximize"
+                >
+                  <Square className="w-2.5 h-2.5" />
+                </button>
+                <button 
+                  onClick={() => (window as any).electronAPI?.windowClose?.()}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* Main Container */}
-      <main className="flex-1 flex flex-col overflow-hidden max-w-7xl mx-auto w-full px-4 md:px-6">
+      <main className="flex-1 flex flex-col overflow-hidden max-w-7xl mx-auto w-full px-3 sm:px-6">
 
         {/* VIEW 1: FOCUSED PASSWORD SIGN-IN & RECOVERY */}
         {selectedForPassword ? (
@@ -920,7 +1042,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
           <div className="flex-1 flex flex-col min-h-0 w-full animate-in fade-in duration-150">
             
             {/* Pinned Minimalist Toolbar (always visible at top, never scrolls) */}
-            <div className="shrink-0 pt-3 pb-3 bg-[#fbfbfb] dark:bg-[#09090b] z-20 flex items-center justify-between gap-2.5">
+            <div className="shrink-0 pt-3 pb-3 bg-[#fbfbfb] dark:bg-[#09090b] z-20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
               
               {/* Left: Search Bar */}
               <div className="relative w-full sm:w-64">
@@ -930,12 +1052,12 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                   placeholder="Search company..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-8 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-lg pl-8 pr-7 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
+                  className="w-full h-9 sm:h-8 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-lg pl-8 pr-7 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-1"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -943,12 +1065,12 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
               </div>
 
               {/* Right: Actions */}
-              <div className="flex items-center gap-2 ml-auto shrink-0">
+              <div className="flex items-center gap-2 sm:ml-auto shrink-0 justify-between sm:justify-end">
                 {currentUser?.role === 'Admin' && (
                   <button
                     type="button"
                     onClick={() => setIsTeamPageOpen(true)}
-                    className="h-8 px-3 rounded-lg bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    className="flex-1 sm:flex-none h-9 sm:h-8 px-3 rounded-lg bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                     title="Manage authorized staff and operator accounts"
                   >
                     <Users className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
@@ -957,7 +1079,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 )}
                 <button
                   onClick={openCreateModal}
-                  className="h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  className="flex-1 sm:flex-none h-9 sm:h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Company</span>
@@ -1048,7 +1170,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       >
                         <button
                           onClick={() => setActionMenuOpenId(isMenuOpen ? null : comp.id)}
-                          className="p-1 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition opacity-0 group-hover:opacity-100 cursor-pointer"
+                          className="p-1.5 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition opacity-100 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
                           title="Options"
                         >
                           <MoreVertical className="w-3.5 h-3.5" />

@@ -22,7 +22,8 @@ import {
   Mail,
   AtSign,
   Shield,
-  Calendar
+  Calendar,
+  ChevronRight
 } from 'lucide-react';
 import { TeamMember, TeamMemberRole, DEFAULT_SECURITY_QUESTIONS } from '../../types';
 import { 
@@ -47,6 +48,8 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
 }) => {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isInitialMount = useRef(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 15;
@@ -122,8 +125,14 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const loadMembers = async () => {
-    setIsLoading(true);
+  const loadMembers = async (silent = false) => {
+    if (!silent) {
+      if (isInitialMount.current || members.length === 0) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
+    }
     try {
       const res = await fetchTeamMembers();
       if (res.success && res.members) {
@@ -133,6 +142,8 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
       console.warn('Failed to load team members:', err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+      isInitialMount.current = false;
     }
   };
 
@@ -140,31 +151,31 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
     loadMembers();
   }, []);
 
-  // Multi-layered auto-refresh: polling, window focus, WebSocket broadcast, and Postgres changes
+  // Multi-layered auto-refresh: polling, window focus, WebSocket broadcast, and Postgres changes (all non-destructive)
   useEffect(() => {
-    // 1. Polling interval while page is open (every 3.5s)
+    // 1. Safety background polling interval while page is open (every 30s)
     const interval = setInterval(() => {
-      loadMembers();
-    }, 3500);
+      loadMembers(true);
+    }, 30000);
 
-    // 2. Window focus & visibility: refresh instantly when admin focuses back to this window
-    const handleFocus = () => { loadMembers(); };
+    // 2. Window focus & visibility: refresh silently when admin focuses back to this window
+    const handleFocus = () => { loadMembers(true); };
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleFocus);
 
-    // 3. WebSocket Broadcast listener from other admin sessions
+    // 3. WebSocket Broadcast listener from other admin sessions (silent background sync)
     const unsubBroadcast = subscribeToMemberUpdates(() => {
-      loadMembers();
+      loadMembers(true);
     });
 
-    // 4. Postgres Changes (Database Realtime)
+    // 4. Postgres Changes (Database Realtime - silent background sync)
     const client = getSupabaseClient();
     let channel: any = null;
     if (client) {
       channel = client
         .channel(`team-members-realtime-${Date.now()}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, () => {
-          loadMembers();
+          loadMembers(true);
         })
         .subscribe();
     }
@@ -270,7 +281,7 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
         pass: password.trim(),
         role: memberPayload.role
       });
-      loadMembers();
+      loadMembers(true);
     } else {
       setFormError(res.error || 'Failed to save team member');
     }
@@ -296,7 +307,7 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
       );
     } else {
       alert(res.error || 'Failed to update role');
-      loadMembers(); // Revert on failure
+      loadMembers(true); // Revert on failure
     }
   };
 
@@ -332,7 +343,7 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
         nextActive ? 'Staff Member Activated' : 'Staff Member Deactivated',
         `Admin ${actionLabel}d access for ${member.name} (${member.role})`
       );
-      loadMembers();
+      loadMembers(true);
     } else {
       alert(res.error || `Failed to ${actionLabel} member`);
     }
@@ -382,7 +393,7 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
         `Admin updated details for ${updated.name} (${updated.role})${editPassword.trim() ? ' and reset password' : ''}${updated.isActive === false ? ' [Deactivated]' : ' [Active]'}`
       );
       setEditingMember(null);
-      loadMembers();
+      loadMembers(true);
     } else {
       setEditError(res.error || 'Failed to update member');
     }
@@ -398,7 +409,7 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
           'Staff Access Deleted',
           `Admin deleted authorized user ${memberName}`
         );
-        loadMembers();
+        loadMembers(true);
       } else {
         alert(res.error || 'Failed to delete user');
       }
@@ -439,60 +450,63 @@ Password: ${createdCredentials.pass}`;
     <div className="flex-1 flex flex-col min-h-0 w-full animate-in fade-in duration-150">
       
       {/* Pinned Top Toolbar */}
-      <div className="shrink-0 pt-3 pb-3 bg-[#fbfbfb] dark:bg-[#09090b] z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200/80 dark:border-zinc-800/80">
+      <div className="shrink-0 pt-3 pb-3 bg-[#fbfbfb] dark:bg-[#09090b] z-20 flex flex-col gap-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80">
         
-        {/* Left: Back Action & Title */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shadow-2xs"
-            title="Return to workspaces"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Workspaces</span>
-          </button>
+        {/* Top Row: Back Action, Title, & Live Presence Badges */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shadow-2xs shrink-0"
+              title="Return to workspaces"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Workspaces</span>
+            </button>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 tracking-tight truncate">
                 Authorized Team Members
               </h1>
-              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-                {members.length} {members.length === 1 ? 'Operator' : 'Operators'}
-              </span>
-              {currentUser?.role === 'Admin' && onlineMembers.length > 0 && (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                  <span className="relative flex w-1.5 h-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-emerald-500"></span>
-                  </span>
-                  {onlineMembers.length} Online
-                </span>
-              )}
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 hidden sm:block">
+                Staff authorized to sign in and process payroll across all company workspaces.
+              </p>
             </div>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 hidden sm:block">
-              Staff authorized to sign in and process payroll across all company workspaces.
-            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200/50 dark:border-zinc-700/50">
+              {members.length} {members.length === 1 ? 'Operator' : 'Operators'}
+            </span>
+            {currentUser?.role === 'Admin' && onlineMembers.length > 0 && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                <span className="relative flex w-1.5 h-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-emerald-500"></span>
+                </span>
+                {onlineMembers.length} Online
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Right: Search, Refresh & Add Actions */}
+        {/* Action Row: Search Filter + Refresh + Add Actions */}
         <div className="flex items-center gap-2">
-          <div className="relative w-full sm:w-56">
+          <div className="relative flex-1 sm:w-64 sm:flex-initial">
             <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Filter staff by name or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-8 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-lg pl-8 pr-7 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
+              className="w-full h-8.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-xl pl-8 pr-7 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-0.5"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -501,18 +515,18 @@ Password: ${createdCredentials.pass}`;
 
           <button
             type="button"
-            onClick={loadMembers}
-            disabled={isLoading}
-            className="h-8 px-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition flex items-center justify-center cursor-pointer shadow-2xs"
+            onClick={() => loadMembers(false)}
+            disabled={isLoading || isRefreshing}
+            className="h-8.5 w-8.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
             title="Refresh list"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
           </button>
 
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
+            className="h-8.5 px-3 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Member</span>
@@ -521,8 +535,8 @@ Password: ${createdCredentials.pass}`;
 
       </div>
 
-      {/* Sticky Table Header — outside scroll so it never scrolls away */}
-      <div className="shrink-0 bg-white dark:bg-[#121215] border-x border-t border-zinc-200 dark:border-zinc-800 rounded-t-xl mt-4 mx-0">
+      {/* Sticky Table Header — visible ONLY on sm+ screens */}
+      <div className="hidden sm:block shrink-0 bg-white dark:bg-[#121215] border-x border-t border-zinc-200 dark:border-zinc-800 rounded-t-xl mt-4 mx-0">
         <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 rounded-t-xl">
           <div className="col-span-5 sm:col-span-4">Operator Name &amp; ID</div>
           <div className="col-span-4 sm:col-span-3">Work Email</div>
@@ -532,201 +546,355 @@ Password: ${createdCredentials.pass}`;
         </div>
       </div>
 
-      {/* Main Content Area — scrollable rows only */}
+      {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto min-h-0">
         
-        {/* Table / Ledger Card — no top rounding since header is above */}
-        <div className="bg-white dark:bg-[#121215] border-x border-b border-zinc-200 dark:border-zinc-800 rounded-b-xl overflow-hidden shadow-2xs">
-
-          {/* Table Body */}
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-800 text-xs">
-            {isLoading ? (
-              <div className="py-16 flex items-center justify-center text-zinc-400 text-xs gap-2">
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Loading team members...</span>
-              </div>
-            ) : filteredMembers.length === 0 ? (
-              <div className="py-16 text-center text-zinc-400 text-xs space-y-2">
-                <Users className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto" />
-                <p>{searchQuery ? `No staff member matches "${searchQuery}"` : 'No team members registered yet.'}</p>
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                  >
-                    Clear filter
-                  </button>
-                )}
-              </div>
-            ) : (
-              pagedMembers.map(member => {
+        {isLoading && members.length === 0 ? (
+          <div className="py-16 flex items-center justify-center text-zinc-400 text-xs gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Loading team members...</span>
+          </div>
+        ) : filteredMembers.length === 0 ? (
+          <div className="py-16 text-center text-zinc-400 text-xs space-y-2">
+            <Users className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto" />
+            <p>{searchQuery ? `No staff member matches "${searchQuery}"` : 'No team members registered yet.'}</p>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* ── MOBILE VIEW: Minimalist Succinct Operator Cards (< sm screens) ── */}
+            <div className="sm:hidden space-y-2.5 py-3">
+              {pagedMembers.map((member) => {
                 const isSelf = currentUser?.id === member.id;
+                const presence = onlineMembers.find((p) => p.memberId === member.id);
+                const isOnline = Boolean(presence);
+                const nameParts = (member.name || 'User').trim().split(/\s+/);
+                const initials = `${nameParts[0]?.charAt(0) || ''}${nameParts[1]?.charAt(0) || ''}`.toUpperCase() || 'U';
+
                 return (
-                  <div 
-                    key={member.id} 
-                    className="grid grid-cols-12 gap-3 px-4 py-3 items-center hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition cursor-pointer"
-                    onClick={(e) => {
-                      // Don't open view if clicking on select, button, or menu
-                      const tag = (e.target as HTMLElement).closest('select,button,a');
-                      if (!tag) setViewMember(member);
-                    }}
+                  <div
+                    key={member.id}
+                    onClick={() => setViewMember(member)}
+                    className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3.5 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition cursor-pointer"
                   >
-                    {/* Col 1: Operator Name & Avatar */}
-                    <div className="col-span-5 sm:col-span-4 flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-semibold text-xs shrink-0 border border-zinc-200 dark:border-zinc-700/60">
-                        {member.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                            {member.name}
-                          </span>
-                          {isSelf && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded font-normal bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                              You
+                    {/* Header Row: Avatar with Live Pulse, Name, Username, and Actions */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Avatar with Live Online Badge */}
+                        <div className="relative shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 text-zinc-800 dark:text-zinc-100 font-bold text-xs flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80">
+                            {initials}
+                          </div>
+                          {isOnline && (
+                            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-white dark:ring-[#121215]"></span>
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-zinc-400 truncate font-mono">
-                          @{member.username || member.email?.split('@')[0]}
+
+                        {/* Unclipped Operator Name and Handle */}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 leading-tight">
+                              {member.name}
+                            </span>
+                            {isSelf && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                                You
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-zinc-400 font-mono mt-0.5 truncate">
+                            @{member.username || member.email?.split('@')[0]}
+                          </div>
                         </div>
+                      </div>
+
+                      {/* Right Action Menu Button */}
+                      <div 
+                        className="relative shrink-0" 
+                        ref={openMenuId === member.id ? menuRef : undefined}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {!isSelf ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setOpenMenuId(prev => prev === member.id ? null : member.id)}
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                              title="Member actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {openMenuId === member.id && (
+                              <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-white dark:bg-[#1a1a1e] border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl py-1 text-xs overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
+                                <button
+                                  type="button"
+                                  onClick={() => { setOpenMenuId(null); handleOpenEdit(member); }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
+                                  Edit Operator Profile
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setOpenMenuId(null); handleToggleActive(member); }}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition cursor-pointer ${
+                                    member.isActive === false
+                                      ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                                      : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                                  }`}
+                                >
+                                  {member.isActive === false ? (
+                                    <><UserCheck className="w-3.5 h-3.5" />Activate Access</>
+                                  ) : (
+                                    <><UserX className="w-3.5 h-3.5" />Deactivate Access</>
+                                  )}
+                                </button>
+                                <div className="my-1 border-t border-zinc-100 dark:border-zinc-800" />
+                                <button
+                                  type="button"
+                                  onClick={() => { setOpenMenuId(null); handleDeleteMember(member.id, member.name); }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  Delete Operator
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="w-8 h-8 flex items-center justify-center text-zinc-300 dark:text-zinc-700 text-xs">
+                            —
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Col 2: Work Email */}
-                    <div className="col-span-4 sm:col-span-3 text-zinc-600 dark:text-zinc-300 truncate">
-                      {member.email || <span className="text-zinc-400 italic">None</span>}
+                    {/* Email Strip */}
+                    <div className="mt-2.5 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl px-2.5 py-1.5 border border-zinc-200/60 dark:border-zinc-800/60">
+                      <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      <span className="truncate select-all">{member.email || 'No email registered'}</span>
                     </div>
 
-                    {/* Col 3: Role Selector / Badge */}
-                    <div className="col-span-3 sm:col-span-2">
-                      {isSelf ? (
-                        <span className="inline-flex items-center text-[11px] px-2.5 py-0.5 rounded font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
-                          {member.role}
+                    {/* Card Footer: Role Pill, Status, and View Chevron */}
+                    <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800/70 flex items-center justify-between text-xs">
+                      {/* Access Role & Status Badges */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-semibold text-[11px] ${
+                          member.role === 'Admin'
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                            : member.role === 'Auditor'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                              : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                        }`}>
+                          <Shield className="w-3 h-3" />
+                          <span>{member.role}</span>
                         </span>
-                      ) : (
-                        <select
-                          value={member.role}
-                          onChange={(e) => handleRoleChange(member, e.target.value as TeamMemberRole)}
-                          className={`h-7 text-[11px] px-2 py-0 rounded font-medium border focus:outline-none cursor-pointer transition shadow-2xs ${
-                            member.role === 'Admin'
-                              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                              : member.role === 'Auditor'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                          }`}
-                          title="Change operator access role"
-                        >
-                          <option value="Payroll Officer" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Payroll Officer</option>
-                          <option value="Auditor" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Auditor (View Only)</option>
-                          <option value="Admin" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Administrator</option>
-                        </select>
-                      )}
-                    </div>
 
-                    {/* Col 4: Status */}
-                    <div className="hidden sm:flex sm:col-span-2 items-center gap-1.5 text-xs">
-                      {member.isActive === false ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
-                          Deactivated
-                        </span>
-                      ) : (() => {
-                        const presence = onlineMembers.find(p => p.memberId === member.id);
-                        if (presence) {
-                          const since = new Date(presence.joinedAt);
-                          const sinceStr = since.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                          return (
-                            <span
-                              title={`Online since ${sinceStr}${presence.companyName ? ` — ${presence.companyName}` : ''}`}
-                              className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium"
-                            >
-                              <span className="relative flex w-2 h-2 shrink-0">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full w-2 h-2 bg-emerald-500"></span>
-                              </span>
-                              Online
-                            </span>
-                          );
-                        }
-                        return (
-                          <span className="flex items-center gap-1.5 text-zinc-400 dark:text-zinc-500">
-                            <span className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600 shrink-0"></span>
+                        {member.isActive === false ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                            Deactivated
+                          </span>
+                        ) : isOnline ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Online
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span>
                             Offline
                           </span>
-                        );
-                      })()}
-                    </div>
+                        )}
+                      </div>
 
-                    {/* Col 5: Actions — 3-dot dropdown */}
-                    <div className="flex sm:col-span-1 justify-end items-center" ref={openMenuId === member.id ? menuRef : undefined}>
-                      {!isSelf ? (
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() => setOpenMenuId(prev => prev === member.id ? null : member.id)}
-                            className="p-1.5 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                            title="Member actions"
-                          >
-                            <MoreVertical className="w-3.5 h-3.5" />
-                          </button>
-
-                          {openMenuId === member.id && (
-                            <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white dark:bg-[#1a1a1e] border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 text-xs overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
-                              {/* Edit */}
-                              <button
-                                type="button"
-                                onClick={() => { setOpenMenuId(null); handleOpenEdit(member); }}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
-                              >
-                                <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
-                                Edit Details
-                              </button>
-
-                              {/* Activate / Deactivate */}
-                              <button
-                                type="button"
-                                onClick={() => { setOpenMenuId(null); handleToggleActive(member); }}
-                                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition cursor-pointer ${
-                                  member.isActive === false
-                                    ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
-                                    : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
-                                }`}
-                              >
-                                {member.isActive === false ? (
-                                  <><UserCheck className="w-3.5 h-3.5" />Activate Access</>
-                                ) : (
-                                  <><UserX className="w-3.5 h-3.5" />Deactivate Access</>
-                                )}
-                              </button>
-
-                              {/* Divider */}
-                              <div className="my-1 border-t border-zinc-100 dark:border-zinc-800" />
-
-                              {/* Delete */}
-                              <button
-                                type="button"
-                                onClick={() => { setOpenMenuId(null); handleDeleteMember(member.id, member.name); }}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                Delete User
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-zinc-300 dark:text-zinc-700 text-xs select-none pr-1">&mdash;</span>
-                      )}
+                      {/* Tap to View Profile Hint */}
+                      <div className="flex items-center gap-1 text-zinc-400 text-[11px] font-medium">
+                        <span>Details</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </div>
                     </div>
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
 
-        </div>
+            {/* ── DESKTOP VIEW: Ledger Table Card (>= sm screens) ── */}
+            <div className="hidden sm:block bg-white dark:bg-[#121215] border-x border-b border-zinc-200 dark:border-zinc-800 rounded-b-xl overflow-hidden shadow-2xs">
+              <div className="divide-y divide-zinc-200 dark:divide-zinc-800 text-xs">
+                {pagedMembers.map(member => {
+                  const isSelf = currentUser?.id === member.id;
+                  return (
+                    <div 
+                      key={member.id} 
+                      className="grid grid-cols-12 gap-3 px-4 py-3 items-center hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition cursor-pointer"
+                      onClick={(e) => {
+                        const tag = (e.target as HTMLElement).closest('select,button,a');
+                        if (!tag) setViewMember(member);
+                      }}
+                    >
+                      {/* Col 1: Operator Name & Avatar */}
+                      <div className="col-span-5 sm:col-span-4 flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-semibold text-xs shrink-0 border border-zinc-200 dark:border-zinc-700/60">
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                              {member.name}
+                            </span>
+                            {isSelf && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded font-normal bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                                You
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-zinc-400 truncate font-mono">
+                            @{member.username || member.email?.split('@')[0]}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Col 2: Work Email */}
+                      <div className="col-span-4 sm:col-span-3 text-zinc-600 dark:text-zinc-300 truncate">
+                        {member.email || <span className="text-zinc-400 italic">None</span>}
+                      </div>
+
+                      {/* Col 3: Role Selector / Badge */}
+                      <div className="col-span-3 sm:col-span-2">
+                        {isSelf ? (
+                          <span className="inline-flex items-center text-[11px] px-2.5 py-0.5 rounded font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+                            {member.role}
+                          </span>
+                        ) : (
+                          <select
+                            value={member.role}
+                            onChange={(e) => handleRoleChange(member, e.target.value as TeamMemberRole)}
+                            className={`h-7 text-[11px] px-2 py-0 rounded font-medium border focus:outline-none cursor-pointer transition shadow-2xs ${
+                              member.role === 'Admin'
+                                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                                : member.role === 'Auditor'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                                  : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                            }`}
+                            title="Change operator access role"
+                          >
+                            <option value="Payroll Officer" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Payroll Officer</option>
+                            <option value="Auditor" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Auditor (View Only)</option>
+                            <option value="Admin" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Administrator</option>
+                          </select>
+                        )}
+                      </div>
+
+                      {/* Col 4: Status */}
+                      <div className="hidden sm:flex sm:col-span-2 items-center gap-1.5 text-xs">
+                        {member.isActive === false ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                            Deactivated
+                          </span>
+                        ) : (() => {
+                          const presence = onlineMembers.find(p => p.memberId === member.id);
+                          if (presence) {
+                            const since = new Date(presence.joinedAt);
+                            const sinceStr = since.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            return (
+                              <span
+                                title={`Online since ${sinceStr}${presence.companyName ? ` — ${presence.companyName}` : ''}`}
+                                className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium"
+                              >
+                                <span className="relative flex w-2 h-2 shrink-0">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full w-2 h-2 bg-emerald-500"></span>
+                                </span>
+                                Online
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="flex items-center gap-1.5 text-zinc-400 dark:text-zinc-500">
+                              <span className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600 shrink-0"></span>
+                              Offline
+                            </span>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Col 5: Actions — 3-dot dropdown */}
+                      <div className="flex sm:col-span-1 justify-end items-center" ref={openMenuId === member.id ? menuRef : undefined}>
+                        {!isSelf ? (
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setOpenMenuId(prev => prev === member.id ? null : member.id)}
+                              className="p-1.5 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                              title="Member actions"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+
+                            {openMenuId === member.id && (
+                              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white dark:bg-[#1a1a1e] border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 text-xs overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
+                                <button
+                                  type="button"
+                                  onClick={() => { setOpenMenuId(null); handleOpenEdit(member); }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
+                                  Edit Details
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => { setOpenMenuId(null); handleToggleActive(member); }}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition cursor-pointer ${
+                                    member.isActive === false
+                                      ? 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                                      : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                                  }`}
+                                >
+                                  {member.isActive === false ? (
+                                    <><UserCheck className="w-3.5 h-3.5" />Activate Access</>
+                                  ) : (
+                                    <><UserX className="w-3.5 h-3.5" />Deactivate Access</>
+                                  )}
+                                </button>
+
+                                <div className="my-1 border-t border-zinc-100 dark:border-zinc-800" />
+
+                                <button
+                                  type="button"
+                                  onClick={() => { setOpenMenuId(null); handleDeleteMember(member.id, member.name); }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  Delete User
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-zinc-300 dark:text-zinc-700 text-xs select-none pr-1">&mdash;</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
 
       </div>
 

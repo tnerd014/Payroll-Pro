@@ -124,6 +124,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Basic Salary (%)</label>
             <input
               type="number"
+              step="any"
               value={pv.basic}
               onChange={e => setPv({ ...pv, basic: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
@@ -133,6 +134,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Housing Allowance (%)</label>
             <input
               type="number"
+              step="any"
               value={pv.housing}
               onChange={e => setPv({ ...pv, housing: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
@@ -142,6 +144,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Transport Allowance (%)</label>
             <input
               type="number"
+              step="any"
               value={pv.transport}
               onChange={e => setPv({ ...pv, transport: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
@@ -151,6 +154,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Other Allowances (%)</label>
             <input
               type="number"
+              step="any"
               value={pv.otherAllowances}
               onChange={e => setPv({ ...pv, otherAllowances: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
@@ -169,6 +173,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Employee Pension Rate (%)</label>
             <input
               type="number"
+              step="any"
               value={pv.employeePensionRate}
               onChange={e => setPv({ ...pv, employeePensionRate: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
@@ -179,6 +184,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Employer Pension Rate (%)</label>
             <input
               type="number"
+              step="any"
               value={pv.employerPensionRate}
               onChange={e => setPv({ ...pv, employerPensionRate: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
@@ -198,6 +204,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Statutory CRA Base (₦)</label>
             <input
               type="number"
+              step="any"
               value={tv.craBase}
               onChange={e => setTv({ ...tv, craBase: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
@@ -208,6 +215,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Rent Relief Rate (%)</label>
             <input
               type="number"
+              step="any"
               value={tv.rentReliefRate * 100}
               onChange={e => setTv({ ...tv, rentReliefRate: Number(e.target.value) / 100 })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
@@ -218,6 +226,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Rent Relief Statutory Cap (₦)</label>
             <input
               type="number"
+              step="any"
               value={tv.rentReliefCap}
               onChange={e => setTv({ ...tv, rentReliefCap: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
@@ -268,6 +277,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               <div className="w-44">
                 <input
                   type="number"
+                  step="any"
                   placeholder="Unbounded (Top Tier)"
                   value={bracket.upTo === null ? '' : bracket.upTo}
                   onChange={e => {
@@ -282,8 +292,8 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
                 <div className="flex items-center gap-1">
                   <input
                     type="number"
-                    step="1"
-                    value={Math.round(bracket.rate * 100)}
+                    step="any"
+                    value={bracket.rate * 100}
                     onChange={e => {
                       const updated = tv.taxBrackets.map(b => b.id === bracket.id ? { ...b, rate: Number(e.target.value) / 100 } : b);
                       setTv({ ...tv, taxBrackets: updated });

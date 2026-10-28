@@ -22,7 +22,8 @@ import {
   Square,
   X,
   ShieldAlert,
-  WifiOff
+  WifiOff,
+  Smartphone
 } from 'lucide-react';
 import { 
   getSavedCloudConfig, 
@@ -59,13 +60,33 @@ interface CloudStaffGateProps {
   onAuthenticated: (member: TeamMember, companies: CompanyAccount[]) => void;
   isDarkTheme?: boolean;
   onToggleTheme?: () => void;
+  isMobileView?: boolean;
+  isSimulatorMode?: boolean;
+  onToggleSimulator?: () => void;
 }
 
 export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({ 
   onAuthenticated,
   isDarkTheme = false,
-  onToggleTheme
+  onToggleTheme,
+  isMobileView,
+  isSimulatorMode,
+  onToggleSimulator,
 }) => {
+  const [internalIsMobile, setInternalIsMobile] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setInternalIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = isMobileView ?? internalIsMobile;
+  const isElectron = typeof window !== 'undefined' && (Boolean((window as any).electronAPI) || /electron/i.test(navigator.userAgent));
   const [cloudConfig, setCloudConfig] = useState<SupabaseCloudConfig>(() => getSavedCloudConfig());
   const [currentMember, setCurrentMember] = useState<TeamMember | null>(() => getActiveTeamMember());
 
@@ -477,72 +498,125 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-zinc-900">
+    <div className="w-full h-full flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-zinc-900">
       
-      {/* Native Desktop Title Bar */}
-      <header
-        className="no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between px-3 text-xs select-none shrink-0"
-        style={{ WebkitAppRegion: 'drag' } as any}
-      >
-        {/* Left: App Logo & Title */}
-        <div className="flex items-center gap-2">
-          <img src={appLogo} alt="Payroll Pro" className="w-4 h-4 rounded object-contain shrink-0" />
-          <span className="font-semibold text-xs tracking-tight text-zinc-800 dark:text-zinc-200">
-            Payroll Pro
-          </span>
-          <span className="text-[10px] text-zinc-400 font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">
-            Staff Portal
-          </span>
-        </div>
+      {/* Header: Android Material 3 Mobile Bar OR Desktop Native Title Bar */}
+      {isMobile ? (
+        <header className="no-print bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 select-none shrink-0 z-40 shadow-xs">
+          {/* Android Top App Bar */}
+          <div className="h-12 px-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center p-1 border border-emerald-500/20">
+                <img src={appLogo} alt="Payroll Pro" className="w-full h-full object-contain shrink-0" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs tracking-tight text-zinc-900 dark:text-zinc-100">
+                    Payroll Pro
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 px-1.5 py-0.2 rounded-full">
+                    Staff Portal
+                  </span>
+                </div>
+                <p className="text-[10px] text-zinc-400 font-medium">Team Authentication</p>
+              </div>
+            </div>
 
-        {/* Center: Quiet Clock */}
-        <div className="hidden sm:flex items-center gap-2 text-xs font-normal text-zinc-400 pointer-events-none">
-          <span className="font-mono text-zinc-600 dark:text-zinc-400">
-            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-          <span className="text-zinc-300 dark:text-zinc-700">&bull;</span>
-          <span className="text-zinc-400 text-[11px]">
-            {currentTime.toLocaleDateString('en-GB', { weekday: 'short' })} &bull; {formatDate(currentTime)}
-          </span>
-        </div>
+            <div className="flex items-center gap-1">
 
-        {/* Right: Theme Toggle & Native Window Controls */}
-        <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: 'no-drag' } as any}>
-          {onToggleTheme && (
-            <button
-              onClick={onToggleTheme}
-              title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-              className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-            >
-              {isDarkTheme ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            </button>
-          )}
-
-          <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1">
-            <button 
-              onClick={() => (window as any).electronAPI?.windowMinimize?.()}
-              className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
-              title="Minimize"
-            >
-              <Minus className="w-3 h-3" />
-            </button>
-            <button 
-              onClick={() => (window as any).electronAPI?.windowMaximize?.()}
-              className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
-              title="Maximize"
-            >
-              <Square className="w-2.5 h-2.5" />
-            </button>
-            <button 
-              onClick={() => (window as any).electronAPI?.windowClose?.()}
-              className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition cursor-pointer"
-              title="Close"
-            >
-              <X className="w-3 h-3" />
-            </button>
+              {onToggleTheme && (
+                <button
+                  type="button"
+                  onClick={onToggleTheme}
+                  title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                >
+                  {isDarkTheme ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      ) : (
+        /* Native Desktop Title Bar */
+        <header
+          className="no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between px-3 text-xs select-none shrink-0"
+          style={{ WebkitAppRegion: 'drag' } as any}
+        >
+          {/* Left: App Logo & Title */}
+          <div className="flex items-center gap-2">
+            <img src={appLogo} alt="Payroll Pro" className="w-4 h-4 rounded object-contain shrink-0" />
+            <span className="font-semibold text-xs tracking-tight text-zinc-800 dark:text-zinc-200">
+              Payroll Pro
+            </span>
+            <span className="text-[10px] text-zinc-400 font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">
+              Staff Portal
+            </span>
+          </div>
+
+          {/* Center: Quiet Clock */}
+          <div className="hidden sm:flex items-center gap-2 text-xs font-normal text-zinc-400 pointer-events-none">
+            <span className="font-mono text-zinc-600 dark:text-zinc-400">
+              {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <span className="text-zinc-300 dark:text-zinc-700">&bull;</span>
+            <span className="text-zinc-400 text-[11px]">
+              {currentTime.toLocaleDateString('en-GB', { weekday: 'short' })} &bull; {formatDate(currentTime)}
+            </span>
+          </div>
+
+          {/* Right: Simulator toggle, Theme Toggle & Native Window Controls */}
+          <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            {onToggleSimulator && !isElectron && (
+              <button
+                type="button"
+                onClick={onToggleSimulator}
+                title={isSimulatorMode ? "Exit Android Phone Frame" : "Preview in Android Phone Frame"}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
+                <span className="hidden md:inline">Android View</span>
+              </button>
+            )}
+
+            {onToggleTheme && (
+              <button
+                onClick={onToggleTheme}
+                title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+                className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                {isDarkTheme ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+              </button>
+            )}
+
+            {isElectron && (
+              <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1">
+                <button 
+                  onClick={() => (window as any).electronAPI?.windowMinimize?.()}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
+                  title="Minimize"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <button 
+                  onClick={() => (window as any).electronAPI?.windowMaximize?.()}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
+                  title="Maximize"
+                >
+                  <Square className="w-2.5 h-2.5" />
+                </button>
+                <button 
+                  onClick={() => (window as any).electronAPI?.windowClose?.()}
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* Main Centered Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">

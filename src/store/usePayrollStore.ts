@@ -114,8 +114,8 @@ export function parseDateToYearMonth(dateStr?: string): { year: number; monthIdx
  */
 export function autoSyncLoansForPeriod(
   loans: EmployeeLoan[] = [],
-  targetYear: number = 2026,
-  targetMonthKey: string = 'oct'
+  targetYear: number = new Date().getFullYear(),
+  targetMonthKey: string = (MONTHS[new Date().getMonth()]?.key || 'oct')
 ): EmployeeLoan[] {
   if (!Array.isArray(loans) || loans.length === 0) return [];
   const targetM = (targetMonthKey || 'oct').toLowerCase();
@@ -324,8 +324,8 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
               ? parsed.payeTaxVariables.taxBrackets
               : DEFAULT_PAYE_VARIABLES.taxBrackets,
           },
-          selectedMonth: parsed.selectedMonth || 'jan',
-          selectedYear: Number(parsed.selectedYear) || 2026,
+          selectedMonth: parsed.selectedMonth || (MONTHS[new Date().getMonth()]?.key || 'oct'),
+          selectedYear: Number(parsed.selectedYear) || new Date().getFullYear(),
           snapshots: (parsed.snapshots && Array.isArray(parsed.snapshots))
             ? parsed.snapshots.filter(Boolean)
             : [],
@@ -344,8 +344,8 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
           savedPayslipPresets: (parsed.savedPayslipPresets && Array.isArray(parsed.savedPayslipPresets)) ? parsed.savedPayslipPresets : [],
           loans: autoSyncLoansForPeriod(
             (parsed.loans && Array.isArray(parsed.loans)) ? parsed.loans : [],
-            Number(parsed.selectedYear) || 2026,
-            parsed.selectedMonth || 'oct'
+            Number(parsed.selectedYear) || new Date().getFullYear(),
+            parsed.selectedMonth || (MONTHS[new Date().getMonth()]?.key || 'oct')
           ),
         };
       }
@@ -378,8 +378,8 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
     departments: DEFAULT_DEPARTMENTS,
     payrollVariables: DEFAULT_PAYROLL_VARIABLES,
     payeTaxVariables: DEFAULT_PAYE_VARIABLES,
-    selectedMonth: 'jan',
-    selectedYear: 2026,
+    selectedMonth: MONTHS[new Date().getMonth()]?.key || 'oct',
+    selectedYear: new Date().getFullYear(),
     snapshots: [],
     activeView: 'dashboard',
     isDarkTheme: localStorage.getItem(THEME_PREFERENCE_KEY) === 'dark',
@@ -787,7 +787,7 @@ export function usePayrollStore() {
     ? activeSnapshot.items 
     : (Array.isArray(liveCalculatedItems) ? liveCalculatedItems : []);
 
-  const monthLabel = MONTHS.find(m => m.key === state.selectedMonth)?.label || 'October';
+  const monthLabel = MONTHS.find(m => m.key === state.selectedMonth)?.label || (MONTHS[new Date().getMonth()]?.label || 'October');
 
   const toggleTheme = () => {
     setIsDarkTheme(prev => {
@@ -911,8 +911,8 @@ export function usePayrollStore() {
       departments: DEFAULT_DEPARTMENTS,
       payrollVariables: DEFAULT_PAYROLL_VARIABLES,
       payeTaxVariables: DEFAULT_PAYE_VARIABLES,
-      selectedMonth: 'jan',
-      selectedYear: 2026,
+      selectedMonth: MONTHS[new Date().getMonth()]?.key || 'oct',
+      selectedYear: new Date().getFullYear(),
       snapshots: [],
       activeView: 'dashboard',
       isDarkTheme,

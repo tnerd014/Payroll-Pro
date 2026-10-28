@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Save } from 'lucide-react';
+import { AlertTriangle, Save, Smartphone } from 'lucide-react';
 import { usePayrollStore } from './store/usePayrollStore';
 import { DesktopTitleBar } from './components/layout/DesktopTitleBar';
 import { SidebarNav } from './components/layout/SidebarNav';
@@ -15,6 +15,9 @@ import { LoansAdvancesView } from './components/loans/LoansAdvancesView';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AppView, CompanyAccount, TeamMember } from './types';
 import { CloudStaffGate } from './components/auth/CloudStaffGate';
+import { MobileAppShell } from './components/mobile/MobileAppShell';
+import { AndroidDeviceFrame } from './components/mobile/AndroidDeviceFrame';
+import { Capacitor } from '@capacitor/core';
 import { getActiveTeamMember, setActiveTeamMember, saveCloudConfig, leavePresenceChannel, joinPresenceChannel, fetchCompaniesFromSupabase, getSupabaseClient, subscribeToMemberUpdates } from './services/supabaseClient';
 import { purgeAllLocalDataOnDisconnect } from './store/usePayrollStore';
 
@@ -310,9 +313,50 @@ export const App: React.FC = () => {
     }
   }, [isDarkTheme]);
 
+  // --- RESPONSIVE & MOBILE SIMULATOR STATE ---
+  const isElectron = typeof window !== 'undefined' && (Boolean((window as any).electronAPI) || /electron/i.test(navigator.userAgent));
+  const isNativeApp = typeof window !== 'undefined' && (Capacitor.isNativePlatform() || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    if (isElectron) return false;
+    return isNativeApp || window.innerWidth < 768;
+  });
+
+  useEffect(() => {
+    if (isElectron) {
+      setIsMobileViewport(false);
+      return;
+    }
+    const handleResize = () => {
+      setIsMobileViewport(isNativeApp || window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isNativeApp, isElectron]);
+
+  const [isSimulatorMode, setIsSimulatorMode] = useState<boolean>(() => {
+    if (isElectron || isNativeApp) return false;
+    try {
+      return localStorage.getItem('payroll_pro_mobile_simulator') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSimulatorMode = () => {
+    if (isElectron || isNativeApp) return;
+    setIsSimulatorMode(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('payroll_pro_mobile_simulator', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   // Cloud & Staff Authentication Gate:
   if (!authenticatedMember) {
-    return (
+    const staffGate = (
       <CloudStaffGate
         onAuthenticated={(member, loadedCompanies) => {
           setAuthenticatedMember(member);
@@ -322,13 +366,25 @@ export const App: React.FC = () => {
         }}
         isDarkTheme={isDarkTheme}
         onToggleTheme={toggleTheme}
+        isMobileView={isMobileViewport || isSimulatorMode}
+        isSimulatorMode={isSimulatorMode}
+        onToggleSimulator={(!isElectron && !isNativeApp) ? toggleSimulatorMode : undefined}
       />
     );
+
+    if (isSimulatorMode) {
+      return (
+        <AndroidDeviceFrame isFramed={true}>
+          {staffGate}
+        </AndroidDeviceFrame>
+      );
+    }
+    return staffGate;
   }
 
-  // If no company workspace is active, display the Windows OS-style Account Picker
+  // If no company workspace is active, display the Account Picker
   if (!activeCompanyId) {
-    return (
+    const accountPicker = (
       <WindowsAccountPicker
         companies={companies}
         initialCompanyId={initialLockedCompanyId}
@@ -357,7 +413,92 @@ export const App: React.FC = () => {
         currentUser={authenticatedMember}
         onSignOut={handleSignOut}
         onDisconnectServer={handleDisconnectServer}
+        isMobileView={isMobileViewport || isSimulatorMode}
+        isSimulatorMode={isSimulatorMode}
+        onToggleSimulator={(!isElectron && !isNativeApp) ? toggleSimulatorMode : undefined}
       />
+    );
+
+    if (isSimulatorMode) {
+      return (
+        <AndroidDeviceFrame isFramed={true}>
+          {accountPicker}
+        </AndroidDeviceFrame>
+      );
+    }
+    return accountPicker;
+  }
+
+  // ─── ANDROID MOBILE VIEW OR SIMULATOR MODE ──────────────────────────────────
+  if (isMobileViewport || isSimulatorMode) {
+    return (
+      <div className={`fixed inset-0 w-full h-full overflow-hidden flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
+        <MobileAppShell
+          activeView={state.activeView}
+          onNavigate={handleRequestNavigate}
+          company={state.company}
+          companies={companies}
+          activeCompanyId={activeCompanyId}
+          onSelectCompany={(id) => {
+            const target = companies.find(c => c.id === id);
+            if (!target) return;
+            if (target.id === activeCompanyId) return;
+
+            if (target.hasPassword && target.password) {
+              setPreviousActiveCompanyId(activeCompanyId);
+              setPreviousActiveView(state.activeView);
+              setInitialLockedCompanyId(target.id);
+              lockOrSwitchCompany();
+              return;
+            }
+
+            const res = selectCompany(id);
+            if (!res.success) {
+              setPreviousActiveCompanyId(activeCompanyId);
+              setPreviousActiveView(state.activeView);
+              setInitialLockedCompanyId(target.id);
+              lockOrSwitchCompany();
+            }
+          }}
+          onLockOrSwitchCompany={handleExplicitLockOrSwitch}
+          selectedMonth={state.selectedMonth}
+          selectedYear={state.selectedYear}
+          monthLabel={monthLabel}
+          onPeriodChange={setSelectedPeriod}
+          isLocked={Boolean(activeSnapshot?.isLocked)}
+          isDarkTheme={isDarkTheme}
+          onToggleTheme={toggleTheme}
+          currentUser={authenticatedMember}
+          onSignOut={handleSignOut}
+          payrollItems={currentPayrollItems}
+          employees={state.employees}
+          activeSnapshot={activeSnapshot}
+          snapshots={state.snapshots}
+          loans={state.loans || []}
+          departments={state.departments || []}
+          payrollVariables={state.payrollVariables}
+          payeTaxVariables={state.payeTaxVariables}
+          payslipDesign={state.payslipDesign}
+          savedPresets={savedPayslipPresets}
+          onUpdatePayslipDesign={updatePayslipDesign}
+          onResetPayslipDesign={resetPayslipDesign}
+          onFinalizeAndLock={finalizeAndLockPayroll}
+          onUnlock={unlockPayroll}
+          onAddEmployee={addEmployee}
+          onUpdateEmployee={updateEmployee}
+          onDeleteEmployee={deleteEmployee}
+          onAddLoan={addLoan}
+          onPauseResumeLoan={pauseResumeLoan}
+          onRecordManualPayment={recordManualLoanRepayment}
+          onUpdateCompany={updateCompanyProfile}
+          onUpdatePayrollVariables={updatePayrollVariables}
+          onUpdatePayeTaxVariables={updatePayeTaxVariables}
+          onImportEmployees={importEmployees}
+          onResetAllData={resetAllData}
+          isPhoneFramePreview={isSimulatorMode && !isMobileViewport}
+          onTogglePhoneFrame={toggleSimulatorMode}
+        />
+      </div>
     );
   }
 
@@ -689,6 +830,21 @@ export const App: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Quick Android Simulator Floating Trigger on Desktop (Browser only, NEVER in Electron or Native App) */}
+      {!isElectron && !isNativeApp && (
+        <div className="fixed bottom-4 right-4 z-40 no-print">
+          <button
+            type="button"
+            onClick={toggleSimulatorMode}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-semibold shadow-xl hover:scale-105 transition-all active:scale-95 border border-zinc-700/60 dark:border-zinc-300/60 cursor-pointer"
+            title="Toggle Android Mobile View Simulator"
+          >
+            <Smartphone className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+            <span>Android Mobile View</span>
+          </button>
         </div>
       )}
 

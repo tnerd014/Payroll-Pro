@@ -57,7 +57,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
 
         {/* Navigation Items */}
         <div className="space-y-1">
-          <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+          <div className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
             Navigation
           </div>
 
@@ -82,7 +82,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
 
               <div className="flex items-center gap-1">
                 {item.badge !== undefined && (
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono text-zinc-400 bg-zinc-100 dark:bg-zinc-800">
+                  <span className="px-1.5 py-0.2 rounded text-[11px] font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800">
                     {item.badge}
                   </span>
                 )}
@@ -102,7 +102,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
         {companyName && (
           <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900/70 border border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-md bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 overflow-hidden font-bold text-[10px]">
+              <div className="w-7 h-7 rounded-md bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 overflow-hidden font-bold text-[11px]">
                 {companyLogoUrl ? (
                   <img src={companyLogoUrl} alt="Logo" className="w-full h-full object-contain p-0.5" />
                 ) : (
@@ -113,7 +113,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
                 <span className="text-[11px] font-semibold text-zinc-800 dark:text-zinc-200 truncate" title={companyName}>
                   {companyName}
                 </span>
-                <span className="text-[9px] text-zinc-400 truncate">Current Workspace</span>
+                <span className="text-[11px] text-zinc-400 truncate">Current Workspace</span>
               </div>
             </div>
 

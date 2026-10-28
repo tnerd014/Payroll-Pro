@@ -62,8 +62,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   payrollVariables,
   payeTaxVariables,
   monthLabel: initialMonthLabel,
-  selectedMonth: initialSelectedMonth = 'jan',
-  year: initialYear,
+  selectedMonth: initialSelectedMonth = (MONTHS[new Date().getMonth()]?.key || 'oct'),
+  year: initialYear = new Date().getFullYear(),
   activeSnapshot,
   snapshots = [],
   departments = [],
@@ -75,8 +75,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   
   // Interactive Report Filters
   const [rangeMode, setRangeMode] = useState<AnalyticsRangeMode>('single-month');
-  const [activeMonthKey, setActiveMonthKey] = useState<string>(initialSelectedMonth);
-  const [activeYear, setActiveYear] = useState<number>(initialYear);
+  const [activeMonthKey, setActiveMonthKey] = useState<string>(() => initialSelectedMonth || (MONTHS[new Date().getMonth()]?.key || 'oct'));
+  const [activeYear, setActiveYear] = useState<number>(() => initialYear || new Date().getFullYear());
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedEmpType, setSelectedEmpType] = useState<string>('ALL');
 

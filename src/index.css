@@ -6,16 +6,34 @@
   :root {
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
   html.dark {
     color-scheme: dark;
   }
 }
 
+/* ── Mobile Touch Scrolling Support ── */
+.overflow-y-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+}
+
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-x !important;
+}
+
 /* ── Universal Desktop App Non-Selection Rules ── */
 /* Prevents all accidental text highlighting and dragging across the entire application */
 *, *::before, *::after {
-  -webkit-user-select: none !important;
-  user-select: none !important;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* Allow selection ONLY in editable inputs, textareas, and explicitly designated elements */
