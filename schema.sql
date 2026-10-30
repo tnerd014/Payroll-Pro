@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS public.companies (
     password_hint TEXT DEFAULT '',
     security_question TEXT DEFAULT '',
     security_answer TEXT DEFAULT '',
+    email_settings JSONB DEFAULT '{}'::jsonb,
+    emailed_payslips JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -82,6 +84,7 @@ CREATE TABLE IF NOT EXISTS public.payroll_variables (
     employer_pension_rate NUMERIC(5, 2) DEFAULT 10,
     salary_calculation_mode TEXT DEFAULT 'gross-to-net',
     employment_type_rules JSONB DEFAULT '[]'::jsonb,
+    prorate_mid_month BOOLEAN DEFAULT FALSE,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -159,11 +162,17 @@ CREATE TABLE IF NOT EXISTS public.team_members (
     role TEXT NOT NULL DEFAULT 'Payroll Officer', -- 'Admin', 'Payroll Officer', 'Auditor'
     pin TEXT DEFAULT '1234',
     password TEXT DEFAULT '',
+    password_hint TEXT DEFAULT '',
     security_question TEXT DEFAULT '',
     security_answer TEXT DEFAULT '',
     recovery_email TEXT DEFAULT '',
     temp_password TEXT DEFAULT '',
     must_change_password BOOLEAN DEFAULT FALSE,
+    phone TEXT DEFAULT '',
+    avatar_color TEXT DEFAULT '',
+    two_factor_enabled BOOLEAN DEFAULT FALSE,
+    two_factor_secret TEXT DEFAULT '',
+    biometric_enabled BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -197,6 +206,8 @@ ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS password TEXT DEFAULT '';
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS password_hint TEXT DEFAULT '';
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS security_question TEXT DEFAULT '';
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS security_answer TEXT DEFAULT '';
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS email_settings JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS emailed_payslips JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Employees columns
@@ -217,6 +228,7 @@ ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEF
 -- Payroll Variables columns
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS salary_calculation_mode TEXT DEFAULT 'gross-to-net';
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS employment_type_rules JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS prorate_mid_month BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- PAYE Variables columns
@@ -244,11 +256,17 @@ ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Payroll Officer';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS pin TEXT DEFAULT '1234';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS password TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS password_hint TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS security_question TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS security_answer TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS recovery_email TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS temp_password TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS avatar_color TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS two_factor_secret TEXT DEFAULT '';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS biometric_enabled BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 

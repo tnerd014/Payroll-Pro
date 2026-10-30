@@ -51,6 +51,8 @@ import { SUPABASE_SQL_SCHEMA } from '../../constants/supabaseSchema';
 import { TeamMember, DEFAULT_SECURITY_QUESTIONS, CompanyAccount } from '../../types';
 import { formatDate } from '../../engine/dateUtils';
 import appLogo from '../../../assets/icon.png';
+import { LegalModal } from '../legal/LegalModal';
+import { verifyMfaToken } from '../../utils/security';
 
 // =============================================================================
 // DEVELOPER TOGGLE SWITCH: SHOW / HIDE SQL SETUP IN LOGIN & SERVER SCREENS
@@ -100,10 +102,18 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Modes: 'staff_login' | 'connect_server' | 'initial_admin' | 'must_change_password'
+  // Modes: 'staff_login' | 'connect_server' | 'initial_admin' | 'must_change_password' | 'two_factor'
   const [viewMode, setViewMode] = useState<
-    'staff_login' | 'connect_server' | 'initial_admin' | 'must_change_password'
+    'staff_login' | 'connect_server' | 'initial_admin' | 'must_change_password' | 'two_factor'
   >('staff_login');
+  const [pending2FaMember, setPending2FaMember] = useState<TeamMember | null>(null);
+  const [twoFaCode, setTwoFaCode] = useState('');
+  const [twoFaError, setTwoFaError] = useState<string | null>(null);
+  const [isVerifying2Fa, setIsVerifying2Fa] = useState(false);
+
+  // Legal Modal (Privacy Policy & Terms of Service)
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms'>('privacy');
 
   const [isLoadingCheck, setIsLoadingCheck] = useState(true);
 
@@ -355,6 +365,11 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
       setCurrentMember(res.member);
       if (res.mustChangePassword) {
         setViewMode('must_change_password');
+      } else if (res.member.twoFactorEnabled && res.member.twoFactorSecret) {
+        setPending2FaMember(res.member);
+        setTwoFaCode('');
+        setTwoFaError(null);
+        setViewMode('two_factor');
       } else {
         const compRes = await fetchCompaniesFromSupabase();
         // Broadcast this session to the presence channel so admins can see who's online
@@ -371,6 +386,42 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
       }
     } else {
       setLoginError(res.error || 'Invalid credentials');
+    }
+  };
+
+  const handleVerify2Fa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pending2FaMember) return;
+    if (!twoFaCode.trim()) {
+      setTwoFaError('Please enter the 6-digit code or backup code.');
+      return;
+    }
+
+    setIsVerifying2Fa(true);
+    setTwoFaError(null);
+
+    const isValid = await verifyMfaToken(
+      twoFaCode.trim(),
+      pending2FaMember.twoFactorSecret || '',
+      pending2FaMember.twoFactorBackupCodes || []
+    );
+
+    setIsVerifying2Fa(false);
+
+    if (isValid) {
+      const compRes = await fetchCompaniesFromSupabase();
+      joinPresenceChannel({
+        memberId: pending2FaMember.id,
+        name: pending2FaMember.name,
+        role: pending2FaMember.role,
+        companyId: compRes.companies?.[0]?.id || '',
+        companyName: compRes.companies?.[0]?.name || '',
+        joinedAt: new Date().toISOString(),
+        lastSeenAt: new Date().toISOString(),
+      });
+      onAuthenticated(pending2FaMember, compRes.companies || []);
+    } else {
+      setTwoFaError('Invalid verification code. Please check your authenticator app.');
     }
   };
 
@@ -1133,6 +1184,98 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
             </>
           )}
 
+          {/* ================= 5. TWO-FACTOR AUTHENTICATION (2FA) VIEW ================= */}
+          {viewMode === 'two_factor' && pending2FaMember && (
+            <div className="space-y-4 animate-in fade-in">
+              <div className="text-center space-y-1">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto mb-2 border border-teal-200/60 dark:border-teal-800/60">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                  Two-Factor Verification
+                </h2>
+                <p className="text-[11px] text-zinc-400">
+                  Enter the 6-digit authenticator code for <strong className="text-zinc-700 dark:text-zinc-300 font-medium">{pending2FaMember.name}</strong>
+                </p>
+              </div>
+
+              {twoFaError && (
+                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg flex items-center gap-2 text-xs text-rose-700 dark:text-rose-300">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{twoFaError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleVerify2Fa} className="space-y-3">
+                <div>
+                  <input
+                    type="text"
+                    autoFocus
+                    maxLength={10}
+                    value={twoFaCode}
+                    onChange={(e) => setTwoFaCode(e.target.value)}
+                    placeholder="000 000"
+                    className="w-full h-10 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 focus:border-zinc-500 rounded-lg text-center text-base font-mono tracking-widest text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isVerifying2Fa || !twoFaCode.trim()}
+                  className="w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {isVerifying2Fa ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Verify &amp; Sign In</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex items-center justify-center pt-1 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPending2FaMember(null);
+                      setViewMode('staff_login');
+                    }}
+                    className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition cursor-pointer flex items-center gap-1"
+                  >
+                    <ArrowLeft className="w-3 h-3" />
+                    <span>Back to Sign In</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Simple Privacy Policy and Terms of Service Notice */}
+          {(viewMode === 'staff_login' || viewMode === 'connect_server') && (
+            <div className="mt-6 pt-3 text-center select-none w-full">
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Before using this app, you can review Payroll Pro&apos;s{' '}
+                <button
+                  type="button"
+                  onClick={() => { setLegalModalTab('privacy'); setLegalModalOpen(true); }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer inline transition-colors"
+                >
+                  Privacy Policy
+                </button>
+                {' '}and{' '}
+                <button
+                  type="button"
+                  onClick={() => { setLegalModalTab('terms'); setLegalModalOpen(true); }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer inline transition-colors"
+                >
+                  Terms of Service
+                </button>
+                .
+              </p>
+            </div>
+          )}
+
         </div>
       </main>
 
@@ -1280,6 +1423,13 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
           </div>
         </div>
       )}
+
+      {/* Global Legal & Privacy / Terms Modal */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialTab={legalModalTab}
+      />
 
     </div>
   );

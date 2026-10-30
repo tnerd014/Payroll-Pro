@@ -113,3 +113,55 @@ export function isEmployeeActiveForPeriod(
   return true;
 }
 
+/**
+ * Calculates the proration ratio (0.0 to 1.0) for an employee who joined or exited mid-month.
+ * Returns 1.0 if the employee was employed for the entire month.
+ */
+export function getMidMonthProrationRatio(
+  emp: { startDate?: string; endDate?: string } | null | undefined,
+  year?: number,
+  monthKey?: string
+): number {
+  if (!emp || !year || !monthKey) return 1;
+
+  const mKey = (monthKey || '').toLowerCase();
+  const monthIdx = MONTH_MAP[mKey];
+  if (monthIdx === undefined) return 1;
+
+  const totalDaysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const monthStartStr = `${year}-${pad(monthIdx + 1)}-01`;
+  const monthEndStr = `${year}-${pad(monthIdx + 1)}-${pad(totalDaysInMonth)}`;
+
+  let effectiveStartDay = 1;
+  let effectiveEndDay = totalDaysInMonth;
+
+  const sStart = (emp.startDate || '').trim();
+  const sEnd = (emp.endDate || '').trim();
+
+  // If start date falls within this month
+  if (sStart && sStart >= monthStartStr && sStart <= monthEndStr) {
+    const parts = sStart.split('-');
+    const day = parseInt(parts[2], 10);
+    if (!isNaN(day) && day >= 1 && day <= totalDaysInMonth) {
+      effectiveStartDay = day;
+    }
+  }
+
+  // If end date falls within this month
+  if (sEnd && sEnd >= monthStartStr && sEnd <= monthEndStr) {
+    const parts = sEnd.split('-');
+    const day = parseInt(parts[2], 10);
+    if (!isNaN(day) && day >= 1 && day <= totalDaysInMonth) {
+      effectiveEndDay = day;
+    }
+  }
+
+  if (effectiveStartDay <= 1 && effectiveEndDay >= totalDaysInMonth) {
+    return 1;
+  }
+
+  const activeDays = Math.max(0, effectiveEndDay - effectiveStartDay + 1);
+  return Math.min(1, Math.max(0, activeDays / totalDaysInMonth));
+}
+

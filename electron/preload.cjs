@@ -10,6 +10,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   forceReload: () => ipcRenderer.send('window-force-reload'),
   setZoomFactor: (factor) => webFrame.setZoomFactor(factor),
   getZoomFactor: () => webFrame.getZoomFactor(),
+  openInstructionManual: () => ipcRenderer.invoke('open-instruction-manual'),
+  testSmtpConnection: (config) => ipcRenderer.invoke('test-smtp-connection', config),
+  renderPayslipPdf: (htmlContent) => ipcRenderer.invoke('render-payslip-pdf', htmlContent),
+  sendPayslipEmail: (payload) => ipcRenderer.invoke('send-payslip-email', payload),
   isElectron: true,
   platform: process.platform,
 });

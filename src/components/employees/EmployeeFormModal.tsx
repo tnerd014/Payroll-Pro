@@ -76,13 +76,22 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     ? employmentTypeRules
     : DEFAULT_EMPLOYMENT_TYPE_RULES;
 
+  const getNextEmployeeCode = (existing: Employee[] = []) => {
+    const existingCodes = new Set(existing.map(e => (e.code || '').trim().toUpperCase()));
+    let num = existing.length + 1;
+    while (existingCodes.has(`EMP-${String(num).padStart(3, '0')}`)) {
+      num++;
+    }
+    return `EMP-${String(num).padStart(3, '0')}`;
+  };
+
   type EmployeeFormData = Omit<Employee, 'id' | 'monthlyGross' | 'annualRent'> & {
     monthlyGross: number | '';
     annualRent: number | '';
   };
 
   const [formData, setFormData] = useState<EmployeeFormData>({
-    code: editingEmployee?.code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
+    code: editingEmployee?.code || getNextEmployeeCode(existingEmployees),
     firstName: editingEmployee?.firstName || '',
     lastName: editingEmployee?.lastName || '',
     department: editingEmployee?.department || (availableDepartments && availableDepartments.length > 0 ? availableDepartments[0] : DEFAULT_DEPARTMENTS[0] || 'OPERATIONS'),
@@ -94,8 +103,8 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     annualRent: editingEmployee?.annualRent ? editingEmployee.annualRent : '',
     bankName: editingEmployee?.bankName || 'Access Bank',
     accountNumber: editingEmployee?.accountNumber || '',
-    hasPension: editingEmployee?.hasPension ?? true,
-    hasPaye: editingEmployee?.hasPaye ?? true,
+    hasPension: true,
+    hasPaye: true,
     payeNumber: editingEmployee?.payeNumber || '',
     pensionNumber: editingEmployee?.pensionNumber || '',
     pfaName: editingEmployee?.pfaName || '',
@@ -115,12 +124,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   const [showMonthlyBreakdown, setShowMonthlyBreakdown] = useState<boolean>(false);
 
   const handleEmploymentTypeChange = (type: string) => {
-    const matched = activeRules.find(r => r.name.toLowerCase() === type.toLowerCase());
     setFormData(prev => ({
       ...prev,
       employmentType: type,
-      hasPaye: matched ? matched.hasPayeDefault : prev.hasPaye,
-      hasPension: matched ? matched.hasPensionDefault : prev.hasPension,
+      hasPaye: true,
+      hasPension: true,
     }));
   };
 
@@ -163,13 +171,13 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         annualRent: editingEmployee.annualRent ? editingEmployee.annualRent : '',
         bankName: editingEmployee.bankName,
         accountNumber: editingEmployee.accountNumber,
-        hasPension: editingEmployee.hasPension,
-        hasPaye: editingEmployee.hasPaye,
+        hasPension: true,
+        hasPaye: true,
         payeNumber: editingEmployee.payeNumber || '',
         pensionNumber: editingEmployee.pensionNumber || '',
         pfaName: editingEmployee.pfaName || '',
         stateOfResidence: editingEmployee.stateOfResidence || 'Lagos',
-        status: editingEmployee.status,
+        status: editingEmployee.status || 'Active',
         startDate: editingEmployee.startDate || '',
         endDate: editingEmployee.endDate || '',
         originalHireDate: editingEmployee.originalHireDate || '',
@@ -181,7 +189,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     } else {
       const defaultRule = activeRules.find(r => r.name === 'Full-Time') || activeRules[0];
       setFormData({
-        code: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+        code: getNextEmployeeCode(existingEmployees),
         firstName: '',
         lastName: '',
         department: (availableDepartments && availableDepartments.length > 0 ? availableDepartments[0] : DEFAULT_DEPARTMENTS[0] || 'OPERATIONS'),
@@ -193,8 +201,8 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         annualRent: '',
         bankName: 'Access Bank',
         accountNumber: '',
-        hasPension: defaultRule ? defaultRule.hasPensionDefault : true,
-        hasPaye: defaultRule ? defaultRule.hasPayeDefault : true,
+        hasPension: true,
+        hasPaye: true,
         payeNumber: '',
         pensionNumber: '',
         pfaName: '',
@@ -277,16 +285,46 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      setActiveSection('identity');
+      return;
+    }
+
     const cleanMonthlySalaries: Record<string, number> = {};
     Object.entries(monthlySalaries).forEach(([k, v]) => {
       if (v !== '' && v !== undefined && !isNaN(Number(v))) {
         cleanMonthlySalaries[k] = Number(v);
       }
     });
+
+    // Synchronize stints so payroll engine isEmployeeActiveForPeriod stays in sync
+    let updatedStints = formData.stints && Array.isArray(formData.stints) ? [...formData.stints] : [];
+    if (updatedStints.length > 0) {
+      const openIdx = updatedStints.findIndex(s => !s.endDate);
+      const targetIdx = openIdx >= 0 ? openIdx : updatedStints.length - 1;
+      if (targetIdx >= 0) {
+        updatedStints[targetIdx] = {
+          ...updatedStints[targetIdx],
+          startDate: formData.startDate || updatedStints[targetIdx].startDate || '',
+          endDate: formData.endDate || undefined,
+        };
+      }
+    } else if (formData.startDate || formData.endDate) {
+      updatedStints = [{
+        stintId: `stint-${Date.now()}`,
+        startDate: formData.startDate || '',
+        endDate: formData.endDate || undefined,
+      }];
+    }
+
     onSave({
       ...formData,
-      monthlyGross: Number(formData.monthlyGross) || 0,
-      annualRent: Number(formData.annualRent) || 0,
+      hasPension: true,
+      hasPaye: true,
+      status: formData.status || (formData.endDate ? 'Inactive' : 'Active'),
+      stints: updatedStints,
+      monthlyGross: Math.max(0, Number(formData.monthlyGross) || 0),
+      annualRent: Math.max(0, Number(formData.annualRent) || 0),
       monthlySalaries: cleanMonthlySalaries,
     });
     onClose();
@@ -403,15 +441,14 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
           <div className="p-5 space-y-4 overflow-y-auto flex-1">
           
             {/* Section 1: Employee Details */}
-            {(activeSection === 'all' || activeSection === 'identity') && (
-              <div className="bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
-                  <User className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
-                  <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    Employee Information
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className={activeSection === 'all' || activeSection === 'identity' ? 'bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3' : 'hidden'}>
+              <div className="flex items-center gap-2 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                <User className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                  Employee Information
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                     First Name
@@ -483,7 +520,27 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     ))}
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Employment Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={e => {
+                      const newStatus = e.target.value as 'Active' | 'Inactive';
+                      setFormData(prev => ({
+                        ...prev,
+                        status: newStatus,
+                        endDate: newStatus === 'Active' ? '' : prev.endDate,
+                      }));
+                    }}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-2 grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                       Email
@@ -510,7 +567,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/40">
+                <div className="sm:col-span-2 grid grid-cols-2 gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/40">
                   <div>
                     <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                       Start Date (Hire Date)
@@ -518,7 +575,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     <input 
                       type="date" 
                       value={formData.startDate || ''} 
-                      onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+                      onChange={e => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
                       className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     />
                   </div>
@@ -531,11 +588,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                       value={formData.endDate || ''} 
                       onChange={e => {
                         const newEnd = e.target.value;
-                        setFormData({ 
-                          ...formData, 
+                        setFormData(prev => ({ 
+                          ...prev, 
                           endDate: newEnd,
-                          status: newEnd ? 'Inactive' : formData.status
-                        });
+                          status: newEnd ? 'Inactive' : 'Active'
+                        }));
                       }}
                       className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     />
@@ -543,13 +600,13 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 </div>
 
                 {formData.endDate ? (
-                  <p className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-md leading-relaxed">
+                  <p className="sm:col-span-2 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-md leading-relaxed">
                     💡 <strong>Payroll Rule:</strong> Staff is paid in their exit month and automatically excluded from all subsequent pay runs.
                   </p>
                 ) : null}
 
                 {formData.stints && formData.stints.length > 0 && (
-                  <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 rounded-lg p-2.5 text-[11px]">
+                  <div className="sm:col-span-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 rounded-lg p-2.5 text-[11px]">
                     <div className="font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                       Employment Tenure History ({formData.stints.length} {formData.stints.length === 1 ? 'stint' : 'stints'})
                     </div>
@@ -565,333 +622,315 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 )}
               </div>
             </div>
-            )}
 
             {/* Section 2: Compensation & Rent Relief */}
-            {(activeSection === 'all' || activeSection === 'compensation') && (
-              <div className="bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
-                  <div className="flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
-                    <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                      Compensation &amp; Rent Relief
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowMonthlyBreakdown(!showMonthlyBreakdown)}
-                    className="text-[11px] font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>{showMonthlyBreakdown ? 'Hide 12-Month Schedule' : '12-Month Breakdown'}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showMonthlyBreakdown ? 'rotate-180' : ''}`} />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                      {salaryCalculationMode === 'net-to-gross' 
-                        ? 'Target Monthly Net Pay (Take-Home ₦)' 
-                        : 'Base Monthly Gross Salary (₦)'}
-                    </label>
-                    <input 
-                      type="number" 
-                      value={formData.monthlyGross} 
-                      onChange={e => {
-                        const val = e.target.value;
-                        setFormData(prev => ({
-                          ...prev,
-                          monthlyGross: val === '' ? '' : Number(val),
-                        }));
-                      }}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                      step="any"
-                      placeholder="e.g. 350000"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
-                        Annual Rent Paid by Staff (₦)
-                      </label>
-                      <span className="text-[11px] text-zinc-400">20% CRA relief</span>
-                    </div>
-                    <input 
-                      type="number" 
-                      value={formData.annualRent} 
-                      onChange={e => {
-                        const val = e.target.value;
-                        setFormData(prev => ({
-                          ...prev,
-                          annualRent: val === '' ? '' : Number(val),
-                        }));
-                      }}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                      step="any"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                {/* Expandable 12-Month Schedule */}
-                {showMonthlyBreakdown && (
-                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-3 animate-in fade-in duration-150">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                          Year {activeYear} Schedule
-                        </span>
-                        <select
-                          value={activeYear}
-                          onChange={e => setActiveYear(Number(e.target.value))}
-                          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none cursor-pointer"
-                        >
-                          {yearsOptions.map(y => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={handleCopyBaseToAllMonths}
-                          className="text-[11px] px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium transition cursor-pointer"
-                        >
-                          Copy Base to All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCopyJanToAllMonths}
-                          className="text-[11px] px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
-                        >
-                          Copy Jan to All
-                        </button>
-                      </div>
-                    </div>
-
-                    {copyFeedback && (
-                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in">
-                        <Check className="w-3 h-3" />
-                        <span>{copyFeedback}</span>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                      {MONTHS_LIST.map((m) => {
-                        const currentVal = getMonthGross(m.key);
-                        const isCustom = monthlySalaries[`${activeYear}-${m.key}`] !== undefined && 
-                                         monthlySalaries[`${activeYear}-${m.key}`] !== formData.monthlyGross;
-
-                        return (
-                          <div 
-                            key={m.key} 
-                            className={`p-1.5 rounded-lg border transition ${
-                              isCustom 
-                                ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800' 
-                                : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
-                            }`}
-                          >
-                            <div className="flex justify-between items-center mb-0.5">
-                              <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-                                {m.label}
-                              </span>
-                              {isCustom && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Custom" />
-                              )}
-                            </div>
-                            <input
-                              type="number"
-                              value={
-                                monthlySalaries[`${activeYear}-${m.key}`] !== undefined
-                                  ? monthlySalaries[`${activeYear}-${m.key}`]
-                                  : formData.monthlyGross
-                              }
-                              onChange={e => setMonthGross(m.key, e.target.value)}
-                              className="w-full bg-transparent font-mono text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none"
-                              step="any"
-                              placeholder="0"
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="text-[11px] text-zinc-500 flex justify-between pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
-                      <span>Annual Total: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal)}</strong></span>
-                      <span>Monthly Avg: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal / 12)}</strong></span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Section 3: Statutory Deductions & Registration Numbers */}
-            {(activeSection === 'all' || activeSection === 'statutory') && (
-              <div className="bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
-                    <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                      Statutory Deductions &amp; Credentials
-                    </h3>
-                  </div>
-                  <span className="text-[11px] font-mono text-zinc-400">
-                    {formData.employmentType || 'Full-Time'}
-                  </span>
-                </div>
-
-                {/* Minimalist Checkbox Toggles */}
-                <div className="flex items-center gap-5 py-0.5 text-xs">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input 
-                      type="checkbox"
-                      checked={formData.hasPension}
-                      onChange={e => setFormData({ ...formData, hasPension: e.target.checked })}
-                      className="w-4 h-4 rounded text-zinc-900 dark:text-zinc-100 focus:ring-0 cursor-pointer accent-zinc-900 dark:accent-zinc-100"
-                    />
-                    <span className="text-zinc-800 dark:text-zinc-200 font-medium">Pension (8% / 10%)</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input 
-                      type="checkbox"
-                      checked={formData.hasPaye}
-                      onChange={e => setFormData({ ...formData, hasPaye: e.target.checked })}
-                      className="w-4 h-4 rounded text-zinc-900 dark:text-zinc-100 focus:ring-0 cursor-pointer accent-zinc-900 dark:accent-zinc-100"
-                    />
-                    <span className="text-zinc-800 dark:text-zinc-200 font-medium">PAYE Income Tax</span>
-                  </label>
-                </div>
-
-                {/* Registration Identification Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
-                  <div>
-                    <label 
-                      className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
-                      title="State of Residence for State PAYE Tax remittance"
-                    >
-                      State of Residence
-                    </label>
-                    <select
-                      value={formData.stateOfResidence || 'Lagos'}
-                      onChange={e => setFormData({ ...formData, stateOfResidence: e.target.value })}
-                      className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
-                    >
-                      {NIGERIAN_STATES.map(st => (
-                        <option key={st} value={st}>
-                          {st}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label 
-                      className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
-                      title="Tax Identification Number / State PAYE No"
-                    >
-                      Tax ID / State PAYE
-                    </label>
-                    <input 
-                      type="text" 
-                      value={formData.payeNumber} 
-                      onChange={e => setFormData({ ...formData, payeNumber: e.target.value })}
-                      className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                      placeholder="e.g. PAYE-LAS-..."
-                    />
-                  </div>
-
-                  <div>
-                    <label 
-                      className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
-                      title="Pension Retirement Savings Account PIN"
-                    >
-                      Pension RSA PIN
-                    </label>
-                    <input 
-                      type="text" 
-                      value={formData.pensionNumber} 
-                      onChange={e => setFormData({ ...formData, pensionNumber: e.target.value })}
-                      className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                      placeholder="e.g. PEN100..."
-                    />
-                  </div>
-
-                  <div>
-                    <label 
-                      className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
-                      title="Pension Fund Administrator (PFA)"
-                    >
-                      Pension PFA Name
-                    </label>
-                    <input 
-                      type="text" 
-                      list="nigerian-pfas-datalist"
-                      value={formData.pfaName} 
-                      onChange={e => setFormData({ ...formData, pfaName: e.target.value })}
-                      className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                      placeholder="Select PFA..."
-                    />
-                    <datalist id="nigerian-pfas-datalist">
-                      {NIGERIAN_PFAS.map(pfa => (
-                        <option key={pfa} value={pfa} />
-                      ))}
-                    </datalist>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Section 4: Bank Details */}
-            {(activeSection === 'all' || activeSection === 'banking') && (
-              <div className="bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
-                  <Landmark className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+            <div className={activeSection === 'all' || activeSection === 'compensation' ? 'bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3' : 'hidden'}>
+              <div className="flex items-center justify-between pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
                   <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    Bank &amp; Remittance Details
+                    Compensation &amp; Rent Relief
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                      Bank Name
+                <button
+                  type="button"
+                  onClick={() => setShowMonthlyBreakdown(!showMonthlyBreakdown)}
+                  className="text-[11px] font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>{showMonthlyBreakdown ? 'Hide 12-Month Schedule' : '12-Month Breakdown'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showMonthlyBreakdown ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    {salaryCalculationMode === 'net-to-gross' 
+                      ? 'Target Monthly Net Pay (Take-Home ₦)' 
+                      : 'Base Monthly Gross Salary (₦)'}
+                  </label>
+                  <input 
+                    type="number" 
+                    value={formData.monthlyGross} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData(prev => ({
+                        ...prev,
+                        monthlyGross: val === '' ? '' : Number(val),
+                      }));
+                    }}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    step="any"
+                    min="0"
+                    placeholder="e.g. 350000"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+                      Annual Rent Paid by Staff (₦)
                     </label>
-                    <input 
-                      type="text" 
-                      list="nigerian-banks-datalist"
-                      value={formData.bankName} 
-                      onChange={e => setFormData({ ...formData, bankName: e.target.value })}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                      placeholder="Select or type bank..."
-                      required
-                    />
-                    <datalist id="nigerian-banks-datalist">
-                      {NIGERIAN_BANKS.map(bank => (
-                        <option key={bank} value={bank} />
-                      ))}
-                    </datalist>
+                    <span className="text-[11px] text-zinc-400">20% CRA relief</span>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                      Account Number (NUBAN)
-                    </label>
-                    <input 
-                      type="text" 
-                      value={formData.accountNumber} 
-                      onChange={e => setFormData({ ...formData, accountNumber: e.target.value })}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                      placeholder="10-digit NUBAN"
-                      maxLength={10}
-                      required
-                    />
-                  </div>
+                  <input 
+                    type="number" 
+                    value={formData.annualRent} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData(prev => ({
+                        ...prev,
+                        annualRent: val === '' ? '' : Number(val),
+                      }));
+                    }}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    step="any"
+                    min="0"
+                    placeholder="0"
+                  />
                 </div>
               </div>
-            )}
+
+              {/* Expandable 12-Month Schedule */}
+              {showMonthlyBreakdown && (
+                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 space-y-3 animate-in fade-in duration-150">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                        Year {activeYear} Schedule
+                      </span>
+                      <select
+                        value={activeYear}
+                        onChange={e => setActiveYear(Number(e.target.value))}
+                        className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none cursor-pointer"
+                      >
+                        {yearsOptions.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleCopyBaseToAllMonths}
+                        className="text-[11px] px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium transition cursor-pointer"
+                      >
+                        Copy Base to All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyJanToAllMonths}
+                        className="text-[11px] px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
+                      >
+                        Copy Jan to All
+                      </button>
+                    </div>
+                  </div>
+
+                  {copyFeedback && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in">
+                      <Check className="w-3 h-3" />
+                      <span>{copyFeedback}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                    {MONTHS_LIST.map((m) => {
+                      const currentVal = getMonthGross(m.key);
+                      const isCustom = monthlySalaries[`${activeYear}-${m.key}`] !== undefined && 
+                                       monthlySalaries[`${activeYear}-${m.key}`] !== formData.monthlyGross;
+
+                      return (
+                        <div 
+                          key={m.key} 
+                          className={`p-1.5 rounded-lg border transition ${
+                            isCustom 
+                              ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800' 
+                              : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center mb-0.5">
+                            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                              {m.label}
+                            </span>
+                            {isCustom && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Custom" />
+                            )}
+                          </div>
+                          <input
+                            type="number"
+                            value={
+                              monthlySalaries[`${activeYear}-${m.key}`] !== undefined
+                                ? monthlySalaries[`${activeYear}-${m.key}`]
+                                : formData.monthlyGross
+                            }
+                            onChange={e => setMonthGross(m.key, e.target.value)}
+                            className="w-full bg-transparent font-mono text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                            step="any"
+                            min="0"
+                            placeholder="0"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="text-[11px] text-zinc-500 flex justify-between pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
+                    <span>Annual Total: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal)}</strong></span>
+                    <span>Monthly Avg: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal / 12)}</strong></span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Section 3: Statutory Deductions & Registration Numbers */}
+            <div className={activeSection === 'all' || activeSection === 'statutory' ? 'bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3' : 'hidden'}>
+              <div className="flex items-center justify-between pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                  <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    Statutory Deductions &amp; Credentials
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-zinc-400">
+                  {formData.employmentType || 'Full-Time'}
+                </span>
+              </div>
+
+              {/* No Toggles - Statutory Mandate */}
+              <div className="flex flex-wrap items-center gap-2.5 py-1 text-xs">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-medium select-none">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Pension (8% Staff / 10% Employer)</span>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 font-medium select-none">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>PAYE Income Tax</span>
+                </div>
+              </div>
+
+              {/* Registration Identification Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
+                <div>
+                  <label 
+                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                    title="State of Residence for State PAYE Tax remittance"
+                  >
+                    State of Residence
+                  </label>
+                  <select
+                    value={formData.stateOfResidence || 'Lagos'}
+                    onChange={e => setFormData({ ...formData, stateOfResidence: e.target.value })}
+                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
+                  >
+                    {NIGERIAN_STATES.map(st => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label 
+                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                    title="Tax Identification Number / State PAYE No"
+                  >
+                    Tax ID / State PAYE
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.payeNumber} 
+                    onChange={e => setFormData({ ...formData, payeNumber: e.target.value })}
+                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    placeholder="e.g. PAYE-LAS-..."
+                  />
+                </div>
+
+                <div>
+                  <label 
+                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                    title="Pension Retirement Savings Account PIN"
+                  >
+                    Pension RSA PIN
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.pensionNumber} 
+                    onChange={e => setFormData({ ...formData, pensionNumber: e.target.value })}
+                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    placeholder="e.g. PEN100..."
+                  />
+                </div>
+
+                <div>
+                  <label 
+                    className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1 h-4 leading-4 truncate"
+                    title="Pension Fund Administrator (PFA)"
+                  >
+                    Pension PFA Name
+                  </label>
+                  <input 
+                    type="text" 
+                    list="nigerian-pfas-datalist"
+                    value={formData.pfaName} 
+                    onChange={e => setFormData({ ...formData, pfaName: e.target.value })}
+                    className="w-full h-[34px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    placeholder="Select PFA..."
+                  />
+                  <datalist id="nigerian-pfas-datalist">
+                    {NIGERIAN_PFAS.map(pfa => (
+                      <option key={pfa} value={pfa} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4: Bank Details */}
+            <div className={activeSection === 'all' || activeSection === 'banking' ? 'bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3' : 'hidden'}>
+              <div className="flex items-center gap-2 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                <Landmark className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                  Bank &amp; Remittance Details
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Bank Name
+                  </label>
+                  <input 
+                    type="text" 
+                    list="nigerian-banks-datalist"
+                    value={formData.bankName} 
+                    onChange={e => setFormData({ ...formData, bankName: e.target.value })}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    placeholder="Select or type bank..."
+                  />
+                  <datalist id="nigerian-banks-datalist">
+                    {NIGERIAN_BANKS.map(bank => (
+                      <option key={bank} value={bank} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Account Number (NUBAN)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.accountNumber} 
+                    onChange={e => setFormData({ ...formData, accountNumber: e.target.value })}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    placeholder="10-digit NUBAN"
+                  />
+                </div>
+              </div>
+            </div>
 
           </div>
 

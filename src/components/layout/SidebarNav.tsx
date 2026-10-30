@@ -22,6 +22,7 @@ interface SidebarNavProps {
   companyName?: string;
   companyLogoUrl?: string;
   onLockOrSwitchCompany?: () => void;
+  isAdmin?: boolean;
 }
 
 export const SidebarNav: React.FC<SidebarNavProps> = ({
@@ -33,6 +34,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   companyName,
   companyLogoUrl,
   onLockOrSwitchCompany,
+  isAdmin = true,
 }) => {
   const navItems = [
     { id: 'dashboard' as AppView, label: 'Dashboard', icon: LayoutDashboard },
@@ -40,7 +42,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
     { id: 'loans' as AppView, label: 'Loans & Advances', icon: Landmark, badge: activeLoansCount },
     { id: 'payroll' as AppView, label: 'Payroll Run', icon: Calculator, isLockedIndicator: isLocked },
     { id: 'analytics' as AppView, label: 'Account Reports', icon: BarChart3 },
-    { id: 'settings' as AppView, label: 'Settings', icon: Settings },
+    ...(isAdmin ? [{ id: 'settings' as AppView, label: 'Settings', icon: Settings }] : []),
   ];
 
   return (

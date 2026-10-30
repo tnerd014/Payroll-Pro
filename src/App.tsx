@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, Save, Smartphone, Lock, Fingerprint, WifiOff, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Save, Smartphone, Lock, Fingerprint, WifiOff, RefreshCw, ShieldAlert } from 'lucide-react';
 import { usePayrollStore } from './store/usePayrollStore';
 import { DesktopTitleBar } from './components/layout/DesktopTitleBar';
 import { SidebarNav } from './components/layout/SidebarNav';
@@ -30,8 +30,11 @@ import {
   subscribeToMemberUpdates,
   getInactivityLockMinutes,
   setStandaloneOfflineMode,
+  isStandaloneOfflineMode,
+  getSavedCloudConfig,
 } from './services/supabaseClient';
 import { verifyBiometric } from './utils/security';
+import { verifyCredential } from './utils/cryptoAuth';
 import { purgeAllLocalDataOnDisconnect, confirmDisconnectWithPendingSync } from './store/usePayrollStore';
 
 export const App: React.FC = () => {
@@ -92,8 +95,8 @@ export const App: React.FC = () => {
       return;
     }
     const cleanAttempt = lockPinAttempt.trim();
-    const isPinMatch = Boolean(authenticatedMember.pin && authenticatedMember.pin === cleanAttempt);
-    const isPassMatch = Boolean(authenticatedMember.password && authenticatedMember.password === cleanAttempt);
+    const isPinMatch = Boolean(authenticatedMember.pin && verifyCredential(cleanAttempt, authenticatedMember.pin));
+    const isPassMatch = Boolean(authenticatedMember.password && verifyCredential(cleanAttempt, authenticatedMember.password));
     if (isPinMatch || isPassMatch) {
       setIsScreenLocked(false);
       setLockPinAttempt('');
@@ -121,12 +124,9 @@ export const App: React.FC = () => {
   const handleDisconnectServer = () => {
     if (!confirmDisconnectWithPendingSync()) return;
     leavePresenceChannel();
-    purgeAllLocalDataOnDisconnect();
-    setStandaloneOfflineMode(false);
-    setActiveTeamMember(null);
-    setAuthenticatedMember(null);
+    // Option A: Disconnect Only — preserves all local companies & offline records intact
+    setStandaloneOfflineMode(true);
     saveCloudConfig({ url: '', anonKey: '', isEnabled: false });
-    setCompaniesList([]);
     window.location.reload();
   };
 
@@ -236,8 +236,8 @@ export const App: React.FC = () => {
     // Immediate check on mount!
     checkFreshFromDb();
 
-    // 2. High-frequency polling (every 3 seconds) — guaranteed fallback even if WebSockets/Realtime are blocked
-    const pollInterval = setInterval(checkFreshFromDb, 3000);
+    // 2. Background polling fallback (every 45 seconds) — lightweight safety net while relying primarily on WebSockets/Realtime
+    const pollInterval = setInterval(checkFreshFromDb, 45000);
 
     // 3. Window focus and visibility sync — whenever the user clicks into or switches to this window
     const handleFocus = () => { checkFreshFromDb(); };
@@ -336,13 +336,18 @@ export const App: React.FC = () => {
     applyAllPeriodLoanDeductions,
     resetAllData,
     reloadFromStorage,
-    isWorkspaceLoading,
     isCloudOffline,
+    emailSettings,
+    updateEmailSettings,
+    emailedPayslips,
+    recordEmailedPayslips,
   } = usePayrollStore();
 
   const effectiveMember = isCloudOffline && authenticatedMember
     ? { ...authenticatedMember, role: 'Auditor' as const }
     : authenticatedMember;
+
+  const isAdmin = !effectiveMember || effectiveMember.role === 'Admin';
 
   const [refreshTick, setRefreshTick] = useState(0);
   const [addEmployeeTrigger, setAddEmployeeTrigger] = useState(0);
@@ -364,10 +369,10 @@ export const App: React.FC = () => {
   const [previousActiveCompanyId, setPreviousActiveCompanyId] = useState<string | null>(null);
   const [previousActiveView, setPreviousActiveView] = useState<AppView | null>(null);
 
-  const handleBackToPrevious = () => {
+  const handleBackToPrevious = async () => {
     if (previousActiveCompanyId) {
       const prevComp = companies.find(c => c.id === previousActiveCompanyId);
-      const res = selectCompany(previousActiveCompanyId, prevComp?.password);
+      const res = await selectCompany(previousActiveCompanyId, prevComp?.password);
       if (res.success && previousActiveView) {
         setActiveView(previousActiveView);
       }
@@ -388,9 +393,31 @@ export const App: React.FC = () => {
   const [unsavedSettingsInfo, setUnsavedSettingsInfo] = useState<DirtyStateInfo | null>(null);
   const [pendingNavView, setPendingNavView] = useState<AppView | null>(null);
   const [isUnsavedLeaveModalOpen, setIsUnsavedLeaveModalOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('branding');
 
-  const handleRequestNavigate = (targetView: AppView) => {
-    if (targetView === state.activeView) return;
+  const isLocalUser = 
+    authenticatedMember?.id === 'local_offline_operator' || 
+    isStandaloneOfflineMode() || 
+    !getSavedCloudConfig().isEnabled;
+
+  useEffect(() => {
+    if (state.activeView === 'profile' && isLocalUser) {
+      setActiveView('dashboard');
+    }
+  }, [state.activeView, isLocalUser]);
+
+  const handleRequestNavigate = (targetView: AppView, initialTab?: SettingsTab) => {
+    if (targetView === state.activeView) {
+      if (targetView === 'settings' && initialTab) {
+        setSettingsInitialTab(initialTab);
+      }
+      return;
+    }
+    if (targetView === 'profile' && isLocalUser) return;
+    if ((targetView === 'settings' || targetView === 'variables' || targetView === 'excel') && !isAdmin) {
+      alert('Access Restricted: Only Administrators can access System Settings.');
+      return;
+    }
 
     const isSettingsActive = 
       state.activeView === 'settings' || 
@@ -403,7 +430,16 @@ export const App: React.FC = () => {
       return;
     }
 
+    // Set settings tab (defaults to branding if not explicitly specified)
+    if (targetView === 'settings') {
+      setSettingsInitialTab(initialTab || 'branding');
+    }
+
     setActiveView(targetView);
+  };
+
+  const handleOpenEmailSettings = () => {
+    handleRequestNavigate('settings', 'email');
   };
 
   // Sync dark class on document root and body for bulletproof dark/light mode switching
@@ -499,8 +535,8 @@ export const App: React.FC = () => {
           setPreviousActiveCompanyId(null);
           setPreviousActiveView(null);
         }}
-        onSelectCompany={(companyId, passwordAttempt) => {
-          const res = selectCompany(companyId, passwordAttempt);
+        onSelectCompany={async (companyId, passwordAttempt) => {
+          const res = await selectCompany(companyId, passwordAttempt);
           if (res.success) {
             setInitialLockedCompanyId(null);
             setPreviousActiveCompanyId(null);
@@ -553,38 +589,6 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Mobile Workspace Loading Transition */}
-        {isWorkspaceLoading && activeCompanyId && (
-          <div className="fixed inset-0 z-[9999] bg-[#fbfbfb]/90 dark:bg-[#09090b]/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 animate-in fade-in duration-150">
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl flex flex-col items-center max-w-xs w-full text-center space-y-4 animate-in zoom-in-95">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 border border-zinc-200/90 dark:border-zinc-700 shadow-md flex items-center justify-center text-zinc-900 dark:text-zinc-100 font-bold text-2xl relative">
-                {state.company?.logoUrl ? (
-                  <img src={state.company.logoUrl} alt="" className="w-12 h-12 object-contain rounded-xl" />
-                ) : (
-                  state.company?.name?.charAt(0) || 'P'
-                )}
-                <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 ring-2 ring-white dark:ring-zinc-900"></span>
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate max-w-[240px]">
-                  {state.company?.name || 'Workspace'}
-                </h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Synchronizing records from cloud...
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 pt-1 text-[11px] text-zinc-400 font-mono">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-500" />
-                <span>Verifying database records</span>
-              </div>
-            </div>
-          </div>
-        )}
 
         <MobileAppShell
           activeView={state.activeView}
@@ -592,7 +596,7 @@ export const App: React.FC = () => {
           company={state.company}
           companies={companies}
           activeCompanyId={activeCompanyId}
-          onSelectCompany={(id) => {
+          onSelectCompany={async (id) => {
             const target = companies.find(c => c.id === id);
             if (!target) return;
             if (target.id === activeCompanyId) return;
@@ -605,7 +609,7 @@ export const App: React.FC = () => {
               return;
             }
 
-            const res = selectCompany(id);
+            const res = await selectCompany(id);
             if (!res.success) {
               setPreviousActiveCompanyId(activeCompanyId);
               setPreviousActiveView(state.activeView);
@@ -654,6 +658,14 @@ export const App: React.FC = () => {
           onUpdatePayeTaxVariables={updatePayeTaxVariables}
           onImportEmployees={importEmployees}
           onResetAllData={resetAllData}
+          settingsInitialTab={settingsInitialTab}
+          onOpenEmailSettings={handleOpenEmailSettings}
+          emailSettings={emailSettings}
+          onUpdateEmailSettings={updateEmailSettings}
+          emailedPayslips={emailedPayslips}
+          onRecordEmailedPayslips={recordEmailedPayslips}
+          onUpdateEmployeeEmail={(id, email) => updateEmployee(id, { email })}
+          isAdmin={isAdmin}
           isPhoneFramePreview={isSimulatorMode && !isMobileViewport}
           onTogglePhoneFrame={toggleSimulatorMode}
         />
@@ -701,7 +713,7 @@ export const App: React.FC = () => {
           loans={state.loans || []}
           departments={state.departments || []}
           employmentTypeRules={state.payrollVariables?.employmentTypeRules || []}
-          onSelectCompany={(id) => {
+          onSelectCompany={async (id) => {
             const target = companies.find(c => c.id === id);
             if (!target) return;
             if (target.id === activeCompanyId) return;
@@ -716,7 +728,7 @@ export const App: React.FC = () => {
             }
 
             // Otherwise switch directly
-            const res = selectCompany(id);
+            const res = await selectCompany(id);
             if (!res.success) {
               setPreviousActiveCompanyId(activeCompanyId);
               setPreviousActiveView(state.activeView);
@@ -752,17 +764,20 @@ export const App: React.FC = () => {
       {/* Main Window Body (Sidebar + Content) */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* Minimalist Sidebar Navigation */}
-        <SidebarNav
-          activeView={state.activeView}
-          onViewChange={handleRequestNavigate}
-          staffCount={activeEmployees.length}
-          activeLoansCount={state.loans?.filter(l => l.status === 'Active').length || 0}
-          isLocked={Boolean(activeSnapshot?.isLocked)}
-          companyName={state.company.name}
-          companyLogoUrl={state.company.logoUrl}
-          onLockOrSwitchCompany={handleExplicitLockOrSwitch}
-        />
+        {/* Minimalist Sidebar Navigation — hidden on full-page profile view */}
+        {state.activeView !== 'profile' && (
+          <SidebarNav
+            activeView={state.activeView}
+            onViewChange={handleRequestNavigate}
+            staffCount={activeEmployees.length}
+            activeLoansCount={state.loans?.filter(l => l.status === 'Active').length || 0}
+            isLocked={Boolean(activeSnapshot?.isLocked)}
+            companyName={state.company.name}
+            companyLogoUrl={state.company.logoUrl}
+            onLockOrSwitchCompany={handleExplicitLockOrSwitch}
+            isAdmin={isAdmin}
+          />
+        )}
 
         {/* Viewport Content Area wrapped with Error Boundary */}
         <ErrorBoundary onResetView={() => setActiveView('dashboard')}>
@@ -771,10 +786,20 @@ export const App: React.FC = () => {
             className={`flex-1 ${
               state.activeView === 'analytics'
                 ? 'flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b]'
+                : state.activeView === 'profile'
+                ? 'flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b]'
                 : 'overflow-auto px-6 pb-6 pt-0 md:px-8 md:pb-8 md:pt-0 bg-[#fbfbfb] dark:bg-[#09090b]'
             }`}
           >
-            {state.activeView === 'analytics' ? (
+            {state.activeView === 'profile' && !isLocalUser ? (
+              <UserProfilePage
+                currentUser={authenticatedMember}
+                onBack={() => handleRequestNavigate('dashboard')}
+                onUpdateCurrentUser={handleUpdateCurrentUser}
+                onSignOut={handleSignOut}
+                isMobileView={false}
+              />
+            ) : state.activeView === 'analytics' ? (
               <AnalyticsView
                 items={currentPayrollItems}
                 employees={state.employees}
@@ -833,6 +858,12 @@ export const App: React.FC = () => {
                 onDeletePreset={deletePayslipPreset}
                 loans={state.loans || []}
                 currentUser={effectiveMember}
+                emailSettings={emailSettings}
+                onUpdateEmployeeEmail={(id, email) => updateEmployee(id, { email })}
+                onOpenEmailSettings={handleOpenEmailSettings}
+                emailedPayslips={emailedPayslips}
+                onRecordEmailedPayslips={recordEmailedPayslips}
+                isAdmin={isAdmin}
               />
             ) : state.activeView === 'loans' ? (
               <LoansAdvancesView
@@ -871,16 +902,6 @@ export const App: React.FC = () => {
                   />
                 )}
 
-                {state.activeView === 'profile' && (
-                  <UserProfilePage
-                    currentUser={authenticatedMember}
-                    onBack={() => handleRequestNavigate('dashboard')}
-                    onUpdateCurrentUser={handleUpdateCurrentUser}
-                    onSignOut={handleSignOut}
-                    isMobileView={false}
-                  />
-                )}
-
                 {state.activeView === 'payslip-designer' && (
                   <PayslipDesignerPage
                     company={state.company}
@@ -902,39 +923,57 @@ export const App: React.FC = () => {
                 )}
 
               {(state.activeView === 'settings' || state.activeView === 'variables' || state.activeView === 'excel') && (
-                <SettingsView
-                  initialTab={
-                    state.activeView === 'variables' ? 'tax' :
-                    state.activeView === 'excel' ? 'excel' :
-                    'branding'
-                  }
-                  company={state.company}
-                  onUpdateCompany={updateCompanyProfile}
-                  payrollVariables={state.payrollVariables}
-                  payeTaxVariables={state.payeTaxVariables}
-                  onUpdatePayrollVariables={updatePayrollVariables}
-                  onUpdatePayeTaxVariables={updatePayeTaxVariables}
-                  departments={state.departments}
-                  onAddDepartment={addDepartment}
-                  onUpdateDepartment={updateDepartment}
-                  onDeleteDepartment={deleteDepartment}
-                  employees={state.employees}
-                  payrollItems={currentPayrollItems}
-                  monthLabel={monthLabel}
-                  selectedMonth={state.selectedMonth}
-                  year={state.selectedYear}
-                  activeSnapshot={activeSnapshot}
-                  snapshots={state.snapshots}
-                  snapshotsCount={state.snapshots.length}
-                  loans={state.loans || []}
-                  payslipDesign={state.payslipDesign}
-                  onImportEmployees={importEmployees}
-                  onResetAllData={resetAllData}
-                  onNavigate={handleRequestNavigate}
-                  onRegisterDirtyState={setUnsavedSettingsInfo}
-                  onRefreshData={handleSoftReload}
-                  currentUser={effectiveMember}
-                />
+                isAdmin ? (
+                  <SettingsView
+                    initialTab={
+                      state.activeView === 'variables' ? 'tax' :
+                      state.activeView === 'excel' ? 'excel' :
+                      settingsInitialTab
+                    }
+                    company={state.company}
+                    onUpdateCompany={updateCompanyProfile}
+                    payrollVariables={state.payrollVariables}
+                    payeTaxVariables={state.payeTaxVariables}
+                    onUpdatePayrollVariables={updatePayrollVariables}
+                    onUpdatePayeTaxVariables={updatePayeTaxVariables}
+                    departments={state.departments}
+                    onAddDepartment={addDepartment}
+                    onUpdateDepartment={updateDepartment}
+                    onDeleteDepartment={deleteDepartment}
+                    employees={state.employees}
+                    payrollItems={currentPayrollItems}
+                    monthLabel={monthLabel}
+                    selectedMonth={state.selectedMonth}
+                    year={state.selectedYear}
+                    activeSnapshot={activeSnapshot}
+                    snapshots={state.snapshots}
+                    snapshotsCount={state.snapshots.length}
+                    loans={state.loans || []}
+                    payslipDesign={state.payslipDesign}
+                    onImportEmployees={importEmployees}
+                    onResetAllData={resetAllData}
+                    onNavigate={handleRequestNavigate}
+                    onRegisterDirtyState={setUnsavedSettingsInfo}
+                    onRefreshData={handleSoftReload}
+                    currentUser={effectiveMember}
+                    emailSettings={emailSettings}
+                    onUpdateEmailSettings={updateEmailSettings}
+                  />
+                ) : (
+                  <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-3 max-w-md mx-auto my-12">
+                    <ShieldAlert className="w-10 h-10 text-rose-500 mx-auto" />
+                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Access Restricted</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Only company administrators have permission to access System Settings and Email Delivery configuration.
+                    </p>
+                    <button
+                      onClick={() => handleRequestNavigate('dashboard')}
+                      className="px-4 py-2 rounded-md text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 cursor-pointer"
+                    >
+                      Return to Dashboard
+                    </button>
+                  </div>
+                )
               )}
             </div>
           )}
@@ -1127,38 +1166,6 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Desktop Workspace Loading Transition */}
-      {isWorkspaceLoading && activeCompanyId && (
-        <div className="fixed inset-0 z-[9999] bg-[#fbfbfb]/90 dark:bg-[#09090b]/90 backdrop-blur-xs flex flex-col items-center justify-center p-8 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl flex flex-col items-center max-w-sm w-full text-center space-y-5 animate-in zoom-in-95">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 border border-zinc-200/90 dark:border-zinc-700 shadow-md flex items-center justify-center text-zinc-900 dark:text-zinc-100 font-bold text-3xl relative">
-              {state.company?.logoUrl ? (
-                <img src={state.company.logoUrl} alt="" className="w-16 h-16 object-contain rounded-xl" />
-              ) : (
-                state.company?.name?.charAt(0) || 'P'
-              )}
-              <span className="absolute -bottom-1 -right-1 flex h-5 w-5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-5 w-5 bg-emerald-500 ring-2 ring-white dark:ring-zinc-900"></span>
-              </span>
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="font-bold text-base text-zinc-900 dark:text-zinc-100 truncate max-w-[280px]">
-                {state.company?.name || 'Workspace'}
-              </h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Synchronizing records from cloud...
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 pt-1 text-xs text-zinc-400 font-mono">
-              <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
-              <span>Verifying database records</span>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

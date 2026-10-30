@@ -81,6 +81,27 @@ header select,
   -webkit-app-region: no-drag !important;
 }
 
+/* Universal suppression of browser default rectangular focus rings across the app */
+button,
+[role="button"],
+a,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus,
+button:focus-visible,
+[role="button"]:focus,
+[role="button"]:focus-visible {
+  outline: none !important;
+}
+
+/* Native frameless window controls should never display focus rings */
+header button:focus,
+header button:focus-visible {
+  outline: none !important;
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-6px); }

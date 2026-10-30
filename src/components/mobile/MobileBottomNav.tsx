@@ -71,7 +71,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               key={item.id}
               type="button"
               onClick={() => onViewChange(item.id)}
-              className="flex-1 flex flex-col items-center justify-center py-1 relative group transition-transform active:scale-95"
+              className="flex-1 flex flex-col items-center justify-center py-1 relative group transition-transform active:scale-95 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 select-none"
             >
               {/* Material 3 Active Pill Indicator */}
               <div
@@ -114,7 +114,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           type="button"
           onClick={onOpenMoreSheet}
-          className="flex-1 flex flex-col items-center justify-center py-1 relative group transition-transform active:scale-95"
+          className="flex-1 flex flex-col items-center justify-center py-1 relative group transition-transform active:scale-95 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 select-none"
         >
           <div
             className={`relative px-4 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${

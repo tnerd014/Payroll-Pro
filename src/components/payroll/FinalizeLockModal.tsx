@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { formatNaira } from '../../engine/payePensionEngine';
 import { CalculatedPayrollItem } from '../../types';
 
@@ -26,9 +27,9 @@ export const FinalizeLockModal: React.FC<FinalizeLockModalProps> = ({
   const [notes, setNotes] = React.useState('');
   const totalNet = items.reduce((s, i) => s + i.netTakeHome, 0);
 
-  return (
-    <div className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg w-full max-w-md shadow-xl p-5 space-y-4">
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-5 space-y-4">
         
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
@@ -77,6 +78,7 @@ export const FinalizeLockModal: React.FC<FinalizeLockModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -19,6 +19,7 @@ import {
 import { CompanyProfile, CompanyAccount, TeamMember, AppView } from '../../types';
 import { MONTHS } from '../../store/usePayrollStore';
 import { MobileBottomSheet } from './MobileBottomSheet';
+import { isStandaloneOfflineMode, getSavedCloudConfig } from '../../services/supabaseClient';
 
 interface MobileTopAppBarProps {
   activeView?: AppView;
@@ -62,6 +63,7 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
   const [isCompanySheetOpen, setIsCompanySheetOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const isLocalUser = currentUser?.id === 'local_offline_operator' || isStandaloneOfflineMode() || !getSavedCloudConfig().isEnabled;
 
   useEffect(() => {
     if (!isUserMenuOpen) return;
@@ -178,17 +180,19 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsUserMenuOpen(false);
-                      onNavigate('profile');
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer font-medium"
-                  >
-                    <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>Profile</span>
-                  </button>
+                  {!isLocalUser && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onNavigate('profile');
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer font-medium"
+                    >
+                      <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Profile</span>
+                    </button>
+                  )}
                     <button
                       type="button"
                       onClick={() => {
@@ -239,9 +243,8 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
               {currentMonthLabel} {selectedYear}
             </span>
             {isLocked && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
-                <Lock className="w-2.5 h-2.5" />
-                <span>Locked</span>
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/10 border border-amber-500/20" title="Payroll Locked">
+                <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
               </span>
             )}
           </div>

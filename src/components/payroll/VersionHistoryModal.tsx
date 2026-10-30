@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { History, Lock, Clock, CheckCircle2, Eye, X, ArrowRight, ArrowUpRight, ArrowDownRight, Layers, Trash2, AlertTriangle } from 'lucide-react';
 import { PayrollSnapshot } from '../../types';
 import { formatNaira, formatDateTime } from '../../engine/payePensionEngine';
@@ -34,9 +35,9 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
 
   const sortedSnapshots = [...snapshots].sort((a, b) => b.version - a.version);
 
-  return (
-    <div className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[85vh]">
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0">
@@ -262,6 +263,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

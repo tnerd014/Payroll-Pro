@@ -32,6 +32,7 @@ import {
   Users,
   LogOut,
   Smartphone,
+  RefreshCw,
 } from 'lucide-react';
 import { CompanyAccount, DEFAULT_SECURITY_QUESTIONS, TeamMember } from '../../types';
 import { formatDate } from '../../engine/dateUtils';
@@ -40,6 +41,7 @@ import { GlobalCloudModal } from './GlobalCloudModal';
 import { TeamMembersPage } from '../team/TeamMembersPage';
 import { UserProfilePage } from '../profile/UserProfilePage';
 import { getSavedCloudConfig, SupabaseCloudConfig } from '../../services/supabaseClient';
+import { LegalModal } from '../legal/LegalModal';
 
 interface WindowsAccountPickerProps {
   companies: CompanyAccount[];
@@ -47,7 +49,7 @@ interface WindowsAccountPickerProps {
   onClearInitialCompany?: () => void;
   canGoBack?: boolean;
   onBackToPrevious?: () => void;
-  onSelectCompany: (companyId: string, passwordAttempt?: string) => { success: boolean; error?: string };
+  onSelectCompany: (companyId: string, passwordAttempt?: string) => Promise<{ success: boolean; error?: string }> | { success: boolean; error?: string };
   onCreateCompany: (account: Omit<CompanyAccount, 'id'>, template?: 'default' | 'blank') => { success: boolean; companyId?: string; error?: string };
   onUpdateCompany: (companyId: string, updates: Partial<CompanyAccount>) => void;
   onDeleteCompany: (companyId: string) => { success: boolean; error?: string };
@@ -100,12 +102,21 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   const isElectron = typeof window !== 'undefined' && (Boolean((window as any).electronAPI) || /electron/i.test(navigator.userAgent));
   const isAdmin = currentUser?.role === 'Admin';
   const isAuditor = currentUser?.role === 'Auditor';
+  // Only Admin can create/add companies; Payroll Officers and Auditors cannot
+  const canAddCompany = !currentUser || isAdmin;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isTeamPageOpen, setIsTeamPageOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms'>('privacy');
   const [cloudConfig, setCloudConfig] = useState<SupabaseCloudConfig>(() => getSavedCloudConfig());
+  // Local mode = no cloud server configured/connected; hide cloud-specific UI
+  const isLocalMode = !cloudConfig.isEnabled;
+  // The local default system account has id 'local_offline_operator'
+  const isLocalDefaultAdmin = currentUser?.id === 'local_offline_operator';
+  const isLocalUser = isLocalMode || isLocalDefaultAdmin;
 
   useEffect(() => {
     if (!isUserMenuOpen) return;
@@ -148,6 +159,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
     }
     return null;
   });
+  const [openingCompanyId, setOpeningCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialCompanyId) {
@@ -225,7 +237,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   }, [selectedForPassword, isRecoveringPassword]);
 
   // Click on a company card
-  const handleCompanyClick = (comp: CompanyAccount) => {
+  const handleCompanyClick = async (comp: CompanyAccount) => {
     setAuthError(null);
     setPasswordInput('');
     setShowPassword(false);
@@ -242,25 +254,35 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
     if (comp.hasPassword && comp.password) {
       setSelectedForPassword(comp);
     } else {
-      const res = onSelectCompany(comp.id);
-      if (!res.success && res.error) {
-        setAuthError(res.error);
+      setOpeningCompanyId(comp.id);
+      try {
+        const res = await onSelectCompany(comp.id);
+        if (!res.success && res.error) {
+          setAuthError(res.error);
+        }
+      } finally {
+        setOpeningCompanyId(null);
       }
     }
   };
 
   // Submit Password
-  const handlePasswordSubmit = (e?: React.FormEvent) => {
+  const handlePasswordSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!selectedForPassword) return;
+    if (!selectedForPassword || openingCompanyId) return;
 
-    const res = onSelectCompany(selectedForPassword.id, passwordInput);
-    if (!res.success) {
-      setAuthError(res.error || 'Incorrect password.');
-      setIsShaking(true);
-      setTimeout(() => setIsShaking(false), 500);
-      setPasswordInput('');
-      passwordFieldRef.current?.focus();
+    setOpeningCompanyId(selectedForPassword.id);
+    try {
+      const res = await onSelectCompany(selectedForPassword.id, passwordInput);
+      if (!res.success) {
+        setAuthError(res.error || 'Incorrect password.');
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 500);
+        setPasswordInput('');
+        passwordFieldRef.current?.focus();
+      }
+    } finally {
+      setOpeningCompanyId(null);
     }
   };
 
@@ -326,14 +348,19 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
     setRecoverySuccessMessage('Password updated successfully! Unlocking workspace...');
 
-    setTimeout(() => {
-      onSelectCompany(selectedForPassword.id, newPasswordInput);
+    setTimeout(async () => {
+      setOpeningCompanyId(selectedForPassword.id);
+      try {
+        await onSelectCompany(selectedForPassword.id, newPasswordInput);
+      } finally {
+        setOpeningCompanyId(null);
+      }
     }, 700);
   };
 
-  // Open Create Modal
+  // Open Create Modal — Admin only
   const openCreateModal = () => {
-    if (isAuditor) return;
+    if (!canAddCompany) return;
     setFormName('');
     setFormSubtitle('');
     setFormAddress('');
@@ -630,17 +657,19 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                           {currentUser.name || currentUser.username || currentUser.email}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setIsProfileOpen(true);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
-                      >
-                        <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
-                        <span>Profile</span>
-                      </button>
+                      {!isLocalUser && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            setIsProfileOpen(true);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
+                        >
+                          <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Profile</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => {
@@ -705,18 +734,17 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
               </button>
             )}
 
-            <button
-              onClick={() => setIsCloudModalOpen(true)}
-              title={cloudConfig.isEnabled ? 'Connected to Team Cloud Database' : 'Connect to Team Cloud Database'}
-              className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
-                cloudConfig.isEnabled
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
-                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-              }`}
-            >
-              <Cloud className="w-3.5 h-3.5 text-emerald-500" />
-              <span className="hidden sm:inline">{cloudConfig.isEnabled ? 'Cloud Live' : 'Cloud Setup'}</span>
-            </button>
+            {/* Cloud Setup — only show when cloud is active (already connected) */}
+            {!isLocalMode && (
+              <button
+                onClick={() => setIsCloudModalOpen(true)}
+                title={'Connected to Team Cloud Database'}
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+              >
+                <Cloud className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="hidden sm:inline">Cloud Live</span>
+              </button>
+            )}
 
             {currentUser && (
               <div className="relative" ref={userMenuRef}>
@@ -736,17 +764,19 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                         {currentUser.name || currentUser.username || currentUser.email}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        setIsProfileOpen(true);
-                      }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
-                    >
-                      <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>Profile</span>
-                    </button>
+                    {!isLocalUser && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsProfileOpen(true);
+                        }}
+                        className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
+                      >
+                        <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Profile</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -906,10 +936,15 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       </button>
                       <button
                         type="submit"
-                        className="p-1 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded transition shadow-xs cursor-pointer active:scale-95"
+                        disabled={Boolean(openingCompanyId)}
+                        className="p-1 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded transition shadow-xs cursor-pointer active:scale-95"
                         title="Enter"
                       >
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        {openingCompanyId === selectedForPassword.id ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1091,7 +1126,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
             </div>
           </div>
-        ) : isProfileOpen ? (
+        ) : isProfileOpen && !isLocalUser ? (
           /* VIEW 2: USER PERSONALISED PROFILE & SECURITY */
           <UserProfilePage
             currentUser={currentUser || null}
@@ -1135,7 +1170,8 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
               {/* Right: Actions */}
               <div className="flex items-center gap-2 sm:ml-auto shrink-0 justify-between sm:justify-end">
-                {currentUser?.role === 'Admin' && (
+                {/* Authorized Staff — only shown in cloud mode where staff are managed centrally */}
+                {isAdmin && !isLocalMode && (
                   <button
                     type="button"
                     onClick={() => setIsTeamPageOpen(true)}
@@ -1146,7 +1182,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                     <span>Authorized Staff</span>
                   </button>
                 )}
-                {!isAuditor && (
+                {canAddCompany && (
                   <button
                     onClick={openCreateModal}
                     className="flex-1 sm:flex-none h-9 sm:h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
@@ -1175,33 +1211,9 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       </button>
                     </>
                   ) : !cloudConfig.isEnabled ? (
-                    <div className="p-6 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3.5 w-full">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center mx-auto">
-                        <Cloud className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-semibold text-zinc-900 dark:text-white">Connect to Team Server</h3>
-                        <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
-                          Connect your desktop to access all team companies in real-time, or create a new company workspace.
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-2 pt-1">
-                        <button
-                          onClick={() => setIsCloudModalOpen(true)}
-                          className="w-full py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-semibold hover:opacity-90 transition cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5"
-                        >
-                          <Cloud className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Connect Team Server</span>
-                        </button>
-                        {!isAuditor && (
-                          <button
-                            onClick={openCreateModal}
-                            className="w-full py-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer"
-                          >
-                            + Create New Company
-                          </button>
-                        )}
-                      </div>
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-6">
+                      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">No Company Added</p>
+                      <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Create a company to get started.</p>
                     </div>
                   ) : (
                     <div className="p-6 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3 w-full">
@@ -1214,7 +1226,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                           Connected to cloud server. Create your first company workspace to get started.
                         </p>
                       </div>
-                      {!isAuditor && (
+                      {canAddCompany && (
                         <button
                           onClick={openCreateModal}
                           className="w-full py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-semibold hover:opacity-90 transition cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5"
@@ -1235,7 +1247,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                   return (
                     <div
                       key={comp.id}
-                      className="group bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-700 rounded-xl p-3.5 flex flex-col justify-between transition hover:shadow-2xs cursor-pointer relative min-h-[155px]"
+                      className={`group bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-700 rounded-xl p-3.5 flex flex-col justify-between transition hover:shadow-2xs cursor-pointer relative min-h-[155px] ${openingCompanyId ? 'pointer-events-none' : ''}`}
                       onClick={() => handleCompanyClick(comp)}
                     >
                       {/* Top Action Options Button */}
@@ -1331,18 +1343,25 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                           </span>
                         )}
 
-                        <span className="text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition inline-flex items-center gap-0.5 font-medium">
-                          <span>Enter</span>
-                          <ArrowRight className="w-2.5 h-2.5 transition-transform group-hover:translate-x-0.5" />
-                        </span>
+                        {openingCompanyId === comp.id ? (
+                          <span className="text-zinc-700 dark:text-zinc-300 inline-flex items-center gap-1 font-medium">
+                            <RefreshCw className="w-2.5 h-2.5 animate-spin text-zinc-500" />
+                            <span>Opening...</span>
+                          </span>
+                        ) : (
+                          <span className="text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition inline-flex items-center gap-0.5 font-medium">
+                            <span>Enter</span>
+                            <ArrowRight className="w-2.5 h-2.5 transition-transform group-hover:translate-x-0.5" />
+                          </span>
+                        )}
                       </div>
 
                     </div>
                   );
                 })}
 
-                {/* Add Company Card */}
-                {!isAuditor && (
+                {/* Add Company Card — Admin only */}
+                {canAddCompany && (
                   <div
                     onClick={openCreateModal}
                     className="border border-dashed border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/40 rounded-xl p-3.5 flex flex-col items-center justify-center text-center transition cursor-pointer min-h-[155px]"
@@ -1362,6 +1381,8 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
               </div>
             )}
             </div>
+
+
 
           </div>
         )}
@@ -1968,6 +1989,13 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
         onClose={() => setIsCloudModalOpen(false)}
         localCompanies={companies}
         onCompaniesSynced={handleCompaniesSynced}
+      />
+
+      {/* Global Legal & Help Modal (Terms of Service / Privacy Policy) */}
+      <LegalModal
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        initialTab={legalModalTab}
       />
 
     </div>

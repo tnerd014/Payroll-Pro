@@ -1,4 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
+import { ShieldAlert } from 'lucide-react';
 import { 
   AppView, 
   CompanyAccount, 
@@ -13,7 +14,9 @@ import {
   PayslipDesignConfig,
   PayslipCustomPreset,
   EmploymentTypeRule,
-  SalaryCalculationMode
+  SalaryCalculationMode,
+  EmailSettings,
+  EmailedPayslipRecord
 } from '../../types';
 import { MobileTopAppBar } from './MobileTopAppBar';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -24,12 +27,13 @@ import { MobilePayrollRunView } from './views/MobilePayrollRunView';
 import { MobileStaffDirectoryView } from './views/MobileStaffDirectoryView';
 import { MobileLoansDirectoryView } from './views/MobileLoansDirectoryView';
 import { MobileAnalyticsView } from './views/MobileAnalyticsView';
-import { MobileSettingsView } from './views/MobileSettingsView';
+import { MobileSettingsView, MobileSettingsTab } from './views/MobileSettingsView';
 import { MobilePayslipDesignerView } from './views/MobilePayslipDesignerView';
 import { MobilePayslipPrintView } from './views/MobilePayslipPrintView';
 import { VariablesView } from '../variables/VariablesView';
 import { ExcelHubView } from '../excel/ExcelHubView';
 import { UserProfilePage } from '../profile/UserProfilePage';
+import { isStandaloneOfflineMode, getSavedCloudConfig } from '../../services/supabaseClient';
 
 interface MobileAppShellProps {
   activeView: AppView;
@@ -84,6 +88,16 @@ interface MobileAppShellProps {
   onImportEmployees?: (items: Partial<Employee>[], mode: 'merge' | 'overwrite', scope?: 'all' | 'salary-only' | 'bank-only') => void;
   onResetAllData?: (options: any) => void;
 
+  // Email & Permission Props
+  settingsInitialTab?: string;
+  onOpenEmailSettings?: () => void;
+  emailSettings?: EmailSettings;
+  onUpdateEmailSettings?: (settings: Partial<EmailSettings>) => void;
+  emailedPayslips?: Record<string, EmailedPayslipRecord>;
+  onRecordEmailedPayslips?: (records: EmailedPayslipRecord[]) => void;
+  onUpdateEmployeeEmail?: (id: string, email: string) => void;
+  isAdmin?: boolean;
+
   // Simulator Toggle
   isPhoneFramePreview: boolean;
   onTogglePhoneFrame: () => void;
@@ -137,11 +151,31 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onUpdatePayeTaxVariables,
   onImportEmployees,
   onResetAllData,
+  settingsInitialTab,
+  onOpenEmailSettings,
+  emailSettings,
+  onUpdateEmailSettings,
+  emailedPayslips,
+  onRecordEmailedPayslips,
+  onUpdateEmployeeEmail,
+  isAdmin = true,
   isPhoneFramePreview,
   onTogglePhoneFrame,
 }) => {
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   const [previousView, setPreviousView] = useState<AppView>('payroll');
+  const [mobileSettingsTab, setMobileSettingsTab] = useState<MobileSettingsTab | undefined>(() => {
+    return settingsInitialTab === 'email' ? 'email' : undefined;
+  });
+
+  // Keep mobileSettingsTab in sync when settingsInitialTab changes
+  React.useEffect(() => {
+    if (settingsInitialTab === 'email') {
+      setMobileSettingsTab('email');
+    }
+  }, [settingsInitialTab]);
+
+  const isLocalUser = currentUser?.id === 'local_offline_operator' || isStandaloneOfflineMode() || !getSavedCloudConfig().isEnabled;
   const mainScrollRef = useRef<HTMLElement>(null);
 
   // Automatically reset scroll position to top whenever activeView changes
@@ -153,7 +187,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   }, [activeView]);
 
   // Handle navigation: switch page or smooth scroll to top if already on active tab
-  const handleNavigate = (view: AppView) => {
+  const handleNavigate = (view: AppView, tab?: MobileSettingsTab) => {
+    if (tab) {
+      setMobileSettingsTab(tab);
+    } else if (view !== 'settings') {
+      setMobileSettingsTab(undefined);
+    }
+
     if (view === activeView) {
       if (mainScrollRef.current) {
         mainScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
@@ -161,6 +201,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     } else {
       setPreviousView(activeView);
       onNavigate(view);
+    }
+  };
+
+  const handleOpenEmailSettingsFlow = () => {
+    setMobileSettingsTab('email');
+    if (onOpenEmailSettings) {
+      onOpenEmailSettings();
+    } else {
+      handleNavigate('settings');
     }
   };
 
@@ -213,6 +262,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             items={payrollItems}
             activeSnapshot={activeSnapshot}
             monthLabel={monthLabel}
+            selectedMonth={selectedMonth}
             year={selectedYear}
             onFinalizeAndLock={onFinalizeAndLock}
             onUnlock={onUnlock}
@@ -221,6 +271,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             departments={departments}
             onNavigate={handleNavigate}
             currentUser={currentUser}
+            employees={employees}
+            emailSettings={emailSettings}
+            emailedPayslips={emailedPayslips}
+            onRecordEmailedPayslips={onRecordEmailedPayslips}
+            onUpdateEmployeeEmail={onUpdateEmployeeEmail}
+            isAdmin={isAdmin}
+            onOpenEmailSettings={handleOpenEmailSettingsFlow}
           />
         ) : activeView === 'employees' ? (
           <MobileStaffDirectoryView
@@ -305,36 +362,55 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             isLocked={isLocked}
           />
         ) : (activeView === 'settings' || activeView === 'variables' || activeView === 'excel') ? (
-          <MobileSettingsView
-            initialTab={
-              activeView === 'variables' ? 'payroll' :
-              activeView === 'excel' ? 'excel' :
-              undefined
-            }
-            company={company}
-            onUpdateCompany={onUpdateCompany}
-            payrollVariables={payrollVariables}
-            payeTaxVariables={payeTaxVariables}
-            onUpdatePayrollVariables={onUpdatePayrollVariables}
-            onUpdatePayeTaxVariables={onUpdatePayeTaxVariables}
-            departments={departments}
-            onAddDepartment={onAddDepartment}
-            onUpdateDepartment={onUpdateDepartment}
-            onDeleteDepartment={onDeleteDepartment}
-            employees={employees}
-            payrollItems={payrollItems}
-            monthLabel={monthLabel}
-            selectedMonth={selectedMonth}
-            year={selectedYear}
-            activeSnapshot={activeSnapshot}
-            snapshots={snapshots}
-            loans={loans}
-            currentUser={currentUser}
-            onImportEmployees={onImportEmployees}
-            onResetAllData={onResetAllData}
-            onNavigate={onNavigate}
-          />
-        ) : activeView === 'profile' ? (
+          (activeView === 'settings' && !isAdmin) ? (
+            <div className="p-6 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-3 my-6">
+              <ShieldAlert className="w-10 h-10 text-rose-500 mx-auto" />
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Access Restricted</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Only company administrators have permission to access Settings and Email Delivery configuration.
+              </p>
+              <button
+                onClick={() => handleNavigate('dashboard')}
+                className="px-4 py-2 rounded-xl text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 cursor-pointer"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          ) : (
+            <MobileSettingsView
+              initialTab={
+                mobileSettingsTab ||
+                (activeView === 'variables' ? 'payroll' :
+                 activeView === 'excel' ? 'excel' :
+                 undefined)
+              }
+              company={company}
+              onUpdateCompany={onUpdateCompany}
+              payrollVariables={payrollVariables}
+              payeTaxVariables={payeTaxVariables}
+              onUpdatePayrollVariables={onUpdatePayrollVariables}
+              onUpdatePayeTaxVariables={onUpdatePayeTaxVariables}
+              departments={departments}
+              onAddDepartment={onAddDepartment}
+              onUpdateDepartment={onUpdateDepartment}
+              onDeleteDepartment={onDeleteDepartment}
+              employees={employees}
+              payrollItems={payrollItems}
+              monthLabel={monthLabel}
+              selectedMonth={selectedMonth}
+              year={selectedYear}
+              activeSnapshot={activeSnapshot}
+              snapshots={snapshots}
+              loans={loans}
+              currentUser={currentUser}
+              onImportEmployees={onImportEmployees}
+              onResetAllData={onResetAllData}
+              onNavigate={onNavigate}
+              emailSettings={emailSettings}
+              onUpdateEmailSettings={onUpdateEmailSettings}
+            />
+          )
+        ) : activeView === 'profile' && !isLocalUser ? (
           <UserProfilePage
             currentUser={currentUser}
             onBack={() => handleNavigate(previousView || 'dashboard')}

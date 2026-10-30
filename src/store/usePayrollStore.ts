@@ -15,7 +15,10 @@ import {
   EmployeeLoan,
   LoanRepaymentRecord,
   LoanStatus,
-  LoanType
+  LoanType,
+  EmailSettings,
+  DEFAULT_EMAIL_SETTINGS,
+  EmailedPayslipRecord
 } from '../types';
 import { 
   DEFAULT_PAYROLL_VARIABLES, 
@@ -34,8 +37,14 @@ import {
   syncCompanyToSupabase,
   deleteCompanyFromSupabase,
   deleteEmployeeFromCloud,
-  logAuditEvent
+  logAuditEvent,
+  getActiveTeamMember,
+  saveEmailSettingsToCloud,
+  saveEmailedPayslipsToCloud,
+  saveSnapshotToCloud,
+  deleteSnapshotFromCloud
 } from '../services/supabaseClient';
+import { saveCompanyDataToDb, migrateFromLocalStorageIfNeeded } from './payrollDb';
 
 export const STORAGE_KEY = 'PAYROLL_PRO_LOCAL_STORAGE_V5';
 export const COMPANIES_REGISTRY_KEY = 'PAYROLL_PRO_COMPANIES_REGISTRY_V1';
@@ -63,11 +72,18 @@ export const MONTH_KEY_INDEX: Record<string, number> = {
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
 };
 
+export const normalizeMonthKey = (m?: string): string => {
+  if (!m) return '';
+  const clean = m.trim().toLowerCase();
+  const found = MONTHS.find(month => month.key === clean || month.label.toLowerCase() === clean || clean.startsWith(month.key));
+  return found ? found.key : clean;
+};
+
 export const getPeriodIndex = (periodKey?: string): number => {
   if (!periodKey) return 0;
   const parts = periodKey.split('-');
   const y = parseInt(parts[0], 10) || 0;
-  const m = MONTH_KEY_INDEX[parts[1]?.toLowerCase()] ?? 0;
+  const m = MONTH_KEY_INDEX[normalizeMonthKey(parts[1])] ?? 0;
   return y * 12 + m;
 };
 
@@ -236,6 +252,8 @@ export interface AppState {
   payslipDesign?: PayslipDesignConfig;
   savedPayslipPresets?: PayslipCustomPreset[];
   loans?: EmployeeLoan[];
+  emailSettings?: EmailSettings;
+  emailedPayslips?: Record<string, EmailedPayslipRecord>; // Key: `${periodKey}_${employeeId}`
 }
 
 /**
@@ -338,7 +356,9 @@ export async function syncAllPendingCompanies(): Promise<{ synced: string[]; fai
           data.loans || [],
           data.snapshots,
           data.payslipDesign,
-          data.savedPayslipPresets || []
+          data.savedPayslipPresets || [],
+          data.emailSettings,
+          data.emailedPayslips
         );
         if (res.success) {
           localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + companyId);
@@ -450,11 +470,11 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
             : [],
           payslipDesign: parsed.payslipDesign ? { ...DEFAULT_PAYSLIP_DESIGN, ...parsed.payslipDesign } : DEFAULT_PAYSLIP_DESIGN,
           savedPayslipPresets: (parsed.savedPayslipPresets && Array.isArray(parsed.savedPayslipPresets)) ? parsed.savedPayslipPresets : [],
-          loans: autoSyncLoansForPeriod(
-            (parsed.loans && Array.isArray(parsed.loans)) ? parsed.loans : [],
-            Number(parsed.selectedYear) || new Date().getFullYear(),
-            parsed.selectedMonth || (MONTHS[new Date().getMonth()]?.key || 'oct')
-          ),
+          // NOTE: loans are NOT auto-synced here intentionally — autoSyncLoansForPeriod
+          // is called explicitly on period changes to avoid mutating data during reads.
+          loans: (parsed.loans && Array.isArray(parsed.loans)) ? parsed.loans : [],
+          emailSettings: parsed.emailSettings ? { ...DEFAULT_EMAIL_SETTINGS, ...parsed.emailSettings } : DEFAULT_EMAIL_SETTINGS,
+          emailedPayslips: (parsed.emailedPayslips && typeof parsed.emailedPayslips === 'object') ? parsed.emailedPayslips : {},
         };
       }
     }
@@ -494,6 +514,8 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
     payslipDesign: DEFAULT_PAYSLIP_DESIGN,
     savedPayslipPresets: [],
     loans: [],
+    emailSettings: DEFAULT_EMAIL_SETTINGS,
+    emailedPayslips: {},
   };
 }
 
@@ -506,7 +528,6 @@ export function loadPersistedState(): AppState {
 export function usePayrollStore() {
   const [companies, setCompanies] = useState<CompanyAccount[]>(() => loadCompaniesRegistry());
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
-  const [isWorkspaceLoading, setIsWorkspaceLoading] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
   const [isDarkTheme, setIsDarkTheme] = useState<boolean>(() => {
@@ -537,6 +558,11 @@ export function usePayrollStore() {
   useEffect(() => {
     let isMounted = true;
 
+    // Seamless migration from localStorage into IndexedDB on first load
+    migrateFromLocalStorageIfNeeded().catch(err => {
+      console.warn('LocalStorage to IndexedDB migration check error:', err);
+    });
+
     const refreshCompaniesList = () => {
       const cfg = getSavedCloudConfig();
       if (!cfg.isEnabled) return;
@@ -562,7 +588,9 @@ export function usePayrollStore() {
     refreshCompaniesList();
 
     // 2. High-frequency polling (every 4 seconds) so other teams see new companies even without WebSockets
-    const pollTimer = setInterval(refreshCompaniesList, 4000);
+    // Poll every 30 seconds at most — the Realtime WebSocket above handles instant updates.
+    // Previously 4s which hammered the DB on every render.
+    const pollTimer = setInterval(refreshCompaniesList, 30000);
 
     // 3. Window focus & visibility trigger — whenever an operator clicks into the app window
     const handleFocus = () => { refreshCompaniesList(); };
@@ -651,6 +679,10 @@ export function usePayrollStore() {
     } catch (e) {
       console.error('Error saving state to localStorage:', e);
     }
+    // Asynchronous mirror-save to IndexedDB (eliminates 5-10MB localStorage limit)
+    saveCompanyDataToDb(activeCompanyId, state).catch(e => {
+      console.warn('Could not mirror save to IndexedDB:', e);
+    });
   }, [state, activeCompanyId]);
 
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -722,7 +754,9 @@ export function usePayrollStore() {
           state.loans || [],
           state.snapshots,
           state.payslipDesign,
-          state.savedPayslipPresets || []
+          state.savedPayslipPresets || [],
+          state.emailSettings,
+          state.emailedPayslips
         ).then(res => {
           if (res.success) {
             localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId);
@@ -805,6 +839,10 @@ export function usePayrollStore() {
         downloadCompanyDataFromSupabase(activeCompanyId).then(res => {
           if (!res.success) return;
           setState(prev => {
+            // Isolation guard: Never apply cloud updates if the user switched companies in the interim
+            if (prev.company?.id && prev.company.id !== activeCompanyId) {
+              return prev;
+            }
             // Guard: Never wipe out populated local employee list if incoming payload is empty
             if (prev.employees.length > 0 && (!res.employees || res.employees.length === 0)) {
               return prev;
@@ -829,6 +867,9 @@ export function usePayrollStore() {
               ...(res.payslipDesign ? { payslipDesign: res.payslipDesign } : {}),
               // Payslip presets (named design templates)
               ...(res.savedPayslipPresets && res.savedPayslipPresets.length > 0 ? { savedPayslipPresets: res.savedPayslipPresets } : {}),
+              // Email settings & dispatched history per company
+              ...(res.emailSettings ? { emailSettings: res.emailSettings } : {}),
+              ...(res.emailedPayslips ? { emailedPayslips: res.emailedPayslips } : {}),
             };
           });
         });
@@ -852,6 +893,8 @@ export function usePayrollStore() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payslip_designs', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
       // Payslip preset changes — syncs saved named presets immediately
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payslip_presets', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      // Audit log entries — syncs new entries from other team members in real-time
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
       .subscribe();
 
     return () => {
@@ -933,7 +976,7 @@ export function usePayrollStore() {
   });
 
   const activeSnapshot = (state.snapshots || []).find(
-    s => s && s.monthKey === state.selectedMonth && s.year === state.selectedYear && s.isLocked
+    s => s && normalizeMonthKey(s.monthKey) === normalizeMonthKey(state.selectedMonth) && s.year === state.selectedYear && s.isLocked
   );
 
   const currentPayrollItems = (activeSnapshot?.items && Array.isArray(activeSnapshot.items)) 
@@ -951,7 +994,7 @@ export function usePayrollStore() {
     });
   };
 
-  const selectCompany = (companyId: string, passwordAttempt?: string): { success: boolean; error?: string } => {
+  const selectCompany = async (companyId: string, passwordAttempt?: string): Promise<{ success: boolean; error?: string }> => {
     const targetComp = companies.find(c => c.id === companyId);
     if (!targetComp) {
       return { success: false, error: 'Company account not found.' };
@@ -974,59 +1017,77 @@ export function usePayrollStore() {
       (loadedData.employees && loadedData.employees.length > 0) || 
       (loadedData.snapshots && loadedData.snapshots.length > 0)
     );
-    const safeData: AppState = {
+
+    let finalData: AppState = {
       ...loadedData,
       company: { ...loadedData.company, id: companyId, name: targetComp.name },
       activeView: 'dashboard',
       isDarkTheme,
     };
-    setState(safeData);
-    setActiveCompanyId(companyId);
 
-    // If cloud is connected, check whether we should display workspace loader
     const cfg = getSavedCloudConfig();
-    if (cfg.isEnabled && !hasCachedRecords) {
-      setIsWorkspaceLoading(true);
-    } else {
-      setIsWorkspaceLoading(false);
-    }
-
     if (cfg.isEnabled && hasPendingOfflineSync(companyId)) {
-      // This company has unsynced offline edits on this device. Do NOT download cloud data
-      // over them — push the local copy up first (if online). The pending flag stays set
-      // until the upload succeeds, so nothing is lost if we're still offline.
+      // Offline edits exist: push up in background if online, but don't overwrite local data
       checkRealConnectivity().then(online => {
         if (online) syncAllPendingCompanies().catch(() => {});
       });
-      setIsWorkspaceLoading(false);
     } else if (cfg.isEnabled) {
-      downloadCompanyDataFromSupabase(companyId).then(res => {
-        if (!res.success) return;
-        setState(prev => {
-          // Guard: Only apply if user is still inside this company
-          if (activeCompanyIdRef.current !== companyId) return prev;
-          return {
-            ...prev,
-            company: res.company ? { ...prev.company, ...res.company, id: companyId } : prev.company,
-            employees: res.employees || [],
-            departments: (res.departments && res.departments.length > 0) ? res.departments : prev.departments,
-            payrollVariables: res.payrollVariables || prev.payrollVariables,
-            payeTaxVariables: res.payeTaxVariables || prev.payeTaxVariables,
-            loans: res.loans || prev.loans,
-            snapshots: res.snapshots || prev.snapshots,
-            payslipDesign: res.payslipDesign || prev.payslipDesign,
-            savedPayslipPresets: res.savedPayslipPresets || prev.savedPayslipPresets,
-          };
-        });
-      }).finally(() => {
-        setIsWorkspaceLoading(false);
-      });
-
-      // 3.5s safety timeout to ensure loader never hangs if connection stalls
-      setTimeout(() => {
-        setIsWorkspaceLoading(false);
-      }, 3500);
+      if (!hasCachedRecords) {
+        // Option 1: First-time opening or empty cache - pre-load cloud data directly before switching views
+        try {
+          const res = await Promise.race([
+            downloadCompanyDataFromSupabase(companyId),
+            new Promise<{ success: false; error: string }>((resolve) =>
+              setTimeout(() => resolve({ success: false, error: 'timeout' }), 4000)
+            )
+          ]);
+          if (res.success) {
+            finalData = {
+              ...finalData,
+              company: res.company ? { ...finalData.company, ...res.company, id: companyId } : finalData.company,
+              employees: res.employees || [],
+              departments: (res.departments && res.departments.length > 0) ? res.departments : finalData.departments,
+              payrollVariables: res.payrollVariables || finalData.payrollVariables,
+              payeTaxVariables: res.payeTaxVariables || finalData.payeTaxVariables,
+              loans: res.loans || finalData.loans,
+              snapshots: res.snapshots || finalData.snapshots,
+              payslipDesign: res.payslipDesign || finalData.payslipDesign,
+              savedPayslipPresets: res.savedPayslipPresets || finalData.savedPayslipPresets,
+              emailSettings: res.emailSettings || finalData.emailSettings || DEFAULT_EMAIL_SETTINGS,
+              emailedPayslips: res.emailedPayslips || finalData.emailedPayslips || {},
+            };
+          }
+        } catch {
+          // Fall back to local data if network stalls
+        }
+      } else {
+        // Local records already exist: switch instantly and silently check cloud in background
+        downloadCompanyDataFromSupabase(companyId).then(res => {
+          if (!res.success) return;
+          setState(prev => {
+            if (activeCompanyIdRef.current !== companyId) return prev;
+            return {
+              ...prev,
+              company: res.company ? { ...prev.company, ...res.company, id: companyId } : prev.company,
+              employees: res.employees || prev.employees,
+              departments: (res.departments && res.departments.length > 0) ? res.departments : prev.departments,
+              payrollVariables: res.payrollVariables || prev.payrollVariables,
+              payeTaxVariables: res.payeTaxVariables || prev.payeTaxVariables,
+              loans: res.loans || prev.loans,
+              snapshots: res.snapshots || prev.snapshots,
+              payslipDesign: res.payslipDesign || prev.payslipDesign,
+              savedPayslipPresets: res.savedPayslipPresets || prev.savedPayslipPresets,
+              emailSettings: res.emailSettings || prev.emailSettings || DEFAULT_EMAIL_SETTINGS,
+              emailedPayslips: res.emailedPayslips || prev.emailedPayslips || {},
+            };
+          });
+        }).catch(() => {});
+      }
     }
+
+    // Set state and activeCompanyId with complete hydrated data
+    setState(finalData);
+    setActiveCompanyId(companyId);
 
     setCompanies(prev => {
       const updated = prev.map(c => c.id === companyId ? { ...c, lastActiveAt: new Date().toISOString() } : c);
@@ -1043,7 +1104,6 @@ export function usePayrollStore() {
       clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = null;
     }
-    setIsWorkspaceLoading(false);
     setActiveCompanyId(null);
   };
 
@@ -1055,7 +1115,7 @@ export function usePayrollStore() {
       return { success: false, error: 'Company name is required.' };
     }
 
-    const newId = 'comp-' + Date.now();
+    const newId = 'comp-' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString());
     const newAccount: CompanyAccount = {
       ...accountData,
       id: newId,
@@ -1095,6 +1155,7 @@ export function usePayrollStore() {
       snapshots: [],
       activeView: 'dashboard',
       isDarkTheme,
+      emailSettings: DEFAULT_EMAIL_SETTINGS,
     };
 
     try {
@@ -1114,12 +1175,22 @@ export function usePayrollStore() {
           [],
           [],
           DEFAULT_PAYSLIP_DESIGN,
-          []
+          [],
+          DEFAULT_EMAIL_SETTINGS,
+          {}
         );
       }
 
       setState(newAppState);
       setActiveCompanyId(newId);
+
+      logAuditEvent(
+        newId,
+        newAccount.name,
+        'COMPANY_CREATED',
+        `Created company workspace "${newAccount.name}" (${newAccount.hasPassword ? 'Protected with PIN' : 'Open access'})`
+      );
+
       return { success: true, companyId: newId };
     } catch (e) {
       console.error('Failed to create company:', e);
@@ -1128,6 +1199,9 @@ export function usePayrollStore() {
   };
 
   const updateCompanyAccount = (companyId: string, updates: Partial<CompanyAccount>) => {
+    const existingComp = companies.find(c => c.id === companyId);
+    const compName = updates.name || existingComp?.name || 'Workspace';
+
     setCompanies(prev => {
       const next = prev.map(c => {
         if (c.id === companyId) {
@@ -1168,12 +1242,36 @@ export function usePayrollStore() {
         }
       }));
     }
+
+    // Record audit event for company changes
+    if (updates.hasPassword !== undefined || updates.password !== undefined) {
+      const statusText = updates.hasPassword ? 'Configured PIN protection' : 'Removed PIN protection';
+      logAuditEvent(
+        companyId,
+        compName,
+        'COMPANY_SECURITY_UPDATED',
+        `${statusText} for workspace "${compName}"`
+      );
+    } else {
+      const changedKeys = Object.keys(updates).filter(k => k !== 'lastActiveAt');
+      if (changedKeys.length > 0) {
+        logAuditEvent(
+          companyId,
+          compName,
+          'COMPANY_INFO_UPDATED',
+          `Updated company information (${changedKeys.join(', ')}) for workspace "${compName}"`
+        );
+      }
+    }
   };
 
   const deleteCompany = (companyId: string): { success: boolean; error?: string } => {
     if (companies.length <= 1) {
       return { success: false, error: 'Cannot delete the only company account in the system.' };
     }
+
+    const targetComp = companies.find(c => c.id === companyId);
+    const targetName = targetComp?.name || 'Workspace';
 
     try {
       localStorage.removeItem(COMPANY_DATA_PREFIX + companyId);
@@ -1184,6 +1282,13 @@ export function usePayrollStore() {
       if (getSavedCloudConfig().isEnabled) {
         deleteCompanyFromSupabase(companyId);
       }
+
+      logAuditEvent(
+        companyId,
+        targetName,
+        'COMPANY_DELETED',
+        `Deleted company workspace "${targetName}" and associated local records`
+      );
 
       if (activeCompanyId === companyId) {
         setActiveCompanyId(null);
@@ -1241,9 +1346,13 @@ export function usePayrollStore() {
   };
 
   const addEmployee = (emp: Omit<Employee, 'id'>) => {
+    const sanitizedGross = Math.max(0, Number(emp.monthlyGross) || 0);
+    const sanitizedRent = Math.max(0, Number(emp.annualRent) || 0);
     const newEmp: Employee = {
       ...emp,
-      id: 'emp-' + Date.now(),
+      monthlyGross: sanitizedGross,
+      annualRent: sanitizedRent,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'emp-' + crypto.randomUUID() : 'emp-' + Date.now(),
       employmentType: emp.employmentType || 'Full-Time',
     };
     setState(s => ({ ...s, employees: [newEmp, ...s.employees] }));
@@ -1251,16 +1360,17 @@ export function usePayrollStore() {
       activeCompanyId || '',
       activeCompany?.name || '',
       'CREATED_EMPLOYEE',
-      `Added employee ${emp.firstName} ${emp.lastName} (${emp.code || 'Auto-Code'}) with Gross ₦${Number(emp.monthlyGross || 0).toLocaleString()}`
+      `Added employee ${emp.firstName} ${emp.lastName} (${emp.code || 'Auto-Code'}) with Gross ₦${sanitizedGross.toLocaleString()}`
     );
   };
 
   const addEmployees = (emps: Omit<Employee, 'id'>[]) => {
     if (!emps || emps.length === 0) return;
-    const baseTime = Date.now();
-    const newEmps: Employee[] = emps.map((emp, idx) => ({
+    const newEmps: Employee[] = emps.map((emp) => ({
       ...emp,
-      id: `emp-${baseTime}-${idx}`,
+      monthlyGross: Math.max(0, Number(emp.monthlyGross) || 0),
+      annualRent: Math.max(0, Number(emp.annualRent) || 0),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'emp-' + crypto.randomUUID() : 'emp-' + Date.now() + '-' + Math.random().toString(36).slice(2),
       employmentType: emp.employmentType || 'Full-Time',
     }));
     setState(s => ({ ...s, employees: [...newEmps, ...s.employees] }));
@@ -1274,9 +1384,16 @@ export function usePayrollStore() {
 
   const updateEmployee = (id: string, updates: Partial<Employee>) => {
     const existing = state.employees.find(e => e.id === id);
+    const sanitizedUpdates: Partial<Employee> = { ...updates };
+    if (sanitizedUpdates.monthlyGross !== undefined) {
+      sanitizedUpdates.monthlyGross = Math.max(0, Number(sanitizedUpdates.monthlyGross) || 0);
+    }
+    if (sanitizedUpdates.annualRent !== undefined) {
+      sanitizedUpdates.annualRent = Math.max(0, Number(sanitizedUpdates.annualRent) || 0);
+    }
     setState(s => ({
       ...s,
-      employees: s.employees.map(e => e.id === id ? { ...e, ...updates } : e)
+      employees: s.employees.map(e => e.id === id ? { ...e, ...sanitizedUpdates } : e)
     }));
 
     let changeSummary = 'Updated employee details';
@@ -1321,7 +1438,7 @@ export function usePayrollStore() {
   ) => {
     if (mode === 'overwrite' && importScope === 'all') {
       const formatted: Employee[] = incoming.map((item, idx) => ({
-        id: item.id || `emp-${Date.now()}-${idx}`,
+        id: item.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? 'emp-' + crypto.randomUUID() : `emp-${Date.now()}-${idx}`),
         code: item.code || `EMP-${100 + idx}`,
         firstName: item.firstName || 'Staff',
         lastName: item.lastName || '',
@@ -1332,8 +1449,9 @@ export function usePayrollStore() {
         phone: item.phone || '',
         monthlyGross: Number(item.monthlyGross) || 150000,
         annualRent: Number(item.annualRent) || 0,
-        bankName: item.bankName || 'Access Bank',
-        accountNumber: item.accountNumber || '0000000000',
+        // Do NOT silently fill bank details — leave empty if missing to prevent wrong payments
+        bankName: item.bankName || '',
+        accountNumber: item.accountNumber || '',
         hasPension: item.hasPension ?? true,
         hasPaye: item.hasPaye ?? true,
         payeNumber: item.payeNumber || '',
@@ -1384,7 +1502,7 @@ export function usePayrollStore() {
         } else {
           // If staff does not exist in directory, add them
           const newEmp: Employee = {
-            id: `emp-${Date.now()}-${idx}`,
+            id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'emp-' + crypto.randomUUID() : `emp-${Date.now()}-${idx}`,
             code: item.code || `EMP-${Date.now().toString().slice(-4)}`,
             firstName: item.firstName || 'Staff',
             lastName: item.lastName || '',
@@ -1395,8 +1513,9 @@ export function usePayrollStore() {
             phone: item.phone || '',
             monthlyGross: Number(item.monthlyGross) || 150000,
             annualRent: Number(item.annualRent) || 0,
-            bankName: item.bankName || 'Access Bank',
-            accountNumber: item.accountNumber || '0000000000',
+            // Do NOT silently fill bank details — leave empty if missing to prevent wrong payments
+            bankName: item.bankName || '',
+            accountNumber: item.accountNumber || '',
             hasPension: item.hasPension ?? true,
             hasPaye: item.hasPaye ?? true,
             payeNumber: item.payeNumber || '',
@@ -1416,8 +1535,9 @@ export function usePayrollStore() {
   };
 
   const finalizeAndLockPayroll = (notes: string = '') => {
+    const normCurMonth = normalizeMonthKey(state.selectedMonth);
     const existingSnapshotsForMonth = state.snapshots.filter(
-      s => s.monthKey === state.selectedMonth && s.year === state.selectedYear
+      s => normalizeMonthKey(s.monthKey) === normCurMonth && s.year === state.selectedYear
     );
     const nextVersion = existingSnapshotsForMonth.length + 1;
 
@@ -1432,32 +1552,38 @@ export function usePayrollStore() {
       totalLoansDeducted: liveCalculatedItems.reduce((acc, i) => acc + (i.loanDeduction || 0), 0),
     };
 
+    // Capture the active team member name for the audit trail
+    const _activeMember = getActiveTeamMember();
+    const finalizedByName = _activeMember ? `${_activeMember.name} (${_activeMember.role})` : 'Payroll Administrator';
+
     const newSnapshot: PayrollSnapshot = {
-      id: `snap-${state.selectedMonth}-${state.selectedYear}-v${nextVersion}`,
-      monthKey: state.selectedMonth,
+      id: `snap-${normCurMonth}-${state.selectedYear}-v${nextVersion}`,
+      monthKey: normCurMonth,
       monthLabel,
       year: state.selectedYear,
       version: nextVersion,
       isLocked: true,
       finalizedAt: new Date().toISOString(),
-      finalizedBy: 'Payroll Administrator',
+      finalizedBy: finalizedByName,
       notes: notes || `Finalized ${monthLabel} ${state.selectedYear} payroll run (v${nextVersion})`,
       items: liveCalculatedItems,
       totals,
     };
 
-    // Amortize active loans when payroll is finalized
-    const currentPeriodKey = `${state.selectedYear}-${state.selectedMonth}`;
+    // Amortize active loans when payroll is finalized.
+    // IMPORTANT: Check for both auto-sync records (id starts with 'repay-auto-') AND
+    // manual records to prevent any double-deduction for the same period.
+    const currentPeriodKey = `${state.selectedYear}-${normCurMonth}`;
     const updatedLoans = (state.loans || []).map(loan => {
       if (loan.status !== 'Active' || (loan.remainingBalance || 0) <= 0) {
         return loan;
       }
-      // Avoid double deduction if already deducted for this period
+      // Avoid double deduction: skip if ANY history entry (auto or manual) exists for this period
       const alreadyDeducted = (loan.history || []).some(h => h.periodKey === currentPeriodKey);
       if (alreadyDeducted) return loan;
 
       const pItem = liveCalculatedItems.find(i => i.employeeId === loan.employeeId);
-      if (!pItem || !pItem.loanDeduction) return loan;
+      if (!pItem || (pItem.loanDeduction || 0) <= 0) return loan;
 
       const deductionForThis = Math.min(Number(loan.monthlyDeduction) || 0, Number(loan.remainingBalance) || 0);
       if (deductionForThis <= 0) return loan;
@@ -1467,7 +1593,7 @@ export function usePayrollStore() {
       const newStatus: LoanStatus = newRemaining <= 0 ? 'Paid' : 'Active';
 
       const repaymentRecord: LoanRepaymentRecord = {
-        id: `repay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        id: `repay-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2, 6)}`,
         periodKey: currentPeriodKey,
         amount: deductionForThis,
         paidAt: new Date().toISOString(),
@@ -1488,13 +1614,28 @@ export function usePayrollStore() {
       loans: updatedLoans,
       snapshots: [
         ...s.snapshots.map(snap => 
-          (snap.monthKey === s.selectedMonth && snap.year === s.selectedYear)
+          (normalizeMonthKey(snap.monthKey) === normCurMonth && snap.year === s.selectedYear)
             ? { ...snap, isLocked: false }
             : snap
         ),
         newSnapshot
       ]
     }));
+
+    // Instantly sync lock to Supabase Cloud so all devices (mobile, desktop) lock immediately
+    if (activeCompanyId) {
+      saveSnapshotToCloud(newSnapshot, activeCompanyId).catch(err => {
+        console.warn('Direct cloud lock upload failed, auto-sync will retry:', err);
+      });
+
+      // Update any previous versions of this period that became unlocked
+      const previousVersions = state.snapshots.filter(
+        snap => normalizeMonthKey(snap.monthKey) === normCurMonth && snap.year === state.selectedYear && snap.isLocked
+      );
+      previousVersions.forEach(prevSnap => {
+        saveSnapshotToCloud({ ...prevSnap, isLocked: false }, activeCompanyId).catch(() => {});
+      });
+    }
 
     logAuditEvent(
       activeCompanyId || '',
@@ -1505,14 +1646,29 @@ export function usePayrollStore() {
   };
 
   const unlockPayroll = (reason: string = '') => {
+    const normCurMonth = normalizeMonthKey(state.selectedMonth);
+    const updatedSnapshots = state.snapshots.map(snap => 
+      (normalizeMonthKey(snap.monthKey) === normCurMonth && snap.year === state.selectedYear)
+        ? { ...snap, isLocked: false, notes: snap.notes + ` | Unlocked: ${reason}` }
+        : snap
+    );
+
     setState(s => ({
       ...s,
-      snapshots: s.snapshots.map(snap => 
-        (snap.monthKey === s.selectedMonth && snap.year === s.selectedYear)
-          ? { ...snap, isLocked: false, notes: snap.notes + ` | Unlocked: ${reason}` }
-          : snap
-      )
+      snapshots: updatedSnapshots
     }));
+
+    // Instantly sync unlock to Supabase Cloud so all devices (mobile, desktop) unlock immediately
+    if (activeCompanyId) {
+      const unlockedSnapshots = updatedSnapshots.filter(
+        snap => normalizeMonthKey(snap.monthKey) === normCurMonth && snap.year === state.selectedYear
+      );
+      unlockedSnapshots.forEach(snap => {
+        saveSnapshotToCloud(snap, activeCompanyId).catch(err => {
+          console.warn('Direct cloud unlock upload failed, auto-sync will retry:', err);
+        });
+      });
+    }
 
     logAuditEvent(
       activeCompanyId || '',
@@ -1527,6 +1683,12 @@ export function usePayrollStore() {
       ...s,
       snapshots: s.snapshots.filter(snap => snap.id !== snapshotId),
     }));
+
+    if (activeCompanyId) {
+      deleteSnapshotFromCloud(snapshotId, activeCompanyId).catch(err => {
+        console.warn('Direct cloud snapshot deletion failed:', err);
+      });
+    }
   };
 
   const updatePayrollVariables = (vars: Partial<PayrollVariables>) => {
@@ -1541,6 +1703,41 @@ export function usePayrollStore() {
       ...s,
       payeTaxVariables: { ...s.payeTaxVariables, ...vars }
     }));
+  };
+
+  const updateEmailSettings = (settings: Partial<EmailSettings>) => {
+    setState(s => {
+      const nextSettings = {
+        ...(s.emailSettings || DEFAULT_EMAIL_SETTINGS),
+        ...settings,
+      };
+      if (activeCompanyId) {
+        saveEmailSettingsToCloud(nextSettings, activeCompanyId).catch(err => {
+          console.warn('Failed to save email settings to cloud:', err);
+        });
+      }
+      return {
+        ...s,
+        emailSettings: nextSettings
+      };
+    });
+  };
+
+  const recordEmailedPayslips = (records: EmailedPayslipRecord[]) => {
+    setState(s => {
+      const current = s.emailedPayslips || {};
+      const next = { ...current };
+      records.forEach(r => {
+        const key = `${r.periodKey}_${r.employeeId}`;
+        next[key] = r;
+      });
+      if (activeCompanyId) {
+        saveEmailedPayslipsToCloud(next, activeCompanyId).catch(err => {
+          console.warn('Failed to save emailed payslips to cloud:', err);
+        });
+      }
+      return { ...s, emailedPayslips: next };
+    });
   };
 
   const addDepartment = (deptName: string) => {
@@ -1680,7 +1877,7 @@ export function usePayrollStore() {
     const monthly = Math.max(0, Number(loanData.monthlyDeduction) || 0);
     const newLoan: EmployeeLoan = {
       ...loanData,
-      id: `loan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'loan-' + crypto.randomUUID() : `loan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       principalAmount: principal,
       monthlyDeduction: monthly > 0 ? monthly : principal,
       totalRepaid: 0,
@@ -1889,8 +2086,11 @@ export function usePayrollStore() {
     applyAllPeriodLoanDeductions,
     resetAllData,
     reloadFromStorage,
-    isWorkspaceLoading,
     isOnline,
     isCloudOffline,
+    emailSettings: state.emailSettings || DEFAULT_EMAIL_SETTINGS,
+    updateEmailSettings,
+    emailedPayslips: state.emailedPayslips || {},
+    recordEmailedPayslips,
   };
 }

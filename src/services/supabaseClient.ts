@@ -12,6 +12,10 @@ import {
   TeamMember,
   AuditLogEntry
 } from '../types';
+import { hashCredential, verifyCredential, isBcryptHash } from '../utils/cryptoAuth';
+
+// Re-export for consumers that imported from here
+export { hashCredential, verifyCredential, isBcryptHash };
 
 export const SUPABASE_CONFIG_STORAGE_KEY = 'PAYROLL_PRO_SUPABASE_CONFIG_V1';
 export const ACTIVE_TEAM_MEMBER_STORAGE_KEY = 'PAYROLL_PRO_ACTIVE_MEMBER_V1';
@@ -237,6 +241,7 @@ export interface StaffPresence {
 }
 
 let presenceChannel: ReturnType<ReturnType<typeof createClient>['channel']> | null = null;
+let presenceHeartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Join the shared presence channel and broadcast this user's session.
@@ -280,14 +285,14 @@ export function joinPresenceChannel(presence: StaffPresence): void {
     });
 
   // Heartbeat: update lastSeenAt every 30 seconds to confirm still active
-  const heartbeatInterval = setInterval(async () => {
+  // Store the interval ID at module scope so leavePresenceChannel can clear it reliably.
+  if (presenceHeartbeatInterval) clearInterval(presenceHeartbeatInterval);
+  presenceHeartbeatInterval = setInterval(async () => {
     if (presenceChannel) {
       await presenceChannel.track({
         ...presence,
         lastSeenAt: new Date().toISOString(),
       });
-    } else {
-      clearInterval(heartbeatInterval);
     }
   }, 30_000);
 }
@@ -298,6 +303,11 @@ export function joinPresenceChannel(presence: StaffPresence): void {
  * rather than waiting for the WebSocket heartbeat timeout.
  */
 export function leavePresenceChannel(): void {
+  // Always clear the heartbeat first to prevent zombie interval
+  if (presenceHeartbeatInterval) {
+    clearInterval(presenceHeartbeatInterval);
+    presenceHeartbeatInterval = null;
+  }
   if (presenceChannel) {
     // untrack() explicitly removes this user from presence state on the server.
     // Without it, the entry lingers until the WebSocket heartbeat times out
@@ -432,7 +442,9 @@ export async function uploadCompanyDataToSupabase(
   loans: EmployeeLoan[],
   snapshots: PayrollSnapshot[],
   payslipDesign?: PayslipDesignConfig,
-  savedPresets?: PayslipCustomPreset[]
+  savedPresets?: PayslipCustomPreset[],
+  emailSettings?: any,
+  emailedPayslips?: Record<string, any>
 ): Promise<{ success: boolean; error?: string }> {
   const client = getSupabaseClient();
   if (!client) {
@@ -442,7 +454,7 @@ export async function uploadCompanyDataToSupabase(
   try {
     const companyId = company.id || 'comp-default';
 
-    // 1. Upsert Company
+    // 1. Upsert Company — always hash credentials before storing
     const { error: compErr } = await client.from('companies').upsert({
       id: companyId,
       name: company.name,
@@ -452,10 +464,12 @@ export async function uploadCompanyDataToSupabase(
       email: company.email || '',
       logo_url: company.logoUrl || '',
       has_password: Boolean(company.hasPassword),
-      password: company.password || '',
+      password: company.password ? hashCredential(company.password) : '',
       password_hint: company.passwordHint || '',
       security_question: company.securityQuestion || '',
-      security_answer: company.securityAnswer || '',
+      security_answer: company.securityAnswer ? hashCredential(company.securityAnswer) : '',
+      email_settings: emailSettings || {},
+      emailed_payslips: emailedPayslips || {},
       updated_at: new Date().toISOString(),
     });
     if (compErr) throw new Error(`Companies upsert failed: ${compErr.message}`);
@@ -521,6 +535,7 @@ export async function uploadCompanyDataToSupabase(
       employer_pension_rate: payrollVariables.employerPensionRate,
       salary_calculation_mode: payrollVariables.salaryCalculationMode || 'gross-to-net',
       employment_type_rules: payrollVariables.employmentTypeRules || [],
+      prorate_mid_month: Boolean(payrollVariables.prorateMidMonth),
       updated_at: new Date().toISOString(),
     });
 
@@ -633,6 +648,8 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
   snapshots?: PayrollSnapshot[];
   payslipDesign?: PayslipDesignConfig;
   savedPayslipPresets?: PayslipCustomPreset[];
+  emailSettings?: any;
+  emailedPayslips?: Record<string, any>;
   error?: string;
 }> {
   const client = getSupabaseClient();
@@ -721,6 +738,13 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       securityAnswer: compData.security_answer || '',
     } : undefined;
 
+    const cloudEmailSettings = (compData && compData.email_settings && Object.keys(compData.email_settings).length > 0)
+      ? compData.email_settings
+      : undefined;
+    const cloudEmailedPayslips = (compData && compData.emailed_payslips && Object.keys(compData.emailed_payslips).length > 0)
+      ? compData.emailed_payslips
+      : undefined;
+
     const formattedEmployees: Employee[] = (empData || []).map(e => ({
       id: e.id,
       code: e.code,
@@ -796,6 +820,7 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
         employerPensionRate: Number(pvData.employer_pension_rate) || 10,
         salaryCalculationMode: pvData.salary_calculation_mode || 'gross-to-net',
         employmentTypeRules: pvData.employment_type_rules || [],
+        prorateMidMonth: Boolean(pvData.prorate_mid_month),
       } : undefined,
       payeTaxVariables: ptvData ? {
         craBase: Number(ptvData.cra_base) || 800000,
@@ -813,6 +838,8 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
         createdAt: p.created_at,
         design: p.config,
       })),
+      emailSettings: cloudEmailSettings,
+      emailedPayslips: cloudEmailedPayslips,
     };
   } catch (err: any) {
     console.error('Failed to download company data from Supabase:', err);
@@ -885,10 +912,10 @@ export async function syncCompanyToSupabase(company: CompanyAccount): Promise<{
       email: company.email || '',
       logo_url: company.logoUrl || '',
       has_password: Boolean(company.hasPassword),
-      password: company.password || '',
+      password: company.password ? hashCredential(company.password) : '',
       password_hint: company.passwordHint || '',
       security_question: company.securityQuestion || '',
-      security_answer: company.securityAnswer || '',
+      security_answer: company.securityAnswer ? hashCredential(company.securityAnswer) : '',
       updated_at: new Date().toISOString(),
     });
 
@@ -1088,8 +1115,25 @@ export function setActiveTeamMember(member: TeamMember | null): void {
   }
 }
 
+const LOCAL_AUDIT_LOGS_KEY = 'payroll_local_audit_logs';
+
+export function getLocalAuditLogs(): AuditLogEntry[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_AUDIT_LOGS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalAuditLogs(logs: AuditLogEntry[]): void {
+  try {
+    localStorage.setItem(LOCAL_AUDIT_LOGS_KEY, JSON.stringify(logs.slice(0, 500)));
+  } catch {}
+}
+
 /**
- * Logs an audit event to the cloud database
+ * Logs an audit event to the cloud database and local audit cache
  */
 export async function logAuditEvent(
   companyId: string,
@@ -1097,14 +1141,31 @@ export async function logAuditEvent(
   action: string,
   details: string
 ): Promise<void> {
+  const activeMember = getActiveTeamMember();
+  const actorName = activeMember ? `${activeMember.name} (${activeMember.role})` : 'Payroll Administrator';
+  const actorId = activeMember?.id || 'admin';
+  const nowIso = new Date().toISOString();
+
+  // 1. Record to local audit cache immediately
+  const localEntry: AuditLogEntry = {
+    id: 'audit-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+    companyId: companyId || '',
+    companyName: companyName || '',
+    actorId,
+    actorName,
+    action,
+    details,
+    ipOrDevice: 'Desktop Workspace',
+    createdAt: nowIso
+  };
+  const currentLogs = getLocalAuditLogs();
+  saveLocalAuditLogs([localEntry, ...currentLogs]);
+
+  // 2. If connected to Supabase cloud, also record remotely
   const client = getSupabaseClient();
   if (!client) return;
 
   try {
-    const activeMember = getActiveTeamMember();
-    const actorName = activeMember ? `${activeMember.name} (${activeMember.role})` : 'Payroll Administrator';
-    const actorId = activeMember?.id || 'admin';
-
     await client.from('audit_logs').insert({
       company_id: companyId || '',
       company_name: companyName || '',
@@ -1113,55 +1174,70 @@ export async function logAuditEvent(
       action,
       details,
       ip_or_device: 'Desktop Workspace',
-      created_at: new Date().toISOString()
+      created_at: nowIso
     });
   } catch (err) {
-    console.warn('Failed to record audit log:', err);
+    console.warn('Failed to record audit log to cloud:', err);
   }
 }
 
 /**
- * Fetches recent audit logs from the cloud database
+ * Fetches recent audit logs from the cloud database or local cache
  */
-export async function fetchAuditLogs(companyId?: string, limit: number = 100): Promise<{
+export async function fetchAuditLogs(companyId?: string, limit: number = 200): Promise<{
   success: boolean;
   logs?: AuditLogEntry[];
   error?: string;
 }> {
   const client = getSupabaseClient();
-  if (!client) return { success: false, error: 'Cloud server not connected.' };
+  const localLogs = getLocalAuditLogs();
 
-  try {
-    let query = client
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+  if (client) {
+    try {
+      let query = client
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-    if (companyId) {
-      query = query.eq('company_id', companyId);
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { data, error } = await query;
+      if (!error && data) {
+        const cloudFormatted: AuditLogEntry[] = data.map((row: any) => ({
+          id: row.id,
+          companyId: row.company_id,
+          companyName: row.company_name,
+          actorId: row.actor_id,
+          actorName: row.actor_name,
+          action: row.action,
+          details: row.details,
+          ipOrDevice: row.ip_or_device,
+          createdAt: row.created_at,
+        }));
+
+        // Merge cloud logs with any local-only logs
+        const cloudIds = new Set(cloudFormatted.map(c => c.id));
+        const merged = [
+          ...cloudFormatted,
+          ...localLogs.filter(l => !cloudIds.has(l.id) && (!companyId || l.companyId === companyId))
+        ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        saveLocalAuditLogs(merged);
+        return { success: true, logs: merged.slice(0, limit) };
+      }
+    } catch (err) {
+      console.warn('Failed to fetch from cloud audit_logs, using local cache:', err);
     }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    const formatted: AuditLogEntry[] = (data || []).map((row: any) => ({
-      id: row.id,
-      companyId: row.company_id,
-      companyName: row.company_name,
-      actorId: row.actor_id,
-      actorName: row.actor_name,
-      action: row.action,
-      details: row.details,
-      ipOrDevice: row.ip_or_device,
-      createdAt: row.created_at,
-    }));
-
-    return { success: true, logs: formatted };
-  } catch (err: any) {
-    console.error('Failed to fetch audit logs:', err);
-    return { success: false, error: err?.message || 'Failed to fetch audit logs' };
   }
+
+  // Fallback to local logs
+  const filtered = companyId
+    ? localLogs.filter(l => l.companyId === companyId)
+    : localLogs;
+  return { success: true, logs: filtered.slice(0, limit) };
 }
 
 /**
@@ -1225,13 +1301,17 @@ export async function saveTeamMemberToCloud(member: TeamMember): Promise<{
   if (!client) return { success: false, error: 'Cloud server not connected.' };
 
   try {
+    // Always hash the PIN / password before writing to the database
+    const rawPin = member.pin || member.password || '';
+    const hashedPin = rawPin ? hashCredential(rawPin) : '';
+
     const payload: any = {
       id: member.id,
       name: member.name,
       email: member.email || '',
       username: member.username || member.email?.split('@')[0] || '',
       role: member.role,
-      pin: member.pin || member.password || '1234',
+      pin: hashedPin,
       is_active: member.isActive,
       updated_at: new Date().toISOString(),
     };
@@ -1243,8 +1323,9 @@ export async function saveTeamMemberToCloud(member: TeamMember): Promise<{
     if (member.biometricEnabled !== undefined) payload.biometric_enabled = member.biometricEnabled;
 
     if (member.password !== undefined) {
-      payload.password = member.password;
-      payload.pin = member.password;
+      const hashedPassword = hashCredential(member.password);
+      payload.password = hashedPassword;
+      payload.pin = hashedPassword;
     }
     if (member.passwordHint !== undefined) payload.password_hint = member.passwordHint;
     if (member.securityQuestion !== undefined) payload.security_question = member.securityQuestion;
@@ -1257,22 +1338,24 @@ export async function saveTeamMemberToCloud(member: TeamMember): Promise<{
 
     // If error was due to missing newly added columns in legacy schema, fallback to base columns
     if (error && (error.message?.includes('column') || error.code === '42703')) {
+      const fallbackHashedPin = hashedPin || hashCredential(member.pin || member.password || '1234');
       const basePayload: any = {
         id: member.id,
         name: member.name,
         email: member.email || '',
         username: member.username || member.email?.split('@')[0] || '',
         role: member.role,
-        pin: member.pin || member.password || '1234',
+        pin: fallbackHashedPin,
         is_active: member.isActive,
         updated_at: new Date().toISOString(),
       };
       if (member.password !== undefined) {
-        basePayload.password = member.password;
-        basePayload.pin = member.password;
+        const hp = hashCredential(member.password);
+        basePayload.password = hp;
+        basePayload.pin = hp;
       }
       if (member.securityQuestion !== undefined) basePayload.security_question = member.securityQuestion;
-      if (member.securityAnswer !== undefined) basePayload.security_answer = member.securityAnswer;
+      if (member.securityAnswer !== undefined) basePayload.security_answer = member.securityAnswer ? hashCredential(member.securityAnswer) : '';
       if (member.recoveryEmail !== undefined) basePayload.recovery_email = member.recoveryEmail;
       if (member.tempPassword !== undefined) basePayload.temp_password = member.tempPassword;
       if (member.mustChangePassword !== undefined) basePayload.must_change_password = member.mustChangePassword;
@@ -1344,6 +1427,328 @@ export async function deleteEmployeeFromCloud(employeeId: string, companyId?: st
   } catch (err: any) {
     console.error('Failed to delete employee from cloud:', err);
     return { success: false, error: err?.message || 'Failed to delete employee' };
+  }
+}
+
+/**
+ * Deletes a loan record from the cloud database
+ */
+export async function deleteLoanFromCloud(loanId: string, companyId?: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    let query = client.from('employee_loans').delete().eq('id', loanId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to delete loan from cloud:', err);
+    return { success: false, error: err?.message || 'Failed to delete loan' };
+  }
+}
+
+/**
+ * Deletes a payroll snapshot record from the cloud database
+ */
+export async function deleteSnapshotFromCloud(snapshotId: string, companyId?: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    let query = client.from('payroll_snapshots').delete().eq('id', snapshotId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to delete snapshot from cloud:', err);
+    return { success: false, error: err?.message || 'Failed to delete snapshot' };
+  }
+}
+
+/**
+ * Deletes a department record from the cloud database
+ */
+export async function deleteDepartmentFromCloud(deptName: string, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const { error } = await client
+      .from('departments')
+      .delete()
+      .eq('company_id', companyId)
+      .eq('name', deptName);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to delete department from cloud:', err);
+    return { success: false, error: err?.message || 'Failed to delete department' };
+  }
+}
+
+/**
+ * Saves or updates a single employee record in the cloud database
+ */
+export async function saveSingleEmployeeToCloud(employee: Employee, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const row = {
+      id: employee.id,
+      company_id: companyId,
+      code: employee.code,
+      first_name: employee.firstName,
+      last_name: employee.lastName,
+      department: employee.department || 'GENERAL',
+      position: employee.position || 'STAFF',
+      email: employee.email || '',
+      phone: employee.phone || '',
+      monthly_gross: employee.monthlyGross || 0,
+      annual_rent: employee.annualRent || 0,
+      bank_name: employee.bankName || '',
+      account_number: employee.accountNumber || '',
+      has_pension: Boolean(employee.hasPension),
+      has_paye: Boolean(employee.hasPaye),
+      paye_number: employee.payeNumber || '',
+      pension_number: employee.pensionNumber || '',
+      pfa_name: employee.pfaName || '',
+      status: employee.status || 'Active',
+      employment_type: employee.employmentType || 'Full-Time',
+      state_of_residence: employee.stateOfResidence || 'Lagos',
+      start_date: employee.startDate || '',
+      end_date: employee.endDate || '',
+      original_hire_date: employee.originalHireDate || '',
+      stints: employee.stints || [],
+      monthly_salaries: employee.monthlySalaries || {},
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await client.from('employees').upsert([row]);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to save single employee to cloud:', err);
+    return { success: false, error: err?.message || 'Failed to save employee' };
+  }
+}
+
+/**
+ * Saves or updates a single loan record in the cloud database
+ */
+export async function saveSingleLoanToCloud(loan: EmployeeLoan, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const row = {
+      id: loan.id,
+      company_id: companyId,
+      employee_id: loan.employeeId,
+      type: loan.type,
+      principal_amount: loan.principalAmount,
+      monthly_deduction: loan.monthlyDeduction,
+      total_repaid: loan.totalRepaid,
+      remaining_balance: loan.remainingBalance,
+      start_period_key: loan.startPeriodKey,
+      status: loan.status,
+      disbursement_date: loan.disbursementDate || '',
+      repayment_date: loan.repaymentDate || '',
+      repayment_start_date: loan.repaymentStartDate || '',
+      notes: loan.notes || '',
+      description: loan.description || '',
+      history: loan.history || [],
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await client.from('employee_loans').upsert([row]);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to save single loan to cloud:', err);
+    return { success: false, error: err?.message || 'Failed to save loan' };
+  }
+}
+
+/**
+ * Saves or updates a single snapshot record in the cloud database
+ */
+export async function saveSnapshotToCloud(snap: PayrollSnapshot, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const row = {
+      id: snap.id,
+      company_id: companyId,
+      month_key: snap.monthKey,
+      month_label: snap.monthLabel,
+      year: snap.year,
+      version: snap.version || 1,
+      is_locked: Boolean(snap.isLocked),
+      finalized_at: snap.finalizedAt || new Date().toISOString(),
+      finalized_by: snap.finalizedBy || 'Administrator',
+      notes: snap.notes || '',
+      items: snap.items || [],
+      totals: snap.totals || {},
+    };
+    const { error } = await client.from('payroll_snapshots').upsert([row]);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to save snapshot to cloud:', err);
+    return { success: false, error: err?.message || 'Failed to save snapshot' };
+  }
+}
+
+/**
+ * Saves a department to the cloud database
+ */
+export async function saveDepartmentToCloud(name: string, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const { error } = await client.from('departments').upsert([{ company_id: companyId, name }], { onConflict: 'company_id,name' });
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to save department to cloud:', err);
+    return { success: false, error: err?.message || 'Failed to save department' };
+  }
+}
+
+/**
+ * Saves payroll variables to the cloud database
+ */
+export async function savePayrollVariablesToCloud(vars: PayrollVariables, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const { error } = await client.from('payroll_variables').upsert({
+      company_id: companyId,
+      basic: vars.basic,
+      housing: vars.housing,
+      transport: vars.transport,
+      other_allowances: vars.otherAllowances,
+      employee_pension_rate: vars.employeePensionRate,
+      employer_pension_rate: vars.employerPensionRate,
+      salary_calculation_mode: vars.salaryCalculationMode || 'gross-to-net',
+      employment_type_rules: vars.employmentTypeRules || [],
+      prorate_mid_month: Boolean(vars.prorateMidMonth),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to save payroll variables to cloud:', err);
+    return { success: false, error: err?.message || 'Failed to save variables' };
+  }
+}
+
+/**
+ * Saves PAYE tax variables to the cloud database
+ */
+export async function savePayeVariablesToCloud(vars: PayeTaxVariables, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const { error } = await client.from('paye_tax_variables').upsert({
+      company_id: companyId,
+      cra_base: vars.craBase,
+      rent_relief_rate: vars.rentReliefRate,
+      rent_relief_cap: vars.rentReliefCap,
+      tax_brackets: vars.taxBrackets,
+      extra_conditions: vars.extraConditions,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to save PAYE variables to cloud:', err);
+    return { success: false, error: err?.message || 'Failed to save PAYE variables' };
+  }
+}
+
+/**
+ * Saves company email settings directly to the cloud database
+ */
+export async function saveEmailSettingsToCloud(settings: any, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const { error } = await client
+      .from('companies')
+      .update({
+        email_settings: settings,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', companyId);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to save email settings to cloud:', err);
+    return { success: false, error: err?.message || 'Failed to save email settings' };
+  }
+}
+
+/**
+ * Saves dispatched payslip audit records to the cloud database
+ */
+export async function saveEmailedPayslipsToCloud(records: Record<string, any>, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const { error } = await client
+      .from('companies')
+      .update({
+        emailed_payslips: records,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', companyId);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to save emailed payslips to cloud:', err);
+    return { success: false, error: err?.message || 'Failed to save emailed payslips' };
   }
 }
 
@@ -1520,6 +1925,11 @@ export async function loginStaffMember(
       recoveryEmail: row.recovery_email,
       mustChangePassword: mustChange,
       isActive: true,
+      phone: row.phone || '',
+      avatarColor: row.avatar_color || '',
+      twoFactorEnabled: Boolean(row.two_factor_enabled),
+      twoFactorSecret: row.two_factor_secret || '',
+      biometricEnabled: Boolean(row.biometric_enabled),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

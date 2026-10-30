@@ -30,7 +30,11 @@ import {
   ShieldCheck,
   Briefcase,
   History,
-  Cloud
+  Cloud,
+  Mail,
+  Eye,
+  EyeOff,
+  Send
 } from 'lucide-react';
 import { 
   CompanyProfile, 
@@ -45,7 +49,9 @@ import {
   ResetOptions,
   EmployeeLoan,
   PayslipDesignConfig,
-  TeamMember
+  TeamMember,
+  EmailSettings,
+  DEFAULT_EMAIL_SETTINGS
 } from '../../types';
 import { 
   DEFAULT_PAYROLL_VARIABLES, 
@@ -62,8 +68,9 @@ import {
 import { ExportScopeModal } from '../excel/ExportScopeModal';
 import { MONTHS } from '../../store/usePayrollStore';
 import { CompanyAuditAndTeamTab } from './CompanyAuditAndTeamTab';
+import { SMTP_PRESETS, testEmailServiceConnection } from '../../services/emailService';
 
-export type SettingsTab = 'branding' | 'tax' | 'excel' | 'audit_team' | 'reset';
+export type SettingsTab = 'branding' | 'tax' | 'excel' | 'email' | 'audit_team' | 'reset';
 
 export interface DirtyStateInfo {
   isDirty: boolean;
@@ -100,6 +107,8 @@ interface SettingsViewProps {
   onRegisterDirtyState?: (info: DirtyStateInfo | null) => void;
   onRefreshData?: () => void;
   currentUser?: TeamMember | null;
+  emailSettings?: EmailSettings;
+  onUpdateEmailSettings?: (s: Partial<EmailSettings>) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -129,17 +138,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onNavigate,
   onRegisterDirtyState,
   onRefreshData,
-  currentUser
+  currentUser,
+  emailSettings = DEFAULT_EMAIL_SETTINGS,
+  onUpdateEmailSettings,
 }) => {
-  const isAdmin = currentUser?.role === 'Admin';
+  const isAdmin = currentUser ? currentUser.role === 'Admin' : true;
   const isAuditor = currentUser?.role === 'Auditor';
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
-    if ((initialTab === 'audit_team' || initialTab === 'reset') && !isAdmin) return 'branding';
+    if ((initialTab === 'audit_team' || initialTab === 'reset' || initialTab === 'email') && !isAdmin) return 'branding';
     return initialTab;
   });
 
+  // Sync initialTab when navigated to directly from external links or modals (e.g. Email Settings)
   useEffect(() => {
-    if (!isAdmin && (activeTab === 'audit_team' || activeTab === 'reset')) {
+    if (initialTab) {
+      if ((initialTab === 'audit_team' || initialTab === 'reset' || initialTab === 'email') && !isAdmin) {
+        setActiveTab('branding');
+      } else {
+        setActiveTab(initialTab);
+      }
+    }
+  }, [initialTab, isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && (activeTab === 'audit_team' || activeTab === 'reset' || activeTab === 'email')) {
       setActiveTab('branding');
     }
   }, [isAdmin, activeTab]);
@@ -147,6 +169,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   // --- BRANDING STATE ---
   const [companyForm, setCompanyForm] = useState<CompanyProfile>(company);
   const [brandingSaved, setBrandingSaved] = useState(false);
+  const [confirmDeleteLogo, setConfirmDeleteLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Sync if company prop changes externally when not dirty
@@ -221,6 +244,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       pv.employeePensionRate !== payrollVariables.employeePensionRate ||
       pv.employerPensionRate !== payrollVariables.employerPensionRate ||
       (pv.salaryCalculationMode || 'gross-to-net') !== (payrollVariables.salaryCalculationMode || 'gross-to-net') ||
+      Boolean(pv.prorateMidMonth) !== Boolean(payrollVariables.prorateMidMonth) ||
       JSON.stringify(pv.employmentTypeRules || []) !== JSON.stringify(payrollVariables.employmentTypeRules || []);
 
     const tvChanged = 
@@ -257,22 +281,83 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     saveTax();
   };
 
+  // Email Dispatch settings state
+  const [emailForm, setEmailForm] = useState<EmailSettings>(emailSettings);
+  const [emailSaved, setEmailSaved] = useState(false);
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    if (emailSettings) {
+      setEmailForm(emailSettings);
+    }
+  }, [emailSettings]);
+
+  const isEmailDirty = useMemo(() => {
+    return JSON.stringify(emailForm) !== JSON.stringify(emailSettings);
+  }, [emailForm, emailSettings]);
+
+  const saveEmail = (): boolean => {
+    if (isAuditor) {
+      alert('Read-Only Mode: Modifying email settings is disabled.');
+      return false;
+    }
+    if (onUpdateEmailSettings) {
+      onUpdateEmailSettings(emailForm);
+      setEmailSaved(true);
+      setTimeout(() => setEmailSaved(false), 2500);
+      return true;
+    }
+    return false;
+  };
+
+  const discardEmail = () => {
+    setEmailForm(emailSettings);
+  };
+
+  const handleTestEmailConnection = async () => {
+    setIsTestingEmail(true);
+    setTestResult(null);
+    try {
+      const res = await testEmailServiceConnection(emailForm);
+      if (res.success) {
+        setTestResult({
+          success: true,
+          message: emailForm.provider === 'smtp'
+            ? 'SMTP Handshake Verified! Mail server accepted credentials and is ready.'
+            : 'Resend API Verified! Credentials valid and cloud delivery is active.'
+        });
+      } else {
+        setTestResult({
+          success: false,
+          message: res.error || 'Connection test failed. Please verify credentials.'
+        });
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: err?.message || 'Error occurred while testing mail connection.'
+      });
+    } finally {
+      setIsTestingEmail(false);
+    }
+  };
+
   // Register dirty state with App.tsx for leaving Settings
   useEffect(() => {
     if (!onRegisterDirtyState) return;
 
-    const isDirty = isBrandingDirty || isTaxDirty;
-    const tabName = isBrandingDirty && isTaxDirty
-      ? 'Company Branding and Tax Variables'
-      : isBrandingDirty
-        ? 'Company & Branding'
-        : isTaxDirty
-          ? 'Tax & Variables'
-          : undefined;
+    const isDirty = isBrandingDirty || isTaxDirty || isEmailDirty;
+    const tabName = [
+      isBrandingDirty ? 'Company & Branding' : null,
+      isTaxDirty ? 'Tax & Variables' : null,
+      isEmailDirty ? 'Email Delivery' : null
+    ].filter(Boolean).join(', ');
 
     onRegisterDirtyState({
       isDirty,
-      tabName,
+      tabName: tabName || undefined,
       save: () => {
         let ok = true;
         if (isBrandingDirty) {
@@ -281,22 +366,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         if (ok && isTaxDirty) {
           ok = saveTax();
         }
+        if (ok && isEmailDirty) {
+          ok = saveEmail();
+        }
         return ok;
       },
       discard: () => {
         if (isBrandingDirty) discardBranding();
         if (isTaxDirty) discardTax();
+        if (isEmailDirty) discardEmail();
       }
     });
 
     return () => {
       onRegisterDirtyState(null);
     };
-  }, [isBrandingDirty, isTaxDirty, companyForm, pv, tv, company, payrollVariables, payeTaxVariables, onRegisterDirtyState, isPercentageValid]);
+  }, [isBrandingDirty, isTaxDirty, isEmailDirty, companyForm, pv, tv, emailForm, company, payrollVariables, payeTaxVariables, emailSettings, onRegisterDirtyState, isPercentageValid]);
 
   // Window beforeunload prompt if dirty
   useEffect(() => {
-    const isDirty = isBrandingDirty || isTaxDirty;
+    const isDirty = isBrandingDirty || isTaxDirty || isEmailDirty;
     if (!isDirty) return;
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -307,7 +396,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isBrandingDirty, isTaxDirty]);
+  }, [isBrandingDirty, isTaxDirty, isEmailDirty]);
 
   // Tab switching guard within SettingsView
   const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
@@ -328,6 +417,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
 
+    if (activeTab === 'email' && isEmailDirty) {
+      setPendingTab(targetTab);
+      setIsTabModalOpen(true);
+      return;
+    }
+
     setActiveTab(targetTab);
   };
 
@@ -337,6 +432,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       ok = saveBranding();
     } else if (activeTab === 'tax') {
       ok = saveTax();
+    } else if (activeTab === 'email') {
+      ok = saveEmail();
     }
 
     if (ok && pendingTab) {
@@ -351,6 +448,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       discardBranding();
     } else if (activeTab === 'tax') {
       discardTax();
+    } else if (activeTab === 'email') {
+      discardEmail();
     }
 
     if (pendingTab) {
@@ -716,6 +815,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </button>
               </>
             )}
+
+            {activeTab === 'email' && isAdmin && (
+              <>
+                {emailSaved && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in duration-200">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Saved!</span>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => saveEmail()}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs ${
+                    isEmailDirty
+                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  }`}
+                  title={isEmailDirty ? 'Unsaved modifications ready to save' : 'Save email settings'}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Email Settings</span>
+                  {isEmailDirty && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -762,6 +888,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Excel Sync</span>
           </button>
+
+          {isAdmin && (
+            <button
+              onClick={() => handleTabChange('email')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${
+                activeTab === 'email'
+                  ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>Email Delivery</span>
+              {isEmailDirty && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" title="Unsaved modifications" />
+              )}
+            </button>
+          )}
 
           {isAdmin && (
             <button
@@ -837,13 +980,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <span>Upload Logo</span>
                     </label>
                     {companyForm.logoUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setCompanyForm(prev => ({ ...prev, logoUrl: '' }))}
-                        className="px-3 py-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 text-xs transition cursor-pointer"
-                      >
-                        Remove Logo
-                      </button>
+                      confirmDeleteLogo ? (
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-lg text-xs">
+                          <span className="text-rose-700 dark:text-rose-400 font-medium">Delete logo?</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCompanyForm(prev => ({ ...prev, logoUrl: '' }));
+                              setConfirmDeleteLogo(false);
+                            }}
+                            className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-[11px] font-semibold transition cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteLogo(false)}
+                            className="px-2 py-0.5 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 text-[11px] transition cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteLogo(true)}
+                          className="px-3 py-1.5 text-zinc-500 hover:text-rose-600 dark:hover:text-rose-400 text-xs transition cursor-pointer"
+                        >
+                          Remove Logo
+                        </button>
+                      )
                     )}
                   </div>
                 )}
@@ -1030,6 +1196,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   )}
                 </div>
               </button>
+            </div>
+          </div>
+
+          {/* Mid-Month Proration Setting */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                    Mid-Month Proration (Joiners &amp; Leavers)
+                  </h2>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                    pv.prorateMidMonth
+                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                  }`}>
+                    {pv.prorateMidMonth ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Automatically calculate prorated salaries for employees who join or leave during the payroll month based on exact calendar days active.
+                </p>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={Boolean(pv.prorateMidMonth)}
+                  onChange={(e) => {
+                    const updated = { ...pv, prorateMidMonth: e.target.checked };
+                    setPv(updated);
+                    onUpdatePayrollVariables(updated);
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
             </div>
           </div>
 
@@ -1900,6 +2103,426 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
           )}
+
+        </div>
+      )}
+
+      {/* ================= TAB: EMAIL DELIVERY & AUTOMATION ================= */}
+      {activeTab === 'email' && isAdmin && (
+        <div className="space-y-6 max-w-4xl">
+          
+          {/* Header & Save Action Bar */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                Email Delivery &amp; Payslip Automation
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                Configure your company mail server or cloud email API to automatically dispatch official PDF payslips to employees.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {emailSaved && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 font-medium">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Saved</span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={saveEmail}
+                disabled={isAuditor || !isEmailDirty}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Email Settings</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Section 1: Provider Selection */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Delivery Provider Method
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Choose how Payroll Pro connects to the internet to dispatch outgoing employee payslips.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Option 1: SMTP */}
+              <button
+                type="button"
+                onClick={() => setEmailForm(prev => ({ ...prev, provider: 'smtp' }))}
+                className={`text-left p-4 rounded-lg border transition flex items-start justify-between gap-3 ${
+                  emailForm.provider === 'smtp'
+                    ? 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-500 dark:border-blue-400 ring-1 ring-blue-500/20 shadow-2xs'
+                    : 'bg-white dark:bg-[#141418] border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                }`}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                      Direct SMTP Server
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-medium">
+                      Desktop Native
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">
+                    Use your corporate mailbox (Gmail, Microsoft 365, Zoho, or cPanel). No subscription fees.
+                  </p>
+                </div>
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                  emailForm.provider === 'smtp'
+                    ? 'border-blue-600 bg-blue-600'
+                    : 'border-zinc-300 dark:border-zinc-700'
+                }`}>
+                  {emailForm.provider === 'smtp' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+              </button>
+
+              {/* Option 2: Resend API */}
+              <button
+                type="button"
+                onClick={() => setEmailForm(prev => ({ ...prev, provider: 'resend' }))}
+                className={`text-left p-4 rounded-lg border transition flex items-start justify-between gap-3 ${
+                  emailForm.provider === 'resend'
+                    ? 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-500 dark:border-blue-400 ring-1 ring-blue-500/20 shadow-2xs'
+                    : 'bg-white dark:bg-[#141418] border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                }`}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                      Resend Cloud API
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-medium">
+                      Cloud REST API
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">
+                    Modern email API with ultra-fast delivery. Ideal for cloud deployments and high volume.
+                  </p>
+                </div>
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                  emailForm.provider === 'resend'
+                    ? 'border-purple-600 bg-purple-600'
+                    : 'border-zinc-300 dark:border-zinc-700'
+                }`}>
+                  {emailForm.provider === 'resend' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Section 2A: SMTP Server Configuration */}
+          {emailForm.provider === 'smtp' && (
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                    SMTP Server Configuration
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Select a one-click provider preset or enter custom host credentials.
+                  </p>
+                </div>
+
+                {/* Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-zinc-400">Presets:</span>
+                  {SMTP_PRESETS.map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setEmailForm(prev => ({
+                          ...prev,
+                          smtp: {
+                            ...prev.smtp,
+                            host: p.host || prev.smtp.host,
+                            port: p.port,
+                            secure: p.secure,
+                          }
+                        }));
+                      }}
+                      className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition"
+                    >
+                      {p.name.split(' ')[0]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    SMTP Server Host
+                  </label>
+                  <input
+                    type="text"
+                    value={emailForm.smtp.host}
+                    onChange={e => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, host: e.target.value } }))}
+                    placeholder="e.g. smtp.gmail.com or mail.yourcompany.com"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 font-mono focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    Port &amp; Security
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={emailForm.smtp.port}
+                      onChange={e => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, port: Number(e.target.value) } }))}
+                      placeholder="465"
+                      className="w-20 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 font-mono focus:outline-none focus:border-blue-500"
+                    />
+                    <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={emailForm.smtp.secure}
+                        onChange={e => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, secure: e.target.checked } }))}
+                        className="rounded text-blue-600 focus:ring-blue-500 border-zinc-300 dark:border-zinc-700"
+                      />
+                      <span>SSL (Port 465)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    SMTP Username / Email
+                  </label>
+                  <input
+                    type="text"
+                    value={emailForm.smtp.user}
+                    onChange={e => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, user: e.target.value } }))}
+                    placeholder="e.g. payroll@yourcompany.com"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    SMTP Password / App Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showSmtpPassword ? 'text' : 'password'}
+                      value={emailForm.smtp.pass}
+                      onChange={e => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, pass: e.target.value } }))}
+                      placeholder="App-specific password"
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 font-mono pr-8 focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition"
+                    >
+                      {showSmtpPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    Sender Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={emailForm.smtp.fromName}
+                    onChange={e => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, fromName: e.target.value } }))}
+                    placeholder="e.g. Acme Payroll Department"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    Sender From Email
+                  </label>
+                  <input
+                    type="email"
+                    value={emailForm.smtp.fromEmail}
+                    onChange={e => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, fromEmail: e.target.value } }))}
+                    placeholder="e.g. payroll@acmecorp.com"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Security Hint */}
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-900/60 rounded-md border border-zinc-200/80 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Tip for Gmail &amp; Microsoft 365 Users:</strong><br />
+                  For Gmail, do not use your personal password. Enable 2-Step Verification and generate a 16-character <em>App Password</em> in your Google Account security settings.
+                  For Microsoft 365, ensure SMTP AUTH is enabled for your corporate mailbox.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 2B: Resend API Configuration */}
+          {emailForm.provider === 'resend' && (
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Resend Cloud API Credentials
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Sign up at <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-blue-600 underline">resend.com</a> to retrieve your production API key.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    Resend API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={emailForm.resend.apiKey}
+                    onChange={e => setEmailForm(prev => ({ ...prev, resend: { ...prev.resend, apiKey: e.target.value } }))}
+                    placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxx"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                      Verified Sender Email
+                    </label>
+                    <input
+                      type="email"
+                      value={emailForm.resend.fromEmail}
+                      onChange={e => setEmailForm(prev => ({ ...prev, resend: { ...prev.resend, fromEmail: e.target.value } }))}
+                      placeholder="e.g. payroll@yourdomain.com"
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                      Sender Display Name
+                    </label>
+                    <input
+                      type="text"
+                      value={emailForm.resend.fromName}
+                      onChange={e => setEmailForm(prev => ({ ...prev, resend: { ...prev.resend, fromName: e.target.value } }))}
+                      placeholder="e.g. Acme Payroll Pro"
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 3: Default Templates */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Default Email Templates &amp; PDF Rules
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Customize the default subject line and message body sent to staff. Placeholders are dynamically resolved per employee.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Default Subject Template
+                </label>
+                <input
+                  type="text"
+                  value={emailForm.defaultSubjectTemplate}
+                  onChange={e => setEmailForm(prev => ({ ...prev, defaultSubjectTemplate: e.target.value }))}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Default Message Template
+                </label>
+                <textarea
+                  rows={6}
+                  value={emailForm.defaultBodyTemplate}
+                  onChange={e => setEmailForm(prev => ({ ...prev, defaultBodyTemplate: e.target.value }))}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded p-3 text-xs font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500 leading-relaxed"
+                />
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={emailForm.attachPdf}
+                    onChange={e => setEmailForm(prev => ({ ...prev, attachPdf: e.target.checked }))}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-zinc-300 dark:border-zinc-700"
+                  />
+                  <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
+                    Always attach individual official PDF payslip by default
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Diagnostics & Test Connection */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Connection Diagnostics &amp; Handshake Test
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Verify that Payroll Pro can authenticate and connect to your email service before running live payroll dispatch.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTestEmailConnection}
+                disabled={isTestingEmail}
+                className="flex items-center gap-1.5 px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded font-medium text-xs transition disabled:opacity-50 shrink-0 cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>{isTestingEmail ? 'Testing Handshake...' : 'Test Mail Handshake'}</span>
+              </button>
+            </div>
+
+            {testResult && (
+              <div className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
+                testResult.success
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+              }`}>
+                {testResult.success ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" /> : <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />}
+                <div>
+                  <strong className="block font-semibold">
+                    {testResult.success ? 'Handshake Succeeded' : 'Handshake Failed'}
+                  </strong>
+                  <span>{testResult.message}</span>
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
       )}

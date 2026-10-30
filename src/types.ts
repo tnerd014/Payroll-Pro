@@ -93,6 +93,7 @@ export interface PayrollVariables {
   employerPensionRate: number;
   salaryCalculationMode?: SalaryCalculationMode;
   employmentTypeRules?: EmploymentTypeRule[];
+  prorateMidMonth?: boolean;
 }
 
 export interface TaxBracket {
@@ -509,3 +510,100 @@ export interface AuditLogEntry {
   ipOrDevice?: string;
   createdAt: string;
 }
+
+export type EmailProviderType = 'smtp' | 'resend';
+
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  fromName: string;
+  fromEmail: string;
+}
+
+export interface ResendConfig {
+  apiKey: string;
+  fromEmail: string;
+  fromName: string;
+}
+
+export interface EmailSettings {
+  provider: EmailProviderType;
+  smtp: SmtpConfig;
+  resend: ResendConfig;
+  defaultSubjectTemplate: string;
+  defaultBodyTemplate: string;
+  attachPdf: boolean;
+  replyTo?: string;
+}
+
+export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {
+  provider: 'smtp',
+  smtp: {
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    user: '',
+    pass: '',
+    fromName: 'Payroll Pro Accounts',
+    fromEmail: '',
+  },
+  resend: {
+    apiKey: '',
+    fromEmail: 'onboarding@resend.dev',
+    fromName: 'Payroll Pro Accounts',
+  },
+  defaultSubjectTemplate: 'Payslip for {{month}} {{year}} - {{companyName}}',
+  defaultBodyTemplate: `Dear {{employeeName}},
+
+Please find attached your official payslip for {{month}} {{year}}.
+
+Employee ID: {{employeeCode}}
+Department: {{department}}
+Net Take-Home: {{netPay}}
+
+If you have any questions regarding your remuneration or deductions, please contact the Accounts / Human Resources department.
+
+Best regards,
+{{companyName}}`,
+  attachPdf: true,
+};
+
+export interface EmailRecipientStatus {
+  employeeId: string;
+  employeeCode: string;
+  fullName: string;
+  department: string;
+  email: string;
+  netPayFormatted: string;
+  selected: boolean;
+  status: 'idle' | 'pending' | 'sending' | 'sent' | 'failed' | 'skipped';
+  error?: string;
+}
+
+export interface EmailSendHistoryItem {
+  sentAt: string; // ISO timestamp
+  recipientEmail: string;
+  messageId?: string;
+  version?: number; // Snapshot/revision version
+  netPay?: number; // Net pay snapshot at time of send
+  sentBy?: string; // Admin user who triggered send
+  status: 'sent' | 'failed';
+  error?: string;
+}
+
+export interface EmailedPayslipRecord {
+  employeeId: string;
+  periodKey: string; // e.g. "2026-oct"
+  sentAt: string; // ISO timestamp of most recent dispatch
+  recipientEmail: string;
+  messageId?: string;
+  version?: number; // Payroll version at latest dispatch
+  sendCount?: number; // Total number of times sent for this period
+  netPayAtSend?: number; // Last sent net pay (to detect revisions)
+  history?: EmailSendHistoryItem[]; // Full audit trail of all previous dispatches
+}
+
+export type { AppState } from './store/usePayrollStore';

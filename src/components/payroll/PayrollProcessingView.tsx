@@ -15,19 +15,22 @@ import {
   ArrowRight,
   Palette,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Mail,
+  MailCheck
 } from 'lucide-react';
-import { CalculatedPayrollItem, PayrollSnapshot, Employee, PayrollVariables, PayeTaxVariables, CompanyProfile, PayslipDesignConfig, PayslipCustomPreset, EmployeeLoan, TeamMember } from '../../types';
+import { CalculatedPayrollItem, PayrollSnapshot, Employee, PayrollVariables, PayeTaxVariables, CompanyProfile, PayslipDesignConfig, PayslipCustomPreset, EmployeeLoan, TeamMember, EmailSettings, EmailedPayslipRecord } from '../../types';
 import { formatNaira, formatCompactNaira, formatDateTime } from '../../engine/payePensionEngine';
 import { FinalizeLockModal } from './FinalizeLockModal';
 import { UnlockPayrollModal } from './UnlockPayrollModal';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { BulkPrintPayslipsModal } from './BulkPrintPayslipsModal';
+import { EmailPayslipsModal } from './EmailPayslipsModal';
 import { PayslipModal } from './PayslipModal';
 import { exportPayrollProToExcel, ExportOptions } from '../../engine/excelEngine';
 import { exportNibssBankTransferCsv } from '../../engine/bankPaymentEngine';
 import { ExportScopeModal } from '../excel/ExportScopeModal';
-import { MONTHS } from '../../store/usePayrollStore';
+import { MONTHS, normalizeMonthKey } from '../../store/usePayrollStore';
 import { TablePagination } from '../common/TablePagination';
 import { SortableHeader, SortDirection } from '../common/SortableHeader';
 
@@ -57,6 +60,12 @@ interface PayrollProcessingViewProps {
   onDeletePreset?: (id: string) => void;
   loans?: EmployeeLoan[];
   currentUser?: TeamMember | null;
+  emailSettings?: EmailSettings;
+  onUpdateEmployeeEmail?: (employeeId: string, newEmail: string) => void;
+  onOpenEmailSettings?: () => void;
+  emailedPayslips?: Record<string, EmailedPayslipRecord>;
+  onRecordEmailedPayslips?: (records: EmailedPayslipRecord[]) => void;
+  isAdmin?: boolean;
 }
 
 export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
@@ -85,12 +94,20 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   onDeletePreset,
   loans = [],
   currentUser,
+  emailSettings,
+  onUpdateEmployeeEmail,
+  onOpenEmailSettings,
+  emailedPayslips = {},
+  onRecordEmailedPayslips,
+  isAdmin = true,
 }) => {
   const isAuditor = currentUser?.role === 'Auditor';
+  const currentPeriodKey = `${year}-${(selectedMonth || '').toLowerCase()}`;
   const [activeSubTab, setActiveSubTab] = useState<'processing' | 'paye' | 'pension'>('processing');
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
   const [isBulkPrintOpen, setIsBulkPrintOpen] = useState(false);
+  const [isEmailPayslipsOpen, setIsEmailPayslipsOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedSingleSlip, setSelectedSingleSlip] = useState<CalculatedPayrollItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,6 +117,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
   // Selected version key: 'live' or string of version number, e.g. '1', '2'
   const [selectedVersionKey, setSelectedVersionKey] = useState<string>('latest');
+
 
   const handleDeleteSnapshot = (snapshotId: string) => {
     const target = snapshots.find(s => s.id === snapshotId);
@@ -115,7 +133,8 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
   // Snapshots for this period and version calculation
   const snapshotsForPeriod = useMemo(() => {
-    return (snapshots || []).filter(s => s.monthKey === selectedMonth && s.year === year);
+    const curM = normalizeMonthKey(selectedMonth);
+    return (snapshots || []).filter(s => normalizeMonthKey(s.monthKey) === curM && s.year === year);
   }, [snapshots, selectedMonth, year]);
 
   const sortedSnapshots = useMemo(() => {
@@ -177,6 +196,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
       return true;
     });
   }, [displayItems, searchQuery, selectedDeptFilter, activeSubTab]);
+
+  const emailedCountForPeriod = useMemo(() => {
+    return filteredItems.filter(item => Boolean(emailedPayslips[`${currentPeriodKey}_${item.employeeId}`])).length;
+  }, [filteredItems, emailedPayslips, currentPeriodKey]);
 
   // Sorting State
   const [sortField, setSortField] = useState<string | null>(null);
@@ -444,9 +467,37 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             className="h-8 px-2.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-100 dark:hover:bg-zinc-800/60 flex items-center gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 transition whitespace-nowrap"
             title="Open Bulk Payslip Studio"
           >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Payslips</span>
+            <Printer className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Payslips</span>
           </button>
+
+          {/* Email Payslips Button */}
+          {!isAuditor && (
+            <button
+              onClick={() => setIsEmailPayslipsOpen(true)}
+              className={`h-8 px-2.5 rounded-md border flex items-center gap-1.5 text-xs font-medium transition whitespace-nowrap cursor-pointer ${
+                !isLocked
+                  ? 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+                  : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300'
+              }`}
+              title={isLocked ? "Email payslips directly to employees" : "Notice: Month must be Finalized & Locked before dispatching payslip emails"}
+            >
+              {emailedCountForPeriod > 0 ? (
+                <MailCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              ) : (
+                <Mail className="w-3.5 h-3.5 shrink-0" />
+              )}
+              <span className="hidden sm:inline">Email Payslips</span>
+              {!isLocked && (
+                <Lock className="w-3 h-3 text-amber-500 shrink-0 ml-0.5" />
+              )}
+              {emailedCountForPeriod > 0 && isLocked && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300">
+                  {emailedCountForPeriod}/{filteredItems.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -634,7 +685,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
       <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xs overflow-hidden">
         <div className={`overflow-x-auto overflow-y-auto ${showStats ? 'max-h-[calc(100vh-285px)]' : 'max-h-[calc(100vh-185px)]'}`}>
           <table className="w-full text-left border-collapse text-xs">
-          <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shadow-xs">
+          <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shadow-xs">
             <tr className="bg-zinc-50 dark:bg-zinc-900">
               <th className="px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-tl-lg">
                 <SortableHeader
@@ -804,8 +855,18 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                   </td>
                   
                   <td className="px-3.5 py-2">
-                    <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                      {item.fullName}
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {item.fullName}
+                      </span>
+                      {emailedPayslips[`${currentPeriodKey}_${item.employeeId}`] && (
+                        <span 
+                          className="inline-flex items-center text-emerald-600 dark:text-emerald-400" 
+                          title={`Payslip emailed on ${new Date(emailedPayslips[`${currentPeriodKey}_${item.employeeId}`].sentAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                        >
+                          <MailCheck className="w-3.5 h-3.5" />
+                        </span>
+                      )}
                     </div>
                     {activeSubTab === 'paye' ? (
                       <div className="text-[11px] font-mono text-zinc-400">
@@ -979,6 +1040,30 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           savedPresets={savedPresets}
           onSavePreset={onSavePreset}
           onDeletePreset={onDeletePreset}
+        />
+      )}
+
+      {/* Email Payslips Modal */}
+      {isEmailPayslipsOpen && (
+        <EmailPayslipsModal
+          isOpen={isEmailPayslipsOpen}
+          onClose={() => setIsEmailPayslipsOpen(false)}
+          items={filteredItems}
+          employees={employees}
+          company={company}
+          monthLabel={monthLabel}
+          selectedMonth={selectedMonth}
+          year={year}
+          emailSettings={emailSettings}
+          payslipDesign={payslipDesign}
+          emailedPayslips={emailedPayslips}
+          onRecordEmailedPayslips={onRecordEmailedPayslips}
+          onOpenSettings={onOpenEmailSettings}
+          onUpdateEmployeeEmail={onUpdateEmployeeEmail}
+          isAdmin={isAdmin}
+          currentUser={currentUser}
+          activeSnapshot={activeSnapshot}
+          isLocked={isLocked}
         />
       )}
 

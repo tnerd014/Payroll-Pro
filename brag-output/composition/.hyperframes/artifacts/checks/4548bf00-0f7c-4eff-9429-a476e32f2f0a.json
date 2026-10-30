@@ -1,0 +1,1217 @@
+{
+  "ok": true,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 7,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "duplicate_media_discovery_risk",
+        "severity": "warning",
+        "message": "Detected 2 matching img entries with the same source/start/duration.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\USER\\Desktop\\Payroll Pro\\brag-output\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Avoid duplicated media nodes that can be discovered twice during compilation."
+      },
+      {
+        "code": "composition_file_too_large",
+        "severity": "warning",
+        "message": "This HTML composition file has 431 lines. Smaller sub-compositions are easier to read, iterate on, and diff.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\USER\\Desktop\\Payroll Pro\\brag-output\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Split coherent scenes or layers into separate .html files under compositions/, then mount them from the parent with data-composition-src so each file stays small enough to inspect, revise, and validate independently."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"scene1\"> is a timeline element that contains nested <div id=\"s1-badge\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#scene1",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\USER\\Desktop\\Payroll Pro\\brag-output\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"scene1\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"scene2\"> is a timeline element that contains nested <div id=\"s2-window\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#scene2",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\USER\\Desktop\\Payroll Pro\\brag-output\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"scene2\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"scene3\"> is a timeline element that contains nested <div id=\"s3-window\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#scene3",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\USER\\Desktop\\Payroll Pro\\brag-output\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"scene3\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"scene4\"> is a timeline element that contains nested <div>. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#scene4",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\USER\\Desktop\\Payroll Pro\\brag-output\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"scene4\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      },
+      {
+        "code": "nested_structure_needs_subcomposition",
+        "severity": "warning",
+        "message": "<div id=\"scene5\"> is a timeline element that contains nested <div id=\"s5-brand\">. The timeline shows one row per top-level element, and the root composition is built only from sub-compositions.",
+        "selector": "#scene5",
+        "dataAttributes": {},
+        "sourceFile": "C:\\Users\\USER\\Desktop\\Payroll Pro\\brag-output\\composition\\index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Move <div id=\"scene5\"> and its contents into a sub-composition file and mount it with data-composition-src."
+      }
+    ],
+    "filesScanned": 1
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "duration": 21,
+    "samples": [
+      1.167,
+      3.5,
+      5.833,
+      8.167,
+      10.5,
+      12.833,
+      15.167,
+      17.5,
+      19.833
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 0,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 4,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "contrast_aa_failure",
+        "severity": "warning",
+        "message": "Contrast is 4.02:1; WCAG AA requires 4.5:1.",
+        "text": "v2026.1 • March 2026 Run",
+        "fg": "rgb(113,113,122)",
+        "bg": "rgb(13,13,16)",
+        "ratio": 4.02,
+        "requiredRatio": 4.5,
+        "suggestedColor": "rgb(121,121,130)",
+        "large": false,
+        "selector": "div > div:nth-of-type(2) > div > div:nth-of-type(1) > div:nth-of-type(3)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 1574.625,
+          "y": 202.5,
+          "width": 138.375,
+          "height": 14
+        },
+        "time": 5.833,
+        "times": [
+          5.833
+        ]
+      },
+      {
+        "code": "contrast_aa_failure",
+        "severity": "warning",
+        "message": "Contrast is 2.57:1; WCAG AA requires 4.5:1.",
+        "text": "Windows 64-bit App",
+        "fg": "rgb(82,82,91)",
+        "bg": "rgb(9,9,11)",
+        "ratio": 2.57,
+        "requiredRatio": 4.5,
+        "suggestedColor": "rgb(120,120,127)",
+        "large": false,
+        "selector": "div > div:nth-of-type(2) > div > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(2)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 203,
+          "y": 859,
+          "width": 195,
+          "height": 14
+        },
+        "time": 5.833,
+        "times": [
+          5.833
+        ]
+      },
+      {
+        "code": "contrast_aa_failure",
+        "severity": "warning",
+        "message": "Contrast is 4.02:1; WCAG AA requires 4.5:1.",
+        "text": "PITA 2026 Compliant",
+        "fg": "rgb(113,113,122)",
+        "bg": "rgb(13,13,16)",
+        "ratio": 4.02,
+        "requiredRatio": 4.5,
+        "suggestedColor": "rgb(121,121,130)",
+        "large": false,
+        "selector": "div > div:nth-of-type(3) > div > div:nth-of-type(1) > div:nth-of-type(3)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 1603.28125,
+          "y": 369,
+          "width": 109.71875,
+          "height": 14
+        },
+        "time": 10.5,
+        "times": [
+          10.5
+        ]
+      },
+      {
+        "code": "contrast_aa_failure",
+        "severity": "warning",
+        "message": "Contrast is 4.12:1; WCAG AA requires 4.5:1.",
+        "text": "Instant Mobile Notifications",
+        "fg": "rgb(113,113,122)",
+        "bg": "rgb(9,9,11)",
+        "ratio": 4.12,
+        "requiredRatio": 4.5,
+        "suggestedColor": "rgb(120,120,128)",
+        "large": false,
+        "selector": "div > div:nth-of-type(4) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(4)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 1313.5,
+          "y": 823,
+          "width": 266,
+          "height": 12
+        },
+        "time": 15.167,
+        "times": [
+          15.167
+        ]
+      }
+    ],
+    "enabled": true,
+    "samples": [
+      1.167,
+      5.833,
+      10.5,
+      15.167,
+      19.833
+    ],
+    "checked": 111,
+    "passed": 107
+  },
+  "craft": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 2,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "dead_stretch",
+        "severity": "warning",
+        "message": "Nothing on screen changes for 3.38 s (4.88–8.25 s): start the next move within 3 s, or put data-hold on the element whose stillness is deliberate; see references/motion.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 4.875,
+        "seconds": 3.375,
+        "floorSeconds": 3,
+        "until": 8.25
+      },
+      {
+        "code": "text_below_floor",
+        "severity": "warning",
+        "message": "Type floor is 28 px (2.6% of the 1080 px short side, what a phone can read) and 108 text elements stay under it for 0.5 s or more, the smallest \"• Android\" at 10 px: set reading text to at least 28 px, or put data-layout-ignore on text that is texture rather than reading; see references/look.md.",
+        "text": "• Android",
+        "selector": "div.phone-screen > div:nth-of-type(1) > span:nth-of-type(2)",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 1538.56,
+          "y": 346,
+          "width": 45.52,
+          "height": 12
+        },
+        "time": 14,
+        "times": [
+          0,
+          0.375,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          3.75,
+          4,
+          4,
+          4.125,
+          4.125,
+          4.25,
+          4.25,
+          4.25,
+          4.25,
+          4.625,
+          4.625,
+          4.625,
+          4.625,
+          4.625,
+          4.625,
+          4.625,
+          4.625,
+          8.875,
+          8.875,
+          8.875,
+          8.875,
+          8.875,
+          8.875,
+          8.875,
+          8.875,
+          8.875,
+          8.875,
+          8.875,
+          8.875,
+          9.25,
+          9.25,
+          9.25,
+          9.25,
+          9.25,
+          9.25,
+          9.25,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.375,
+          9.5,
+          9.5,
+          9.5,
+          9.5,
+          9.5,
+          9.5,
+          9.5,
+          11,
+          13.625,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          13.75,
+          14,
+          14,
+          14,
+          14,
+          14,
+          14,
+          14,
+          14,
+          17.75,
+          17.75,
+          17.75,
+          17.75
+        ],
+        "fontPx": 9.98,
+        "floorPx": 28,
+        "seconds": 3.5,
+        "elements": [
+          {
+            "selector": "div.phone-screen > div:nth-of-type(1) > span:nth-of-type(2)",
+            "text": "• Android",
+            "fontPx": 9.98,
+            "time": 14,
+            "seconds": 3.5
+          },
+          {
+            "selector": "div.phone-screen > div:nth-of-type(2) > div:nth-of-type(1)",
+            "text": "March Net Total",
+            "fontPx": 9.98,
+            "time": 14,
+            "seconds": 3.5
+          },
+          {
+            "selector": "div.phone-screen > div:nth-of-type(3) > div:nth-of-type(2)",
+            "text": "Adebayo Oluwaseun",
+            "fontPx": 9.98,
+            "time": 14,
+            "seconds": 3.5
+          },
+          {
+            "selector": "div.phone-screen > div:nth-of-type(4)",
+            "text": "Instant Mobile Notifications",
+            "fontPx": 9.98,
+            "time": 14,
+            "seconds": 3.5
+          },
+          {
+            "selector": "#s3-window > div:nth-of-type(1) > div:nth-of-type(3)",
+            "text": "PITA 2026 Compliant",
+            "fontPx": 10.94,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "#s3-window > div:nth-of-type(2) > table:nth-of-type(1) > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(1)",
+            "text": "Employee Name",
+            "fontPx": 10.94,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "#s3-window > div:nth-of-type(2) > table:nth-of-type(1) > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(2)",
+            "text": "Department",
+            "fontPx": 10.94,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "#s3-window > div:nth-of-type(2) > table:nth-of-type(1) > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(3)",
+            "text": "Gross Salary",
+            "fontPx": 10.94,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "#s3-window > div:nth-of-type(2) > table:nth-of-type(1) > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(4)",
+            "text": "PAYE Tax",
+            "fontPx": 10.94,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "table.clean-table > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(5)",
+            "text": "Pension (8%)",
+            "fontPx": 10.94,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "table.clean-table > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(6)",
+            "text": "Net Take-Home",
+            "fontPx": 10.94,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "table.clean-table > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(7)",
+            "text": "Status",
+            "fontPx": 10.94,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "#s2-window > div:nth-of-type(1) > div:nth-of-type(3)",
+            "text": "v2026.1 • March 2026 Run",
+            "fontPx": 10.96,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.nav-group > div:nth-of-type(3) > span:nth-of-type(2)",
+            "text": "42",
+            "fontPx": 10.96,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.nav-group > div:nth-of-type(4) > span:nth-of-type(2)",
+            "text": "3",
+            "fontPx": 10.96,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.app-sidebar > div:nth-of-type(2)",
+            "text": "Windows 64-bit App",
+            "fontPx": 10.96,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "span.tag-locked",
+            "text": "🔒 March Run Ready",
+            "fontPx": 10.96,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "#trow1 > td:nth-of-type(7) > span:nth-of-type(1)",
+            "text": "Calculated",
+            "fontPx": 10.98,
+            "time": 9.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#trow2 > td:nth-of-type(7) > span:nth-of-type(1)",
+            "text": "Calculated",
+            "fontPx": 10.98,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow3 > td:nth-of-type(7) > span:nth-of-type(1)",
+            "text": "Calculated",
+            "fontPx": 10.98,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow4 > td:nth-of-type(7) > span:nth-of-type(1)",
+            "text": "Calculated",
+            "fontPx": 10.98,
+            "time": 9.5,
+            "seconds": 4
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > div:nth-of-type(1) > span:nth-of-type(1)",
+            "text": "Direct Upload Ready",
+            "fontPx": 10.98,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(1)",
+            "text": "Staff Name",
+            "fontPx": 10.98,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(2)",
+            "text": "Bank Code",
+            "fontPx": 10.98,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(3)",
+            "text": "Account No",
+            "fontPx": 10.98,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > thead:nth-of-type(1) > tr:nth-of-type(1) > th:nth-of-type(4)",
+            "text": "Net Amount",
+            "fontPx": 10.98,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(2) > span:nth-of-type(1)",
+            "text": "CSV Format",
+            "fontPx": 10.98,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(2) > span:nth-of-type(2)",
+            "text": "Excel Schedule",
+            "fontPx": 10.98,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(2) > span:nth-of-type(3)",
+            "text": "NIP Verified",
+            "fontPx": 10.98,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "div.phone-screen > div:nth-of-type(1) > span:nth-of-type(1)",
+            "text": "Payroll Pro Mobile",
+            "fontPx": 10.98,
+            "time": 14,
+            "seconds": 3.5
+          },
+          {
+            "selector": "div.phone-screen > div:nth-of-type(3) > div:nth-of-type(1)",
+            "text": "Latest Payslip",
+            "fontPx": 10.98,
+            "time": 14,
+            "seconds": 3.5
+          },
+          {
+            "selector": "div.phone-screen > div:nth-of-type(3) > div:nth-of-type(3)",
+            "text": "₦547,800 Take-Home",
+            "fontPx": 10.98,
+            "time": 14,
+            "seconds": 3.5
+          },
+          {
+            "selector": "#s3-window > div:nth-of-type(1) > div:nth-of-type(2)",
+            "text": "Payroll Pro — Monthly Batch Calculation",
+            "fontPx": 11.93,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "#s3-window > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > p:nth-of-type(1)",
+            "text": "1-Click Nigerian Statutory Engine • Automatic CRA & Pension Relief",
+            "fontPx": 11.93,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "#s2-window > div:nth-of-type(1) > div:nth-of-type(2)",
+            "text": "Payroll Pro — Executive Dashboard",
+            "fontPx": 11.96,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.app-layout > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > p:nth-of-type(1)",
+            "text": "Active period: March 2026 • 42 Enrolled Personnel",
+            "fontPx": 11.96,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "#s2-kpi1 > div:nth-of-type(1)",
+            "text": "Total Gross Payroll",
+            "fontPx": 11.98,
+            "time": 4,
+            "seconds": 4.5
+          },
+          {
+            "selector": "#s2-kpi2 > div:nth-of-type(1)",
+            "text": "Net Disbursement",
+            "fontPx": 11.98,
+            "time": 4.125,
+            "seconds": 4.375
+          },
+          {
+            "selector": "#s2-kpi3 > div:nth-of-type(1)",
+            "text": "Statutory Deductions",
+            "fontPx": 11.98,
+            "time": 4.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#s2-kpi4 > div:nth-of-type(1)",
+            "text": "Active Personnel",
+            "fontPx": 11.98,
+            "time": 4.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#s2-outflow > div:nth-of-type(1) > span:nth-of-type(1)",
+            "text": "Payroll Outflow Composition",
+            "fontPx": 11.98,
+            "time": 4.625,
+            "seconds": 3.875
+          },
+          {
+            "selector": "#s2-outflow > div:nth-of-type(1) > span:nth-of-type(2)",
+            "text": "Gross: ₦17,948,800",
+            "fontPx": 11.98,
+            "time": 4.625,
+            "seconds": 3.875
+          },
+          {
+            "selector": "div.outflow-chips > div:nth-of-type(1) > span:nth-of-type(2)",
+            "text": "Net Take-Home (82.7%)",
+            "fontPx": 11.98,
+            "time": 4.625,
+            "seconds": 3.875
+          },
+          {
+            "selector": "div.outflow-chips > div:nth-of-type(1) > span:nth-of-type(3)",
+            "text": "₦14,850,200",
+            "fontPx": 11.98,
+            "time": 4.625,
+            "seconds": 3.875
+          },
+          {
+            "selector": "div.outflow-chips > div:nth-of-type(2) > span:nth-of-type(2)",
+            "text": "PAYE Tax (10.3%)",
+            "fontPx": 11.98,
+            "time": 4.625,
+            "seconds": 3.875
+          },
+          {
+            "selector": "div.outflow-chips > div:nth-of-type(2) > span:nth-of-type(3)",
+            "text": "₦1,848,600",
+            "fontPx": 11.98,
+            "time": 4.625,
+            "seconds": 3.875
+          },
+          {
+            "selector": "div.outflow-chips > div:nth-of-type(3) > span:nth-of-type(2)",
+            "text": "Pension (8%)",
+            "fontPx": 11.98,
+            "time": 4.625,
+            "seconds": 3.875
+          },
+          {
+            "selector": "div.outflow-chips > div:nth-of-type(3) > span:nth-of-type(3)",
+            "text": "₦1,250,000",
+            "fontPx": 11.98,
+            "time": 4.625,
+            "seconds": 3.875
+          },
+          {
+            "selector": "#btn-batch",
+            "text": "Execute 1-Click Batch Run",
+            "fontPx": 12.22,
+            "time": 8.875,
+            "seconds": 2.125
+          },
+          {
+            "selector": "#badge-batch-done",
+            "text": "✓ 42/42 Computations Locked & Verified",
+            "fontPx": 12.9,
+            "time": 11,
+            "seconds": 2.5
+          },
+          {
+            "selector": "div.sidebar-brand > span:nth-of-type(1)",
+            "text": "Payroll Pro",
+            "fontPx": 12.95,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.nav-item.active > span:nth-of-type(1)",
+            "text": "Dashboard",
+            "fontPx": 12.95,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.nav-group > div:nth-of-type(3) > span:nth-of-type(1)",
+            "text": "Staff Directory",
+            "fontPx": 12.95,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.nav-group > div:nth-of-type(4) > span:nth-of-type(1)",
+            "text": "Loans & Advances",
+            "fontPx": 12.95,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.nav-group > div:nth-of-type(5) > span:nth-of-type(1)",
+            "text": "Payroll Run",
+            "fontPx": 12.95,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.nav-group > div:nth-of-type(6) > span:nth-of-type(1)",
+            "text": "Account Reports",
+            "fontPx": 12.95,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "div.nav-group > div:nth-of-type(7) > span:nth-of-type(1)",
+            "text": "Settings",
+            "fontPx": 12.95,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "#s1-badge",
+            "text": "Windows Desktop • Android Mobile • Offline-First",
+            "fontPx": 12.97,
+            "time": 0,
+            "seconds": 3.5
+          },
+          {
+            "selector": "#trow1 > td:nth-of-type(1) > strong:nth-of-type(1)",
+            "text": "Adebayo Oluwaseun",
+            "fontPx": 12.97,
+            "time": 9.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#trow1 > td:nth-of-type(2)",
+            "text": "Engineering",
+            "fontPx": 12.97,
+            "time": 9.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#trow1 > td:nth-of-type(3)",
+            "text": "₦650,000",
+            "fontPx": 12.97,
+            "time": 9.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#trow1 > td:nth-of-type(4)",
+            "text": "-₦58,200",
+            "fontPx": 12.97,
+            "time": 9.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#trow1 > td:nth-of-type(5)",
+            "text": "-₦44,000",
+            "fontPx": 12.97,
+            "time": 9.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#trow1 > td:nth-of-type(6)",
+            "text": "₦547,800",
+            "fontPx": 12.97,
+            "time": 9.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#trow2 > td:nth-of-type(1) > strong:nth-of-type(1)",
+            "text": "Chioma Eze",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow2 > td:nth-of-type(2)",
+            "text": "Product Design",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow2 > td:nth-of-type(3)",
+            "text": "₦720,000",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow2 > td:nth-of-type(4)",
+            "text": "-₦69,400",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow2 > td:nth-of-type(5)",
+            "text": "-₦48,000",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow2 > td:nth-of-type(6)",
+            "text": "₦602,600",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow3 > td:nth-of-type(1) > strong:nth-of-type(1)",
+            "text": "Ibrahim Musa",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow3 > td:nth-of-type(2)",
+            "text": "Operations",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow3 > td:nth-of-type(3)",
+            "text": "₦480,000",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow3 > td:nth-of-type(4)",
+            "text": "-₦36,800",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow3 > td:nth-of-type(5)",
+            "text": "-₦32,000",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow3 > td:nth-of-type(6)",
+            "text": "₦411,200",
+            "fontPx": 12.97,
+            "time": 9.375,
+            "seconds": 4.125
+          },
+          {
+            "selector": "#trow4 > td:nth-of-type(1) > strong:nth-of-type(1)",
+            "text": "Fatima Bello",
+            "fontPx": 12.97,
+            "time": 9.5,
+            "seconds": 4
+          },
+          {
+            "selector": "#trow4 > td:nth-of-type(2)",
+            "text": "Human Resources",
+            "fontPx": 12.97,
+            "time": 9.5,
+            "seconds": 4
+          },
+          {
+            "selector": "#trow4 > td:nth-of-type(3)",
+            "text": "₦550,000",
+            "fontPx": 12.97,
+            "time": 9.5,
+            "seconds": 4
+          },
+          {
+            "selector": "#trow4 > td:nth-of-type(4)",
+            "text": "-₦45,000",
+            "fontPx": 12.97,
+            "time": 9.5,
+            "seconds": 4
+          },
+          {
+            "selector": "#trow4 > td:nth-of-type(5)",
+            "text": "-₦36,000",
+            "fontPx": 12.97,
+            "time": 9.5,
+            "seconds": 4
+          },
+          {
+            "selector": "#trow4 > td:nth-of-type(6)",
+            "text": "₦469,000",
+            "fontPx": 12.97,
+            "time": 9.5,
+            "seconds": 4
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(1)",
+            "text": "Adebayo Oluwaseun",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(2)",
+            "text": "GTBank (058)",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(3)",
+            "text": "0123456789",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(1) > td:nth-of-type(4)",
+            "text": "₦547,800",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(1)",
+            "text": "Chioma Eze",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(2)",
+            "text": "Zenith (057)",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(3)",
+            "text": "2039485710",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(2) > td:nth-of-type(4)",
+            "text": "₦602,600",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(3) > td:nth-of-type(1)",
+            "text": "Ibrahim Musa",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(3) > td:nth-of-type(2)",
+            "text": "Access (044)",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(3) > td:nth-of-type(3)",
+            "text": "1092837465",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > table:nth-of-type(1) > tbody:nth-of-type(1) > tr:nth-of-type(3) > td:nth-of-type(4)",
+            "text": "₦411,200",
+            "fontPx": 12.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "div.pill-row > div:nth-of-type(1)",
+            "text": "💻 Windows Desktop App",
+            "fontPx": 13.7,
+            "time": 17.75,
+            "seconds": 3.25
+          },
+          {
+            "selector": "div.pill-row > div:nth-of-type(2)",
+            "text": "📱 Android Mobile APK",
+            "fontPx": 13.7,
+            "time": 17.75,
+            "seconds": 3.25
+          },
+          {
+            "selector": "div.pill-row > div:nth-of-type(3)",
+            "text": "⚡ Offline-First + Cloud Sync",
+            "fontPx": 13.7,
+            "time": 17.75,
+            "seconds": 3.25
+          },
+          {
+            "selector": "#scene4 > div:nth-of-type(1) > p:nth-of-type(1)",
+            "text": "Full desktop processing for HR. Quick approvals and mobile payslips on Android.",
+            "fontPx": 15.97,
+            "time": 13.625,
+            "seconds": 3.875
+          },
+          {
+            "selector": "#s4-desktop > div:nth-of-type(1) > div:nth-of-type(1) > h4:nth-of-type(1)",
+            "text": "Direct Commercial Bank Schedule (NIP)",
+            "fontPx": 15.97,
+            "time": 13.75,
+            "seconds": 3.75
+          },
+          {
+            "selector": "div.phone-screen > div:nth-of-type(2) > div:nth-of-type(2)",
+            "text": "₦14,850,200",
+            "fontPx": 15.97,
+            "time": 14,
+            "seconds": 3.5
+          },
+          {
+            "selector": "#s3-window > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > h3:nth-of-type(1)",
+            "text": "March 2026 Salary Computations",
+            "fontPx": 16.9,
+            "time": 8.875,
+            "seconds": 4.625
+          },
+          {
+            "selector": "div.app-layout > div:nth-of-type(2) > div:nth-of-type(1) > div:nth-of-type(1) > h3:nth-of-type(1)",
+            "text": "Executive Overview",
+            "fontPx": 16.94,
+            "time": 3.75,
+            "seconds": 4.75
+          },
+          {
+            "selector": "#s5-brand > p:nth-of-type(1)",
+            "text": "Minimalist, intelligent payroll for Nigeria.",
+            "fontPx": 21.53,
+            "time": 17.75,
+            "seconds": 3.25
+          },
+          {
+            "selector": "#s2-kpi1 > div:nth-of-type(2)",
+            "text": "₦17,948,800",
+            "fontPx": 21.96,
+            "time": 4,
+            "seconds": 4.5
+          },
+          {
+            "selector": "div.kpi-val.emerald",
+            "text": "₦14,850,200",
+            "fontPx": 21.96,
+            "time": 4.125,
+            "seconds": 4.375
+          },
+          {
+            "selector": "#s2-kpi3 > div:nth-of-type(2)",
+            "text": "₦3,098,600",
+            "fontPx": 21.96,
+            "time": 4.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#s2-kpi4 > div:nth-of-type(2)",
+            "text": "42 Staff",
+            "fontPx": 21.96,
+            "time": 4.25,
+            "seconds": 4.25
+          },
+          {
+            "selector": "#s1-subtitle",
+            "text": "Automated PAYE, Pension (8%+10%), NHF, and direct bank schedules.",
+            "fontPx": 23.95,
+            "time": 0.375,
+            "seconds": 3.125
+          }
+        ]
+      }
+    ],
+    "enabled": true,
+    "step": 0.125,
+    "samples": 168
+  },
+  "audio": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  }
+}

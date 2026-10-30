@@ -60,7 +60,7 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode; icon?: React.Re
         {icon && <span className="opacity-70 shrink-0">{icon}</span>}
         <span className="truncate">{label}</span>
       </div>
-      <div className={`text-xs text-zinc-800 dark:text-zinc-200 ${mono ? 'font-mono' : 'font-medium'} truncate`}>
+      <div className={`text-xs text-zinc-800 dark:text-zinc-200 ${mono ? 'font-mono' : 'font-medium'} break-words leading-snug`}>
         {value || <span className="text-zinc-400 dark:text-zinc-600 font-normal">—</span>}
       </div>
     </div>
@@ -211,18 +211,19 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   <InfoRow
                     icon={<ShieldCheck className="w-3 h-3" />}
-                    label="PAYE Tax Status"
+                    label="PAYE Tax ID"
                     value={emp.hasPaye
-                      ? (emp.payeNumber ? `Enrolled (${emp.payeNumber})` : 'Enrolled')
+                      ? (emp.payeNumber || 'Active')
                       : 'Exempt'}
+                    mono={Boolean(emp.hasPaye && emp.payeNumber)}
                   />
                   <InfoRow
                     icon={<ShieldCheck className="w-3 h-3" />}
-                    label="Pension Scheme"
+                    label="Pension (RSA)"
                     value={emp.hasPension
-                      ? (emp.pfaName
-                          ? `${emp.pfaName}${emp.pensionNumber ? ` (${emp.pensionNumber})` : ''}`
-                          : (emp.pensionNumber ? `RSA: ${emp.pensionNumber}` : 'Enrolled'))
+                      ? (emp.pensionNumber
+                          ? (emp.pfaName ? <><span className="block">{emp.pfaName}</span><span className="block font-mono text-zinc-500">{emp.pensionNumber}</span></> : emp.pensionNumber)
+                          : (emp.pfaName || 'Active'))
                       : 'Exempt'}
                   />
                   <InfoRow

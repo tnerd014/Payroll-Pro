@@ -1,83 +1,59 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ShieldCheck, 
-  UserCheck, 
   History, 
-  Users, 
   X, 
   Search, 
   RefreshCw, 
-  Plus, 
-  Lock, 
-  CheckCircle2, 
-  AlertCircle,
-  KeyRound,
-  Download
+  Download,
+  Building2,
+  Calendar,
+  User,
+  Filter,
+  CheckCircle2,
+  AlertTriangle,
+  Lock,
+  Layers
 } from 'lucide-react';
-import { TeamMember, AuditLogEntry, TeamMemberRole } from '../../types';
-import { 
-  fetchAuditLogs, 
-  fetchTeamMembers, 
-  saveTeamMemberToCloud, 
-  deleteTeamMemberFromCloud,
-  getActiveTeamMember,
-  setActiveTeamMember
-} from '../../services/supabaseClient';
+import { TeamMember, AuditLogEntry } from '../../types';
+import { fetchAuditLogs, getLocalAuditLogs, getSupabaseClient } from '../../services/supabaseClient';
+import { loadCompaniesRegistry } from '../../store/usePayrollStore';
 
 interface TeamAuditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeCompanyId?: string | null;
-  activeCompanyName?: string;
+  currentUser?: TeamMember | null;
 }
 
 export const TeamAuditModal: React.FC<TeamAuditModalProps> = ({
   isOpen,
   onClose,
-  activeCompanyId,
-  activeCompanyName,
+  currentUser,
 }) => {
-  const [activeTab, setActiveTab] = useState<'audit' | 'members' | 'switch'>('audit');
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentMember, setCurrentMember] = useState<TeamMember | null>(() => getActiveTeamMember());
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>('ALL');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
 
-  // Fast Switch User PIN state
-  const [selectedMemberForPin, setSelectedMemberForPin] = useState<TeamMember | null>(null);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState<string | null>(null);
-  const [switchSuccess, setSwitchSuccess] = useState<string | null>(null);
+  // Load registered company names for filter dropdown
+  const companies = useMemo(() => {
+    return loadCompaniesRegistry();
+  }, [isOpen]);
 
-  // Add Member state
-  const [isAddingMember, setIsAddingMember] = useState(false);
-  const [newMemberName, setNewMemberName] = useState('');
-  const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState<TeamMemberRole>('Payroll Officer');
-  const [newMemberPin, setNewMemberPin] = useState('1234');
-  const [memberSaveError, setMemberSaveError] = useState<string | null>(null);
-
-  const loadData = async () => {
+  const loadAuditData = async () => {
     setIsLoading(true);
     try {
-      const [logRes, memberRes] = await Promise.all([
-        fetchAuditLogs(activeCompanyId || undefined),
-        fetchTeamMembers()
-      ]);
-
-      if (logRes.success && logRes.logs) {
-        setAuditLogs(logRes.logs);
+      // Pass no companyId so it fetches across ALL companies
+      const res = await fetchAuditLogs(undefined, 300);
+      if (res.success && res.logs) {
+        setLogs(res.logs);
+      } else {
+        // Fallback to local logs
+        setLogs(getLocalAuditLogs());
       }
-      if (memberRes.success && memberRes.members) {
-        setTeamMembers(memberRes.members);
-        // If no active member set, default to first member or prompt
-        if (!getActiveTeamMember() && memberRes.members.length > 0) {
-          const defaultAdmin = memberRes.members.find(m => m.role === 'Admin') || memberRes.members[0];
-          setActiveTeamMember(defaultAdmin);
-          setCurrentMember(defaultAdmin);
-        }
-      }
+    } catch {
+      setLogs(getLocalAuditLogs());
     } finally {
       setIsLoading(false);
     }
@@ -85,474 +61,368 @@ export const TeamAuditModal: React.FC<TeamAuditModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      loadData();
-      setCurrentMember(getActiveTeamMember());
+      loadAuditData();
     }
-  }, [isOpen, activeCompanyId]);
+  }, [isOpen]);
 
-  if (!isOpen) return null;
+  // Realtime subscription: prepend new audit entries directly from payload (no re-fetch)
+  useEffect(() => {
+    if (!isOpen) return;
+    const client = getSupabaseClient();
+    if (!client) return;
 
-  const filteredLogs = auditLogs.filter(log => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      (log.actorName || '').toLowerCase().includes(q) ||
-      (log.action || '').toLowerCase().includes(q) ||
-      (log.details || '').toLowerCase().includes(q) ||
-      (log.companyName || '').toLowerCase().includes(q)
-    );
-  });
+    const channel = client
+      .channel(`team-audit-logs-realtime-${Date.now()}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, (payload) => {
+        const row = payload.new as any;
+        if (!row) return;
+        const newEntry = {
+          id: row.id,
+          companyId: row.company_id,
+          companyName: row.company_name,
+          actorId: row.actor_id,
+          actorName: row.actor_name,
+          action: row.action,
+          details: row.details,
+          ipOrDevice: row.ip_or_device,
+          createdAt: row.created_at,
+        };
+        setLogs(prev => [newEntry, ...prev]);
+      })
+      .subscribe();
 
-  const handleVerifyAndSwitch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedMemberForPin) return;
+    return () => { client.removeChannel(channel); };
+  }, [isOpen]);
 
-    const expectedPin = selectedMemberForPin.pin || '1234';
-    if (pinInput.trim() !== expectedPin.trim()) {
-      setPinError('Incorrect 4-digit PIN. Try again.');
-      return;
-    }
-
-    setActiveTeamMember(selectedMemberForPin);
-    setCurrentMember(selectedMemberForPin);
-    setSwitchSuccess(`Switched active user to ${selectedMemberForPin.name}`);
-    setPinError(null);
-    setPinInput('');
-    setTimeout(() => {
-      setSelectedMemberForPin(null);
-      setSwitchSuccess(null);
-      setActiveTab('audit');
-    }, 800);
-  };
-
-  const handleCreateMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMemberName.trim()) {
-      setMemberSaveError('Name is required.');
-      return;
-    }
-
-    const member: TeamMember = {
-      id: `user-${Date.now()}`,
-      name: newMemberName.trim(),
-      email: newMemberEmail.trim(),
-      role: newMemberRole,
-      pin: newMemberPin.trim() || '1234',
-      isActive: true,
-      createdAt: new Date().toISOString()
-    };
-
-    const res = await saveTeamMemberToCloud(member);
-    if (res.success) {
-      setTeamMembers(prev => [...prev, member]);
-      setIsAddingMember(false);
-      setNewMemberName('');
-      setNewMemberEmail('');
-      setNewMemberPin('1234');
-      setMemberSaveError(null);
-    } else {
-      setMemberSaveError(res.error || 'Failed to save member.');
-    }
-  };
-
-  const handleDeleteMember = async (id: string) => {
-    if (teamMembers.length <= 1) {
-      alert('At least one team member must remain.');
-      return;
-    }
-    const res = await deleteTeamMemberFromCloud(id);
-    if (res.success) {
-      setTeamMembers(prev => prev.filter(m => m.id !== id));
-      if (currentMember?.id === id) {
-        const remaining = teamMembers.filter(m => m.id !== id);
-        setActiveTeamMember(remaining[0] || null);
-        setCurrentMember(remaining[0] || null);
+  // Extract distinct company names appearing in logs
+  const availableCompanyNames = useMemo(() => {
+    const set = new Set<string>();
+    companies.forEach(c => {
+      if (c.name) set.add(c.name);
+    });
+    logs.forEach(l => {
+      if (l.companyName && l.companyName !== 'Global System') {
+        set.add(l.companyName);
       }
-    }
+    });
+    return Array.from(set).sort();
+  }, [companies, logs]);
+
+  // Categorize action for filter & styling
+  const getActionCategory = (action: string) => {
+    const act = (action || '').toUpperCase();
+    if (act.includes('COMPANY') || act.includes('WORKSPACE')) return 'COMPANY';
+    if (act.includes('PIN') || act.includes('PASSWORD') || act.includes('SECURITY')) return 'SECURITY';
+    if (act.includes('STAFF') || act.includes('ADMIN') || act.includes('OPERATOR')) return 'STAFF';
+    if (act.includes('EMPLOYEE') || act.includes('SALARY')) return 'EMPLOYEE';
+    if (act.includes('PAYROLL') || act.includes('LOCK') || act.includes('TAX')) return 'PAYROLL';
+    return 'OTHER';
   };
 
+  // Filtered logs
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => {
+      // 1. Company filter
+      if (selectedCompanyFilter !== 'ALL') {
+        const cName = (log.companyName || '').toLowerCase();
+        if (cName !== selectedCompanyFilter.toLowerCase()) return false;
+      }
+
+      // 2. Category filter
+      if (selectedCategoryFilter !== 'ALL') {
+        const cat = getActionCategory(log.action);
+        if (cat !== selectedCategoryFilter) return false;
+      }
+
+      // 3. Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchActor = (log.actorName || '').toLowerCase().includes(q);
+        const matchAction = (log.action || '').toLowerCase().includes(q);
+        const matchDetails = (log.details || '').toLowerCase().includes(q);
+        const matchCompany = (log.companyName || '').toLowerCase().includes(q);
+        return matchActor || matchAction || matchDetails || matchCompany;
+      }
+
+      return true;
+    });
+  }, [logs, selectedCompanyFilter, selectedCategoryFilter, searchQuery]);
+
+  // CSV Export
   const exportLogsAsCSV = () => {
     if (filteredLogs.length === 0) return;
-    const headers = ['Timestamp', 'Actor', 'Action', 'Details', 'Company'];
+    const headers = ['Timestamp', 'Company', 'Action', 'Category', 'Actor', 'Details', 'Device/Terminal'];
     const rows = filteredLogs.map(l => [
       `"${new Date(l.createdAt).toLocaleString()}"`,
-      `"${l.actorName || ''}"`,
+      `"${l.companyName || 'Global System'}"`,
       `"${l.action || ''}"`,
+      `"${getActionCategory(l.action)}"`,
+      `"${l.actorName || ''}"`,
       `"${(l.details || '').replace(/"/g, '""')}"`,
-      `"${l.companyName || ''}"`
+      `"${l.ipOrDevice || 'Desktop Workspace'}"`
     ]);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `payroll-audit-trail-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `payroll-pro-global-audit-trail-${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  // Badge styler based on action type
+  const renderActionBadge = (action: string) => {
+    const act = (action || '').toUpperCase();
+    if (act.includes('DELETED')) {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/80 dark:border-rose-900/60 inline-flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+          {action.replace(/_/g, ' ')}
+        </span>
+      );
+    }
+    if (act.includes('CREATED') || act.includes('REGISTERED') || act.includes('ADDED')) {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-900/60 inline-flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          {action.replace(/_/g, ' ')}
+        </span>
+      );
+    }
+    if (act.includes('SECURITY') || act.includes('PIN') || act.includes('PASSWORD')) {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/80 dark:border-amber-900/60 inline-flex items-center gap-1">
+          <Lock className="w-2.5 h-2.5 text-amber-500" />
+          {action.replace(/_/g, ' ')}
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700 inline-flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+        {action.replace(/_/g, ' ')}
+      </span>
+    );
+  };
+
+  const formatRelativeTime = (dateStr: string) => {
+    try {
+      const diffMs = Date.now() - new Date(dateStr).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-4xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col max-h-[88vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-5 animate-in fade-in duration-150">
+      <div className="w-full max-w-4xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col h-[90vh] max-h-[820px] overflow-hidden">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-xs">
-              <ShieldCheck className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-xs shrink-0">
+              <ShieldCheck className="w-5 h-5 text-emerald-400 dark:text-emerald-600" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
-                <span>Team & Audit Trail</span>
-                {currentMember && (
-                  <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                    Active: {currentMember.name} ({currentMember.role})
-                  </span>
-                )}
-              </h2>
-              <p className="text-xs text-zinc-500">
-                Automatic change logging and team account authentication
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                  Global Audit Trail
+                </h2>
+                <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800">
+                  Admin Exclusive
+                </span>
+              </div>
+              <p className="hidden sm:block text-[11px] text-zinc-500 dark:text-zinc-400">
+                Cross-company security logging &bull; Tracks company creation, PIN updates, and staff actions
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
-              onClick={loadData}
+              onClick={loadAuditData}
               disabled={isLoading}
-              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-              title="Refresh"
+              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              title="Refresh logs"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
             <button
+              onClick={exportLogsAsCSV}
+              disabled={filteredLogs.length === 0}
+              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer disabled:opacity-40"
+              title="Export filtered logs as CSV"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+            <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Tab Bar */}
-        <div className="flex items-center justify-between px-6 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30">
-          <div className="flex items-center gap-1 py-2">
-            <button
-              onClick={() => setActiveTab('audit')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                activeTab === 'audit'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs border border-zinc-200/80 dark:border-zinc-700'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Audit Trail ({filteredLogs.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('members')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                activeTab === 'members'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs border border-zinc-200/80 dark:border-zinc-700'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Team Accounts ({teamMembers.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('switch')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-                activeTab === 'switch'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs border border-zinc-200/80 dark:border-zinc-700'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Switch User</span>
-            </button>
+        {/* Filter Controls Row */}
+        <div className="p-3 sm:px-6 bg-zinc-50/70 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center gap-2 shrink-0">
+          
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search details, actor, or company..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-8 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-lg pl-8 pr-7 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
 
-          {activeTab === 'audit' && filteredLogs.length > 0 && (
-            <button
-              onClick={exportLogsAsCSV}
-              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+          {/* Company Filter Dropdown */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Building2 className="w-3.5 h-3.5 text-zinc-400 hidden sm:block" />
+            <select
+              value={selectedCompanyFilter}
+              onChange={(e) => setSelectedCompanyFilter(e.target.value)}
+              className="h-8 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg px-2 text-xs focus:outline-none focus:border-zinc-400 cursor-pointer shadow-2xs max-w-[170px]"
             >
-              <Download className="w-3 h-3" />
-              <span>Export CSV</span>
-            </button>
+              <option value="ALL">All Companies ({availableCompanyNames.length})</option>
+              {availableCompanyNames.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Category Filter Dropdown */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Filter className="w-3.5 h-3.5 text-zinc-400 hidden sm:block" />
+            <select
+              value={selectedCategoryFilter}
+              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+              className="h-8 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg px-2 text-xs focus:outline-none focus:border-zinc-400 cursor-pointer shadow-2xs"
+            >
+              <option value="ALL">All Event Types</option>
+              <option value="COMPANY">Company Management</option>
+              <option value="SECURITY">PIN &amp; Security</option>
+              <option value="STAFF">Staff &amp; Authentication</option>
+              <option value="EMPLOYEE">Employees &amp; Salaries</option>
+              <option value="PAYROLL">Payroll &amp; Snapshots</option>
+            </select>
+          </div>
+
+          {/* Count pill */}
+          <div className="ml-auto text-[11px] font-medium text-zinc-400 shrink-0">
+            <span>{filteredLogs.length} {filteredLogs.length === 1 ? 'event' : 'events'}</span>
+          </div>
+
+        </div>
+
+        {/* Logs Feed Container */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2.5">
+          {isLoading && logs.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center text-zinc-400 gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-zinc-500" />
+              <span className="text-xs">Aggregating cross-company audit logs...</span>
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center text-center space-y-2 max-w-sm mx-auto">
+              <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center">
+                <History className="w-5 h-5" />
+              </div>
+              <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">No Audit Events Found</h3>
+              <p className="text-[11px] text-zinc-400">
+                {searchQuery || selectedCompanyFilter !== 'ALL' || selectedCategoryFilter !== 'ALL'
+                  ? 'No audit entries match the current search filters.'
+                  : 'All company actions, PIN updates, and staff modifications will be logged here automatically.'}
+              </p>
+            </div>
+          ) : (
+            filteredLogs.map(log => {
+              const compName = log.companyName || 'Global System';
+              const isGlobal = compName === 'Global System' || !log.companyId;
+
+              return (
+                <div 
+                  key={log.id}
+                  className="bg-white dark:bg-[#16161a] border border-zinc-200/90 dark:border-zinc-800/90 rounded-xl p-3.5 hover:border-zinc-300 dark:hover:border-zinc-700 transition shadow-2xs space-y-2"
+                >
+                  {/* Top Bar: Company Pill + Action Badge + Timestamp */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium border inline-flex items-center gap-1 ${
+                        isGlobal 
+                          ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
+                          : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/70 font-semibold'
+                      }`}>
+                        <Building2 className="w-2.5 h-2.5 opacity-70" />
+                        <span className="truncate max-w-[180px]">{compName}</span>
+                      </span>
+
+                      {renderActionBadge(log.action)}
+                    </div>
+
+                    <div className="text-[11px] text-zinc-400 font-mono flex items-center gap-1.5" title={new Date(log.createdAt).toLocaleString()}>
+                      <Calendar className="w-3 h-3 text-zinc-400" />
+                      <span>{formatRelativeTime(log.createdAt)}</span>
+                    </div>
+                  </div>
+
+                  {/* Details Body */}
+                  <div className="text-xs text-zinc-800 dark:text-zinc-200 font-normal leading-relaxed pl-1">
+                    {log.details}
+                  </div>
+
+                  {/* Footer Actor & Terminal Info */}
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-1 border-t border-zinc-100 dark:border-zinc-800/60 pl-1">
+                    <span className="inline-flex items-center gap-1">
+                      <User className="w-2.5 h-2.5 text-zinc-400" />
+                      <strong className="text-zinc-600 dark:text-zinc-300 font-medium">{log.actorName}</strong>
+                    </span>
+                    <span className="text-zinc-400 truncate max-w-[140px] sm:max-w-none">
+                      {log.ipOrDevice || 'Desktop Workspace'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
 
-        {/* Tab 1: Audit Trail */}
-        {activeTab === 'audit' && (
-          <div className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
-            <div className="flex items-center gap-3 mb-4 shrink-0">
-              <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Filter audit logs by actor, action, salary change, or keyword..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-8 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-8.5 pr-3 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto border border-zinc-200 dark:border-zinc-800 rounded-xl divide-y divide-zinc-100 dark:divide-zinc-800/80">
-              {filteredLogs.length === 0 ? (
-                <div className="text-center py-16 text-xs text-zinc-400 space-y-1">
-                  <p>No audit trail records found.</p>
-                  <p className="text-[11px] text-zinc-500">Every change to salary, employee, or payroll run is automatically recorded here.</p>
-                </div>
-              ) : (
-                filteredLogs.map(log => (
-                  <div key={log.id} className="p-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 flex items-start justify-between gap-4 transition">
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                          {log.actorName}
-                        </span>
-                        <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/60">
-                          {log.action}
-                        </span>
-                        {log.companyName && (
-                          <span className="text-[11px] text-zinc-400 truncate">
-                            &bull; {log.companyName}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-zinc-700 dark:text-zinc-300">
-                        {log.details}
-                      </p>
-                    </div>
-                    <span className="text-[11px] font-mono text-zinc-400 shrink-0">
-                      {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &bull; {new Date(log.createdAt).toLocaleDateString('en-GB')}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Team Accounts */}
-        {activeTab === 'members' && (
-          <div className="flex-1 flex flex-col min-h-0 p-6 overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-xs font-semibold text-zinc-900 dark:text-white uppercase tracking-wider">
-                  Registered Team Members
-                </h3>
-                <p className="text-xs text-zinc-400">Team members with authorized access and assigned PINs</p>
-              </div>
-              <button
-                onClick={() => setIsAddingMember(!isAddingMember)}
-                className="h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{isAddingMember ? 'Cancel' : 'Add Team Member'}</span>
-              </button>
-            </div>
-
-            {isAddingMember && (
-              <form onSubmit={handleCreateMember} className="mb-6 p-4 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-3 animate-in fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Alicia Davies"
-                      value={newMemberName}
-                      onChange={e => setNewMemberName(e.target.value)}
-                      className="w-full h-8 px-2.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email (Optional)</label>
-                    <input
-                      type="email"
-                      placeholder="alicia@company.com"
-                      value={newMemberEmail}
-                      onChange={e => setNewMemberEmail(e.target.value)}
-                      className="w-full h-8 px-2.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Access Role</label>
-                    <select
-                      value={newMemberRole}
-                      onChange={e => setNewMemberRole(e.target.value as TeamMemberRole)}
-                      className="w-full h-8 px-2.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs"
-                    >
-                      <option value="Admin">Admin (Full Control)</option>
-                      <option value="Payroll Officer">Payroll Officer (Edit & Run)</option>
-                      <option value="Auditor">Auditor (View Only)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">4-Digit Security PIN</label>
-                    <input
-                      type="password"
-                      maxLength={6}
-                      required
-                      value={newMemberPin}
-                      onChange={e => setNewMemberPin(e.target.value)}
-                      className="w-full h-8 px-2.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-mono"
-                    />
-                  </div>
-                </div>
-
-                {memberSaveError && (
-                  <p className="text-xs text-rose-500">{memberSaveError}</p>
-                )}
-
-                <div className="flex justify-end gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingMember(false)}
-                    className="h-7 px-3 text-xs text-zinc-500 hover:text-zinc-700 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="h-7 px-3 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium rounded-md cursor-pointer"
-                  >
-                    Save Member
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {teamMembers.map(member => (
-                <div
-                  key={member.id}
-                  className="p-4 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-center justify-between"
-                >
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                      <span>{member.name}</span>
-                      {currentMember?.id === member.id && (
-                        <span className="text-[10px] text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded font-normal">
-                          You
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[11px] text-zinc-400">{member.role} {member.email ? `&bull; ${member.email}` : ''}</p>
-                    <p className="text-[10px] font-mono text-zinc-400">PIN: ••••</p>
-                  </div>
-
-                  <button
-                    onClick={() => handleDeleteMember(member.id)}
-                    className="text-xs text-zinc-400 hover:text-rose-500 p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                    title="Remove member"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Switch Active User with PIN */}
-        {activeTab === 'switch' && (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 min-h-[300px]">
-            {selectedMemberForPin ? (
-              <form onSubmit={handleVerifyAndSwitch} className="w-full max-w-xs space-y-3 animate-in fade-in">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedMemberForPin(null);
-                    setPinError(null);
-                  }}
-                  className="text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 mb-1 cursor-pointer flex items-center gap-1"
-                >
-                  &larr; Choose different member
-                </button>
-
-                <div className="text-center space-y-1">
-                  <p className="text-xs font-semibold text-zinc-900 dark:text-white">
-                    Enter PIN for {selectedMemberForPin.name}
-                  </p>
-                  <p className="text-[11px] text-zinc-400">Default PIN is 1234</p>
-                </div>
-
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="password"
-                    autoFocus
-                    maxLength={6}
-                    placeholder="Enter 4-digit PIN"
-                    value={pinInput}
-                    onChange={e => setPinInput(e.target.value)}
-                    className="w-full h-9 pl-9 pr-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm text-center font-mono text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-500"
-                  />
-                </div>
-
-                {pinError && (
-                  <p className="text-xs text-rose-500 text-center">{pinError}</p>
-                )}
-
-                {switchSuccess && (
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-600">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>{switchSuccess}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-semibold hover:opacity-90 transition cursor-pointer"
-                >
-                  Confirm & Switch
-                </button>
-              </form>
-            ) : (
-              <div className="w-full max-w-md space-y-3">
-                <p className="text-xs text-zinc-500 text-center mb-2">
-                  Select your profile below to sign in:
-                </p>
-                <div className="grid grid-cols-1 gap-2">
-                  {teamMembers.map(member => (
-                    <button
-                      key={member.id}
-                      onClick={() => {
-                        setSelectedMemberForPin(member);
-                        setPinInput('');
-                        setPinError(null);
-                      }}
-                      className={`w-full p-3 rounded-xl border text-left transition flex items-center justify-between cursor-pointer ${
-                        currentMember?.id === member.id
-                          ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20'
-                          : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:border-zinc-400'
-                      }`}
-                    >
-                      <div>
-                        <p className="text-xs font-semibold text-zinc-900 dark:text-white">
-                          {member.name}
-                        </p>
-                        <p className="text-[11px] text-zinc-400">{member.role}</p>
-                      </div>
-                      {currentMember?.id === member.id ? (
-                        <span className="text-[11px] text-emerald-600 font-medium">Active</span>
-                      ) : (
-                        <span className="text-xs text-zinc-400">Switch &rarr;</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Modal Footer */}
+        <div className="px-4 sm:px-6 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex items-center justify-between text-xs text-zinc-500 shrink-0">
+          <span className="text-[11px] hidden sm:inline">
+            Logged actions are cryptographically sealed &bull; Visible only to Administrators
+          </span>
+          <button
+            onClick={onClose}
+            className="w-full sm:w-auto px-3.5 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium text-xs hover:opacity-90 transition cursor-pointer text-center"
+          >
+            Close
+          </button>
+        </div>
 
       </div>
     </div>

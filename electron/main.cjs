@@ -62,13 +62,25 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Open external links in default browser
+  // Open external links in default browser and deny arbitrary protocols/popups
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http:') || url.startsWith('https:')) {
       shell.openExternal(url);
-      return { action: 'deny' };
     }
-    return { action: 'allow' };
+    return { action: 'deny' };
+  });
+
+  // Security: Prevent in-app navigation to arbitrary external websites
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const isAppUrl = isDev 
+      ? url.startsWith(devUrl) 
+      : url.startsWith('file:');
+    if (!isAppUrl) {
+      event.preventDefault();
+      if (url.startsWith('http:') || url.startsWith('https:')) {
+        shell.openExternal(url);
+      }
+    }
   });
 
   mainWindow.on('closed', () => {
@@ -137,3 +149,147 @@ ipcMain.on('window-force-reload', () => {
 });
 
 ipcMain.handle('get-version', () => app.getVersion());
+
+ipcMain.handle('open-instruction-manual', async () => {
+  try {
+    const fs = require('fs');
+    const candidates = [
+      path.join(__dirname, '../Payroll_Pro_Instruction_Manual.pdf'),
+      path.join(app.getAppPath(), 'Payroll_Pro_Instruction_Manual.pdf'),
+      path.join(__dirname, '../public/Payroll_Pro_Instruction_Manual.pdf'),
+      path.join(__dirname, '../dist/Payroll_Pro_Instruction_Manual.pdf'),
+      path.join(process.resourcesPath || '', 'Payroll_Pro_Instruction_Manual.pdf'),
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        await shell.openPath(p);
+        return { success: true, path: p };
+      }
+    }
+    const devUrl = 'http://localhost:5174/Payroll_Pro_Instruction_Manual.pdf';
+    await shell.openExternal(devUrl);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Render HTML to PDF Buffer via hidden offscreen BrowserWindow
+async function renderHtmlToPdfBuffer(htmlContent) {
+  const printWin = new BrowserWindow({
+    show: false,
+    width: 1024,
+    height: 1400,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      javascript: false,
+    },
+  });
+
+  try {
+    const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent);
+    await printWin.loadURL(dataUri);
+    // Allow font styles and CSS layout to fully stabilize
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const pdfBuffer = await printWin.webContents.printToPDF({
+      printBackground: true,
+      pageSize: 'A4',
+      preferCSSPageSize: true,
+      margins: {
+        marginType: 'custom',
+        top: 0.3,
+        bottom: 0.3,
+        left: 0.3,
+        right: 0.3,
+      },
+    });
+    return pdfBuffer;
+  } finally {
+    if (!printWin.isDestroyed()) {
+      printWin.destroy();
+    }
+  }
+}
+
+// IPC: Test SMTP Connection
+ipcMain.handle('test-smtp-connection', async (event, config) => {
+  try {
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: config.host,
+      port: Number(config.port) || 587,
+      secure: Boolean(config.secure),
+      auth: {
+        user: (config.user || '').trim(),
+        pass: (config.pass || '').trim().replace(/\s+/g, ''),
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 10000,
+    });
+    await transporter.verify();
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message || String(err) };
+  }
+});
+
+// IPC: Render Payslip HTML to PDF Base64
+ipcMain.handle('render-payslip-pdf', async (event, htmlContent) => {
+  try {
+    const buffer = await renderHtmlToPdfBuffer(htmlContent);
+    return { success: true, base64: buffer.toString('base64') };
+  } catch (err) {
+    return { success: false, error: err.message || String(err) };
+  }
+});
+
+// IPC: Send Payslip Email with PDF Attachment via Nodemailer
+ipcMain.handle('send-payslip-email', async (event, payload) => {
+  try {
+    const nodemailer = require('nodemailer');
+    const { smtp, recipient, subject, body, htmlContent, attachPdf, fileName } = payload;
+
+    let attachments = [];
+    if (attachPdf && htmlContent) {
+      const pdfBuf = await renderHtmlToPdfBuffer(htmlContent);
+      attachments.push({
+        filename: fileName || 'Payslip.pdf',
+        content: pdfBuf,
+        contentType: 'application/pdf',
+      });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: smtp.host,
+      port: Number(smtp.port) || 587,
+      secure: Boolean(smtp.secure),
+      auth: {
+        user: (smtp.user || '').trim(),
+        pass: (smtp.pass || '').trim().replace(/\s+/g, ''),
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeout: 15000,
+    });
+
+    const info = await transporter.sendMail({
+      from: `"${smtp.fromName || 'Payroll Department'}" <${smtp.fromEmail || smtp.user}>`,
+      to: recipient,
+      subject: subject,
+      text: body,
+      html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1f2937; white-space: pre-wrap;">${body}</div>`,
+      attachments,
+    });
+
+    return { success: true, messageId: info.messageId };
+  } catch (err) {
+    console.error('send-payslip-email IPC error:', err);
+    return { success: false, error: err.message || String(err) };
+  }
+});
+

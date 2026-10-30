@@ -2,9 +2,10 @@ import {
   Employee, 
   PayrollVariables, 
   PayeTaxVariables, 
-  CalculatedPayrollItem,
+  CalculatedPayrollItem, 
   EmploymentTypeRule 
 } from '../types';
+import { getMidMonthProrationRatio } from './dateUtils';
 
 export const DEFAULT_EMPLOYMENT_TYPE_RULES: EmploymentTypeRule[] = [
   {
@@ -46,6 +47,7 @@ export const DEFAULT_PAYROLL_VARIABLES: PayrollVariables = {
   employerPensionRate: 10,
   salaryCalculationMode: 'gross-to-net',
   employmentTypeRules: DEFAULT_EMPLOYMENT_TYPE_RULES,
+  prorateMidMonth: false,
 };
 
 export const DEFAULT_PAYE_VARIABLES: PayeTaxVariables = {
@@ -91,9 +93,9 @@ export function computeDeductionsFromGross(
   const safePayeVars = payeVars || DEFAULT_PAYE_VARIABLES;
 
   const basic = safeGross * ((safePayrollVars.basic ?? 40) / 100);
-  const housing = safeGross * ((safePayrollVars.housing ?? 30) / 100);
-  const transport = safeGross * ((safePayrollVars.transport ?? 20) / 100);
-  const otherAllowances = safeGross * ((safePayrollVars.otherAllowances ?? 10) / 100);
+  const housing = safeGross * ((safePayrollVars.housing ?? 15) / 100);
+  const transport = safeGross * ((safePayrollVars.transport ?? 15) / 100);
+  const otherAllowances = safeGross * ((safePayrollVars.otherAllowances ?? 30) / 100);
   const pensionableBHT = basic + housing + transport;
 
   const hasPension = Boolean(emp?.hasPension);
@@ -161,7 +163,7 @@ export function computeDeductionsFromGross(
 
   const totalDeductions = monthlyPaye + employeePension;
   const netTakeHome = safeGross - totalDeductions;
-  const employerTotalCost = gross + employerPension;
+  const employerTotalCost = safeGross + employerPension;
 
   return {
     basic,
@@ -229,7 +231,20 @@ export function calculatePayrollItem(
   year?: number
 ): CalculatedPayrollItem {
   const mode = payrollVars.salaryCalculationMode || 'gross-to-net';
-  const recordedAmount = getEmployeeGrossForPeriod(emp, monthKey, year);
+  let recordedAmount = getEmployeeGrossForPeriod(emp, monthKey, year);
+
+  // If mid-month proration is enabled and employee does not have an explicit monthly override for this period
+  const hasExplicitOverride = Boolean(
+    (year && monthKey && emp.monthlySalaries?.[`${year}-${monthKey}`] !== undefined) ||
+    (monthKey && emp.monthlySalaries?.[monthKey] !== undefined)
+  );
+
+  if (payrollVars.prorateMidMonth && !hasExplicitOverride && monthKey && year) {
+    const ratio = getMidMonthProrationRatio(emp, year, monthKey);
+    if (ratio < 1 && ratio > 0) {
+      recordedAmount = Math.round(recordedAmount * ratio * 100) / 100;
+    }
+  }
 
   // If in Net-to-Gross mode, backtrack to find required Gross; otherwise use recordedAmount directly as Gross
   let gross = recordedAmount;
@@ -300,5 +315,5 @@ export function formatCompactNaira(amount: number): string {
   return formatNaira(val);
 }
 
-export { formatDate, formatDateTime, isEmployeeActiveForPeriod } from './dateUtils';
+export { formatDate, formatDateTime, isEmployeeActiveForPeriod, getMidMonthProrationRatio } from './dateUtils';
 

@@ -194,6 +194,39 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
         </div>
       </div>
 
+      {/* Section: Mid-Month Proration */}
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                Mid-Month Proration (Joiners &amp; Leavers)
+              </h2>
+              <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                pv.prorateMidMonth
+                  ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+              }`}>
+                {pv.prorateMidMonth ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Automatically calculate prorated salaries for employees who join or leave during the payroll month based on exact calendar days worked.
+            </p>
+          </div>
+
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={Boolean(pv.prorateMidMonth)}
+              onChange={(e) => setPv({ ...pv, prorateMidMonth: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="w-10 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+          </label>
+        </div>
+      </div>
+
       {/* Section 3: CRA & Rent Relief */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
         <h2 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">

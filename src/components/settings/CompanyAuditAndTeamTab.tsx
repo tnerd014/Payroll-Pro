@@ -7,7 +7,7 @@ import {
   History
 } from 'lucide-react';
 import { CompanyProfile, AuditLogEntry } from '../../types';
-import { fetchAuditLogs } from '../../services/supabaseClient';
+import { fetchAuditLogs, getSupabaseClient } from '../../services/supabaseClient';
 
 interface CompanyAuditAndTeamTabProps {
   company: CompanyProfile;
@@ -35,6 +35,34 @@ export const CompanyAuditAndTeamTab: React.FC<CompanyAuditAndTeamTabProps> = ({ 
   useEffect(() => {
     loadAuditLogs();
   }, [company.id, company.name]);
+
+  // Realtime subscription: prepend new audit entries directly from payload (no re-fetch)
+  useEffect(() => {
+    const client = getSupabaseClient();
+    if (!client || !company.id) return;
+
+    const channel = client
+      .channel(`audit-logs-realtime-${company.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs', filter: `company_id=eq.${company.id}` }, (payload) => {
+        const row = payload.new as any;
+        if (!row) return;
+        const newEntry = {
+          id: row.id,
+          companyId: row.company_id,
+          companyName: row.company_name,
+          actorId: row.actor_id,
+          actorName: row.actor_name,
+          action: row.action,
+          details: row.details,
+          ipOrDevice: row.ip_or_device,
+          createdAt: row.created_at,
+        };
+        setLogs(prev => [newEntry, ...prev]);
+      })
+      .subscribe();
+
+    return () => { client.removeChannel(channel); };
+  }, [company.id]);
 
   const exportLogsAsCSV = () => {
     if (filteredLogs.length === 0) return;

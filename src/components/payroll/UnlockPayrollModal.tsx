@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Unlock, Lock, AlertTriangle, X } from 'lucide-react';
 import { PayrollSnapshot } from '../../types';
 
@@ -32,9 +33,9 @@ export const UnlockPayrollModal: React.FC<UnlockPayrollModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg w-full max-w-md shadow-2xl overflow-hidden animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800">
@@ -107,6 +108,7 @@ export const UnlockPayrollModal: React.FC<UnlockPayrollModalProps> = ({
         </form>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

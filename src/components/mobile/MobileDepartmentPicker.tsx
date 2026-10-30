@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Building2, Check, X } from 'lucide-react';
+import { Building2, Check } from 'lucide-react';
 
 interface MobileDepartmentPickerProps {
   selectedDept: string;
@@ -55,9 +55,10 @@ export const MobileDepartmentPicker: React.FC<MobileDepartmentPickerProps> = ({
         )}
       </button>
 
-      {/* Minimalist Department Dropdown Popover */}
+      {/* Centered Minimalist Department Dropdown Popover */}
+      {/* Positioned directly underneath the button so it never covers the button, centered relative to it */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-60 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-2 z-50 text-xs space-y-1 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-2 z-50 text-xs space-y-1 animate-in fade-in zoom-in-95 duration-150">
           <div className="px-2 py-1 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
             <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400">
               Department

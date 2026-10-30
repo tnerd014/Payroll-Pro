@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import { 
   Building2, 
   Phone, 
@@ -65,15 +66,64 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
   };
 
   return (
-    <MobileBottomSheet
-      isOpen={isOpen}
-      onClose={onClose}
-      maxHeight="max-h-[90vh]"
-      bodyClassName="px-5 py-4 overflow-y-auto flex-1 space-y-5"
-      footer={
-        !isReadOnly ? (
-          <div className="flex items-center gap-2.5 w-full">
-            {onDelete && !showDeleteConfirm && (
+    <>
+      {/* ── Delete Confirmation: Centered Overlay Modal via Portal ── */}
+      {showDeleteConfirm && ReactDOM.createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-5 animate-in fade-in duration-150"
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+            onClick={() => setShowDeleteConfirm(false)}
+          />
+          {/* Modal Card */}
+          <div className="relative w-full max-w-xs bg-white dark:bg-[#18181b] rounded-2xl shadow-2xl border border-rose-200 dark:border-rose-800/60 p-5 space-y-3 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
+            {/* Header */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">Delete Employee?</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight">This cannot be undone</p>
+              </div>
+            </div>
+            {/* Body */}
+            <p className="text-[12px] text-zinc-600 dark:text-zinc-300 leading-relaxed">
+              <span className="font-semibold text-zinc-800 dark:text-zinc-100">{employee.firstName} {employee.lastName}</span> ({employee.code}) will be permanently removed from all future payroll calculations.
+            </p>
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors cursor-pointer active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer active:scale-95 shadow-sm"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      <MobileBottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        maxHeight="max-h-[90vh]"
+        bodyClassName="px-5 py-4 overflow-y-auto flex-1 space-y-5"
+        footer={
+          !isReadOnly ? (
+            <div className="flex items-center gap-2.5 w-full">
+              {onDelete && !showDeleteConfirm && (
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
@@ -360,36 +410,10 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
           </div>
         </div>
 
-        {/* Delete Confirmation Box */}
-        {showDeleteConfirm && (
-          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 space-y-2.5 animate-in fade-in duration-200">
-            <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 text-xs font-bold">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>Confirm Permanent Deletion</span>
-            </div>
-            <p className="text-[11px] text-rose-600 dark:text-rose-300">
-              Are you sure you want to delete {employee.firstName} {employee.lastName} ({employee.code})? This will remove them from all future payroll calculations.
-            </p>
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-2 px-3 rounded-xl bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold border border-zinc-200 dark:border-zinc-700 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="flex-1 py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
-              >
-                Yes, Delete
-              </button>
-            </div>
-          </div>
-        )}
+        {/* (Delete confirmation is now a centered overlay modal — see portal above) */}
 
       </div>
     </MobileBottomSheet>
+    </>
   );
 };

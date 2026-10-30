@@ -24,8 +24,10 @@ import {
   AtSign,
   Shield,
   Calendar,
-  ChevronRight
+  ChevronRight,
+  History,
 } from 'lucide-react';
+import { TeamAuditModal } from './TeamAuditModal';
 import { TeamMember, TeamMemberRole, DEFAULT_SECURITY_QUESTIONS } from '../../types';
 import { 
   fetchTeamMembers, 
@@ -55,6 +57,7 @@ export const TeamMembersPage: React.FC<TeamMembersPageProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 15;
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [viewMember, setViewMember] = useState<TeamMember | null>(null);
   const [mobileActionMember, setMobileActionMember] = useState<TeamMember | null>(null);
@@ -569,13 +572,26 @@ Password: ${createdCredentials.pass}`;
             <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
           </button>
 
+          {currentUser?.role === 'Admin' && (
+            <button
+              type="button"
+              onClick={() => setIsAuditModalOpen(true)}
+              className="h-10 w-10 sm:w-auto px-0 sm:px-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer whitespace-nowrap shrink-0"
+              title="All Companies Audit Trail"
+            >
+              <History className="w-4 h-4 text-emerald-500" />
+              <span className="hidden sm:inline">Audit Trail</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="h-10 px-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+            className="h-10 w-10 sm:w-auto px-0 sm:px-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+            title="Add Member"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Member</span>
+            <span className="hidden sm:inline">Add Member</span>
           </button>
         </div>
 
@@ -1728,6 +1744,13 @@ Password: ${createdCredentials.pass}`;
         </div>,
         document.body
       )}
+
+      {/* Global Audit Trail Modal */}
+      <TeamAuditModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        currentUser={currentUser}
+      />
 
     </div>
   );

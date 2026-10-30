@@ -14,7 +14,9 @@ import {
   Filter,
   Building2,
   ChevronDown,
-  FileText
+  FileText,
+  Mail,
+  MailCheck
 } from 'lucide-react';
 import { 
   CalculatedPayrollItem, 
@@ -24,13 +26,16 @@ import {
   PayeTaxVariables, 
   CompanyProfile,
   PayslipDesignConfig,
-  TeamMember
+  TeamMember,
+  EmailSettings,
+  EmailedPayslipRecord
 } from '../../../types';
 import { formatNaira, formatCompactNaira } from '../../../engine/payePensionEngine';
 import { MobilePayrollCard } from '../MobilePayrollCard';
 import { MobilePayslipPreviewSheet } from '../MobilePayslipPreviewSheet';
 import { FinalizeLockModal } from '../../payroll/FinalizeLockModal';
 import { UnlockPayrollModal } from '../../payroll/UnlockPayrollModal';
+import { EmailPayslipsModal } from '../../payroll/EmailPayslipsModal';
 import { exportNibssBankTransferCsv } from '../../../engine/bankPaymentEngine';
 import { MobileDepartmentPicker } from '../MobileDepartmentPicker';
 
@@ -38,6 +43,7 @@ interface MobilePayrollRunViewProps {
   items: CalculatedPayrollItem[];
   activeSnapshot: PayrollSnapshot | undefined;
   monthLabel: string;
+  selectedMonth?: string;
   year: number;
   onFinalizeAndLock: (notes: string) => void;
   onUnlock: (reason: string) => void;
@@ -46,12 +52,20 @@ interface MobilePayrollRunViewProps {
   departments?: string[];
   onNavigate?: (view: any) => void;
   currentUser?: TeamMember | null;
+  employees?: Employee[];
+  emailSettings?: EmailSettings;
+  emailedPayslips?: Record<string, EmailedPayslipRecord>;
+  onRecordEmailedPayslips?: (records: EmailedPayslipRecord[]) => void;
+  onUpdateEmployeeEmail?: (id: string, email: string) => void;
+  isAdmin?: boolean;
+  onOpenEmailSettings?: () => void;
 }
 
 export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
   items,
   activeSnapshot,
   monthLabel,
+  selectedMonth = 'oct',
   year,
   onFinalizeAndLock,
   onUnlock,
@@ -60,6 +74,13 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
   departments = [],
   onNavigate,
   currentUser,
+  employees = [],
+  emailSettings,
+  emailedPayslips = {},
+  onRecordEmailedPayslips,
+  onUpdateEmployeeEmail,
+  isAdmin = true,
+  onOpenEmailSettings,
 }) => {
   const isAuditor = currentUser?.role === 'Auditor';
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,6 +89,14 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
   const [selectedSlipItem, setSelectedSlipItem] = useState<CalculatedPayrollItem | null>(null);
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
+  const [isEmailPayslipsOpen, setIsEmailPayslipsOpen] = useState(false);
+  const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
+
+  const periodKey = `${year}-${(selectedMonth || monthLabel || '').toLowerCase()}`;
+  const emailedCountForPeriod = useMemo(() => {
+    if (!emailedPayslips) return 0;
+    return items.filter(i => Boolean(emailedPayslips[`${periodKey}_${i.employeeId}`])).length;
+  }, [items, emailedPayslips, periodKey]);
 
   const isLocked = Boolean(activeSnapshot?.isLocked);
 
@@ -107,22 +136,16 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
         <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           {!isSearchOpen ? (
             <div className="flex items-center justify-between gap-2.5">
-              {/* Left: Period & Count */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight truncate">
-                    {monthLabel} {year}
-                  </h3>
-                  {isLocked && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold flex items-center gap-0.5 border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 shrink-0">
-                      <Lock className="w-2.5 h-2.5" />
-                      <span>Locked</span>
-                    </span>
-                  )}
-                </div>
-                <p className="text-[10px] text-zinc-400 font-mono truncate">
+              {/* Left: Count & Lock Status */}
+              <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
                   {filteredItems.length} Enrolled{selectedDept !== 'ALL' ? ` • ${selectedDept}` : ''}
                 </p>
+                {isLocked && (
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border bg-amber-500/10 border-amber-500/20 shrink-0" title="Payroll Locked">
+                    <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                  </span>
+                )}
               </div>
 
               {/* Right: Compact Net Amount & Action Icons */}
@@ -157,6 +180,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                     <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
                   )}
                 </button>
+
 
                 {/* Finalize & Lock / Unlock Quick Action */}
                 {isAuditor ? (
@@ -243,32 +267,111 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
               item={item}
               onViewPayslip={(slip) => setSelectedSlipItem(slip)}
               isLocked={isLocked}
+              isEmailed={Boolean(emailedPayslips?.[`${periodKey}_${item.employeeId}`])}
             />
           ))
         )}
       </div>
 
-      {/* ── Floating Action Button (Payslips Action, Safely Above Bottom Nav) ── */}
-      <div className="fixed bottom-[80px] right-4 z-50 flex items-center gap-2 pointer-events-auto">
-        {isLocked && (
-          <button
-            type="button"
-            onClick={handleExportBankSchedule}
-            className="w-12 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl flex items-center justify-center cursor-pointer active:scale-90 transition-all"
-            title="Export Bank Schedule"
-            aria-label="Export Bank Schedule"
-          >
-            <FileSpreadsheet className="w-5 h-5" />
-          </button>
+      {/* ── Speed Dial Backdrop ── */}
+      {isSpeedDialOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
+          onClick={() => setIsSpeedDialOpen(false)}
+        />
+      )}
+
+      {/* ── Expandable Speed Dial Floating Action Button ── */}
+      <div className="fixed bottom-[80px] right-4 z-50 flex flex-col items-end gap-2.5 pointer-events-auto">
+        {/* Expanded Speed Dial Action Menu */}
+        {isSpeedDialOpen && (
+          <div className="flex flex-col items-end gap-2 mb-1 animate-in slide-in-from-bottom-2 fade-in duration-200">
+            {/* Action 1: Bank Schedule (when locked) */}
+            {isLocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSpeedDialOpen(false);
+                  handleExportBankSchedule();
+                }}
+                className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
+              >
+                <span className="px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+                  Bank Schedule
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                  <FileSpreadsheet className="w-4 h-4" />
+                </div>
+              </button>
+            )}
+
+            {/* Action 2: Email Payslips */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSpeedDialOpen(false);
+                setIsEmailPayslipsOpen(true);
+              }}
+              className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
+            >
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+                <span>Email Payslips</span>
+                {emailedCountForPeriod > 0 && (
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md font-mono">
+                    {emailedCountForPeriod}/{items.length}
+                  </span>
+                )}
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-emerald-400 dark:text-emerald-600 border border-zinc-700/50 dark:border-zinc-200/50 shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                {emailedCountForPeriod > 0 ? (
+                  <MailCheck className="w-4 h-4 text-emerald-500" />
+                ) : (
+                  <Mail className="w-4 h-4" />
+                )}
+              </div>
+            </button>
+
+            {/* Action 3: View Payslips */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSpeedDialOpen(false);
+                onNavigate?.('payslips');
+              }}
+              className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
+            >
+              <span className="px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+                View Payslips
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-emerald-400 dark:text-emerald-600 border border-zinc-700/50 dark:border-zinc-200/50 shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                <FileText className="w-4 h-4" />
+              </div>
+            </button>
+          </div>
         )}
+
+        {/* Primary Toggle Floating Action Button */}
         <button
           type="button"
-          onClick={() => onNavigate?.('payslips')}
-          className="w-12 h-12 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 shadow-xl border border-zinc-700/50 dark:border-zinc-200/50 flex items-center justify-center cursor-pointer active:scale-90 transition-all group"
-          title="Open Payslips"
-          aria-label="Open Payslips"
+          onClick={() => setIsSpeedDialOpen(!isSpeedDialOpen)}
+          className={`relative w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-90 outline-none focus:outline-none focus:ring-0 select-none ${
+            isSpeedDialOpen
+              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rotate-90 shadow-2xl'
+              : 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 border border-zinc-700/50 dark:border-zinc-200/50'
+          }`}
+          title={isSpeedDialOpen ? 'Close Actions' : 'Payroll Actions'}
+          aria-label={isSpeedDialOpen ? 'Close Actions' : 'Payroll Actions'}
         >
-          <FileText className="w-5 h-5 text-emerald-400 dark:text-emerald-600 transition-transform group-hover:scale-110" />
+          {isSpeedDialOpen ? (
+            <X className="w-5 h-5 transition-transform" />
+          ) : (
+            <div className="relative flex items-center justify-center">
+              <FileText className="w-5 h-5 text-emerald-400 dark:text-emerald-600" />
+              {emailedCountForPeriod > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-zinc-900 dark:ring-zinc-100" />
+              )}
+            </div>
+          )}
         </button>
       </div>
 
@@ -312,6 +415,29 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
             setIsUnlockModalOpen(false);
           }}
           onClose={() => setIsUnlockModalOpen(false)}
+        />
+      )}
+
+      {isEmailPayslipsOpen && (
+        <EmailPayslipsModal
+          isOpen={isEmailPayslipsOpen}
+          onClose={() => setIsEmailPayslipsOpen(false)}
+          items={items}
+          employees={employees}
+          company={company}
+          monthLabel={monthLabel}
+          selectedMonth={selectedMonth}
+          year={year}
+          emailSettings={emailSettings}
+          payslipDesign={payslipDesign}
+          emailedPayslips={emailedPayslips}
+          onRecordEmailedPayslips={onRecordEmailedPayslips}
+          onOpenSettings={onOpenEmailSettings || (() => onNavigate?.('settings'))}
+          onUpdateEmployeeEmail={onUpdateEmployeeEmail}
+          isAdmin={isAdmin}
+          currentUser={currentUser}
+          activeSnapshot={activeSnapshot}
+          isLocked={isLocked}
         />
       )}
 

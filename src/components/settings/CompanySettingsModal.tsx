@@ -20,6 +20,7 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
   const [formData, setFormData] = useState<CompanyProfile>(company);
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmDeleteLogo, setConfirmDeleteLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -124,13 +125,36 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
                   <span>Upload Logo</span>
                 </label>
                 {formData.logoUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, logoUrl: '' }))}
-                    className="px-2 py-1 text-slate-500 hover:text-rose-600 transition text-[11px]"
-                  >
-                    Remove
-                  </button>
+                  confirmDeleteLogo ? (
+                    <div className="flex items-center gap-1 text-[11px] px-1.5 py-0.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded">
+                      <span className="text-rose-600 dark:text-rose-400 font-medium">Delete?</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, logoUrl: '' }));
+                          setConfirmDeleteLogo(false);
+                        }}
+                        className="px-1.5 py-0.2 bg-rose-600 hover:bg-rose-700 text-white rounded font-medium cursor-pointer"
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteLogo(false)}
+                        className="px-1 text-slate-500 hover:text-slate-700 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteLogo(true)}
+                      className="px-2 py-1 text-slate-500 hover:text-rose-600 transition text-[11px] cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  )
                 )}
               </div>
             </div>

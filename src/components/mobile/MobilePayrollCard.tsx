@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, MailCheck } from 'lucide-react';
 import { CalculatedPayrollItem } from '../../types';
 import { formatNaira } from '../../engine/payePensionEngine';
 
@@ -7,11 +7,13 @@ interface MobilePayrollCardProps {
   item: CalculatedPayrollItem;
   onViewPayslip: (item: CalculatedPayrollItem) => void;
   isLocked?: boolean;
+  isEmailed?: boolean;
 }
 
 export const MobilePayrollCard: React.FC<MobilePayrollCardProps> = ({
   item,
   onViewPayslip,
+  isEmailed,
 }) => {
   // Compute initials from fullName
   const nameParts = (item.fullName || 'Employee').trim().split(/\s+/);
@@ -29,9 +31,19 @@ export const MobilePayrollCard: React.FC<MobilePayrollCardProps> = ({
           </div>
           
           <div className="min-w-0 flex-1">
-            <h4 className="text-xs sm:text-[13px] font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-snug break-words">
-              {item.fullName}
-            </h4>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h4 className="text-xs sm:text-[13px] font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-snug break-words">
+                {item.fullName}
+              </h4>
+              {isEmailed && (
+                <span 
+                  className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0" 
+                  title="Payslip emailed"
+                >
+                  <MailCheck className="w-3.5 h-3.5" />
+                </span>
+              )}
+            </div>
             <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium tracking-wide uppercase mt-0.5">
               {item.department || 'General'}
             </p>
