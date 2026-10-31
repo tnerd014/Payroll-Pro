@@ -336,6 +336,8 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   }, []);
 
   useEffect(() => {
+    // Avoid overwriting fields if user is actively editing inside a modal
+    if (modal) return;
     if (currentUser) {
       setName(currentUser.name || '');
       setPhone(currentUser.phone || '');
@@ -348,7 +350,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       if (currentUser.twoFactorSecret) setMfaSecret(currentUser.twoFactorSecret);
       if (currentUser.avatarColor) setAvatarColor(currentUser.avatarColor);
     }
-  }, [currentUser]);
+  }, [currentUser, modal]);
 
   if (!currentUser) {
     return (

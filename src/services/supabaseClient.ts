@@ -275,6 +275,9 @@ export function joinPresenceChannel(presence: StaffPresence): void {
     .on('broadcast', { event: 'company-list-updated' }, () => {
       window.dispatchEvent(new Event('company-list-updated'));
     })
+    .on('broadcast', { event: 'email-settings-updated' }, (evt: any) => {
+      window.dispatchEvent(new CustomEvent('email-settings-updated', { detail: evt.payload }));
+    })
     .subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await presenceChannel!.track({
@@ -428,6 +431,25 @@ export function broadcastCompanyUpdate(): void {
   }
 }
 
+/**
+ * Broadcasts updated email settings across the team presence channel to all connected
+ * devices and sessions immediately, without needing manual reloads or database polling.
+ */
+export function broadcastEmailSettingsUpdate(companyId: string, settings: any): void {
+  try {
+    if (presenceChannel) {
+      presenceChannel.send({
+        type: 'broadcast',
+        event: 'email-settings-updated',
+        payload: { companyId, settings },
+      }).catch(() => {});
+    }
+    window.dispatchEvent(new CustomEvent('email-settings-updated', { detail: { companyId, settings } }));
+  } catch (e) {
+    console.warn('Failed to broadcast email settings update:', e);
+  }
+}
+
 
 
 /**
@@ -455,7 +477,7 @@ export async function uploadCompanyDataToSupabase(
     const companyId = company.id || 'comp-default';
 
     // 1. Upsert Company — always hash credentials before storing
-    const { error: compErr } = await client.from('companies').upsert({
+    const companyPayload: Record<string, any> = {
       id: companyId,
       name: company.name,
       subtitle: company.subtitle || '',
@@ -471,7 +493,17 @@ export async function uploadCompanyDataToSupabase(
       email_settings: emailSettings || {},
       emailed_payslips: emailedPayslips || {},
       updated_at: new Date().toISOString(),
-    });
+    };
+
+    let { error: compErr } = await client.from('companies').upsert(companyPayload);
+    // Graceful fallback: If email_settings or emailed_payslips column hasn't been added to companies table yet, retry without them
+    if (compErr && compErr.message && (compErr.message.includes('email_settings') || compErr.message.includes('emailed_payslips'))) {
+      const fallbackPayload = { ...companyPayload };
+      delete fallbackPayload.email_settings;
+      delete fallbackPayload.emailed_payslips;
+      const retryRes = await client.from('companies').upsert(fallbackPayload);
+      compErr = retryRes.error;
+    }
     if (compErr) throw new Error(`Companies upsert failed: ${compErr.message}`);
 
     // 2. Upsert Departments
@@ -498,6 +530,7 @@ export async function uploadCompanyDataToSupabase(
         phone: e.phone || '',
         monthly_gross: e.monthlyGross || 0,
         annual_rent: e.annualRent || 0,
+        annual_rents: e.annualRents || {},
         bank_name: e.bankName || '',
         account_number: e.accountNumber || '',
         has_pension: Boolean(e.hasPension),
@@ -756,6 +789,7 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       phone: e.phone || '',
       monthlyGross: Number(e.monthly_gross) || 0,
       annualRent: Number(e.annual_rent) || 0,
+      annualRents: e.annual_rents || {},
       bankName: e.bank_name || '',
       accountNumber: e.account_number || '',
       hasPension: Boolean(e.has_pension),
@@ -1278,7 +1312,9 @@ export async function fetchTeamMembers(): Promise<{
       isActive: Boolean(row.is_active),
       twoFactorEnabled: Boolean(row.two_factor_enabled),
       twoFactorSecret: row.two_factor_secret || '',
+      twoFactorBackupCodes: Array.isArray(row.two_factor_backup_codes) ? row.two_factor_backup_codes : [],
       biometricEnabled: Boolean(row.biometric_enabled),
+      biometricDeviceName: row.biometric_device_name || '',
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
@@ -1320,7 +1356,9 @@ export async function saveTeamMemberToCloud(member: TeamMember): Promise<{
     if (member.avatarColor !== undefined) payload.avatar_color = member.avatarColor;
     if (member.twoFactorEnabled !== undefined) payload.two_factor_enabled = member.twoFactorEnabled;
     if (member.twoFactorSecret !== undefined) payload.two_factor_secret = member.twoFactorSecret;
+    if (member.twoFactorBackupCodes !== undefined) payload.two_factor_backup_codes = member.twoFactorBackupCodes;
     if (member.biometricEnabled !== undefined) payload.biometric_enabled = member.biometricEnabled;
+    if (member.biometricDeviceName !== undefined) payload.biometric_device_name = member.biometricDeviceName;
 
     if (member.password !== undefined) {
       const hashedPassword = hashCredential(member.password);
@@ -1521,6 +1559,7 @@ export async function saveSingleEmployeeToCloud(employee: Employee, companyId: s
       phone: employee.phone || '',
       monthly_gross: employee.monthlyGross || 0,
       annual_rent: employee.annualRent || 0,
+      annual_rents: employee.annualRents || {},
       bank_name: employee.bankName || '',
       account_number: employee.accountNumber || '',
       has_pension: Boolean(employee.hasPension),
@@ -1538,7 +1577,35 @@ export async function saveSingleEmployeeToCloud(employee: Employee, companyId: s
       monthly_salaries: employee.monthlySalaries || {},
       updated_at: new Date().toISOString(),
     };
-    const { error } = await client.from('employees').upsert([row]);
+    let { error } = await client.from('employees').upsert([row]);
+    // Fallback if cloud schema is missing newer optional columns
+    if (error && (error.message?.includes('column') || error.code === '42703')) {
+      const coreRow = {
+        id: employee.id,
+        company_id: companyId,
+        code: employee.code,
+        first_name: employee.firstName,
+        last_name: employee.lastName,
+        department: employee.department || 'GENERAL',
+        position: employee.position || 'STAFF',
+        email: employee.email || '',
+        phone: employee.phone || '',
+        monthly_gross: employee.monthlyGross || 0,
+        annual_rent: employee.annualRent || 0,
+        bank_name: employee.bankName || '',
+        account_number: employee.accountNumber || '',
+        has_pension: Boolean(employee.hasPension),
+        has_paye: Boolean(employee.hasPaye),
+        paye_number: employee.payeNumber || '',
+        pension_number: employee.pensionNumber || '',
+        pfa_name: employee.pfaName || '',
+        status: employee.status || 'Active',
+        employment_type: employee.employmentType || 'Full-Time',
+        updated_at: new Date().toISOString(),
+      };
+      const retryRes = await client.from('employees').upsert([coreRow]);
+      error = retryRes.error;
+    }
     if (error) throw error;
     return { success: true };
   } catch (err: any) {
@@ -1711,14 +1778,34 @@ export async function saveEmailSettingsToCloud(settings: any, companyId: string)
   if (!client) return { success: false, error: 'Cloud server not connected.' };
 
   try {
-    const { error } = await client
+    const { data, error } = await client
       .from('companies')
       .update({
         email_settings: settings,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', companyId);
-    if (error) throw error;
+      .eq('id', companyId)
+      .select('id');
+
+    if (error) {
+      if (error.message && error.message.includes('email_settings')) {
+        console.warn('Supabase companies table is missing email_settings column. Please run schema migration.');
+        return { success: false, error: 'Database missing email_settings column.' };
+      }
+      throw error;
+    }
+
+    // If company record didn't exist in cloud yet, upsert it so email settings are preserved
+    if (!data || data.length === 0) {
+      await client.from('companies').upsert({
+        id: companyId,
+        email_settings: settings,
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    // Broadcast across presence channel to sync all other active devices immediately
+    broadcastEmailSettingsUpdate(companyId, settings);
     return { success: true };
   } catch (err: any) {
     console.error('Failed to save email settings to cloud:', err);
@@ -1744,7 +1831,13 @@ export async function saveEmailedPayslipsToCloud(records: Record<string, any>, c
         updated_at: new Date().toISOString(),
       })
       .eq('id', companyId);
-    if (error) throw error;
+    if (error) {
+      if (error.message && error.message.includes('emailed_payslips')) {
+        console.warn('Supabase companies table is missing emailed_payslips column. Please run schema migration.');
+        return { success: false, error: 'Database missing emailed_payslips column.' };
+      }
+      throw error;
+    }
     return { success: true };
   } catch (err: any) {
     console.error('Failed to save emailed payslips to cloud:', err);
@@ -1929,7 +2022,9 @@ export async function loginStaffMember(
       avatarColor: row.avatar_color || '',
       twoFactorEnabled: Boolean(row.two_factor_enabled),
       twoFactorSecret: row.two_factor_secret || '',
+      twoFactorBackupCodes: Array.isArray(row.two_factor_backup_codes) ? row.two_factor_backup_codes : [],
       biometricEnabled: Boolean(row.biometric_enabled),
+      biometricDeviceName: row.biometric_device_name || '',
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

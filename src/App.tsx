@@ -343,9 +343,9 @@ export const App: React.FC = () => {
     recordEmailedPayslips,
   } = usePayrollStore();
 
-  const effectiveMember = isCloudOffline && authenticatedMember
-    ? { ...authenticatedMember, role: 'Auditor' as const }
-    : authenticatedMember;
+  // Keep the real authenticated member role — we NEVER demote it based on connectivity.
+  // Offline mode only disables saves (via isCloudOffline/isReadOnly props), not access.
+  const effectiveMember = authenticatedMember;
 
   const isAdmin = !effectiveMember || effectiveMember.role === 'Admin';
 
@@ -958,6 +958,7 @@ export const App: React.FC = () => {
                     currentUser={effectiveMember}
                     emailSettings={emailSettings}
                     onUpdateEmailSettings={updateEmailSettings}
+                    isReadOnly={isCloudOffline}
                   />
                 ) : (
                   <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-3 max-w-md mx-auto my-12">

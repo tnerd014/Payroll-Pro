@@ -35,7 +35,6 @@ import { MobilePayrollCard } from '../MobilePayrollCard';
 import { MobilePayslipPreviewSheet } from '../MobilePayslipPreviewSheet';
 import { FinalizeLockModal } from '../../payroll/FinalizeLockModal';
 import { UnlockPayrollModal } from '../../payroll/UnlockPayrollModal';
-import { EmailPayslipsModal } from '../../payroll/EmailPayslipsModal';
 import { exportNibssBankTransferCsv } from '../../../engine/bankPaymentEngine';
 import { MobileDepartmentPicker } from '../MobileDepartmentPicker';
 
@@ -89,7 +88,6 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
   const [selectedSlipItem, setSelectedSlipItem] = useState<CalculatedPayrollItem | null>(null);
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
-  const [isEmailPayslipsOpen, setIsEmailPayslipsOpen] = useState(false);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
 
   const periodKey = `${year}-${(selectedMonth || monthLabel || '').toLowerCase()}`;
@@ -305,33 +303,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
               </button>
             )}
 
-            {/* Action 2: Email Payslips */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsSpeedDialOpen(false);
-                setIsEmailPayslipsOpen(true);
-              }}
-              className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
-            >
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
-                <span>Email Payslips</span>
-                {emailedCountForPeriod > 0 && (
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md font-mono">
-                    {emailedCountForPeriod}/{items.length}
-                  </span>
-                )}
-              </span>
-              <div className="w-10 h-10 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-emerald-400 dark:text-emerald-600 border border-zinc-700/50 dark:border-zinc-200/50 shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
-                {emailedCountForPeriod > 0 ? (
-                  <MailCheck className="w-4 h-4 text-emerald-500" />
-                ) : (
-                  <Mail className="w-4 h-4" />
-                )}
-              </div>
-            </button>
-
-            {/* Action 3: View Payslips */}
+            {/* Action 2: View Payslips */}
             <button
               type="button"
               onClick={() => {
@@ -415,29 +387,6 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
             setIsUnlockModalOpen(false);
           }}
           onClose={() => setIsUnlockModalOpen(false)}
-        />
-      )}
-
-      {isEmailPayslipsOpen && (
-        <EmailPayslipsModal
-          isOpen={isEmailPayslipsOpen}
-          onClose={() => setIsEmailPayslipsOpen(false)}
-          items={items}
-          employees={employees}
-          company={company}
-          monthLabel={monthLabel}
-          selectedMonth={selectedMonth}
-          year={year}
-          emailSettings={emailSettings}
-          payslipDesign={payslipDesign}
-          emailedPayslips={emailedPayslips}
-          onRecordEmailedPayslips={onRecordEmailedPayslips}
-          onOpenSettings={onOpenEmailSettings || (() => onNavigate?.('settings'))}
-          onUpdateEmployeeEmail={onUpdateEmployeeEmail}
-          isAdmin={isAdmin}
-          currentUser={currentUser}
-          activeSnapshot={activeSnapshot}
-          isLocked={isLocked}
         />
       )}
 

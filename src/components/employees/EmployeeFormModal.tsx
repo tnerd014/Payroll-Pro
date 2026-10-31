@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { X, Calendar, Copy, Check, ChevronDown, Zap, UserPlus, Trash2, User, Wallet, Landmark, ShieldCheck } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { X, Calendar, Copy, Check, ChevronDown, Zap, UserPlus, Trash2, User, Wallet, Landmark, ShieldCheck, Info } from 'lucide-react';
 import { Employee, SalaryCalculationMode, EmploymentTypeRule } from '../../types';
 import { formatNaira, DEFAULT_EMPLOYMENT_TYPE_RULES } from '../../engine/payePensionEngine';
 import { NIGERIAN_BANKS, NIGERIAN_PFAS, NIGERIAN_STATES } from '../../constants/banks';
@@ -15,6 +15,7 @@ interface EmployeeFormModalProps {
   editingEmployee?: Employee | null;
   existingEmployees?: Employee[];
   currentYear?: number;
+  currentMonth?: string;
   availableDepartments?: string[];
   salaryCalculationMode?: SalaryCalculationMode;
   employmentTypeRules?: EmploymentTypeRule[];
@@ -45,6 +46,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   editingEmployee,
   existingEmployees = [],
   currentYear = 2026,
+  currentMonth,
   availableDepartments = DEFAULT_DEPARTMENTS,
   salaryCalculationMode = 'gross-to-net',
   employmentTypeRules = DEFAULT_EMPLOYMENT_TYPE_RULES,
@@ -122,6 +124,18 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   );
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [showMonthlyBreakdown, setShowMonthlyBreakdown] = useState<boolean>(false);
+  const [showSalaryInfo, setShowSalaryInfo] = useState<boolean>(false);
+  const [showRentInfo, setShowRentInfo] = useState<boolean>(false);
+  const [annualRents, setAnnualRents] = useState<Record<string | number, number | ''>>(
+    editingEmployee?.annualRents || {}
+  );
+
+  const setYearRent = (year: number, val: string | number) => {
+    setAnnualRents(prev => ({
+      ...prev,
+      [year]: val === '' ? '' : Number(val),
+    }));
+  };
 
   const handleEmploymentTypeChange = (type: string) => {
     setFormData(prev => ({
@@ -155,8 +169,30 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     ) || formData.department || deptOptions[0] || 'OPERATIONS';
   }, [deptOptions, formData.department]);
 
-  // Sync state whenever editingEmployee or isOpen changes
+  // Track the employee ID and open-state that were last used to initialise the form.
+  // We intentionally do NOT track the full editingEmployee object because cloud-sync
+  // re-renders create a new object reference on every store update, which would
+  // reset any in-progress edits (e.g. a typed email) back to the stored value.
+  const lastInitIdRef = useRef<string | null>(null);
+  const lastInitOpenRef = useRef<boolean>(false);
+
   useEffect(() => {
+    const currentId = editingEmployee?.id ?? null;
+    const openChanged = isOpen !== lastInitOpenRef.current;
+    const idChanged = currentId !== lastInitIdRef.current;
+
+    // Only re-initialise when:
+    //  a) The modal just opened (closed → open transition), OR
+    //  b) A different employee was selected (ID changed)
+    // Never re-initialise just because the store re-rendered a new object reference
+    // for the same employee while the form is already open — that's what was
+    // silently reverting the email field.
+    const shouldInit = (openChanged && isOpen) || (isOpen && idChanged);
+    if (!shouldInit) return;
+
+    lastInitIdRef.current = currentId;
+    lastInitOpenRef.current = isOpen;
+
     if (editingEmployee) {
       setFormData({
         code: editingEmployee.code,
@@ -184,7 +220,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         stints: editingEmployee.stints || [],
       });
       setMonthlySalaries(editingEmployee.monthlySalaries || {});
-      const hasCustom = !!(editingEmployee.monthlySalaries && Object.keys(editingEmployee.monthlySalaries).length > 0);
+      setAnnualRents(editingEmployee.annualRents || {});
+      const hasCustom = !!(
+        (editingEmployee.monthlySalaries && Object.keys(editingEmployee.monthlySalaries).length > 0) ||
+        (editingEmployee.annualRents && Object.keys(editingEmployee.annualRents).length > 0)
+      );
       setShowMonthlyBreakdown(hasCustom);
     } else {
       const defaultRule = activeRules.find(r => r.name === 'Full-Time') || activeRules[0];
@@ -214,10 +254,12 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         stints: [],
       });
       setMonthlySalaries({});
+      setAnnualRents({});
       setShowMonthlyBreakdown(false);
     }
     setActiveYear(currentYear || 2026);
-  }, [editingEmployee, isOpen, currentYear, activeRules]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingEmployee?.id, isOpen, currentYear]);
 
   // Lock background scroll when modal is open
   useEffect(() => {
@@ -275,6 +317,25 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     setTimeout(() => setCopyFeedback(null), 2500);
   };
 
+  // Copy base contractual gross from current month through December
+  const handleCopyBaseFromCurrentMonth = () => {
+    if (!currentMonth) return;
+    const currentMonthIdx = MONTHS_LIST.findIndex(m => m.key.toLowerCase() === currentMonth.toLowerCase());
+    if (currentMonthIdx === -1) return;
+
+    const updated = { ...monthlySalaries };
+    const baseVal = Number(formData.monthlyGross) || 0;
+    MONTHS_LIST.forEach((m, idx) => {
+      if (idx >= currentMonthIdx) {
+        updated[`${activeYear}-${m.key}`] = baseVal;
+      }
+    });
+    setMonthlySalaries(updated);
+    const startLabel = MONTHS_LIST[currentMonthIdx].label;
+    setCopyFeedback(`Applied ₦${formatNaira(baseVal)} from ${startLabel} to Dec (${activeYear})`);
+    setTimeout(() => setCopyFeedback(null), 2500);
+  };
+
   // Calculate annual sum for activeYear (hook called unconditionally)
   const yearAnnualTotal = useMemo(() => {
     return MONTHS_LIST.reduce((sum, m) => sum + getMonthGross(m.key), 0);
@@ -294,6 +355,13 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     Object.entries(monthlySalaries).forEach(([k, v]) => {
       if (v !== '' && v !== undefined && !isNaN(Number(v))) {
         cleanMonthlySalaries[k] = Number(v);
+      }
+    });
+
+    const cleanAnnualRents: Record<string, number> = {};
+    Object.entries(annualRents).forEach(([k, v]) => {
+      if (v !== '' && v !== undefined && !isNaN(Number(v))) {
+        cleanAnnualRents[String(k)] = Number(v);
       }
     });
 
@@ -325,6 +393,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
       stints: updatedStints,
       monthlyGross: Math.max(0, Number(formData.monthlyGross) || 0),
       annualRent: Math.max(0, Number(formData.annualRent) || 0),
+      annualRents: cleanAnnualRents,
       monthlySalaries: cleanMonthlySalaries,
     });
     onClose();
@@ -643,13 +712,41 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                    {salaryCalculationMode === 'net-to-gross' 
-                      ? 'Target Monthly Net Pay (Take-Home ₦)' 
-                      : 'Base Monthly Gross Salary (₦)'}
-                  </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative">
+                {/* Backdrop for Tooltips */}
+                {(showSalaryInfo || showRentInfo) && (
+                  <div 
+                    className="fixed inset-0 z-40 bg-transparent" 
+                    onClick={() => {
+                      setShowSalaryInfo(false);
+                      setShowRentInfo(false);
+                    }} 
+                  />
+                )}
+
+                {/* Field 1: Monthly Gross Salary */}
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+                        {salaryCalculationMode === 'net-to-gross' 
+                          ? 'Target Monthly Net Pay (Take-Home ₦)' 
+                          : 'Base Monthly Gross Salary (₦)'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowSalaryInfo(prev => !prev);
+                          setShowRentInfo(false);
+                        }}
+                        className="w-4 h-4 rounded-full flex items-center justify-center text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                        title="Click for information on monthly pay & schedule"
+                        aria-label="Monthly pay information"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                   <input 
                     type="number" 
                     value={formData.monthlyGross} 
@@ -666,14 +763,63 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     placeholder="e.g. 350000"
                     required
                   />
+
+                  {/* Tooltip Popover for Base Monthly Gross Salary */}
+                  {showSalaryInfo && (
+                    <div className="absolute left-0 top-full mt-1.5 z-50 w-80 max-w-[90vw] p-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl text-left animate-in fade-in zoom-in-95 duration-150">
+                      <div className="flex items-start justify-between gap-2 pb-2 mb-2 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                          <Info className="w-3.5 h-3.5 text-blue-500" />
+                          <span>Monthly Pay &amp; Schedule Guide</span>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setShowSalaryInfo(false)}
+                          className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 rounded cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="space-y-2 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        <p>
+                          <strong className="text-zinc-800 dark:text-zinc-200">Base Contractual Pay:</strong> This is the default gross salary. In <em>Bulk Add</em>, this figure automatically copies across all months and years.
+                        </p>
+                        <p>
+                          <strong className="text-zinc-800 dark:text-zinc-200">Editing in Current Month:</strong> When editing an existing employee during the year (such as {currentMonth ? currentMonth.toUpperCase() : 'Sep'} {activeYear}):
+                        </p>
+                        <ul className="list-disc pl-4 space-y-1 text-[10.5px]">
+                          <li>
+                            Use <strong className="text-zinc-800 dark:text-zinc-200">Copy Base to All</strong> to apply this salary to all 12 months.
+                          </li>
+                          <li>
+                            Or use the <strong className="text-zinc-800 dark:text-zinc-200">12-Month Schedule</strong> below to edit specific months (e.g. from current month through Dec), preserving previous months' historical figures.
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div>
+                {/* Field 2: Annual Rent Paid by Staff */}
+                <div className="relative">
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
-                      Annual Rent Paid by Staff (₦)
-                    </label>
-                    <span className="text-[11px] text-zinc-400">20% CRA relief</span>
+                    <div className="flex items-center gap-1.5">
+                      <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+                        Annual Rent Paid by Staff (₦)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRentInfo(prev => !prev);
+                          setShowSalaryInfo(false);
+                        }}
+                        className="w-4 h-4 rounded-full flex items-center justify-center text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                        title="Click for information on Annual Rent & CRA Relief"
+                        aria-label="Annual rent information"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <input 
                     type="number" 
@@ -685,11 +831,41 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                         annualRent: val === '' ? '' : Number(val),
                       }));
                     }}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     step="any"
                     min="0"
                     placeholder="0"
                   />
+
+                  {/* Tooltip Popover for Annual Rent */}
+                  {showRentInfo && (
+                    <div className="absolute right-0 top-full mt-1.5 z-50 w-80 max-w-[90vw] p-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl text-left animate-in fade-in zoom-in-95 duration-150">
+                      <div className="flex items-start justify-between gap-2 pb-2 mb-2 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                          <Info className="w-3.5 h-3.5 text-blue-500" />
+                          <span>Annual Rent &amp; Tax Relief Guide</span>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setShowRentInfo(false)}
+                          className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5 rounded cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="space-y-2 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        <p>
+                          <strong className="text-zinc-800 dark:text-zinc-200">20% Statutory Rent Relief:</strong> Under Nigerian tax laws, staff qualify for 20% tax-free relief on actual annual rent paid (capped at ₦500,000 / year) within their Consolidated Relief Allowance (CRA).
+                        </p>
+                        <p>
+                          <strong className="text-zinc-800 dark:text-zinc-200">Yearly Rent per Tax Year:</strong> Rent paid can differ each year. You can set the default annual rent here, or expand the <strong className="text-zinc-700 dark:text-zinc-300">12-Month Schedule</strong> below to set specific rents for different years (e.g. 2025 vs 2026).
+                        </p>
+                        <p className="text-[10.5px] text-zinc-500 italic">
+                          If staff pays no rent or does not provide a rent receipt, enter 0.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -712,7 +888,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                       </select>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <button
                         type="button"
                         onClick={handleCopyBaseToAllMonths}
@@ -720,6 +896,16 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                       >
                         Copy Base to All
                       </button>
+                      {currentMonth && activeYear === (currentYear || 2026) && (
+                        <button
+                          type="button"
+                          onClick={handleCopyBaseFromCurrentMonth}
+                          className="text-[11px] px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium transition cursor-pointer"
+                          title={`Apply base salary starting from ${currentMonth.toUpperCase()} through Dec ${activeYear}`}
+                        >
+                          Copy Base {currentMonth.toUpperCase()}–Dec
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={handleCopyJanToAllMonths}
@@ -742,23 +928,34 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                       const currentVal = getMonthGross(m.key);
                       const isCustom = monthlySalaries[`${activeYear}-${m.key}`] !== undefined && 
                                        monthlySalaries[`${activeYear}-${m.key}`] !== formData.monthlyGross;
+                      const isCurrentPayPeriod = Boolean(
+                        currentMonth &&
+                        m.key.toLowerCase() === currentMonth.toLowerCase() &&
+                        activeYear === (currentYear || 2026)
+                      );
 
                       return (
                         <div 
                           key={m.key} 
                           className={`p-1.5 rounded-lg border transition ${
-                            isCustom 
+                            isCurrentPayPeriod
+                              ? 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-400 dark:border-blue-600 ring-1 ring-blue-400/50'
+                              : isCustom 
                               ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800' 
                               : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
                           }`}
                         >
                           <div className="flex justify-between items-center mb-0.5">
-                            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                            <span className={`text-[11px] font-medium ${isCurrentPayPeriod ? 'text-blue-700 dark:text-blue-300 font-semibold' : 'text-zinc-500 dark:text-zinc-400'}`}>
                               {m.label}
                             </span>
-                            {isCustom && (
+                            {isCurrentPayPeriod ? (
+                              <span className="text-[9px] font-bold uppercase tracking-tight text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-1 py-0.2 rounded">
+                                Current
+                              </span>
+                            ) : isCustom ? (
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Custom" />
-                            )}
+                            ) : null}
                           </div>
                           <input
                             type="number"
@@ -778,9 +975,48 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     })}
                   </div>
 
-                  <div className="text-[11px] text-zinc-500 flex justify-between pt-1 border-t border-zinc-200/60 dark:border-zinc-800">
-                    <span>Annual Total: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal)}</strong></span>
-                    <span>Monthly Avg: <strong className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{formatNaira(yearAnnualTotal / 12)}</strong></span>
+                  {/* Key Metrics Strip (Consistently styled matching app cards) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                    <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-3 shadow-xs">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-0.5">
+                        {activeYear} Annual Gross
+                      </span>
+                      <span className="text-xs sm:text-sm font-bold font-mono text-zinc-900 dark:text-zinc-100 truncate block">
+                        {formatNaira(yearAnnualTotal)}
+                      </span>
+                    </div>
+
+                    <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-3 shadow-xs">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-0.5">
+                        {activeYear} Annual Rent
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-mono text-xs font-semibold text-zinc-400 shrink-0">₦</span>
+                        <input
+                          type="number"
+                          value={
+                            annualRents[activeYear] !== undefined
+                              ? annualRents[activeYear]
+                              : (formData.annualRent !== '' ? formData.annualRent : '')
+                          }
+                          onChange={e => setYearRent(activeYear, e.target.value)}
+                          placeholder={String(formData.annualRent || '0')}
+                          className="w-full min-w-0 bg-transparent font-mono text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                          step="any"
+                          min="0"
+                          title={`Annual Rent for ${activeYear}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-3 shadow-xs">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-0.5">
+                        Monthly Average
+                      </span>
+                      <span className="text-xs sm:text-sm font-bold font-mono text-zinc-900 dark:text-zinc-100 truncate block">
+                        {formatNaira(yearAnnualTotal / 12)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}

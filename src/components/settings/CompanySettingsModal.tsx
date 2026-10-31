@@ -24,9 +24,12 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setFormData(company);
-    setPasswordError(null);
-  }, [company, isOpen]);
+    if (isOpen) {
+      setFormData(company);
+      setPasswordError(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

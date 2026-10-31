@@ -50,6 +50,7 @@ export interface Employee {
   monthlyGross: number;
   monthlySalaries?: Record<string, number>; // key: `${year}-${monthKey}` e.g. "2026-jan" or `${monthKey}`
   annualRent: number;
+  annualRents?: Record<string | number, number>; // key: year e.g. "2026" or 2026
   bankName: string;
   accountNumber: string;
   hasPension: boolean;
@@ -604,6 +605,12 @@ export interface EmailedPayslipRecord {
   sendCount?: number; // Total number of times sent for this period
   netPayAtSend?: number; // Last sent net pay (to detect revisions)
   history?: EmailSendHistoryItem[]; // Full audit trail of all previous dispatches
+}
+
+export interface EmailPayslipContext {
+  selectedEmployeeIds?: string[];
+  selectedMonthKeys?: string[];
+  year?: number;
 }
 
 export type { AppState } from './store/usePayrollStore';

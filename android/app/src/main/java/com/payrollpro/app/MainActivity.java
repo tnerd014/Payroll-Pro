@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
+import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import androidx.annotation.NonNull;
@@ -13,7 +14,18 @@ import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
+import java.util.Properties;
 import java.util.concurrent.Executor;
+import javax.mail.Authenticator;
+import javax.mail.Message;
+import javax.mail.Multipart;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
 import org.json.JSONObject;
 
 public class MainActivity extends BridgeActivity {
@@ -22,6 +34,7 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         setupPrintBridge();
         setupBiometricBridge();
+        setupSmtpBridge();
     }
 
     @Override
@@ -29,6 +42,7 @@ public class MainActivity extends BridgeActivity {
         super.onStart();
         setupPrintBridge();
         setupBiometricBridge();
+        setupSmtpBridge();
     }
 
     @Override
@@ -36,8 +50,12 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         setupPrintBridge();
         setupBiometricBridge();
+        setupSmtpBridge();
     }
 
+    // ──────────────────────────────────────────────
+    //  Print Bridge
+    // ──────────────────────────────────────────────
     private void setupPrintBridge() {
         try {
             if (getBridge() != null && getBridge().getWebView() != null) {
@@ -66,6 +84,9 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    // ──────────────────────────────────────────────
+    //  Biometric Bridge
+    // ──────────────────────────────────────────────
     private void setupBiometricBridge() {
         try {
             if (getBridge() != null && getBridge().getWebView() != null) {
@@ -101,13 +122,13 @@ public class MainActivity extends BridgeActivity {
                                     @Override
                                     public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                                         super.onAuthenticationError(errorCode, errString);
-                                        sendResult(callbackId, false, errString.toString());
+                                        sendBiometricResult(callbackId, false, errString.toString());
                                     }
 
                                     @Override
                                     public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
                                         super.onAuthenticationSucceeded(result);
-                                        sendResult(callbackId, true, null);
+                                        sendBiometricResult(callbackId, true, null);
                                     }
 
                                     @Override
@@ -134,17 +155,18 @@ public class MainActivity extends BridgeActivity {
 
                                 biometricPrompt.authenticate(builder.build());
                             } catch (Exception e) {
-                                sendResult(callbackId, false, e.getMessage());
+                                sendBiometricResult(callbackId, false, e.getMessage());
                             }
                         });
                     }
 
-                    private void sendResult(String callbackId, boolean success, String error) {
+                    private void sendBiometricResult(String callbackId, boolean success, String error) {
                         runOnUiThread(() -> {
                             try {
+                                WebView wv = getBridge().getWebView();
                                 String cleanError = error != null ? JSONObject.quote(error) : "null";
                                 String script = String.format("window.__handleAndroidBiometric && window.__handleAndroidBiometric('%s', %b, %s);", callbackId, success, cleanError);
-                                webView.evaluateJavascript(script, null);
+                                wv.evaluateJavascript(script, null);
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
@@ -154,6 +176,201 @@ public class MainActivity extends BridgeActivity {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    //  Native SMTP Bridge
+    //  Exposed as window.AndroidSMTP in the WebView.
+    //  All methods run on a background thread to avoid
+    //  blocking the UI (Android NetworkOnMainThread).
+    //  Results are posted back via evaluateJavascript.
+    // ──────────────────────────────────────────────
+    private void setupSmtpBridge() {
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                WebView webView = getBridge().getWebView();
+                webView.addJavascriptInterface(new SmtpBridge(webView), "AndroidSMTP");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private class SmtpBridge {
+        private final WebView webView;
+
+        SmtpBridge(WebView webView) {
+            this.webView = webView;
+        }
+
+        /**
+         * Tests an SMTP connection.
+         * Called from JS as: AndroidSMTP.testConnection(callbackId, smtpJson)
+         * smtpJson: { host, port, user, pass, secure, fromEmail }
+         */
+        @JavascriptInterface
+        public void testConnection(final String callbackId, final String smtpJson) {
+            new Thread(() -> {
+                try {
+                    JSONObject cfg = new JSONObject(smtpJson);
+                    int port = cfg.getInt("port");
+                    boolean secure = cfg.optBoolean("secure", port == 465);
+                    Session session = buildSession(cfg);
+                    Transport transport = session.getTransport(secure ? "smtps" : "smtp");
+                    transport.connect(
+                        cfg.getString("host"),
+                        port,
+                        cfg.getString("user"),
+                        cfg.getString("pass")
+                    );
+                    transport.close();
+                    postSmtpResult(callbackId, true, null);
+                } catch (Exception e) {
+                    postSmtpResult(callbackId, false, e.getMessage());
+                }
+            }).start();
+        }
+
+        /**
+         * Sends a payslip email with optional base64-encoded PDF attachment.
+         * Called from JS as: AndroidSMTP.sendEmail(callbackId, payloadJson)
+         * payloadJson: { smtp:{host,port,user,pass,secure,fromEmail}, recipient, subject, body, htmlContent, attachPdf, fileName, pdfBase64? }
+         */
+        @JavascriptInterface
+        public void sendEmail(final String callbackId, final String payloadJson) {
+            new Thread(() -> {
+                try {
+                    JSONObject payload = new JSONObject(payloadJson);
+                    JSONObject cfg = payload.getJSONObject("smtp");
+                    int port = cfg.getInt("port");
+                    boolean secure = cfg.optBoolean("secure", port == 465);
+                    Session session = buildSession(cfg);
+
+                    String fromEmail = cfg.optString("fromEmail", cfg.getString("user"));
+                    String fromName = payload.optString("fromName", "Payroll Pro");
+                    String recipient = payload.getString("recipient");
+                    String subject = payload.getString("subject");
+                    String body = payload.optString("body", "");
+                    String htmlContent = payload.optString("htmlContent", "");
+                    boolean attachPdf = payload.optBoolean("attachPdf", false);
+                    String fileName = payload.optString("fileName", "payslip.pdf");
+                    String pdfBase64 = payload.optString("pdfBase64", "");
+
+                    MimeMessage message = new MimeMessage(session);
+                    message.setFrom(new InternetAddress(fromEmail, fromName));
+                    message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipient));
+                    message.setSubject(subject, "UTF-8");
+
+                    // Build multipart body
+                    Multipart multipart = new MimeMultipart();
+
+                    // Plain text fallback
+                    MimeBodyPart textPart = new MimeBodyPart();
+                    textPart.setText(body, "UTF-8");
+                    multipart.addBodyPart(textPart);
+
+                    // HTML part
+                    if (!htmlContent.isEmpty()) {
+                        MimeBodyPart htmlPart = new MimeBodyPart();
+                        htmlPart.setContent(htmlContent, "text/html; charset=UTF-8");
+                        multipart.addBodyPart(htmlPart);
+                    }
+
+                    // PDF attachment
+                    if (attachPdf && !pdfBase64.isEmpty()) {
+                        byte[] pdfBytes = Base64.decode(pdfBase64, Base64.DEFAULT);
+                        MimeBodyPart pdfPart = new MimeBodyPart();
+                        pdfPart.setFileName(fileName);
+                        pdfPart.setContent(pdfBytes, "application/pdf");
+                        pdfPart.setDisposition(MimeBodyPart.ATTACHMENT);
+                        multipart.addBodyPart(pdfPart);
+                    }
+
+                    message.setContent(multipart);
+
+                    // Authenticate and send
+                    Transport transport = session.getTransport(secure ? "smtps" : "smtp");
+                    transport.connect(
+                        cfg.getString("host"),
+                        port,
+                        cfg.getString("user"),
+                        cfg.getString("pass")
+                    );
+                    transport.sendMessage(message, message.getAllRecipients());
+                    transport.close();
+
+                    postSmtpResult(callbackId, true, null);
+                } catch (Exception e) {
+                    postSmtpResult(callbackId, false, e.getMessage());
+                }
+            }).start();
+        }
+
+        /** Builds a JavaMail Session matching the SMTP config. */
+        private Session buildSession(JSONObject cfg) throws Exception {
+            String host = cfg.getString("host");
+            int port = cfg.getInt("port");
+            boolean secure = cfg.optBoolean("secure", port == 465);
+            String user = cfg.getString("user");
+            String pass = cfg.getString("pass");
+
+            Properties props = new Properties();
+            props.put("mail.smtp.host", host);
+            props.put("mail.smtp.port", String.valueOf(port));
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.ssl.trust", "*");
+            props.put("mail.smtp.connectiontimeout", "25000");
+            props.put("mail.smtp.timeout", "25000");
+            props.put("mail.smtp.writetimeout", "25000");
+
+            if (secure) {
+                // SSL/TLS — port 465
+                props.put("mail.smtp.socketFactory.port", String.valueOf(port));
+                props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+                props.put("mail.smtp.socketFactory.fallback", "false");
+                props.put("mail.smtp.ssl.enable", "true");
+
+                // Also populate standard SMTPS protocol properties
+                props.put("mail.smtps.host", host);
+                props.put("mail.smtps.port", String.valueOf(port));
+                props.put("mail.smtps.auth", "true");
+                props.put("mail.smtps.ssl.enable", "true");
+                props.put("mail.smtps.ssl.trust", "*");
+                props.put("mail.smtps.socketFactory.port", String.valueOf(port));
+                props.put("mail.smtps.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+                props.put("mail.smtps.socketFactory.fallback", "false");
+                props.put("mail.smtps.connectiontimeout", "25000");
+                props.put("mail.smtps.timeout", "25000");
+                props.put("mail.smtps.writetimeout", "25000");
+            } else {
+                // STARTTLS — port 587
+                props.put("mail.smtp.starttls.enable", "true");
+                props.put("mail.smtp.starttls.required", "true");
+            }
+
+            return Session.getInstance(props, new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(user, pass);
+                }
+            });
+        }
+
+        /** Posts result back to the JS callback via evaluateJavascript. */
+        private void postSmtpResult(String callbackId, boolean success, String error) {
+            runOnUiThread(() -> {
+                try {
+                    String errorJson = error != null ? JSONObject.quote(error) : "null";
+                    String script = String.format(
+                        "window.__handleAndroidSmtp && window.__handleAndroidSmtp('%s', %b, %s);",
+                        callbackId, success, errorJson
+                    );
+                    webView.evaluateJavascript(script, null);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
         }
     }
 }

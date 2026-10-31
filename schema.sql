@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.employees (
     phone TEXT DEFAULT '',
     monthly_gross NUMERIC(15, 2) DEFAULT 0,
     annual_rent NUMERIC(15, 2) DEFAULT 0,
+    annual_rents JSONB DEFAULT '{}'::jsonb,
     bank_name TEXT DEFAULT '',
     account_number TEXT DEFAULT '',
     has_pension BOOLEAN DEFAULT TRUE,
@@ -85,6 +86,7 @@ CREATE TABLE IF NOT EXISTS public.payroll_variables (
     salary_calculation_mode TEXT DEFAULT 'gross-to-net',
     employment_type_rules JSONB DEFAULT '[]'::jsonb,
     prorate_mid_month BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -172,7 +174,9 @@ CREATE TABLE IF NOT EXISTS public.team_members (
     avatar_color TEXT DEFAULT '',
     two_factor_enabled BOOLEAN DEFAULT FALSE,
     two_factor_secret TEXT DEFAULT '',
+    two_factor_backup_codes JSONB DEFAULT '[]'::jsonb,
     biometric_enabled BOOLEAN DEFAULT FALSE,
+    biometric_device_name TEXT DEFAULT '',
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -229,6 +233,7 @@ ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEF
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS salary_calculation_mode TEXT DEFAULT 'gross-to-net';
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS employment_type_rules JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS prorate_mid_month BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- PAYE Variables columns
@@ -250,6 +255,9 @@ ALTER TABLE public.payroll_snapshots ADD COLUMN IF NOT EXISTS totals JSONB DEFAU
 ALTER TABLE public.payroll_snapshots ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
 ALTER TABLE public.payroll_snapshots ADD COLUMN IF NOT EXISTS finalized_by TEXT DEFAULT 'Administrator';
 
+-- Payslip Designs columns
+ALTER TABLE public.payslip_designs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- Team Members columns
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS username TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
@@ -267,6 +275,8 @@ ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS avatar_color TEXT DEFAU
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS two_factor_secret TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS biometric_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS two_factor_backup_codes JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS biometric_device_name TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
@@ -311,6 +321,10 @@ BEGIN
 
     DROP TRIGGER IF EXISTS trg_team_members_updated_at ON public.team_members;
     CREATE TRIGGER trg_team_members_updated_at BEFORE UPDATE ON public.team_members
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_payslip_designs_updated_at ON public.payslip_designs;
+    CREATE TRIGGER trg_payslip_designs_updated_at BEFORE UPDATE ON public.payslip_designs
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 END $$;
 
@@ -448,5 +462,8 @@ BEGIN
         END;
     END LOOP;
 END $$;
+
+-- Migration for existing databases to support year-specific rent relief
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS annual_rents JSONB DEFAULT '{}'::jsonb;
 
 NOTIFY pgrst, 'reload schema';

@@ -554,7 +554,8 @@ const ReactivateEmployeeModal: React.FC<ReactivateEmployeeModalProps> = ({
       setResumptionDate(new Date().toISOString().split('T')[0]);
       setGrossSalary(employee.monthlyGross || 0);
     }
-  }, [isOpen, employee]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, employee?.id]);
 
   if (!isOpen || !employee) return null;
 
@@ -1171,11 +1172,6 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                       </td>
                       <td className="py-2.5 px-3.5 font-mono text-xs font-medium text-zinc-900 dark:text-zinc-100 text-right">
                         {formatNaira(getEmployeeGrossForPeriod(emp, currentMonth, currentYear))}
-                        {emp.monthlySalaries && Object.keys(emp.monthlySalaries).length > 0 && (
-                          <span className="block text-[11px] font-sans text-amber-600 dark:text-amber-400 font-medium">
-                            Variable schedule
-                          </span>
-                        )}
                       </td>
                       <td className="py-2.5 px-3.5 font-mono text-xs text-zinc-500 dark:text-zinc-400 text-right">
                         {emp.annualRent > 0 ? formatNaira(emp.annualRent) : '—'}
@@ -1360,6 +1356,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
           existingEmployees={employees}
           editingEmployee={editingEmp}
           currentYear={currentYear}
+          currentMonth={currentMonth}
           availableDepartments={configuredDepartments}
           salaryCalculationMode={salaryCalculationMode}
           employmentTypeRules={employmentTypeRules}

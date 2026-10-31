@@ -109,6 +109,8 @@ interface SettingsViewProps {
   currentUser?: TeamMember | null;
   emailSettings?: EmailSettings;
   onUpdateEmailSettings?: (s: Partial<EmailSettings>) => void;
+  /** When true (cloud offline), Settings is viewable but all saves are disabled */
+  isReadOnly?: boolean;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -141,6 +143,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser,
   emailSettings = DEFAULT_EMAIL_SETTINGS,
   onUpdateEmailSettings,
+  isReadOnly = false,
 }) => {
   const isAdmin = currentUser ? currentUser.role === 'Admin' : true;
   const isAuditor = currentUser?.role === 'Auditor';
@@ -172,11 +175,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [confirmDeleteLogo, setConfirmDeleteLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync if company prop changes externally when not dirty
-  useEffect(() => {
-    setCompanyForm(company);
-  }, [company]);
-
   // Track dirty state for Tab 1 (Company & Branding)
   const isBrandingDirty = useMemo(() => {
     return (
@@ -189,11 +187,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     );
   }, [companyForm, company]);
 
-  const saveBranding = (): boolean => {
-    if (isAuditor) {
-      alert('Read-Only Mode: Modifying settings is disabled while offline or in read-only mode.');
-      return false;
+  // Sync if company prop changes externally when not dirty
+  useEffect(() => {
+    if (!isBrandingDirty) {
+      setCompanyForm(company);
     }
+  }, [company, isBrandingDirty]);
+
+  const saveBranding = (): boolean => {
+    if (isAuditor || isReadOnly) return false; // silently blocked — UI already hides the button
     onUpdateCompany(companyForm);
     setBrandingSaved(true);
     setTimeout(() => setBrandingSaved(false), 2500);
@@ -225,12 +227,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [tv, setTv] = useState<PayeTaxVariables>(payeTaxVariables);
   const [taxSaved, setTaxSaved] = useState(false);
 
-  // Sync if variables prop changes externally
-  useEffect(() => {
-    setPv(payrollVariables);
-    setTv(payeTaxVariables);
-  }, [payrollVariables, payeTaxVariables]);
-
   const percentageSum = pv.basic + pv.housing + pv.transport + pv.otherAllowances;
   const isPercentageValid = percentageSum === 100;
 
@@ -256,11 +252,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     return pvChanged || tvChanged;
   }, [pv, tv, payrollVariables, payeTaxVariables]);
 
-  const saveTax = (): boolean => {
-    if (isAuditor) {
-      alert('Read-Only Mode: Modifying tax variables is disabled while offline or in read-only mode.');
-      return false;
+  // Sync if variables prop changes externally when not dirty
+  useEffect(() => {
+    if (!isTaxDirty) {
+      setPv(payrollVariables);
+      setTv(payeTaxVariables);
     }
+  }, [payrollVariables, payeTaxVariables, isTaxDirty]);
+
+  const saveTax = (): boolean => {
+    if (isAuditor || isReadOnly) return false; // silently blocked — UI already hides the button
     if (!isPercentageValid) {
       alert('Allowances percentage sum must equal exactly 100%');
       return false;
@@ -288,21 +289,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  useEffect(() => {
-    if (emailSettings) {
-      setEmailForm(emailSettings);
-    }
-  }, [emailSettings]);
-
   const isEmailDirty = useMemo(() => {
     return JSON.stringify(emailForm) !== JSON.stringify(emailSettings);
   }, [emailForm, emailSettings]);
 
-  const saveEmail = (): boolean => {
-    if (isAuditor) {
-      alert('Read-Only Mode: Modifying email settings is disabled.');
-      return false;
+  useEffect(() => {
+    if (emailSettings && !isEmailDirty) {
+      setEmailForm(emailSettings);
     }
+  }, [emailSettings, isEmailDirty]);
+
+  const saveEmail = (): boolean => {
+    if (isAuditor || isReadOnly) return false; // silently blocked — UI already hides the button
     if (onUpdateEmailSettings) {
       onUpdateEmailSettings(emailForm);
       setEmailSaved(true);
@@ -773,16 +771,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => saveBranding()}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs ${
-                    isBrandingDirty
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  disabled={isReadOnly}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed ${
+                    isReadOnly
+                      ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
+                      : isBrandingDirty
+                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25 cursor-pointer'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
                   }`}
-                  title={isBrandingDirty ? 'Unsaved modifications ready to save' : 'Save branding'}
+                  title={isReadOnly ? 'Saving is disabled while offline' : isBrandingDirty ? 'Unsaved modifications ready to save' : 'Save branding'}
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save Changes</span>
-                  {isBrandingDirty && (
+                  {isBrandingDirty && !isReadOnly && (
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                   )}
                 </button>
@@ -800,16 +801,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => saveTax()}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs ${
-                    isTaxDirty
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  disabled={isReadOnly}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed ${
+                    isReadOnly
+                      ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
+                      : isTaxDirty
+                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25 cursor-pointer'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
                   }`}
-                  title={isTaxDirty ? 'Unsaved modifications ready to save' : 'Save tax variables'}
+                  title={isReadOnly ? 'Saving is disabled while offline' : isTaxDirty ? 'Unsaved modifications ready to save' : 'Save tax variables'}
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save Variables</span>
-                  {isTaxDirty && (
+                  {isTaxDirty && !isReadOnly && (
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                   )}
                 </button>
@@ -827,16 +831,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => saveEmail()}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs ${
-                    isEmailDirty
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  disabled={isReadOnly || !isEmailDirty}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed ${
+                    isReadOnly
+                      ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
+                      : isEmailDirty
+                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25 cursor-pointer'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
                   }`}
-                  title={isEmailDirty ? 'Unsaved modifications ready to save' : 'Save email settings'}
+                  title={isReadOnly ? 'Saving is disabled while offline' : isEmailDirty ? 'Unsaved modifications ready to save' : 'Save email settings'}
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save Email Settings</span>
-                  {isEmailDirty && (
+                  {isEmailDirty && !isReadOnly && (
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                   )}
                 </button>
@@ -935,6 +942,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* Offline / Read-Only Banner */}
+      {isReadOnly && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            <strong>Read-Only Mode —</strong> Cloud connection is offline. You can view all settings, but saves are disabled to protect data integrity.
+          </span>
+        </div>
+      )}
 
       {/* ================= TAB 1: BRANDING ================= */}
       {activeTab === 'branding' && (
@@ -1086,8 +1103,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              disabled={isAuditor}
-              title={isAuditor ? 'Editing is disabled in offline read-only mode' : undefined}
+              disabled={isAuditor || isReadOnly}
+              title={isReadOnly ? 'Saving is disabled while offline' : isAuditor ? 'Auditor role has read-only access' : undefined}
               className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
@@ -1272,8 +1289,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
               <button
                 type="submit"
-                disabled={!newDepartmentName.trim()}
-                className="flex items-center gap-1.5 px-3 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 disabled:opacity-40 transition whitespace-nowrap"
+                disabled={isAuditor || isReadOnly || !newDepartmentName.trim()}
+                title={isReadOnly ? 'Adding departments is disabled while offline' : undefined}
+                className="flex items-center gap-1.5 px-3 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition whitespace-nowrap cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Department</span>
@@ -1315,8 +1333,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleSaveEditDept(dept)}
-                              className="p-1 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                              title="Save changes"
+                              disabled={isAuditor || isReadOnly}
+                              className="p-1 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                              title={isReadOnly ? 'Saving is disabled while offline' : 'Save changes'}
                             >
                               <Check className="w-3.5 h-3.5" />
                             </button>
@@ -1824,8 +1843,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleSaveTax}
-                disabled={isAuditor}
-                title={isAuditor ? 'Editing is disabled in offline read-only mode' : undefined}
+                disabled={isAuditor || isReadOnly}
+                title={isReadOnly ? 'Saving is disabled while offline' : isAuditor ? 'Auditor role has read-only access' : undefined}
                 className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
@@ -1843,7 +1862,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               type="button"
               onClick={handleResetTaxDefaults}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+              disabled={isAuditor || isReadOnly}
+              title={isReadOnly ? 'Resetting is disabled while offline' : undefined}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset to Statutory Defaults</span>
@@ -2133,7 +2154,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={saveEmail}
-                disabled={isAuditor || !isEmailDirty}
+                disabled={isAuditor || isReadOnly || !isEmailDirty}
+                title={isReadOnly ? 'Saving is disabled while offline' : isAuditor ? 'Auditor role has read-only access' : !isEmailDirty ? 'No changes to save' : undefined}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
               >
                 <Save className="w-3.5 h-3.5" />
@@ -2281,7 +2303,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <input
                       type="number"
                       value={emailForm.smtp.port}
-                      onChange={e => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, port: Number(e.target.value) } }))}
+                      onChange={e => {
+                        const newPort = Number(e.target.value);
+                        setEmailForm(prev => ({ 
+                          ...prev, 
+                          smtp: { 
+                            ...prev.smtp, 
+                            port: newPort,
+                            secure: newPort === 465 ? true : (newPort === 587 ? false : prev.smtp.secure)
+                          } 
+                        }));
+                      }}
                       placeholder="465"
                       className="w-20 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 font-mono focus:outline-none focus:border-blue-500"
                     />
@@ -2289,7 +2321,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <input
                         type="checkbox"
                         checked={emailForm.smtp.secure}
-                        onChange={e => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, secure: e.target.checked } }))}
+                        onChange={e => {
+                          const isSec = e.target.checked;
+                          setEmailForm(prev => ({ 
+                            ...prev, 
+                            smtp: { 
+                              ...prev.smtp, 
+                              secure: isSec,
+                              port: isSec && prev.smtp.port === 587 ? 465 : (!isSec && prev.smtp.port === 465 ? 587 : prev.smtp.port)
+                            } 
+                          }));
+                        }}
                         className="rounded text-blue-600 focus:ring-blue-500 border-zinc-300 dark:border-zinc-700"
                       />
                       <span>SSL (Port 465)</span>

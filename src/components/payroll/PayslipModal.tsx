@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, ArrowLeft, Palette } from 'lucide-react';
+import { Printer, ArrowLeft, Palette, Mail, ChevronDown } from 'lucide-react';
 import { 
   CalculatedPayrollItem, 
   CompanyProfile, 
@@ -9,7 +9,8 @@ import {
   Employee,
   PayrollVariables,
   PayeTaxVariables,
-  PayslipCustomPreset
+  PayslipCustomPreset,
+  EmailPayslipContext
 } from '../../types';
 import { DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES } from '../../engine/payePensionEngine';
 import { CustomizablePayslipView } from '../payslip/CustomizablePayslipView';
@@ -34,6 +35,7 @@ interface PayslipModalProps {
   savedPresets?: PayslipCustomPreset[];
   onSavePreset?: (name: string, config: PayslipDesignConfig) => void;
   onDeletePreset?: (id: string) => void;
+  onEmailPayslips?: (context?: EmailPayslipContext) => void;
 }
 
 export const PayslipModal: React.FC<PayslipModalProps> = ({
@@ -54,8 +56,21 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   savedPresets = [],
   onSavePreset,
   onDeletePreset,
+  onEmailPayslips,
 }) => {
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+        setIsActionMenuOpen(false);
+      }
+    };
+    if (isActionMenuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isActionMenuOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -142,13 +157,52 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             <Palette className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
             <span>Design Layout</span>
           </button>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-2xs"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print / Save PDF</span>
-          </button>
+          {/* Print & Email Action Dropdown */}
+          <div className="relative inline-block text-left" ref={actionMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print</span>
+              <ChevronDown className={`w-3.5 h-3.5 opacity-70 transition-transform duration-150 ${isActionMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isActionMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-32 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    handlePrint();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition text-left cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                  <span className="font-medium">Print</span>
+                </button>
+
+                {onEmailPayslips && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      onEmailPayslips({
+                        selectedEmployeeIds: [item.employeeId],
+                        selectedMonthKeys: [selectedMonth || 'jan'],
+                        year: year,
+                      });
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition text-left cursor-pointer"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-medium">Email</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

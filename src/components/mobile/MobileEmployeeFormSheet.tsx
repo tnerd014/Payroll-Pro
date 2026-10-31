@@ -191,7 +191,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       ]);
     }
     setAddAnotherToast(null);
-  }, [editingEmployee, isOpen]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingEmployee?.id, isOpen]);
 
   // Handle employment type change with default statutory rules
   const handleEmploymentTypeChange = (type: string) => {

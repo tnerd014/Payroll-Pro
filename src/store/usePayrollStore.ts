@@ -37,6 +37,7 @@ import {
   syncCompanyToSupabase,
   deleteCompanyFromSupabase,
   deleteEmployeeFromCloud,
+  saveSingleEmployeeToCloud,
   logAuditEvent,
   getActiveTeamMember,
   saveEmailSettingsToCloud,
@@ -689,6 +690,8 @@ export function usePayrollStore() {
   const isFirstRender = useRef(true);
   const isLocalUploadInProgressRef = useRef(false);
   const lastLocalUploadTimeRef = useRef(0);
+  // Tracks locally updated employee records to prevent realtime echo overwrite before cloud persists
+  const pendingLocalEmployeesRef = useRef<Map<string, { employee: Employee; timestamp: number }>>(new Map());
   // True once the active company's cloud copy has been loaded (or there is nothing to load).
   // Until then we must NEVER upload, otherwise an empty/stale local copy overwrites the cloud.
   const cloudReadyRef = useRef(true);
@@ -823,13 +826,13 @@ export function usePayrollStore() {
     let debounceTimer: NodeJS.Timeout | null = null;
 
     const debouncedSyncFromCloud = () => {
-      // 1. Do not process incoming realtime echoes while our own upload is active or within 4s of completion
-      if (isLocalUploadInProgressRef.current || (Date.now() - lastLocalUploadTimeRef.current < 4000)) {
+      // 1. Do not process incoming realtime echoes while our own upload is active or within 5s of completion
+      if (isLocalUploadInProgressRef.current || (Date.now() - lastLocalUploadTimeRef.current < 5000)) {
         return;
       }
 
       // 1b. Never overwrite local offline edits that haven't been uploaded yet
-      if (hasPendingOfflineSync(activeCompanyId)) {
+      if (hasPendingOfflineSync(activeCompanyId) || pendingLocalEmployeesRef.current.size > 0) {
         return;
       }
 
@@ -847,14 +850,28 @@ export function usePayrollStore() {
             if (prev.employees.length > 0 && (!res.employees || res.employees.length === 0)) {
               return prev;
             }
+
+            // SMART MERGE: Never overwrite locally edited employees with older cloud versions
+            let mergedEmployees = prev.employees;
+            if (res.employees) {
+              const pendingMap = pendingLocalEmployeesRef.current;
+              mergedEmployees = res.employees.map(cloudEmp => {
+                const pending = pendingMap.get(cloudEmp.id);
+                if (pending) {
+                  return pending.employee;
+                }
+                return cloudEmp;
+              });
+            }
+
             return {
               ...prev,
               // Company profile synced (logoUrl, name, subtitle, address, phone, email)
               ...(res.company ? { company: { ...prev.company, ...res.company } } : {}),
               // Departments list
               ...(res.departments && res.departments.length > 0 ? { departments: res.departments } : {}),
-              // Employees
-              ...(res.employees ? { employees: res.employees } : {}),
+              // Employees (merged safely)
+              employees: mergedEmployees,
               // Loans
               ...(res.loans ? { loans: res.loans } : {}),
               // Snapshots
@@ -901,6 +918,21 @@ export function usePayrollStore() {
       if (debounceTimer) clearTimeout(debounceTimer);
       client.removeChannel(channel);
     };
+  }, [activeCompanyId]);
+
+  // Live Email Settings Realtime Sync across connected devices & sessions
+  useEffect(() => {
+    const handleEmailSettingsUpdated = (e: Event) => {
+      const custom = e as CustomEvent;
+      if (custom.detail?.companyId === activeCompanyId && custom.detail?.settings) {
+        setState(prev => ({
+          ...prev,
+          emailSettings: custom.detail.settings,
+        }));
+      }
+    };
+    window.addEventListener('email-settings-updated', handleEmailSettingsUpdated);
+    return () => window.removeEventListener('email-settings-updated', handleEmailSettingsUpdated);
   }, [activeCompanyId]);
 
 
@@ -1069,7 +1101,10 @@ export function usePayrollStore() {
             return {
               ...prev,
               company: res.company ? { ...prev.company, ...res.company, id: companyId } : prev.company,
-              employees: res.employees || prev.employees,
+              employees: res.employees ? res.employees.map(ce => {
+                const pending = pendingLocalEmployeesRef.current.get(ce.id);
+                return pending ? pending.employee : ce;
+              }) : prev.employees,
               departments: (res.departments && res.departments.length > 0) ? res.departments : prev.departments,
               payrollVariables: res.payrollVariables || prev.payrollVariables,
               payeTaxVariables: res.payeTaxVariables || prev.payeTaxVariables,
@@ -1352,10 +1387,30 @@ export function usePayrollStore() {
       ...emp,
       monthlyGross: sanitizedGross,
       annualRent: sanitizedRent,
+      annualRents: emp.annualRents || {},
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'emp-' + crypto.randomUUID() : 'emp-' + Date.now(),
       employmentType: emp.employmentType || 'Full-Time',
     };
+
+    // Shield from realtime echo overwrites
+    lastLocalUploadTimeRef.current = Date.now();
+    pendingLocalEmployeesRef.current.set(newEmp.id, { employee: newEmp, timestamp: Date.now() });
+
     setState(s => ({ ...s, employees: [newEmp, ...s.employees] }));
+
+    // Immediate single-employee direct cloud save
+    if (activeCompanyId && getSavedCloudConfig().isEnabled) {
+      saveSingleEmployeeToCloud(newEmp, activeCompanyId).then(res => {
+        if (res.success) {
+          setTimeout(() => {
+            pendingLocalEmployeesRef.current.delete(newEmp.id);
+          }, 4000);
+        }
+      }).catch(err => {
+        console.warn('Direct cloud save for new employee error:', err);
+      });
+    }
+
     logAuditEvent(
       activeCompanyId || '',
       activeCompany?.name || '',
@@ -1370,9 +1425,15 @@ export function usePayrollStore() {
       ...emp,
       monthlyGross: Math.max(0, Number(emp.monthlyGross) || 0),
       annualRent: Math.max(0, Number(emp.annualRent) || 0),
+      annualRents: emp.annualRents || {},
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'emp-' + crypto.randomUUID() : 'emp-' + Date.now() + '-' + Math.random().toString(36).slice(2),
       employmentType: emp.employmentType || 'Full-Time',
     }));
+
+    // Shield from realtime echo overwrites
+    lastLocalUploadTimeRef.current = Date.now();
+    newEmps.forEach(ne => pendingLocalEmployeesRef.current.set(ne.id, { employee: ne, timestamp: Date.now() }));
+
     setState(s => ({ ...s, employees: [...newEmps, ...s.employees] }));
     logAuditEvent(
       activeCompanyId || '',
@@ -1391,10 +1452,34 @@ export function usePayrollStore() {
     if (sanitizedUpdates.annualRent !== undefined) {
       sanitizedUpdates.annualRent = Math.max(0, Number(sanitizedUpdates.annualRent) || 0);
     }
+
+    const updatedEmployee: Employee = existing
+      ? { ...existing, ...sanitizedUpdates }
+      : { id, ...(sanitizedUpdates as any) };
+
+    // 1. Immediately shield local state from incoming realtime echo overwrites
+    lastLocalUploadTimeRef.current = Date.now();
+    pendingLocalEmployeesRef.current.set(id, { employee: updatedEmployee, timestamp: Date.now() });
+
     setState(s => ({
       ...s,
-      employees: s.employees.map(e => e.id === id ? { ...e, ...sanitizedUpdates } : e)
+      employees: s.employees.map(e => e.id === id ? updatedEmployee : e)
     }));
+
+    // 2. Direct single-employee cloud save: writes directly to cloud without waiting for debounced bulk sync
+    if (activeCompanyId && getSavedCloudConfig().isEnabled) {
+      saveSingleEmployeeToCloud(updatedEmployee, activeCompanyId).then(res => {
+        if (res.success) {
+          setTimeout(() => {
+            pendingLocalEmployeesRef.current.delete(id);
+          }, 4000);
+        } else {
+          console.warn('Single employee cloud save failed:', res.error);
+        }
+      }).catch(err => {
+        console.warn('Single employee cloud save error:', err);
+      });
+    }
 
     let changeSummary = 'Updated employee details';
     if (existing && updates.monthlyGross !== undefined && updates.monthlyGross !== existing.monthlyGross) {
@@ -1706,38 +1791,84 @@ export function usePayrollStore() {
   };
 
   const updateEmailSettings = (settings: Partial<EmailSettings>) => {
-    setState(s => {
-      const nextSettings = {
-        ...(s.emailSettings || DEFAULT_EMAIL_SETTINGS),
-        ...settings,
-      };
-      if (activeCompanyId) {
-        saveEmailSettingsToCloud(nextSettings, activeCompanyId).catch(err => {
-          console.warn('Failed to save email settings to cloud:', err);
-        });
+    const current = state.emailSettings || DEFAULT_EMAIL_SETTINGS;
+    const nextSettings = {
+      ...current,
+      ...settings,
+    };
+    setState(s => ({
+      ...s,
+      emailSettings: nextSettings
+    }));
+
+    if (activeCompanyId) {
+      // 1. Immediately persist locally to localStorage and IndexedDB
+      const nextFullState = { ...state, emailSettings: nextSettings };
+      try {
+        localStorage.setItem(COMPANY_DATA_PREFIX + activeCompanyId, JSON.stringify(nextFullState));
+      } catch (e) {
+        console.warn('Failed to save email settings to localStorage:', e);
       }
-      return {
-        ...s,
-        emailSettings: nextSettings
-      };
-    });
+      saveCompanyDataToDb(activeCompanyId, nextFullState).catch(() => {});
+
+      // 2. If cloud is connected, push to Supabase and broadcast to all devices
+      const isCloudEnabled = getSavedCloudConfig().isEnabled;
+      if (isCloudEnabled) {
+        saveEmailSettingsToCloud(nextSettings, activeCompanyId).then(res => {
+          if (!res.success) {
+            localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+            window.dispatchEvent(new Event('payroll-sync-status-changed'));
+          }
+        }).catch(() => {
+          localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+          window.dispatchEvent(new Event('payroll-sync-status-changed'));
+        });
+      } else {
+        // Database not connected: Flag as pending offline sync so it automatically uploads once reconnected!
+        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+        window.dispatchEvent(new Event('payroll-sync-status-changed'));
+      }
+    }
   };
 
   const recordEmailedPayslips = (records: EmailedPayslipRecord[]) => {
-    setState(s => {
-      const current = s.emailedPayslips || {};
-      const next = { ...current };
-      records.forEach(r => {
-        const key = `${r.periodKey}_${r.employeeId}`;
-        next[key] = r;
-      });
-      if (activeCompanyId) {
-        saveEmailedPayslipsToCloud(next, activeCompanyId).catch(err => {
-          console.warn('Failed to save emailed payslips to cloud:', err);
-        });
-      }
-      return { ...s, emailedPayslips: next };
+    const current = state.emailedPayslips || {};
+    const next = { ...current };
+    records.forEach(r => {
+      const key = `${r.periodKey}_${r.employeeId}`;
+      next[key] = r;
     });
+
+    setState(s => ({
+      ...s,
+      emailedPayslips: next
+    }));
+
+    if (activeCompanyId) {
+      const nextFullState = { ...state, emailedPayslips: next };
+      try {
+        localStorage.setItem(COMPANY_DATA_PREFIX + activeCompanyId, JSON.stringify(nextFullState));
+      } catch (e) {
+        console.warn('Failed to save emailed payslips to localStorage:', e);
+      }
+      saveCompanyDataToDb(activeCompanyId, nextFullState).catch(() => {});
+
+      const isCloudEnabled = getSavedCloudConfig().isEnabled;
+      if (isCloudEnabled) {
+        saveEmailedPayslipsToCloud(next, activeCompanyId).then(res => {
+          if (!res.success) {
+            localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+            window.dispatchEvent(new Event('payroll-sync-status-changed'));
+          }
+        }).catch(() => {
+          localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+          window.dispatchEvent(new Event('payroll-sync-status-changed'));
+        });
+      } else {
+        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+        window.dispatchEvent(new Event('payroll-sync-status-changed'));
+      }
+    }
   };
 
   const addDepartment = (deptName: string) => {

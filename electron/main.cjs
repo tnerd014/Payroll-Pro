@@ -216,24 +216,41 @@ async function renderHtmlToPdfBuffer(htmlContent) {
 // IPC: Test SMTP Connection
 ipcMain.handle('test-smtp-connection', async (event, config) => {
   try {
+    const dns = require('dns');
+    try { dns.setDefaultResultOrder('ipv4first'); } catch (e) {}
+
     const nodemailer = require('nodemailer');
+    const port = Number(config.port) || 587;
+    // Auto-align TLS protocol: Port 465 is implicit SSL/TLS; Port 587/25 is explicit STARTTLS
+    const secure = port === 465 ? true : Boolean(config.secure && port !== 587 && port !== 25);
+
     const transporter = nodemailer.createTransport({
-      host: config.host,
-      port: Number(config.port) || 587,
-      secure: Boolean(config.secure),
+      host: (config.host || '').trim(),
+      port: port,
+      secure: secure,
+      family: 4,
       auth: {
         user: (config.user || '').trim(),
         pass: (config.pass || '').trim().replace(/\s+/g, ''),
       },
       tls: {
         rejectUnauthorized: false,
+        minVersion: 'TLSv1.2',
       },
-      connectionTimeout: 10000,
+      connectionTimeout: 25000,
+      greetingTimeout: 25000,
+      socketTimeout: 25000,
     });
     await transporter.verify();
     return { success: true };
   } catch (err) {
-    return { success: false, error: err.message || String(err) };
+    let msg = err.message || String(err);
+    if (msg.includes('ETIMEDOUT') || msg.includes('timeout') || msg.includes('Greeting never received')) {
+      msg = `Connection timeout: Could not establish handshake with ${config.host || 'mail server'} on port ${config.port || 587}. Please verify your internet connection, or confirm that your network/firewall permits outbound SMTP traffic.`;
+    } else if (msg.includes('535') || msg.includes('BadCredentials') || msg.includes('Username and Password not accepted')) {
+      msg = `Authentication rejected: Incorrect username or password. For Gmail, you MUST generate and use a 16-character Google 'App Password' instead of your personal password.`;
+    }
+    return { success: false, error: msg };
   }
 });
 
@@ -263,18 +280,25 @@ ipcMain.handle('send-payslip-email', async (event, payload) => {
       });
     }
 
+    const port = Number(smtp.port) || 587;
+    const secure = port === 465 ? true : Boolean(smtp.secure && port !== 587 && port !== 25);
+
     const transporter = nodemailer.createTransport({
-      host: smtp.host,
-      port: Number(smtp.port) || 587,
-      secure: Boolean(smtp.secure),
+      host: (smtp.host || '').trim(),
+      port: port,
+      secure: secure,
+      family: 4,
       auth: {
         user: (smtp.user || '').trim(),
         pass: (smtp.pass || '').trim().replace(/\s+/g, ''),
       },
       tls: {
         rejectUnauthorized: false,
+        minVersion: 'TLSv1.2',
       },
-      connectionTimeout: 15000,
+      connectionTimeout: 20000,
+      greetingTimeout: 20000,
+      socketTimeout: 20000,
     });
 
     const info = await transporter.sendMail({

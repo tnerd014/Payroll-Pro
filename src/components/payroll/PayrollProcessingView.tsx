@@ -19,7 +19,7 @@ import {
   Mail,
   MailCheck
 } from 'lucide-react';
-import { CalculatedPayrollItem, PayrollSnapshot, Employee, PayrollVariables, PayeTaxVariables, CompanyProfile, PayslipDesignConfig, PayslipCustomPreset, EmployeeLoan, TeamMember, EmailSettings, EmailedPayslipRecord } from '../../types';
+import { CalculatedPayrollItem, PayrollSnapshot, Employee, PayrollVariables, PayeTaxVariables, CompanyProfile, PayslipDesignConfig, PayslipCustomPreset, EmployeeLoan, TeamMember, EmailSettings, EmailedPayslipRecord, EmailPayslipContext } from '../../types';
 import { formatNaira, formatCompactNaira, formatDateTime } from '../../engine/payePensionEngine';
 import { FinalizeLockModal } from './FinalizeLockModal';
 import { UnlockPayrollModal } from './UnlockPayrollModal';
@@ -108,6 +108,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
   const [isBulkPrintOpen, setIsBulkPrintOpen] = useState(false);
   const [isEmailPayslipsOpen, setIsEmailPayslipsOpen] = useState(false);
+  const [emailModalContext, setEmailModalContext] = useState<EmailPayslipContext | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedSingleSlip, setSelectedSingleSlip] = useState<CalculatedPayrollItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -471,33 +472,6 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             <span className="hidden sm:inline">Payslips</span>
           </button>
 
-          {/* Email Payslips Button */}
-          {!isAuditor && (
-            <button
-              onClick={() => setIsEmailPayslipsOpen(true)}
-              className={`h-8 px-2.5 rounded-md border flex items-center gap-1.5 text-xs font-medium transition whitespace-nowrap cursor-pointer ${
-                !isLocked
-                  ? 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
-                  : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300'
-              }`}
-              title={isLocked ? "Email payslips directly to employees" : "Notice: Month must be Finalized & Locked before dispatching payslip emails"}
-            >
-              {emailedCountForPeriod > 0 ? (
-                <MailCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              ) : (
-                <Mail className="w-3.5 h-3.5 shrink-0" />
-              )}
-              <span className="hidden sm:inline">Email Payslips</span>
-              {!isLocked && (
-                <Lock className="w-3 h-3 text-amber-500 shrink-0 ml-0.5" />
-              )}
-              {emailedCountForPeriod > 0 && isLocked && (
-                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300">
-                  {emailedCountForPeriod}/{filteredItems.length}
-                </span>
-              )}
-            </button>
-          )}
         </div>
       </div>
     </div>
@@ -1040,6 +1014,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           savedPresets={savedPresets}
           onSavePreset={onSavePreset}
           onDeletePreset={onDeletePreset}
+          onEmailPayslips={!isAuditor ? (ctx) => {
+            setEmailModalContext(ctx || null);
+            setIsEmailPayslipsOpen(true);
+          } : undefined}
         />
       )}
 
@@ -1047,7 +1025,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
       {isEmailPayslipsOpen && (
         <EmailPayslipsModal
           isOpen={isEmailPayslipsOpen}
-          onClose={() => setIsEmailPayslipsOpen(false)}
+          onClose={() => {
+            setIsEmailPayslipsOpen(false);
+            setEmailModalContext(null);
+          }}
           items={filteredItems}
           employees={employees}
           company={company}
@@ -1064,6 +1045,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           currentUser={currentUser}
           activeSnapshot={activeSnapshot}
           isLocked={isLocked}
+          initialContext={emailModalContext}
+          snapshots={snapshots}
+          payrollVariables={payrollVariables}
+          payeTaxVariables={payeTaxVariables}
         />
       )}
 
@@ -1087,6 +1072,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           savedPresets={savedPresets}
           onSavePreset={onSavePreset}
           onDeletePreset={onDeletePreset}
+          onEmailPayslips={!isAuditor ? (ctx) => {
+            setEmailModalContext(ctx || null);
+            setIsEmailPayslipsOpen(true);
+          } : undefined}
         />
       )}
 

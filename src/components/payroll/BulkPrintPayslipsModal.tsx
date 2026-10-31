@@ -13,7 +13,8 @@ import {
   Palette,
   ArrowLeft,
   ChevronDown,
-  Calendar
+  Calendar,
+  Mail
 } from 'lucide-react';
 import { MONTHS } from '../../store/usePayrollStore';
 import { 
@@ -31,7 +32,8 @@ import {
   normalizeVisibleColumns,
   DEFAULT_COLUMNS,
   PayslipColumnDef,
-  PayrollSnapshot
+  PayrollSnapshot,
+  EmailPayslipContext
 } from '../../types';
 import { formatNaira, DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES, calculatePayrollItem, isEmployeeActiveForPeriod } from '../../engine/payePensionEngine';
 import { PayslipDesignerPage } from '../payslip/PayslipDesignerPage';
@@ -57,6 +59,7 @@ interface BulkPrintPayslipsModalProps {
   savedPresets?: PayslipCustomPreset[];
   onSavePreset?: (name: string, config: PayslipDesignConfig) => void;
   onDeletePreset?: (id: string) => void;
+  onEmailPayslips?: (context?: EmailPayslipContext) => void;
 }
 
 export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
@@ -78,11 +81,24 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
   savedPresets = [],
   onSavePreset,
   onDeletePreset,
+  onEmailPayslips,
 }) => {
   const [activeTab, setActiveTab] = useState<'employees' | 'sections'>('employees');
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const [previewEmployeeId, setPreviewEmployeeId] = useState<string>('');
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+        setIsActionMenuOpen(false);
+      }
+    };
+    if (isActionMenuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isActionMenuOpen]);
 
   // --- Date picker state ---
   // Default automatically to current real-world month and year upon entry
@@ -193,7 +209,8 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
         }
       }
     }
-  }, [isOpen, safeItems]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Departments list
   const departments = useMemo(() => {
@@ -629,16 +646,53 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
             <Palette className="w-3.5 h-3.5" />
           </button>
 
-          {/* Print all selected */}
-          <button
-            onClick={handlePrint}
-            disabled={totalPrintCount === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-xs font-medium transition cursor-pointer"
-            title={`Print ${totalPrintCount} payslip${totalPrintCount === 1 ? '' : 's'} (${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} × ${periodPayslips.length} period${periodPayslips.length !== 1 ? 's' : ''})`}
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print {totalPrintCount}</span>
-          </button>
+          {/* Print & Email Action Dropdown */}
+          <div className="relative inline-block text-left" ref={actionMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+              disabled={totalPrintCount === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-xs font-medium transition cursor-pointer shadow-2xs"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print</span>
+              <ChevronDown className={`w-3.5 h-3.5 opacity-70 transition-transform duration-150 ${isActionMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isActionMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-32 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    handlePrint();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition text-left cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                  <span className="font-medium">Print</span>
+                </button>
+
+                {onEmailPayslips && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      onEmailPayslips({
+                        selectedEmployeeIds: selectedEmployees,
+                        selectedMonthKeys: selectedMonthKeys,
+                        year: printYear,
+                      });
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition text-left cursor-pointer"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-medium">Email</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
       </div>

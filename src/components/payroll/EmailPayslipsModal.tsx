@@ -25,7 +25,8 @@ import {
   RotateCcw,
   MoreVertical,
   Lock,
-  Unlock
+  Unlock,
+  ArrowLeft
 } from 'lucide-react';
 import { 
   CalculatedPayrollItem, 
@@ -38,15 +39,26 @@ import {
   EmailedPayslipRecord,
   EmailSendHistoryItem,
   TeamMember,
-  PayrollSnapshot
+  PayrollSnapshot,
+  EmailPayslipContext,
+  PayrollVariables,
+  PayeTaxVariables
 } from '../../types';
 import { 
   sendIndividualPayslipEmail, 
   getEmailTemplateData, 
   interpolateEmailTemplate,
-  EmailDispatchResult 
+  EmailDispatchResult,
+  PayslipPeriodItem
 } from '../../services/emailService';
-import { formatNaira } from '../../engine/payePensionEngine';
+import { 
+  formatNaira,
+  DEFAULT_PAYROLL_VARIABLES,
+  DEFAULT_PAYE_VARIABLES,
+  calculatePayrollItem,
+  isEmployeeActiveForPeriod
+} from '../../engine/payePensionEngine';
+import { MONTHS } from '../../store/usePayrollStore';
 
 interface EmailRecipientState {
   employeeId: string;
@@ -68,6 +80,9 @@ interface EmailRecipientState {
   priorNetPay?: number;
   isRevised?: boolean;
   history?: EmailSendHistoryItem[];
+  periodItems?: PayslipPeriodItem[];
+  periodLabel?: string;
+  periodsCount?: number;
 }
 
 interface EmailPayslipsModalProps {
@@ -89,6 +104,10 @@ interface EmailPayslipsModalProps {
   currentUser?: TeamMember | null;
   activeSnapshot?: PayrollSnapshot;
   isLocked?: boolean;
+  initialContext?: EmailPayslipContext | null;
+  snapshots?: PayrollSnapshot[];
+  payrollVariables?: PayrollVariables;
+  payeTaxVariables?: PayeTaxVariables;
 }
 
 export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
@@ -110,10 +129,43 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
   currentUser,
   activeSnapshot,
   isLocked = true,
+  initialContext,
+  snapshots = [],
+  payrollVariables,
+  payeTaxVariables,
 }) => {
-  const periodKey = `${year}-${(selectedMonth || '').toLowerCase()}`;
+  const effectiveYear = initialContext?.year || year;
+  const selectedMonthKeys = useMemo(() => {
+    if (initialContext?.selectedMonthKeys && initialContext.selectedMonthKeys.length > 0) {
+      return initialContext.selectedMonthKeys;
+    }
+    return [(selectedMonth || 'jan').toLowerCase()];
+  }, [initialContext, selectedMonth]);
+
+  const isMultiMonth = selectedMonthKeys.length > 1;
+
+  // Build a readable label for selected periods (e.g. "January–December 2026" or "All 12 Months 2026")
+  const effectivePeriodLabel = useMemo(() => {
+    if (selectedMonthKeys.length === 1) {
+      const m = MONTHS.find(mo => mo.key === selectedMonthKeys[0]);
+      return `${m?.label || monthLabel} ${effectiveYear}`;
+    }
+    if (selectedMonthKeys.length === 12) {
+      return `All 12 Months ${effectiveYear}`;
+    }
+    const sorted = MONTHS.filter(m => selectedMonthKeys.includes(m.key));
+    const indices = sorted.map(m => MONTHS.findIndex(mo => mo.key === m.key)).sort((a, b) => a - b);
+    const isRange = indices.every((v, i) => i === 0 || v === indices[i - 1] + 1);
+    if (isRange && sorted.length >= 2) {
+      return `${sorted[0].label}–${sorted[sorted.length - 1].label} ${effectiveYear}`;
+    }
+    return `${sorted.map(m => m.label.slice(0, 3)).join(', ')} ${effectiveYear}`;
+  }, [selectedMonthKeys, effectiveYear, monthLabel]);
+
+  const periodKey = `${effectiveYear}-${(selectedMonthKeys[0] || selectedMonth || '').toLowerCase()}`;
   const isActualAdmin = Boolean(isAdmin && (!currentUser || currentUser.role === 'Admin'));
   const currentPayrollVersion = (activeSnapshot?.version || 0) + 1;
+  const canDispatch = isLocked || Boolean(initialContext);
 
   const [subject, setSubject] = useState(emailSettings.defaultSubjectTemplate);
   const [body, setBody] = useState(emailSettings.defaultBodyTemplate);
@@ -123,20 +175,32 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
   const [filterMissingEmail, setFilterMissingEmail] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   
-  // 3-dot row actions menu state
+  // 3-dot row actions menu state & floating coordinates
   const [activeActionMenuId, setActiveActionMenuId] = useState<string | null>(null);
+  const [menuCoords, setMenuCoords] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
 
-  // Close 3-dot menu on outside click
+  // Close 3-dot menu on outside click, scroll, or resize
   useEffect(() => {
     if (!activeActionMenuId) return;
     const handleGlobalClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('[data-action-menu]')) {
+      if (!target.closest('[data-action-menu]') && !target.closest('[data-action-dropdown]')) {
         setActiveActionMenuId(null);
+        setMenuCoords(null);
       }
     };
-    document.addEventListener('click', handleGlobalClick);
-    return () => document.removeEventListener('click', handleGlobalClick);
+    const handleScrollOrResize = () => {
+      setActiveActionMenuId(null);
+      setMenuCoords(null);
+    };
+    document.addEventListener('mousedown', handleGlobalClick);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      document.removeEventListener('mousedown', handleGlobalClick);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
   }, [activeActionMenuId]);
   
   // Inline editing of email
@@ -156,56 +220,185 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
   const [testSending, setTestSending] = useState(false);
   const [testFeedback, setTestFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Helper to build recipient state with revision and version detection
-  const mapItemToRecipient = (item: CalculatedPayrollItem): EmailRecipientState => {
-    const emp = employees.find(e => e.id === item.employeeId || e.code === item.employeeCode);
-    const email = (emp?.email || '').trim();
-    const prior = emailedPayslips[`${periodKey}_${item.employeeId}`];
-    const sendCount = prior?.sendCount ?? (prior?.sentAt ? 1 : 0);
-    const priorNet = prior?.netPayAtSend;
-    const isRevised = Boolean(prior && priorNet !== undefined && Math.abs(priorNet - item.netTakeHome) > 0.5);
+  // Helper to build recipient state with revision, version, and multi-month periods
+  const buildRecipientList = (): EmailRecipientState[] => {
+    const pv = payrollVariables || DEFAULT_PAYROLL_VARIABLES;
+    const pt = payeTaxVariables || DEFAULT_PAYE_VARIABLES;
 
-    const history: EmailSendHistoryItem[] = prior?.history && prior.history.length > 0 
-      ? prior.history 
-      : (prior?.sentAt ? [{
-          sentAt: prior.sentAt,
-          recipientEmail: prior.recipientEmail,
-          messageId: prior.messageId,
-          version: prior.version || 1,
-          status: 'sent' as const,
-          netPay: prior.netPayAtSend ?? item.netTakeHome,
-          sentBy: 'Administrator',
-        }] : []);
+    // Use employees list if available, else fallback to items
+    const sourceEmployees = 
+      employees && employees.length > 0
+        ? employees.map(e => ({
+            id: e.id,
+            code: e.code,
+            fullName: `${e.firstName} ${e.lastName}`.trim(),
+            department: e.department || 'General',
+            email: (e.email || '').trim(),
+            payeNumber: e.payeNumber,
+            pensionNumber: e.pensionNumber,
+            monthlyGross: e.monthlyGross,
+            empObj: e,
+          }))
+        : items.map(i => ({
+            id: i.employeeId,
+            code: i.employeeCode,
+            fullName: i.fullName,
+            department: i.department || 'General',
+            email: '',
+            payeNumber: i.payeNumber,
+            pensionNumber: i.pensionNumber,
+            monthlyGross: i.monthlyGross,
+            empObj: undefined as Employee | undefined,
+          }));
 
-    return {
-      employeeId: item.employeeId,
-      employeeCode: item.employeeCode,
-      payeNumber: emp?.payeNumber || '',
-      pensionNumber: emp?.pensionNumber || '',
-      fullName: item.fullName,
-      department: item.department || 'General',
-      email,
-      netPay: item.netTakeHome,
-      item,
-      // Auto-select if not yet sent OR if calculation was revised since prior send!
-      selected: Boolean(email && (!prior || isRevised)),
-      status: prior ? 'sent' : (email ? 'idle' : 'no-email'),
-      lastSentAt: prior?.sentAt,
-      sendCount,
-      version: prior?.version,
-      priorNetPay: priorNet,
-      isRevised,
-      history,
-    };
+    return sourceEmployees.map(emp => {
+      const email = emp.email;
+      const periodList: PayslipPeriodItem[] = [];
+
+      for (const mKey of selectedMonthKeys) {
+        const monthObj = MONTHS.find(m => m.key === mKey);
+        const mLabel = monthObj?.label || mKey.toUpperCase();
+
+        // 1. Try locked snapshot first
+        const snap = snapshots?.find(s => s.monthKey === mKey && s.year === effectiveYear && s.isLocked);
+        if (snap && snap.items) {
+          const found = snap.items.find(i => i.employeeId === emp.id || i.employeeCode === emp.code);
+          if (found) {
+            periodList.push({ item: found, monthLabel: mLabel, year: effectiveYear });
+            continue;
+          }
+        }
+
+        // 2. If employee object available, calculate for period
+        if (emp.empObj && isEmployeeActiveForPeriod(emp.empObj, effectiveYear, mKey)) {
+          try {
+            const calc = calculatePayrollItem(emp.empObj, pv, pt, mKey, effectiveYear);
+            periodList.push({ item: calc, monthLabel: mLabel, year: effectiveYear });
+            continue;
+          } catch {
+            // Fall through
+          }
+        }
+
+        // 3. Fallback: check passed items
+        const itemMatch = items.find(i => i.employeeId === emp.id || i.employeeCode === emp.code);
+        if (itemMatch) {
+          periodList.push({ item: itemMatch, monthLabel: mLabel, year: effectiveYear });
+        }
+      }
+
+      const fallbackItem = items.find(i => i.employeeId === emp.id || i.employeeCode === emp.code);
+      let primaryItem: CalculatedPayrollItem;
+      if (periodList.length > 0) {
+        primaryItem = periodList[periodList.length - 1].item;
+      } else if (fallbackItem) {
+        primaryItem = fallbackItem;
+      } else if (emp.empObj) {
+        primaryItem = calculatePayrollItem(emp.empObj, pv, pt, selectedMonthKeys[0] || 'jan', effectiveYear);
+      } else {
+        primaryItem = {
+          employeeId: emp.id,
+          employeeCode: emp.code,
+          fullName: emp.fullName,
+          department: emp.department,
+          monthlyGross: emp.monthlyGross,
+          basic: emp.monthlyGross * 0.4,
+          housing: emp.monthlyGross * 0.2,
+          transport: emp.monthlyGross * 0.1,
+          otherAllowances: emp.monthlyGross * 0.3,
+          monthlyPaye: 0,
+          employeePension: 0,
+          employerPension: 0,
+          netTakeHome: emp.monthlyGross,
+          totalDeductions: 0,
+          totalAllowances: emp.monthlyGross,
+          daysWorked: 30,
+          annualGross: emp.monthlyGross * 12,
+          cra: 0,
+          taxableIncome: 0,
+          annualTax: 0,
+          pfaName: undefined,
+          pensionNumber: emp.pensionNumber,
+          payeNumber: emp.payeNumber,
+          bankName: undefined,
+          accountNumber: undefined,
+        } as unknown as CalculatedPayrollItem;
+      }
+
+      // Total net pay across all active periods in this selection
+      const totalNetPay = periodList.length > 0
+        ? periodList.reduce((acc, p) => acc + (p.item.netTakeHome || 0), 0)
+        : primaryItem.netTakeHome;
+
+      const prior = emailedPayslips[`${periodKey}_${emp.id}`];
+      const sendCount = prior?.sendCount ?? (prior?.sentAt ? 1 : 0);
+      const priorNet = prior?.netPayAtSend;
+      const isRevised = Boolean(prior && priorNet !== undefined && Math.abs(priorNet - totalNetPay) > 0.5);
+
+      const history: EmailSendHistoryItem[] = prior?.history && prior.history.length > 0 
+        ? prior.history 
+        : (prior?.sentAt ? [{
+            sentAt: prior.sentAt,
+            recipientEmail: prior.recipientEmail,
+            messageId: prior.messageId,
+            version: prior.version || 1,
+            status: 'sent' as const,
+            netPay: prior.netPayAtSend ?? totalNetPay,
+            sentBy: 'Administrator',
+          }] : []);
+
+      // If initialContext provided selectedEmployeeIds, respect that selection explicitly
+      const isPreSelected = initialContext?.selectedEmployeeIds && initialContext.selectedEmployeeIds.length > 0
+        ? initialContext.selectedEmployeeIds.includes(emp.id)
+        : Boolean(email && (!prior || isRevised));
+
+      return {
+        employeeId: emp.id,
+        employeeCode: emp.code,
+        payeNumber: emp.payeNumber || '',
+        pensionNumber: emp.pensionNumber || '',
+        fullName: emp.fullName,
+        department: emp.department,
+        email,
+        netPay: totalNetPay,
+        item: primaryItem,
+        selected: Boolean(email && isPreSelected),
+        status: prior ? 'sent' : (email ? 'idle' : 'no-email'),
+        lastSentAt: prior?.sentAt,
+        sendCount,
+        version: prior?.version,
+        priorNetPay: priorNet,
+        isRevised,
+        history,
+        periodItems: periodList.length > 0 ? periodList : [{ item: primaryItem, monthLabel: effectivePeriodLabel, year: effectiveYear }],
+        periodLabel: effectivePeriodLabel,
+        periodsCount: periodList.length > 0 ? periodList.length : 1,
+      };
+    });
   };
 
   // Initialize recipient rows with persistent sent-status tracking & version history
-  const [recipients, setRecipients] = useState<EmailRecipientState[]>(() => items.map(mapItemToRecipient));
+  const [recipients, setRecipients] = useState<EmailRecipientState[]>(() => buildRecipientList());
 
-  // Re-sync if items, employees, or period changes
+  // Re-sync if items, employees, or period changes, while preserving active user selections and inline edits
   useEffect(() => {
-    setRecipients(items.map(mapItemToRecipient));
-  }, [items, employees, periodKey, emailedPayslips]);
+    setRecipients(prev => {
+      const prevMap = new Map(prev.map(p => [p.employeeId, p]));
+      const nextList = buildRecipientList();
+      return nextList.map(mapped => {
+        const existing = prevMap.get(mapped.employeeId);
+        if (existing) {
+          return {
+            ...mapped,
+            selected: existing.selected,
+            email: mapped.email || existing.email,
+            status: (existing.status === 'sending' || existing.status === 'failed') ? existing.status : mapped.status,
+          };
+        }
+        return mapped;
+      });
+    });
+  }, [items, employees, periodKey, emailedPayslips, initialContext]);
 
   if (!isOpen) return null;
 
@@ -299,7 +492,8 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
       return;
     }
 
-    const sampleItem = items[0];
+    const sampleRec = recipients[0];
+    const sampleItem = sampleRec?.item || items[0];
     if (!sampleItem) {
       setTestFeedback({ type: 'error', message: 'No employee payroll items available.' });
       return;
@@ -314,12 +508,13 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
         company,
         item: sampleItem,
         recipientEmail: testEmailAddress,
-        monthLabel,
-        year,
+        monthLabel: sampleRec?.periodLabel || effectivePeriodLabel,
+        year: effectiveYear,
         config: payslipDesign,
         subjectTemplate: `[TEST SAMPLE] ${subject}`,
         bodyTemplate: body,
         attachPdf,
+        periods: sampleRec?.periodItems,
       });
 
       if (res.success) {
@@ -342,8 +537,8 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
 
   // Single Employee Resend
   const handleResendSingle = async (rec: EmailRecipientState) => {
-    if (!isLocked) {
-      alert(`Cannot send payslip: ${monthLabel} ${year} payroll has not been finalized and locked yet. Please finalize and lock the payroll cycle before emailing payslips.`);
+    if (!canDispatch) {
+      alert(`Cannot send payslip: ${effectivePeriodLabel} payroll has not been finalized and locked yet. Please finalize and lock the payroll cycle before emailing payslips.`);
       return;
     }
     if (!isConfigured) {
@@ -361,8 +556,8 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
 
     const nextVer = (rec.version || 1) + (rec.sendCount > 0 ? 1 : 0);
     const confirmPrompt = rec.sendCount > 0
-      ? `Resend official ${monthLabel} ${year} payslip to ${rec.fullName} (${rec.email})?\n\nThis will be logged as dispatch #${rec.sendCount + 1} (Version v${nextVer}) in the audit history.`
-      : `Send official ${monthLabel} ${year} payslip to ${rec.fullName} (${rec.email})?`;
+      ? `Resend official ${rec.periodLabel || effectivePeriodLabel} payslip to ${rec.fullName} (${rec.email})?\n\nThis will be logged as dispatch #${rec.sendCount + 1} (Version v${nextVer}) in the audit history.`
+      : `Send official ${rec.periodLabel || effectivePeriodLabel} payslip to ${rec.fullName} (${rec.email})?`;
 
     if (!confirm(confirmPrompt)) return;
 
@@ -377,12 +572,13 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
         company,
         item: rec.item,
         recipientEmail: rec.email,
-        monthLabel,
-        year,
+        monthLabel: rec.periodLabel || effectivePeriodLabel,
+        year: effectiveYear,
         config: payslipDesign,
         subjectTemplate: emailSubject,
         bodyTemplate: body,
         attachPdf,
+        periods: rec.periodItems,
       });
 
       if (result.success) {
@@ -441,8 +637,8 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
 
   // Bulk Dispatch Loop with version control and resend handling
   const handleStartDispatch = async () => {
-    if (!isLocked) {
-      alert(`Cannot dispatch payslips: ${monthLabel} ${year} payroll has not been finalized and locked yet. Please finalize and lock the payroll cycle before emailing payslips.`);
+    if (!canDispatch) {
+      alert(`Cannot dispatch payslips: ${effectivePeriodLabel} payroll has not been finalized and locked yet. Please finalize and lock the payroll cycle before emailing payslips.`);
       return;
     }
     const toSend = recipients.filter(r => r.selected && r.email);
@@ -462,8 +658,8 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
 
     const resendCount = toSend.filter(r => r.sendCount > 0).length;
     const confirmPrompt = resendCount > 0
-      ? `Are you ready to email official ${monthLabel} ${year} payslips to ${toSend.length} employee(s)?\n\nNotice: ${resendCount} employee(s) were previously dispatched. An updated revision will be dispatched and tracked in their version control history.`
-      : `Are you ready to email official ${monthLabel} ${year} payslips to ${toSend.length} employee(s)?`;
+      ? `Are you ready to email official ${isMultiMonth ? `${selectedMonthKeys.length}-month consolidated` : effectivePeriodLabel} payslips (1 PDF per employee) to ${toSend.length} employee(s)?\n\nNotice: ${resendCount} employee(s) were previously dispatched. An updated revision will be dispatched and tracked in their version control history.`
+      : `Are you ready to email official ${isMultiMonth ? `${selectedMonthKeys.length}-month consolidated` : effectivePeriodLabel} payslips (1 PDF per employee) to ${toSend.length} employee(s)?`;
 
     if (!confirm(confirmPrompt)) {
       return;
@@ -503,12 +699,13 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
           company,
           item: rec.item,
           recipientEmail: rec.email,
-          monthLabel,
-          year,
+          monthLabel: rec.periodLabel || effectivePeriodLabel,
+          year: effectiveYear,
           config: payslipDesign,
           subjectTemplate: emailSubject,
           bodyTemplate: body,
           attachPdf,
+          periods: rec.periodItems,
         });
 
         if (result.success) {
@@ -588,14 +785,28 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
     : 0;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col md:items-center md:justify-center md:p-5 md:bg-black/60 md:backdrop-blur-xs overflow-hidden animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#121215] flex-1 md:flex-initial border-0 md:border md:border-zinc-200 md:dark:border-zinc-800 rounded-none md:rounded-2xl w-full md:max-w-5xl lg:max-w-6xl shadow-2xl flex flex-col h-[100dvh] md:h-auto md:max-h-[92vh] overflow-hidden">
+    <div className="fixed top-0 md:top-9 inset-x-0 bottom-0 z-50 flex flex-col animate-in fade-in duration-150 overflow-hidden">
+      <div className="bg-white dark:bg-[#121215] flex flex-col w-full h-full overflow-hidden">
         
         {/* Modal Header */}
-        <div className="px-3.5 sm:px-5 py-3 sm:py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50/70 dark:bg-zinc-900/40 gap-2">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
-              <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
+        <div className="px-3 sm:px-5 py-3 sm:py-3.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2 shrink-0 bg-zinc-50/70 dark:bg-zinc-900/40">
+
+          {/* Back button */}
+          <button
+            onClick={onClose}
+            disabled={isSending}
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0 disabled:opacity-40"
+            title="Back (Esc)"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Back</span>
+          </button>
+
+          <span className="w-px h-4 bg-zinc-200 dark:bg-zinc-800 shrink-0" />
+
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -603,8 +814,14 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   Email Payslips Studio
                 </h2>
                 <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 shrink-0">
-                  {monthLabel} {year}
+                  {effectivePeriodLabel}
                 </span>
+                {isMultiMonth && (
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
+                    <Paperclip className="w-3 h-3" />
+                    {selectedMonthKeys.length} Months (1 Consolidated PDF)
+                  </span>
+                )}
                 <span className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded font-medium border shrink-0 ${
                   isConfigured 
                     ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60'
@@ -614,7 +831,9 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 mt-0.5 hidden sm:block">
-                Automatically dispatch official encrypted PDF payslips to employee mailboxes.
+                {isMultiMonth 
+                  ? `Each employee receives 1 email containing 1 consolidated multi-page PDF covering all ${selectedMonthKeys.length} selected months.`
+                  : 'Automatically dispatch official encrypted PDF payslips to employee mailboxes.'}
               </p>
             </div>
           </div>
@@ -644,18 +863,11 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                 <span className="hidden sm:inline">Settings</span>
               </button>
             )}
-            <button
-              onClick={onClose}
-              disabled={isSending}
-              className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition disabled:opacity-40"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
-        {/* Unlocked / Draft Period Alert Banner */}
-        {!isLocked && (
+        {/* Unlocked / Draft Period Alert Banner (Only shown if NOT canDispatch) */}
+        {!canDispatch && (
           <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 bg-amber-500/10 dark:bg-amber-950/40 border-b border-amber-300/80 dark:border-amber-800 flex items-start sm:items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200">
             <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
             <div className="leading-relaxed flex-1">
@@ -967,7 +1179,12 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                           </td>
 
                           <td className="py-2.5 px-3 text-right font-mono font-medium text-zinc-900 dark:text-zinc-100">
-                            {formatNaira(r.netPay)}
+                            <div>{formatNaira(r.netPay)}</div>
+                            {r.periodItems && r.periodItems.length > 1 && (
+                              <div className="text-[10px] font-sans font-normal text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                {r.periodItems.length} Mos (1 PDF)
+                              </div>
+                            )}
                           </td>
 
                           {/* Status Column: Clean Badges */}
@@ -1016,7 +1233,21 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveActionMenuId(isMenuOpen ? null : r.employeeId);
+                                  if (activeActionMenuId === r.employeeId) {
+                                    setActiveActionMenuId(null);
+                                    setMenuCoords(null);
+                                  } else {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const spaceAbove = rect.top;
+                                    const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+                                    setMenuCoords({
+                                      top: openUp ? undefined : rect.bottom + 4,
+                                      bottom: openUp ? Math.max(10, window.innerHeight - rect.top + 4) : undefined,
+                                      right: Math.max(10, window.innerWidth - rect.right),
+                                    });
+                                    setActiveActionMenuId(r.employeeId);
+                                  }
                                 }}
                                 disabled={isSending}
                                 className={`p-1.5 rounded-md transition cursor-pointer ${
@@ -1029,8 +1260,16 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                 <MoreVertical className="w-3.5 h-3.5" />
                               </button>
 
-                              {isMenuOpen && (
-                                <div className="absolute right-0 mt-1 w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-xl py-1 z-30 text-xs animate-in fade-in-50 zoom-in-95 text-left">
+                              {isMenuOpen && menuCoords && (
+                                <div 
+                                  data-action-dropdown
+                                  style={{
+                                    top: menuCoords.top !== undefined ? `${menuCoords.top}px` : undefined,
+                                    bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
+                                    right: `${menuCoords.right}px`,
+                                  }}
+                                  className="fixed w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1 z-[9999] text-xs animate-in fade-in-50 zoom-in-95 text-left"
+                                >
                                   {/* Resend / Send Payslip */}
                                   {r.email && (
                                     <button
@@ -1038,9 +1277,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                       disabled={!isLocked || isSending || resendingEmpId === r.employeeId}
                                       onClick={() => {
                                         setActiveActionMenuId(null);
+                                        setMenuCoords(null);
                                         handleResendSingle(r);
                                       }}
-                                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
                                     >
                                       <RotateCcw className={`w-3.5 h-3.5 text-blue-600 shrink-0 ${resendingEmpId === r.employeeId ? 'animate-spin' : ''}`} />
                                       <div className="truncate">
@@ -1055,9 +1295,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                     type="button"
                                     onClick={() => {
                                       setActiveActionMenuId(null);
+                                      setMenuCoords(null);
                                       setHistoryTarget(r);
                                     }}
-                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition"
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition cursor-pointer"
                                   >
                                     <History className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                                     <span>Dispatch Logs ({r.history?.length || 0})</span>
@@ -1068,10 +1309,11 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                     type="button"
                                     onClick={() => {
                                       setActiveActionMenuId(null);
+                                      setMenuCoords(null);
                                       setEditingEmpId(r.employeeId);
                                       setTempEmailVal(r.email);
                                     }}
-                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition"
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition cursor-pointer"
                                   >
                                     <Edit2 className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                                     <span>{r.email ? 'Edit Email' : 'Add Email'}</span>
@@ -1121,9 +1363,16 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                           <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 truncate">
                             {r.fullName}
                           </span>
-                          <span className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100 shrink-0">
-                            {formatNaira(r.netPay)}
-                          </span>
+                          <div className="text-right shrink-0">
+                            <span className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                              {formatNaira(r.netPay)}
+                            </span>
+                            {r.periodItems && r.periodItems.length > 1 && (
+                              <div className="text-[9px] font-sans text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                {r.periodItems.length} Mos (1 PDF)
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-1.5 flex-wrap mt-1">
@@ -1237,7 +1486,21 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setActiveActionMenuId(isMenuOpen ? null : r.employeeId);
+                                  if (activeActionMenuId === r.employeeId) {
+                                    setActiveActionMenuId(null);
+                                    setMenuCoords(null);
+                                  } else {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                    const spaceAbove = rect.top;
+                                    const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+                                    setMenuCoords({
+                                      top: openUp ? undefined : rect.bottom + 4,
+                                      bottom: openUp ? Math.max(10, window.innerHeight - rect.top + 4) : undefined,
+                                      right: Math.max(10, window.innerWidth - rect.right),
+                                    });
+                                    setActiveActionMenuId(r.employeeId);
+                                  }
                                 }}
                                 disabled={isSending}
                                 className={`p-1.5 rounded-md transition cursor-pointer ${
@@ -1250,17 +1513,26 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                 <MoreVertical className="w-4 h-4" />
                               </button>
 
-                              {isMenuOpen && (
-                                <div className="absolute right-0 bottom-full mb-1 w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-xl py-1 z-30 text-xs animate-in fade-in-50 zoom-in-95 text-left">
+                              {isMenuOpen && menuCoords && (
+                                <div 
+                                  data-action-dropdown
+                                  style={{
+                                    top: menuCoords.top !== undefined ? `${menuCoords.top}px` : undefined,
+                                    bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
+                                    right: `${menuCoords.right}px`,
+                                  }}
+                                  className="fixed w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1 z-[9999] text-xs animate-in fade-in-50 zoom-in-95 text-left"
+                                >
                                   {r.email && (
                                     <button
                                       type="button"
                                       disabled={!isLocked || isSending || resendingEmpId === r.employeeId}
                                       onClick={() => {
                                         setActiveActionMenuId(null);
+                                        setMenuCoords(null);
                                         handleResendSingle(r);
                                       }}
-                                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
                                     >
                                       <RotateCcw className={`w-3.5 h-3.5 text-blue-600 shrink-0 ${resendingEmpId === r.employeeId ? 'animate-spin' : ''}`} />
                                       <div className="truncate">
@@ -1274,9 +1546,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                     type="button"
                                     onClick={() => {
                                       setActiveActionMenuId(null);
+                                      setMenuCoords(null);
                                       setHistoryTarget(r);
                                     }}
-                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition"
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition cursor-pointer"
                                   >
                                     <History className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                                     <span>Dispatch Logs ({r.history?.length || 0})</span>
@@ -1286,10 +1559,11 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                     type="button"
                                     onClick={() => {
                                       setActiveActionMenuId(null);
+                                      setMenuCoords(null);
                                       setEditingEmpId(r.employeeId);
                                       setTempEmailVal(r.email);
                                     }}
-                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition"
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition cursor-pointer"
                                   >
                                     <Edit2 className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
                                     <span>{r.email ? 'Edit Email' : 'Add Email'}</span>
@@ -1332,9 +1606,9 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
             <button
               type="button"
               onClick={handleStartDispatch}
-              disabled={isSending || selectedCount === 0 || !isConfigured || !isLocked}
+              disabled={isSending || selectedCount === 0 || !isConfigured || !canDispatch}
               className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-md text-xs font-semibold shadow-xs transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
-                !isLocked
+                !canDispatch
                   ? 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
                   : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
@@ -1344,7 +1618,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   <span>Dispatching...</span>
                 </>
-              ) : !isLocked ? (
+              ) : !canDispatch ? (
                 <>
                   <Lock className="w-3.5 h-3.5 text-amber-500" />
                   <span>Finalize &amp; Lock Required to Send</span>
@@ -1352,7 +1626,11 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5" />
-                  <span>Dispatch {selectedCount} Payslips</span>
+                  <span>
+                    {isMultiMonth
+                      ? `Dispatch ${selectedCount} Consolidated Payslips (${selectedMonthKeys.length} Mos / 1 PDF)`
+                      : `Dispatch ${selectedCount} Payslips`}
+                  </span>
                 </>
               )}
             </button>

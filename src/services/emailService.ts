@@ -1,3 +1,5 @@
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { 
   EmailSettings, 
   CalculatedPayrollItem, 
@@ -7,6 +9,53 @@ import {
   PRESET_HEX_MAP 
 } from '../types';
 import { formatNaira } from '../engine/payePensionEngine';
+import { CustomizablePayslipView } from '../components/payslip/CustomizablePayslipView';
+
+// ──────────────────────────────────────────────────────────
+//  Platform detection helpers
+// ──────────────────────────────────────────────────────────
+
+/** True when running inside Electron (desktop) */
+function getElectronAPI(): any {
+  return typeof window !== 'undefined' ? (window as any).electronAPI : undefined;
+}
+
+/**
+ * True when running as a Capacitor Android APK.
+ * The SmtpBridge Java class exposes window.AndroidSMTP via @JavascriptInterface.
+ */
+function getAndroidSMTP(): any {
+  return typeof window !== 'undefined' ? (window as any).AndroidSMTP : undefined;
+}
+
+/**
+ * Wraps the callback-based AndroidSMTP.testConnection / sendEmail into a Promise.
+ * Java calls window.__handleAndroidSmtp(callbackId, success, errorOrNull) when done.
+ */
+function invokeAndroidSmtp<T>(method: 'testConnection' | 'sendEmail', payload: object): Promise<{ success: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    const callbackId = `smtp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    (window as any).__handleAndroidSmtp = (id: string, success: boolean, error: string | null) => {
+      if (id !== callbackId) return;
+      delete (window as any).__handleAndroidSmtp;
+      if (success) resolve({ success: true });
+      else resolve({ success: false, error: error ?? 'Unknown SMTP error' });
+    };
+    try {
+      const bridge = getAndroidSMTP();
+      bridge[method](callbackId, JSON.stringify(payload));
+    } catch (e: any) {
+      delete (window as any).__handleAndroidSmtp;
+      resolve({ success: false, error: e?.message ?? 'AndroidSMTP bridge unavailable' });
+    }
+  });
+}
+
+export interface PayslipPeriodItem {
+  item: CalculatedPayrollItem;
+  monthLabel: string;
+  year: number;
+}
 
 export interface EmailDispatchPayload {
   settings: EmailSettings;
@@ -19,6 +68,7 @@ export interface EmailDispatchPayload {
   subjectTemplate?: string;
   bodyTemplate?: string;
   attachPdf?: boolean;
+  periods?: PayslipPeriodItem[];
 }
 
 export interface EmailDispatchResult {
@@ -131,34 +181,69 @@ export function renderPayslipToHtml(
   monthLabel: string,
   year: number,
   config: PayslipDesignConfig = DEFAULT_PAYSLIP_DESIGN,
-  recipientEmail?: string
+  _recipientEmail?: string
 ): string {
-  const brandColor = 
-    config.customColor || 
-    (config.themeColor && config.themeColor.startsWith('#')
-      ? config.themeColor
-      : PRESET_HEX_MAP[config.themeColor] || '#18181b');
+  // 1. Collect all styles loaded in the document (Tailwind CSS, fonts, and theme variables)
+  let embeddedStyles = '';
+  let externalLinksHtml = '';
 
-  const showLogo = config.showLogo && Boolean(company.logoUrl);
-  const showAddress = config.showCompanyAddress && Boolean(company.address);
-  const showContact = config.showCompanyPhoneEmail && Boolean(company.phone || company.email);
+  if (typeof document !== 'undefined') {
+    try {
+      // Collect all inline <style> tags
+      const styleTags = document.querySelectorAll('style');
+      styleTags.forEach(tag => {
+        if (tag.textContent) {
+          embeddedStyles += tag.textContent + '\n';
+        }
+      });
 
-  const earningsTotal = item.monthlyGross;
-  const deductionsTotal = item.totalDeductions;
+      // Collect all CSS rules from loaded stylesheets
+      for (let i = 0; i < document.styleSheets.length; i++) {
+        const sheet = document.styleSheets[i];
+        try {
+          if (sheet.cssRules) {
+            for (let j = 0; j < sheet.cssRules.length; j++) {
+              embeddedStyles += sheet.cssRules[j].cssText + '\n';
+            }
+          }
+        } catch {
+          // Cross-origin stylesheet access restriction fallback
+        }
+      }
 
+      // Collect external stylesheet links (e.g. fonts, CDN)
+      const linkTags = document.querySelectorAll('link[rel="stylesheet"]');
+      linkTags.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && (href.startsWith('http') || href.startsWith('//'))) {
+          externalLinksHtml += `<link rel="stylesheet" href="${href}">\n`;
+        }
+      });
+    } catch (e) {
+      console.warn('Could not collect document styles for PDF:', e);
+    }
+  }
+
+  // 2. Render the official app payslip component directly to static HTML
+  let renderedPayslipMarkup = '';
+  try {
+    renderedPayslipMarkup = renderToStaticMarkup(
+      React.createElement(CustomizablePayslipView, {
+        item,
+        company,
+        monthLabel,
+        year,
+        config,
+        visibleColumns: config.visibleColumns,
+        interactive: false,
+      })
+    );
+  } catch (err) {
+    console.error('Failed to render CustomizablePayslipView to static markup:', err);
+  }
+
+  const payslipTitle = config.payslipTitle || 'Payslip';
   const safeFullName = escapeHtml(item.fullName);
-  const safeCompanyName = escapeHtml(company.name);
-  const safeSubtitle = escapeHtml(company.subtitle);
-  const safeAddress = escapeHtml(company.address);
-  const safePhone = escapeHtml(company.phone);
-  const safeEmail = escapeHtml(company.email);
-  const safeEmpCode = escapeHtml(item.employeeCode);
-  const safeDept = escapeHtml(item.department || 'General');
-  const safeRecipientEmail = escapeHtml(recipientEmail || (item as any).email || 'N/A');
-  const safeBankName = escapeHtml(item.bankName || 'Direct Transfer');
-  const safeAccountNum = escapeHtml(item.accountNumber ? '••••' + item.accountNumber.slice(-4) : 'N/A');
-  const safePayeNum = escapeHtml(item.payeNumber);
-  const safePensionNum = escapeHtml(item.pensionNumber);
 
   // Font family resolution
   const fontStack = 
@@ -166,398 +251,192 @@ export function renderPayslipToHtml(
       ? "Georgia, 'Times New Roman', Cambria, serif"
       : config.fontFamily === 'mono'
       ? "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace"
-      : "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
-
-  // Radius resolution
-  const borderRadius = 
-    config.roundedCorners === false || config.cornerRadius === 'none'
-      ? '0px'
-      : config.cornerRadius === 'lg'
-      ? '16px'
-      : config.cornerRadius === 'md'
-      ? '10px'
-      : '6px';
-
-  // Watermark text resolution
-  let watermarkText = '';
-  if (config.watermark && config.watermark !== 'none') {
-    if (config.watermark === 'custom') {
-      watermarkText = config.customWatermarkText || '';
-    } else {
-      watermarkText = String(config.watermark).toUpperCase();
-    }
-  }
-
-  const payslipTitle = config.payslipTitle || 'Payslip';
-  const earningsTitle = config.earningsTitle || 'Earnings & Allowances';
-  const deductionsTitle = config.deductionsTitle || 'Statutory & Deductions';
-  const grossPayLabel = config.grossPayLabel || 'Total Gross Remuneration';
-  const totalDeductionsLabel = config.totalDeductionsLabel || 'Total Deductions';
-  const netPayTitle = config.netPayTitle || 'Net Take-Home Pay';
-  const footerNote = config.footerNote || `This is an official computer-generated payslip issued by ${company.name || 'the company'}. No signature required.`;
+      : "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>${escapeHtml(payslipTitle)} - ${safeFullName} - ${escapeHtml(monthLabel)} ${year}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  ${externalLinksHtml}
   <style>
+    ${embeddedStyles}
+
     @page {
       size: A4 portrait;
-      margin: 12mm 14mm;
+      margin: 8mm 10mm;
     }
-    * {
+    *, *::before, *::after {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    body {
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff !important;
+      color: #18181b !important;
       font-family: ${fontStack};
-      font-size: 11px;
-      line-height: 1.45;
-      color: #18181b;
-      background: #ffffff;
-      padding: 10px;
+      width: 100%;
     }
-    .payslip-card {
-      position: relative;
-      border: 1px solid #e4e4e7;
-      border-radius: ${borderRadius};
-      padding: 24px;
-      background: #ffffff;
+    .pdf-payslip-canvas {
+      width: 100%;
       max-width: 800px;
       margin: 0 auto;
-      overflow: hidden;
-    }
-    ${watermarkText ? `
-    .watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 64px;
-      font-weight: 900;
-      color: rgba(160, 160, 160, ${config.watermarkOpacity || 0.08});
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-      pointer-events: none;
-      user-select: none;
-      z-index: 1;
-      white-space: nowrap;
-    }
-    ` : ''}
-    .header {
-      position: relative;
-      z-index: 2;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      border-bottom: 2px solid ${brandColor};
-      padding-bottom: 16px;
-      margin-bottom: 18px;
-    }
-    .company-brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .logo-img {
-      max-height: 48px;
-      max-width: 140px;
-      object-fit: contain;
-    }
-    .company-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #09090b;
-      letter-spacing: -0.01em;
-    }
-    .company-subtitle {
-      font-size: 10px;
-      color: #71717a;
-      margin-top: 1px;
-    }
-    .company-contact {
-      font-size: 9px;
-      color: #71717a;
-      margin-top: 2px;
-      line-height: 1.3;
-    }
-    .doc-badge {
-      text-align: right;
-    }
-    .doc-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: ${brandColor};
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .doc-subtitle {
-      font-size: 9.5px;
-      color: #71717a;
-      margin-top: 1px;
-    }
-    .doc-period {
-      font-size: 11px;
-      font-weight: 600;
-      color: #27272a;
-      margin-top: 2px;
-    }
-    .doc-serial {
-      font-size: 9px;
-      font-family: monospace;
-      color: #a1a1aa;
-      margin-top: 2px;
-    }
-    .grid-2 {
-      position: relative;
-      z-index: 2;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .info-card {
-      background: #fafafa;
-      border: 1px solid #f4f4f5;
-      border-radius: ${borderRadius};
-      padding: 10px 14px;
-    }
-    .info-title {
-      font-size: 9px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #71717a;
-      margin-bottom: 8px;
-      border-bottom: 1px solid #e4e4e7;
-      padding-bottom: 4px;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 4px;
-      font-size: 10px;
-    }
-    .info-label {
-      color: #71717a;
-    }
-    .info-val {
-      font-weight: 600;
-      color: #18181b;
-    }
-    .tables-container {
-      position: relative;
-      z-index: 2;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-    .table-block {
-      border: 1px solid #e4e4e7;
-      border-radius: ${borderRadius};
-      overflow: hidden;
-    }
-    .table-header {
-      background: #f4f4f5;
-      padding: 6px 10px;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #27272a;
-      letter-spacing: 0.04em;
-      display: flex;
-      justify-content: space-between;
-      border-bottom: 1px solid #e4e4e7;
-    }
-    .table-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 5px 10px;
-      font-size: 10px;
-      border-bottom: 1px solid #f4f4f5;
-    }
-    .table-row:nth-child(even) {
-      background: #fafafa;
-    }
-    .row-label {
-      color: #3f3f46;
-    }
-    .row-value {
-      font-weight: 600;
-      font-family: monospace;
-      color: #18181b;
-    }
-    .table-footer {
-      display: flex;
-      justify-content: space-between;
-      padding: 7px 10px;
-      font-size: 10px;
-      font-weight: 700;
-      background: #f4f4f5;
-      border-top: 1px solid #e4e4e7;
-    }
-    .net-banner {
-      position: relative;
-      z-index: 2;
-      background: ${brandColor};
-      color: #ffffff;
-      border-radius: ${borderRadius};
-      padding: 14px 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-    }
-    .net-label {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      opacity: 0.95;
-    }
-    .net-sublabel {
-      font-size: 9px;
-      opacity: 0.85;
-      margin-top: 2px;
-    }
-    .net-amount {
-      font-size: 20px;
-      font-weight: 800;
-      font-family: monospace;
-      letter-spacing: -0.02em;
-    }
-    .pension-card {
-      position: relative;
-      z-index: 2;
-      background: #fdfdfd;
-      border: 1px dashed #d4d4d8;
-      border-radius: ${borderRadius};
-      padding: 8px 12px;
-      margin-bottom: 14px;
-      font-size: 9.5px;
-      display: flex;
-      justify-content: space-between;
-      color: #52525b;
-    }
-    .footer-note {
-      position: relative;
-      z-index: 2;
-      text-align: center;
-      font-size: 8.5px;
-      color: #a1a1aa;
-      border-top: 1px solid #f4f4f5;
-      padding-top: 10px;
-      margin-top: 12px;
-      line-height: 1.4;
+      background: #ffffff !important;
     }
   </style>
 </head>
-<body>
-  <div class="payslip-card">
-    ${watermarkText ? `<div class="watermark">${escapeHtml(watermarkText)}</div>` : ''}
-
-    <!-- Header -->
-    <div class="header">
-      <div class="company-brand">
-        ${showLogo ? `<img src="${company.logoUrl}" class="logo-img" alt="Logo" />` : ''}
-        <div>
-          <div class="company-title">${safeCompanyName}</div>
-          ${company.subtitle ? `<div class="company-subtitle">${safeSubtitle}</div>` : ''}
-          ${showAddress ? `<div class="company-contact">${safeAddress}</div>` : ''}
-          ${showContact ? `<div class="company-contact">${safePhone ? 'Tel: ' + safePhone : ''} ${safeEmail ? '| ' + safeEmail : ''}</div>` : ''}
-        </div>
-      </div>
-      <div class="doc-badge">
-        <div class="doc-title">${escapeHtml(payslipTitle)}</div>
-        ${config.payslipSubtitle ? `<div class="doc-subtitle">${escapeHtml(config.payslipSubtitle)}</div>` : ''}
-        <div class="doc-period">${escapeHtml(monthLabel)} ${year}</div>
-        <div class="doc-serial">Ref: ${safeEmpCode}-${escapeHtml(monthLabel).substring(0, 3).toUpperCase()}${year}</div>
-      </div>
-    </div>
-
-    <!-- Employee & Banking Info -->
-    <div class="grid-2">
-      <div class="info-card">
-        <div class="info-title">Employee Details</div>
-        <div class="info-row"><span class="info-label">Full Name:</span><span class="info-val">${safeFullName}</span></div>
-        <div class="info-row"><span class="info-label">Staff Code:</span><span class="info-val">${safeEmpCode}</span></div>
-        <div class="info-row"><span class="info-label">Department:</span><span class="info-val">${safeDept}</span></div>
-        <div class="info-row"><span class="info-label">Email:</span><span class="info-val">${safeRecipientEmail}</span></div>
-      </div>
-
-      <div class="info-card">
-        <div class="info-title">Payment & Statutory Info</div>
-        <div class="info-row"><span class="info-label">Bank Name:</span><span class="info-val">${safeBankName}</span></div>
-        <div class="info-row"><span class="info-label">Account No:</span><span class="info-val">${safeAccountNum}</span></div>
-        ${item.payeNumber ? `<div class="info-row"><span class="info-label">Tax ID (PAYE):</span><span class="info-val">${safePayeNum}</span></div>` : ''}
-        ${item.pensionNumber ? `<div class="info-row"><span class="info-label">RSA PIN:</span><span class="info-val">${safePensionNum}</span></div>` : ''}
-      </div>
-    </div>
-
-    <!-- Earnings & Deductions Tables -->
-    <div class="tables-container">
-      <!-- Earnings -->
-      <div class="table-block">
-        <div class="table-header">
-          <span>${escapeHtml(earningsTitle)}</span>
-          <span>Amount (₦)</span>
-        </div>
-        <div>
-          <div class="table-row"><span class="row-label">Basic Salary</span><span class="row-value">${formatNaira(item.basic)}</span></div>
-          <div class="table-row"><span class="row-label">Housing Allowance</span><span class="row-value">${formatNaira(item.housing)}</span></div>
-          <div class="table-row"><span class="row-label">Transport Allowance</span><span class="row-value">${formatNaira(item.transport)}</span></div>
-          <div class="table-row"><span class="row-label">Other Allowances</span><span class="row-value">${formatNaira(item.otherAllowances)}</span></div>
-        </div>
-        <div class="table-footer">
-          <span>${escapeHtml(grossPayLabel)}</span>
-          <span>${formatNaira(earningsTotal)}</span>
-        </div>
-      </div>
-
-      <!-- Deductions -->
-      <div class="table-block">
-        <div class="table-header">
-          <span>${escapeHtml(deductionsTitle)}</span>
-          <span>Amount (₦)</span>
-        </div>
-        <div>
-          <div class="table-row"><span class="row-label">PAYE Income Tax</span><span class="row-value">${formatNaira(item.monthlyPaye)}</span></div>
-          <div class="table-row"><span class="row-label">Employee Pension (8%)</span><span class="row-value">${formatNaira(item.employeePension)}</span></div>
-          ${(item.loanDeduction || 0) > 0 ? ('<div class="table-row"><span class="row-label">Loan / Advance Repayment</span><span class="row-value">' + formatNaira(item.loanDeduction || 0) + '</span></div>') : ''}
-        </div>
-        <div class="table-footer">
-          <span>${escapeHtml(totalDeductionsLabel)}</span>
-          <span>${formatNaira(deductionsTotal)}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Net Pay Banner -->
-    <div class="net-banner">
-      <div>
-        <div class="net-label">${escapeHtml(netPayTitle)}</div>
-        ${config.netPaySubtitle ? `<div class="net-sublabel">${escapeHtml(config.netPaySubtitle)}</div>` : ''}
-      </div>
-      <div class="net-amount">${formatNaira(item.netTakeHome)}</div>
-    </div>
-
-    <!-- Employer Contribution Notice -->
-    <div class="pension-card">
-      <span><strong>Employer Statutory Pension Contribution (10%):</strong> ${formatNaira(item.employerPension)}</span>
-      <span><strong>Total Pension Remitted to PFA:</strong> ${formatNaira(item.employeePension + item.employerPension)}</span>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer-note">
-      ${escapeHtml(footerNote)}<br/>
-      Generated on ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-    </div>
+<body class="bg-white text-zinc-900 font-sans antialiased">
+  <div class="pdf-payslip-canvas">
+    ${renderedPayslipMarkup}
   </div>
+</body>
+</html>`;
+}
+
+/**
+ * Generates an isolated, self-contained multi-page HTML document
+ * combining multiple months of payslips for a single employee into a single PDF.
+ * Each month's payslip is styled with standard CSS page-breaks so Chromium / Electron
+ * compiles all selected months into a single, seamless multi-page PDF document.
+ */
+export function renderConsolidatedPayslipsToHtml(
+  periods: PayslipPeriodItem[],
+  company: CompanyProfile,
+  config: PayslipDesignConfig = DEFAULT_PAYSLIP_DESIGN,
+  _recipientEmail?: string
+): string {
+  // 1. Collect all styles loaded in the document
+  let embeddedStyles = '';
+  let externalLinksHtml = '';
+
+  if (typeof document !== 'undefined') {
+    try {
+      const styleTags = document.querySelectorAll('style');
+      styleTags.forEach(tag => {
+        if (tag.textContent) {
+          embeddedStyles += tag.textContent + '\n';
+        }
+      });
+
+      for (let i = 0; i < document.styleSheets.length; i++) {
+        const sheet = document.styleSheets[i];
+        try {
+          if (sheet.cssRules) {
+            for (let j = 0; j < sheet.cssRules.length; j++) {
+              embeddedStyles += sheet.cssRules[j].cssText + '\n';
+            }
+          }
+        } catch {
+          // Cross-origin fallback
+        }
+      }
+
+      const linkTags = document.querySelectorAll('link[rel="stylesheet"]');
+      linkTags.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && (href.startsWith('http') || href.startsWith('//'))) {
+          externalLinksHtml += `<link rel="stylesheet" href="${href}">\n`;
+        }
+      });
+    } catch (e) {
+      console.warn('Could not collect document styles for consolidated PDF:', e);
+    }
+  }
+
+  // 2. Render each period's payslip directly to static markup
+  const pagesHtml = periods.map((p, idx) => {
+    let markup = '';
+    try {
+      markup = renderToStaticMarkup(
+        React.createElement(CustomizablePayslipView, {
+          item: p.item,
+          company,
+          monthLabel: p.monthLabel,
+          year: p.year,
+          config,
+          visibleColumns: config.visibleColumns,
+          interactive: false,
+        })
+      );
+    } catch (err) {
+      console.error(`Failed to render payslip markup for ${p.monthLabel} ${p.year}:`, err);
+    }
+
+    const isLast = idx === periods.length - 1;
+    return `
+    <div class="pdf-payslip-canvas pdf-payslip-page ${isLast ? 'last-page' : ''}">
+      ${markup}
+    </div>`;
+  }).join('\n');
+
+  const firstItem = periods[0]?.item;
+  const safeFullName = escapeHtml(firstItem?.fullName || 'Employee');
+  const payslipTitle = config.payslipTitle || 'Payslips';
+
+  const fontStack = 
+    config.fontFamily === 'serif'
+      ? "Georgia, 'Times New Roman', Cambria, serif"
+      : config.fontFamily === 'mono'
+      ? "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace"
+      : "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHtml(payslipTitle)} - ${safeFullName}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  ${externalLinksHtml}
+  <style>
+    ${embeddedStyles}
+
+    @page {
+      size: A4 portrait;
+      margin: 8mm 10mm;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff !important;
+      color: #18181b !important;
+      font-family: ${fontStack};
+      width: 100%;
+    }
+    .pdf-payslip-canvas {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+      background: #ffffff !important;
+    }
+    .pdf-payslip-page {
+      page-break-after: always !important;
+      break-after: page !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      margin-bottom: 24px;
+    }
+    .pdf-payslip-page.last-page,
+    .pdf-payslip-page:last-child {
+      page-break-after: auto !important;
+      break-after: auto !important;
+      margin-bottom: 0 !important;
+    }
+  </style>
+</head>
+<body class="bg-white text-zinc-900 font-sans antialiased">
+  ${pagesHtml}
 </body>
 </html>`;
 }
@@ -579,14 +458,21 @@ export async function testEmailServiceConnection(settings: EmailSettings): Promi
       fromEmail: (settings.smtp.fromEmail || '').trim(),
     };
 
-    const electronAPI = (window as any).electronAPI;
+    // Desktop (Electron): use native Node.js nodemailer
+    const electronAPI = getElectronAPI();
     if (electronAPI?.testSmtpConnection) {
       return await electronAPI.testSmtpConnection(sanitizedSmtp);
     }
 
+    // Mobile (Capacitor Android APK): use native JavaMail bridge
+    const androidSMTP = getAndroidSMTP();
+    if (androidSMTP?.testConnection) {
+      return await invokeAndroidSmtp('testConnection', sanitizedSmtp);
+    }
+
     return { 
       success: false, 
-      error: 'Direct SMTP sending requires running inside the Payroll Pro Desktop application. Alternatively, switch provider to Resend API for cloud delivery.' 
+      error: 'Direct SMTP requires the Payroll Pro Desktop app or Android APK. In a browser, switch to Resend API instead.' 
     };
   }
 
@@ -625,7 +511,7 @@ export async function testEmailServiceConnection(settings: EmailSettings): Promi
 }
 
 /**
- * Dispatches an individual employee's payslip
+ * Dispatches an individual employee's payslip (single month or multi-month consolidated PDF)
  */
 export async function sendIndividualPayslipEmail(payload: EmailDispatchPayload): Promise<EmailDispatchResult> {
   const { 
@@ -638,18 +524,29 @@ export async function sendIndividualPayslipEmail(payload: EmailDispatchPayload):
     config, 
     subjectTemplate, 
     bodyTemplate, 
-    attachPdf = true 
+    attachPdf = true,
+    periods = [] 
   } = payload;
 
   if (!recipientEmail || !recipientEmail.includes('@')) {
     return { success: false, error: 'Invalid or missing recipient email address.' };
   }
 
+  const isMultiPeriod = Boolean(periods && periods.length > 1);
   const templateData = getEmailTemplateData(item, company, monthLabel, year);
   const subject = interpolateEmailTemplate(subjectTemplate || settings.defaultSubjectTemplate, templateData);
   const bodyText = interpolateEmailTemplate(bodyTemplate || settings.defaultBodyTemplate, templateData);
-  const htmlPayslip = renderPayslipToHtml(item, company, monthLabel, year, config, recipientEmail);
-  const fileName = `Payslip_${item.fullName.replace(/\s+/g, '_')}_${monthLabel}_${year}.pdf`;
+
+  // If multiple months selected, compile all into a single multi-page HTML document
+  const htmlPayslip = isMultiPeriod
+    ? renderConsolidatedPayslipsToHtml(periods, company, config, recipientEmail)
+    : renderPayslipToHtml(item, company, monthLabel, year, config, recipientEmail);
+
+  const cleanFullName = item.fullName.replace(/\s+/g, '_');
+  const cleanMonth = monthLabel.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  const fileName = isMultiPeriod
+    ? `Payslips_${cleanFullName}_${cleanMonth}_${year}.pdf`
+    : `Payslip_${cleanFullName}_${cleanMonth}_${year}.pdf`;
 
   // 1. Desktop SMTP delivery via Electron
   if (settings.provider === 'smtp') {
@@ -661,7 +558,8 @@ export async function sendIndividualPayslipEmail(payload: EmailDispatchPayload):
       fromEmail: (settings.smtp.fromEmail || '').trim(),
     };
 
-    const electronAPI = (window as any).electronAPI;
+    // Desktop (Electron): use native nodemailer
+    const electronAPI = getElectronAPI();
     if (electronAPI?.sendPayslipEmail) {
       return await electronAPI.sendPayslipEmail({
         smtp: sanitizedSmtp,
@@ -674,9 +572,25 @@ export async function sendIndividualPayslipEmail(payload: EmailDispatchPayload):
       });
     }
 
+    // Mobile (Capacitor Android APK): use native JavaMail bridge
+    // PDF generation is not supported on Android yet — send HTML body only
+    const androidSMTP = getAndroidSMTP();
+    if (androidSMTP?.sendEmail) {
+      return await invokeAndroidSmtp('sendEmail', {
+        smtp: sanitizedSmtp,
+        recipient: recipientEmail,
+        subject,
+        body: bodyText,
+        htmlContent: htmlPayslip,
+        attachPdf: false, // PDF rendering requires Electron; HTML payslip is embedded instead
+        fileName,
+        fromName: settings.smtp.fromName || '',
+      });
+    }
+
     return { 
       success: false, 
-      error: 'Desktop environment not detected. Running inside browser requires Resend API provider.' 
+      error: 'SMTP sending requires the Payroll Pro Desktop app or Android APK. In a browser, switch to Resend API.' 
     };
   }
 

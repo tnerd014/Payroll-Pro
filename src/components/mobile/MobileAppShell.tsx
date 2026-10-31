@@ -16,7 +16,8 @@ import {
   EmploymentTypeRule,
   SalaryCalculationMode,
   EmailSettings,
-  EmailedPayslipRecord
+  EmailedPayslipRecord,
+  EmailPayslipContext
 } from '../../types';
 import { MobileTopAppBar } from './MobileTopAppBar';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -34,6 +35,7 @@ import { VariablesView } from '../variables/VariablesView';
 import { ExcelHubView } from '../excel/ExcelHubView';
 import { UserProfilePage } from '../profile/UserProfilePage';
 import { isStandaloneOfflineMode, getSavedCloudConfig } from '../../services/supabaseClient';
+import { EmailPayslipsModal } from '../payroll/EmailPayslipsModal';
 
 interface MobileAppShellProps {
   activeView: AppView;
@@ -163,7 +165,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onTogglePhoneFrame,
 }) => {
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [isEmailPayslipsOpen, setIsEmailPayslipsOpen] = useState(false);
+  const [emailModalContext, setEmailModalContext] = useState<EmailPayslipContext | null>(null);
   const [previousView, setPreviousView] = useState<AppView>('payroll');
+  const isAuditor = currentUser?.role === 'Auditor';
   const [mobileSettingsTab, setMobileSettingsTab] = useState<MobileSettingsTab | undefined>(() => {
     return settingsInitialTab === 'email' ? 'email' : undefined;
   });
@@ -339,6 +344,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             onBack={() => onNavigate('payroll')}
             loans={loans}
             isLocked={isLocked}
+            onEmailPayslips={!isAuditor ? (ctx) => {
+              setEmailModalContext(ctx || null);
+              setIsEmailPayslipsOpen(true);
+            } : undefined}
           />
         ) : activeView === 'payslip-designer' ? (
           <MobilePayslipDesignerView
@@ -453,6 +462,37 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         onSignOut={onSignOut}
         onLockOrSwitchCompany={onLockOrSwitchCompany}
       />
+
+      {/* ── Email Payslips Modal ── */}
+      {isEmailPayslipsOpen && (
+        <EmailPayslipsModal
+          isOpen={isEmailPayslipsOpen}
+          onClose={() => {
+            setIsEmailPayslipsOpen(false);
+            setEmailModalContext(null);
+          }}
+          items={payrollItems}
+          employees={employees}
+          company={company}
+          monthLabel={monthLabel}
+          selectedMonth={selectedMonth}
+          year={selectedYear}
+          emailSettings={emailSettings}
+          payslipDesign={payslipDesign}
+          emailedPayslips={emailedPayslips}
+          onRecordEmailedPayslips={onRecordEmailedPayslips}
+          onOpenSettings={handleOpenEmailSettingsFlow}
+          onUpdateEmployeeEmail={onUpdateEmployeeEmail}
+          isAdmin={isAdmin}
+          currentUser={currentUser}
+          activeSnapshot={activeSnapshot}
+          isLocked={isLocked}
+          initialContext={emailModalContext}
+          snapshots={snapshots}
+          payrollVariables={payrollVariables}
+          payeTaxVariables={payeTaxVariables}
+        />
+      )}
     </AndroidDeviceFrame>
   );
 };

@@ -143,13 +143,6 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   const [showResendApiKey, setShowResendApiKey] = useState(false);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-
-  useEffect(() => {
-    if (emailSettings) {
-      setEmailForm(emailSettings);
-    }
-  }, [emailSettings]);
-
   const [savedToast, setSavedToast] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -345,19 +338,6 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
     }
   };
 
-  // Sync external props when unmodified
-  useEffect(() => {
-    setCompanyForm(company);
-    const isCustom = Boolean(company.securityQuestion && !DEFAULT_SECURITY_QUESTIONS.slice(0, 4).includes(company.securityQuestion));
-    setIsCustomSecurityQuestion(isCustom);
-    setCustomSecurityQuestionText(isCustom ? (company.securityQuestion || '') : '');
-  }, [company]);
-
-  useEffect(() => {
-    setPvForm(payrollVariables);
-    setTvForm(payeTaxVariables);
-  }, [payrollVariables, payeTaxVariables]);
-
   // Dirty state tracking
   const isProfileDirty = useMemo(() => {
     return (
@@ -397,10 +377,33 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
     return pvChanged || tvChanged;
   }, [pvForm, tvForm, payrollVariables, payeTaxVariables]);
 
+  // Sync external props when unmodified
+  useEffect(() => {
+    if (!isProfileDirty) {
+      setCompanyForm(company);
+      const isCustom = Boolean(company.securityQuestion && !DEFAULT_SECURITY_QUESTIONS.slice(0, 4).includes(company.securityQuestion));
+      setIsCustomSecurityQuestion(isCustom);
+      setCustomSecurityQuestionText(isCustom ? (company.securityQuestion || '') : '');
+    }
+  }, [company, isProfileDirty]);
+
+  useEffect(() => {
+    if (!isPayrollDirty) {
+      setPvForm(payrollVariables);
+      setTvForm(payeTaxVariables);
+    }
+  }, [payrollVariables, payeTaxVariables, isPayrollDirty]);
+
   const isEmailDirty = useMemo(() => {
     if (!emailSettings) return false;
     return JSON.stringify(emailForm) !== JSON.stringify(emailSettings);
   }, [emailForm, emailSettings]);
+
+  useEffect(() => {
+    if (emailSettings && !isEmailDirty) {
+      setEmailForm(emailSettings);
+    }
+  }, [emailSettings, isEmailDirty]);
 
   const isAnyDirty = isProfileDirty || isPayrollDirty || isEmailDirty;
 
@@ -2272,7 +2275,17 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     <input
                       type="number"
                       value={emailForm.smtp.port}
-                      onChange={(e) => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, port: Number(e.target.value) } }))}
+                      onChange={(e) => {
+                        const newPort = Number(e.target.value);
+                        setEmailForm(prev => ({ 
+                          ...prev, 
+                          smtp: { 
+                            ...prev.smtp, 
+                            port: newPort,
+                            secure: newPort === 465 ? true : (newPort === 587 ? false : prev.smtp.secure)
+                          } 
+                        }));
+                      }}
                       placeholder="465"
                       className="w-full text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100 bg-transparent outline-none mt-0.5"
                     />
@@ -2286,7 +2299,17 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                       <input
                         type="checkbox"
                         checked={emailForm.smtp.secure}
-                        onChange={(e) => setEmailForm(prev => ({ ...prev, smtp: { ...prev.smtp, secure: e.target.checked } }))}
+                        onChange={(e) => {
+                          const isSec = e.target.checked;
+                          setEmailForm(prev => ({ 
+                            ...prev, 
+                            smtp: { 
+                              ...prev.smtp, 
+                              secure: isSec,
+                              port: isSec && prev.smtp.port === 587 ? 465 : (!isSec && prev.smtp.port === 465 ? 587 : prev.smtp.port)
+                            } 
+                          }));
+                        }}
                         className="rounded text-blue-600 focus:ring-blue-500"
                       />
                       <span className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">SSL (Port 465)</span>
@@ -2558,6 +2581,30 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Card 5: Direct Save Email Settings Action */}
+          <div className="pt-1 pb-4">
+            <button
+              type="button"
+              disabled={isAuditor || !isEmailDirty}
+              onClick={() => {
+                if (isAuditor) return;
+                if (onUpdateEmailSettings) {
+                  onUpdateEmailSettings(emailForm);
+                  setSavedToast(true);
+                  setTimeout(() => setSavedToast(false), 2200);
+                }
+              }}
+              className={`w-full h-11 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer ${
+                isEmailDirty
+                  ? 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 ring-2 ring-blue-500/30'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
+              }`}
+            >
+              <Save className="w-4 h-4" />
+              <span>{isEmailDirty ? 'Save Email Settings' : 'Email Settings Saved'}</span>
+            </button>
           </div>
 
         </div>

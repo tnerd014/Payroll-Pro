@@ -25,7 +25,7 @@ import {
   SupabaseCloudConfig 
 } from '../../services/supabaseClient';
 import { purgeAllLocalDataOnDisconnect, confirmDisconnectWithPendingSync } from '../../store/usePayrollStore';
-import { CompanyProfile, Employee, PayrollVariables, PayeTaxVariables, EmployeeLoan, PayrollSnapshot, PayslipDesignConfig } from '../../types';
+import { CompanyProfile, Employee, PayrollVariables, PayeTaxVariables, EmployeeLoan, PayrollSnapshot, PayslipDesignConfig, EmailSettings } from '../../types';
 
 interface CloudSyncSettingsProps {
   company: CompanyProfile;
@@ -36,6 +36,7 @@ interface CloudSyncSettingsProps {
   loans?: EmployeeLoan[];
   snapshots?: PayrollSnapshot[];
   payslipDesign?: PayslipDesignConfig;
+  emailSettings?: EmailSettings;
   onRefreshData?: () => void;
 }
 
@@ -48,6 +49,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
   loans = [],
   snapshots = [],
   payslipDesign,
+  emailSettings,
   onRefreshData,
 }) => {
   const [config, setConfig] = useState<SupabaseCloudConfig>(() => getSavedCloudConfig());
@@ -148,7 +150,9 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
         payeTaxVariables,
         loans,
         snapshots,
-        payslipDesign
+        payslipDesign,
+        [],
+        emailSettings
       );
       if (res.success) {
         setSyncFeedback({

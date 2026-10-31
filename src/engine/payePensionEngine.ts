@@ -79,6 +79,18 @@ export function getEmployeeGrossForPeriod(emp: Employee, monthKey?: string, year
   return Number(emp.monthlyGross) || 0;
 }
 
+export function getEmployeeRentForYear(emp?: Employee | null, year?: number): number {
+  if (year && emp?.annualRents) {
+    if (emp.annualRents[year] !== undefined && !isNaN(Number(emp.annualRents[year]))) {
+      return Math.max(0, Number(emp.annualRents[year]));
+    }
+    if (emp.annualRents[String(year)] !== undefined && !isNaN(Number(emp.annualRents[String(year)]))) {
+      return Math.max(0, Number(emp.annualRents[String(year)]));
+    }
+  }
+  return Math.max(0, Number(emp?.annualRent) || 0);
+}
+
 /**
  * Computes statutory emoluments, pension, CRA, PAYE tax, and net pay given a Gross salary.
  */
@@ -86,7 +98,8 @@ export function computeDeductionsFromGross(
   gross: number,
   emp: Employee,
   payrollVars: PayrollVariables = DEFAULT_PAYROLL_VARIABLES,
-  payeVars: PayeTaxVariables = DEFAULT_PAYE_VARIABLES
+  payeVars: PayeTaxVariables = DEFAULT_PAYE_VARIABLES,
+  year?: number
 ) {
   const safeGross = Math.max(0, Number(gross) || 0);
   const safePayrollVars = payrollVars || DEFAULT_PAYROLL_VARIABLES;
@@ -118,7 +131,8 @@ export function computeDeductionsFromGross(
 
   if (emp?.hasPaye) {
     const craBase = safePayeVars.craBase ?? DEFAULT_PAYE_VARIABLES.craBase;
-    rentRelief = Math.min((emp?.annualRent || 0) * (safePayeVars.rentReliefRate ?? 0.20), safePayeVars.rentReliefCap ?? 500000);
+    const effectiveRent = getEmployeeRentForYear(emp, year);
+    rentRelief = Math.min((effectiveRent || 0) * (safePayeVars.rentReliefRate ?? 0.20), safePayeVars.rentReliefCap ?? 500000);
     pensionRelief = annualEmpPension;
     extraReliefs = (safePayeVars.extraConditions || [])
       .filter(c => c && c.enabled)
@@ -195,7 +209,8 @@ export function solveGrossFromNet(
   targetNet: number,
   emp: Employee,
   payrollVars: PayrollVariables,
-  payeVars: PayeTaxVariables
+  payeVars: PayeTaxVariables,
+  year?: number
 ): number {
   if (targetNet <= 0) return 0;
   if (!emp.hasPension && !emp.hasPaye) return targetNet;
@@ -204,7 +219,7 @@ export function solveGrossFromNet(
   let high = targetNet * 2;
 
   // Ensure high bracket produces net >= targetNet
-  while (computeDeductionsFromGross(high, emp, payrollVars, payeVars).netTakeHome < targetNet) {
+  while (computeDeductionsFromGross(high, emp, payrollVars, payeVars, year).netTakeHome < targetNet) {
     high *= 1.5;
     if (high > targetNet * 15) break; // Guard against infinite loop
   }
@@ -212,7 +227,7 @@ export function solveGrossFromNet(
   // 40 binary search iterations gives precision within 0.00001 Naira
   for (let i = 0; i < 40; i++) {
     const mid = (low + high) / 2;
-    const computedNet = computeDeductionsFromGross(mid, emp, payrollVars, payeVars).netTakeHome;
+    const computedNet = computeDeductionsFromGross(mid, emp, payrollVars, payeVars, year).netTakeHome;
     if (computedNet < targetNet) {
       low = mid;
     } else {
@@ -249,10 +264,10 @@ export function calculatePayrollItem(
   // If in Net-to-Gross mode, backtrack to find required Gross; otherwise use recordedAmount directly as Gross
   let gross = recordedAmount;
   if (mode === 'net-to-gross' && recordedAmount > 0) {
-    gross = solveGrossFromNet(recordedAmount, emp, payrollVars, payeVars);
+    gross = solveGrossFromNet(recordedAmount, emp, payrollVars, payeVars, year);
   }
 
-  const result = computeDeductionsFromGross(gross, emp, payrollVars, payeVars);
+  const result = computeDeductionsFromGross(gross, emp, payrollVars, payeVars, year);
 
   // In Net-to-Gross mode, lock netTakeHome to the exact intended target recorded amount
   const finalNetTakeHome = (mode === 'net-to-gross' && recordedAmount > 0)
