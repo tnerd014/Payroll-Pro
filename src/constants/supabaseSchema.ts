@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS public.team_members (
     email TEXT DEFAULT '',
     username TEXT DEFAULT '',
     role TEXT NOT NULL DEFAULT 'Payroll Officer', -- 'Admin', 'Payroll Officer', 'Auditor'
-    pin TEXT DEFAULT '1234',
+    pin TEXT DEFAULT '',
     password TEXT DEFAULT '',
     password_hint TEXT DEFAULT '',
     security_question TEXT DEFAULT '',
@@ -272,7 +272,7 @@ ALTER TABLE public.payslip_designs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS username TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Payroll Officer';
-ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS pin TEXT DEFAULT '1234';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS pin TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS password TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS password_hint TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS security_question TEXT DEFAULT '';

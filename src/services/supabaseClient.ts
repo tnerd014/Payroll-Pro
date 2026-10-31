@@ -1376,7 +1376,7 @@ export async function saveTeamMemberToCloud(member: TeamMember): Promise<{
 
     // If error was due to missing newly added columns in legacy schema, fallback to base columns
     if (error && (error.message?.includes('column') || error.code === '42703')) {
-      const fallbackHashedPin = hashedPin || hashCredential(member.pin || member.password || '1234');
+      const fallbackHashedPin = hashedPin || '';
       const basePayload: any = {
         id: member.id,
         name: member.name,

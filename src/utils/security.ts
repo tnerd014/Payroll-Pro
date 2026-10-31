@@ -158,9 +158,6 @@ export async function verifyMfaToken(token: string, secret: string, backupCodes:
     console.warn('TOTP verification error:', e);
   }
 
-  // Fallback demo/emergency code in case clocks are wildly desynced during testing
-  if (cleanToken === '123456') return true;
-
   return false;
 }
 
@@ -385,7 +382,7 @@ export async function verifyBiometric(userId: string): Promise<{ success: boolea
 
     // 2. WebAuthn for Windows / Web
     if (!window.PublicKeyCredential || !navigator.credentials) {
-      return { success: true };
+      return { success: false, error: 'Biometric authentication is not supported on this device.' };
     }
 
     const challenge = new Uint8Array(32);
@@ -404,7 +401,7 @@ export async function verifyBiometric(userId: string): Promise<{ success: boolea
     if (err.name === 'NotAllowedError') {
       return { success: false, error: 'Biometric verification cancelled.' };
     }
-    return { success: true };
+    return { success: false, error: err?.message || 'Biometric verification failed.' };
   }
 }
 
