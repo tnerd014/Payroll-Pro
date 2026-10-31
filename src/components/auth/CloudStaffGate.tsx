@@ -23,7 +23,12 @@ import {
   X,
   ShieldAlert,
   WifiOff,
-  Smartphone
+  Smartphone,
+  BookOpen,
+  FileText,
+  ShieldCheck,
+  HelpCircle,
+  ExternalLink
 } from 'lucide-react';
 import { 
   getSavedCloudConfig, 
@@ -53,6 +58,7 @@ import { formatDate } from '../../engine/dateUtils';
 import appLogo from '../../../assets/icon.png';
 import { LegalModal } from '../legal/LegalModal';
 import { verifyMfaToken } from '../../utils/security';
+import { checkForGithubReleaseUpdate, openExternalReleaseLink } from '../../utils/releaseUpdate';
 
 // =============================================================================
 // DEVELOPER TOGGLE SWITCH: SHOW / HIDE SQL SETUP IN LOGIN & SERVER SCREENS
@@ -116,6 +122,52 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
   const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms'>('privacy');
 
   const [isLoadingCheck, setIsLoadingCheck] = useState(true);
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
+  const [appVersion, setAppVersion] = useState('v1.0.4');
+
+  useEffect(() => {
+    if ((window as any).electronAPI?.getVersion) {
+      (window as any).electronAPI.getVersion().then((version: string) => {
+        if (version) setAppVersion(`v${version}`);
+      }).catch(() => undefined);
+    }
+  }, []);
+
+  const handleCheckForUpdates = async () => {
+    setHelpMenuOpen(false);
+    const electronAPI = (window as any).electronAPI;
+
+    try {
+      const result = electronAPI?.checkForUpdates
+        ? await electronAPI.checkForUpdates()
+        : await checkForGithubReleaseUpdate(appVersion.replace(/^v/i, ''));
+
+      if (!result?.success) {
+        alert(result?.error || 'Unable to check for updates right now.');
+        return;
+      }
+
+      if (result.upToDate) {
+        alert(`You are already on the latest version (${result.currentVersion}).`);
+        return;
+      }
+
+      const shouldOpen = window.confirm(
+        `A new version (${result.latestVersion}) is available. Open the release page to download it now?`
+      );
+
+      if (shouldOpen && result.releaseUrl) {
+        if (electronAPI?.openUpdateRelease) {
+          await electronAPI.openUpdateRelease(result.releaseUrl);
+        } else {
+          openExternalReleaseLink(result.releaseUrl);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
+      alert('Unable to check for updates right now. Please try again later.');
+    }
+  };
 
   // Server connect form state
   const [serverUrl, setServerUrl] = useState(cloudConfig.url || '');
@@ -602,6 +654,14 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleCheckForUpdates}
+                title="Check for updates"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+              </button>
 
               {onToggleTheme && (
                 <button
@@ -644,8 +704,43 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
             </span>
           </div>
 
-          {/* Right: Simulator toggle, Theme Toggle & Native Window Controls */}
+          {/* Right: Help, Simulator toggle, Theme Toggle & Native Window Controls */}
           <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: 'no-drag' } as any}>
+            {isElectron && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setHelpMenuOpen((open) => !open)}
+                  className="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                  title="Help"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>Help</span>
+                </button>
+
+                {helpMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-64 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 z-50">
+                    <button
+                      type="button"
+                      onClick={handleCheckForUpdates}
+                      className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <Download className="h-4 w-4" />
+                        Check for Updates
+                      </span>
+                      <ExternalLink className="h-3.5 w-3.5 text-zinc-400" />
+                    </button>
+                    <div className="my-2 h-px bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center justify-between px-2 py-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                      <span>Payroll Pro</span>
+                      <span>{appVersion}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {onToggleSimulator && !isElectron && (
               <button
                 type="button"

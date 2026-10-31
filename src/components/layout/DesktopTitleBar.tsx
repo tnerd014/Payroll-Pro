@@ -37,6 +37,7 @@ import { openInstructionManualPdf } from '../legal/openManual';
 import { MONTHS } from '../../store/usePayrollStore';
 import { Employee, CalculatedPayrollItem, PayrollVariables, PayeTaxVariables, PayrollSnapshot, AppView, CompanyProfile, CompanyAccount, TeamMember, EmployeeLoan, EmploymentTypeRule } from '../../types';
 import { checkRealConnectivity, getSavedCloudConfig, isStandaloneOfflineMode } from '../../services/supabaseClient';
+import { checkForGithubReleaseUpdate, openExternalReleaseLink } from '../../utils/releaseUpdate';
 import appLogo from '../../../assets/icon.png';
 
 interface DesktopTitleBarProps {
@@ -238,13 +239,12 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   const handleCheckForUpdates = async () => {
     setActiveMenu(null);
     const electronAPI = (window as any).electronAPI;
-    if (!electronAPI?.checkForUpdates) {
-      alert('Update checking is only available in the desktop app.');
-      return;
-    }
 
     try {
-      const result = await electronAPI.checkForUpdates();
+      const result = electronAPI?.checkForUpdates
+        ? await electronAPI.checkForUpdates()
+        : await checkForGithubReleaseUpdate(appVersion.replace(/^v/i, ''));
+
       if (!result?.success) {
         alert(result?.error || 'Unable to check for updates right now.');
         return;
@@ -260,7 +260,11 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
       );
 
       if (shouldOpen && result.releaseUrl) {
-        await electronAPI.openUpdateRelease(result.releaseUrl);
+        if (electronAPI?.openUpdateRelease) {
+          await electronAPI.openUpdateRelease(result.releaseUrl);
+        } else {
+          openExternalReleaseLink(result.releaseUrl);
+        }
       }
     } catch (error) {
       console.error('Failed to check for updates:', error);
