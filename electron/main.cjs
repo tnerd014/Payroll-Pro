@@ -3,6 +3,25 @@ const path = require('path');
 
 let mainWindow = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+const GITHUB_REPO = 'tunde014/Payroll-Pro';
+
+function normalizeVersion(value) {
+  return String(value || '').trim().replace(/^v/i, '');
+}
+
+function compareVersions(current, incoming) {
+  const currentParts = normalizeVersion(current).split('.').map(v => Number.parseInt(v, 10) || 0);
+  const incomingParts = normalizeVersion(incoming).split('.').map(v => Number.parseInt(v, 10) || 0);
+
+  const maxLength = Math.max(currentParts.length, incomingParts.length);
+  for (let i = 0; i < maxLength; i++) {
+    const currentPart = currentParts[i] || 0;
+    const incomingPart = incomingParts[i] || 0;
+    if (incomingPart > currentPart) return 1;
+    if (incomingPart < currentPart) return -1;
+  }
+  return 0;
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -149,6 +168,63 @@ ipcMain.on('window-force-reload', () => {
 });
 
 ipcMain.handle('get-version', () => app.getVersion());
+
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    const currentVersion = app.getVersion();
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'Payroll-Pro-Desktop-App',
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `GitHub release check failed (HTTP ${response.status}).`,
+      };
+    }
+
+    const payload = await response.json();
+    const latestVersion = normalizeVersion(payload?.tag_name || payload?.name || '');
+    const releaseUrl = payload?.html_url || `https://github.com/${GITHUB_REPO}/releases`;
+
+    if (!latestVersion) {
+      return {
+        success: false,
+        error: 'No release version was returned from GitHub.',
+      };
+    }
+
+    const result = compareVersions(currentVersion, latestVersion);
+    return {
+      success: true,
+      currentVersion,
+      latestVersion,
+      releaseUrl,
+      upToDate: result >= 0,
+      updateAvailable: result < 0,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error && error.message ? error.message : 'Unable to check for updates right now.',
+    };
+  }
+});
+
+ipcMain.handle('open-update-release', async (_, url) => {
+  try {
+    if (url) {
+      await shell.openExternal(url);
+      return { success: true };
+    }
+    return { success: false, error: 'No release URL was supplied.' };
+  } catch (error) {
+    return { success: false, error: error && error.message ? error.message : 'Unable to open release page.' };
+  }
+});
 
 ipcMain.handle('open-instruction-manual', async () => {
   try {

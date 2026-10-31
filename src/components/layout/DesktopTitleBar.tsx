@@ -155,6 +155,15 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   }, []);
 
   const [hasPendingSync, setHasPendingSync] = useState(false);
+  const [appVersion, setAppVersion] = useState('v1.0.4');
+
+  useEffect(() => {
+    if ((window as any).electronAPI?.getVersion) {
+      (window as any).electronAPI.getVersion().then((version: string) => {
+        if (version) setAppVersion(`v${version}`);
+      }).catch(() => undefined);
+    }
+  }, []);
 
   useEffect(() => {
     const checkSyncStatus = () => {
@@ -223,6 +232,39 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
       (window as any).electronAPI.forceReload();
     } else {
       window.location.reload();
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setActiveMenu(null);
+    const electronAPI = (window as any).electronAPI;
+    if (!electronAPI?.checkForUpdates) {
+      alert('Update checking is only available in the desktop app.');
+      return;
+    }
+
+    try {
+      const result = await electronAPI.checkForUpdates();
+      if (!result?.success) {
+        alert(result?.error || 'Unable to check for updates right now.');
+        return;
+      }
+
+      if (result.upToDate) {
+        alert(`You are already on the latest version (${result.currentVersion}).`);
+        return;
+      }
+
+      const shouldOpen = window.confirm(
+        `A new version (${result.latestVersion}) is available. Open the release page to download it now?`
+      );
+
+      if (shouldOpen && result.releaseUrl) {
+        await electronAPI.openUpdateRelease(result.releaseUrl);
+      }
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
+      alert('Unable to check for updates right now. Please try again later.');
     }
   };
 
@@ -640,6 +682,18 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             <div className="absolute left-0 top-full mt-1 w-60 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
               <button
                 onClick={() => {
+                  handleCheckForUpdates();
+                }}
+                className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+                  <span>Check for Updates</span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
                   openInstructionManualPdf();
                   setActiveMenu(null);
                 }}
@@ -686,7 +740,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
 
               <div className="px-3 py-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 flex items-center justify-between select-none">
                 <span>Payroll Pro Enterprise</span>
-                <span className="font-mono">v1.0.4</span>
+                <span className="font-mono">{appVersion}</span>
               </div>
             </div>
           )}
