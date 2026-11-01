@@ -156,7 +156,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   }, []);
 
   const [hasPendingSync, setHasPendingSync] = useState(false);
-  const [appVersion, setAppVersion] = useState('v1.0.4');
+  const [appVersion, setAppVersion] = useState('v1.0.5');
   const [updateState, setUpdateState] = useState<{ status: string; downloadPercent: number; latestVersion: string; message: string; restartRequired: boolean; downloadPath: string; downloadUrl: string; releaseUrl: string; }>({
     status: 'idle',
     downloadPercent: 0,
