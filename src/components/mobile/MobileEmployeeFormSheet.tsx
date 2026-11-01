@@ -48,6 +48,21 @@ interface BatchRow {
   employmentType: string;
 }
 
+const MONTHS_LIST = [
+  { key: 'jan', label: 'Jan' },
+  { key: 'feb', label: 'Feb' },
+  { key: 'mar', label: 'Mar' },
+  { key: 'apr', label: 'Apr' },
+  { key: 'may', label: 'May' },
+  { key: 'jun', label: 'Jun' },
+  { key: 'jul', label: 'Jul' },
+  { key: 'aug', label: 'Aug' },
+  { key: 'sep', label: 'Sep' },
+  { key: 'oct', label: 'Oct' },
+  { key: 'nov', label: 'Nov' },
+  { key: 'dec', label: 'Dec' },
+];
+
 export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = ({
   isOpen,
   onClose,
@@ -91,6 +106,18 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
   const [monthlyGross, setMonthlyGross] = useState<number | ''>(350000);
   const [annualRent, setAnnualRent] = useState<number | ''>('');
   const [showHousingField, setShowHousingField] = useState(false);
+
+  // Compensation & Multi-Year Schedule State
+  const [activeYear, setActiveYear] = useState<number>(currentYear || 2026);
+  const [annualRents, setAnnualRents] = useState<Record<string | number, number | ''>>({});
+  const [monthlySalaries, setMonthlySalaries] = useState<Record<string, number | ''>>({});
+  const [showMonthlyBreakdown, setShowMonthlyBreakdown] = useState<boolean>(false);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+
+  const yearsOptions = useMemo(() => {
+    const cy = currentYear || 2026;
+    return [cy - 2, cy - 1, cy, cy + 1, cy + 2];
+  }, [currentYear]);
 
   // Statutory state
   const [hasPaye, setHasPaye] = useState(true);
@@ -141,7 +168,15 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       setEmploymentType(editingEmployee.employmentType || 'Full-Time');
       setMonthlyGross(editingEmployee.monthlyGross ?? 350000);
       setAnnualRent(editingEmployee.annualRent ? editingEmployee.annualRent : '');
-      setShowHousingField(Boolean(editingEmployee.annualRent));
+      setActiveYear(currentYear || 2026);
+      setAnnualRents(editingEmployee.annualRents || {});
+      setMonthlySalaries(editingEmployee.monthlySalaries || {});
+      const hasCustom = Boolean(
+        (editingEmployee.monthlySalaries && Object.keys(editingEmployee.monthlySalaries).length > 0) ||
+        (editingEmployee.annualRents && Object.keys(editingEmployee.annualRents).length > 0)
+      );
+      setShowMonthlyBreakdown(hasCustom);
+      setShowHousingField(Boolean(editingEmployee.annualRent || (editingEmployee.annualRents && Object.keys(editingEmployee.annualRents).length > 0)));
       setHasPaye(editingEmployee.hasPaye ?? true);
       setPayeNumber(editingEmployee.payeNumber || '');
       setStateOfResidence(editingEmployee.stateOfResidence || 'Lagos');
@@ -167,6 +202,10 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       setEmploymentType(defaultRule?.name || 'Full-Time');
       setMonthlyGross(350000);
       setAnnualRent('');
+      setActiveYear(currentYear || 2026);
+      setAnnualRents({});
+      setMonthlySalaries({});
+      setShowMonthlyBreakdown(false);
       setShowHousingField(false);
       setHasPaye(defaultRule ? defaultRule.hasPayeDefault : true);
       setPayeNumber('');
@@ -209,8 +248,91 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
     setCode(getNextCode());
   };
 
+  // Rent and 12-Month Schedule Helpers
+  const setYearRent = (year: number, val: string | number) => {
+    const num = val === '' ? '' : Number(val);
+    setAnnualRents(prev => ({
+      ...prev,
+      [year]: num,
+    }));
+    if (year === activeYear) {
+      setAnnualRent(num);
+    }
+    if (num !== '' && Number(num) > 0) {
+      setShowHousingField(true);
+    }
+  };
+
+  const getMonthGross = (mKey: string): number => {
+    const custom = monthlySalaries[`${activeYear}-${mKey}`];
+    if (custom !== undefined && custom !== '') return Number(custom);
+    return Number(monthlyGross) || 0;
+  };
+
+  const setMonthGross = (mKey: string, val: string | number) => {
+    const num = val === '' ? '' : Number(val);
+    setMonthlySalaries(prev => ({
+      ...prev,
+      [`${activeYear}-${mKey}`]: num,
+    }));
+  };
+
+  const handleCopyBaseToAllMonths = () => {
+    const base = Number(monthlyGross) || 0;
+    const updated = { ...monthlySalaries };
+    MONTHS_LIST.forEach(m => {
+      updated[`${activeYear}-${m.key}`] = base;
+    });
+    setMonthlySalaries(updated);
+    setCopyFeedback(`Applied ₦${formatNaira(base)} to all 12 months for ${activeYear}`);
+    setTimeout(() => setCopyFeedback(null), 2500);
+  };
+
+  const handleCopyJanToAllMonths = () => {
+    const janVal = getMonthGross('jan');
+    const updated = { ...monthlySalaries };
+    MONTHS_LIST.forEach(m => {
+      updated[`${activeYear}-${m.key}`] = janVal;
+    });
+    setMonthlySalaries(updated);
+    setCopyFeedback(`Applied Jan (₦${formatNaira(janVal)}) to all 12 months for ${activeYear}`);
+    setTimeout(() => setCopyFeedback(null), 2500);
+  };
+
+  const yearAnnualTotal = useMemo(() => {
+    return MONTHS_LIST.reduce((acc, m) => acc + getMonthGross(m.key), 0);
+  }, [monthlySalaries, activeYear, monthlyGross]);
+
+  const activeRentVal = useMemo(() => {
+    const rentForActiveYear = annualRents[activeYear];
+    if (rentForActiveYear !== undefined && rentForActiveYear !== '') {
+      return Number(rentForActiveYear);
+    }
+    return Number(annualRent) || 0;
+  }, [annualRents, activeYear, annualRent]);
+
+  const monthlyRentVal = activeRentVal > 0 ? activeRentVal / 12 : 0;
+  const statutoryRentRelief = Math.min(activeRentVal * 0.20, 500000);
+
   // Build Single Employee Payload
   const buildSinglePayload = (): Omit<Employee, 'id'> => {
+    const cleanMonthlySalaries: Record<string, number> = {};
+    Object.entries(monthlySalaries).forEach(([k, v]) => {
+      if (v !== '' && v !== undefined && !isNaN(Number(v))) {
+        cleanMonthlySalaries[k] = Number(v);
+      }
+    });
+
+    const cleanAnnualRents: Record<string | number, number> = {};
+    Object.entries(annualRents).forEach(([k, v]) => {
+      if (v !== '' && v !== undefined && !isNaN(Number(v))) {
+        cleanAnnualRents[k] = Number(v);
+      }
+    });
+    if (annualRent !== '' && !isNaN(Number(annualRent))) {
+      cleanAnnualRents[activeYear] = Number(annualRent);
+    }
+
     return {
       code: code.trim() || getNextCode(),
       firstName: firstName.trim() || 'Staff',
@@ -220,6 +342,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       employmentType,
       monthlyGross: Number(monthlyGross) || 0,
       annualRent: Number(annualRent) || 0,
+      annualRents: cleanAnnualRents,
       hasPaye,
       payeNumber: payeNumber.trim(),
       stateOfResidence,
@@ -231,7 +354,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       phone: phone.trim(),
       email: email.trim(),
       status,
-      monthlySalaries: editingEmployee?.monthlySalaries || {},
+      monthlySalaries: cleanMonthlySalaries,
       stints: editingEmployee?.stints || [],
       startDate: startDate.trim(),
       endDate: endDate.trim(),
@@ -766,42 +889,263 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                 </div>
               </div>
 
-              {/* Optional Annual Housing / Rent Relief */}
-              <div className="pt-1">
+              {/* ── Annual Housing / Rent Relief Section ── */}
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
                 {!showHousingField ? (
                   <button
                     type="button"
                     onClick={() => setShowHousingField(true)}
-                    className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1.5 cursor-pointer py-1"
                   >
-                    <Plus className="w-3 h-3" />
+                    <Plus className="w-3.5 h-3.5" />
                     <span>Add Annual Housing / Rent Relief (Tax Deductible)</span>
                   </button>
                 ) : (
-                  <div className="space-y-1 bg-zinc-50 dark:bg-zinc-900/60 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
+                  <div className="space-y-2.5 bg-zinc-50 dark:bg-zinc-900/60 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
                     <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
-                        Annual Rent Paid by Employee (₦)
-                      </label>
+                      <div className="flex items-center gap-2">
+                        <label className="text-[11px] font-bold text-zinc-700 dark:text-zinc-200">
+                          Housing / Rent Relief
+                        </label>
+                        {/* Year Selector */}
+                        <select
+                          value={activeYear}
+                          onChange={(e) => {
+                            const newYear = Number(e.target.value);
+                            setActiveYear(newYear);
+                            if (annualRents[newYear] !== undefined) {
+                              setAnnualRent(annualRents[newYear]);
+                            }
+                          }}
+                          className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-1.5 py-0.5 text-[10px] font-mono font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none cursor-pointer"
+                        >
+                          {yearsOptions.map((y) => (
+                            <option key={y} value={y}>
+                              {y}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
                           setAnnualRent('');
+                          setYearRent(activeYear, '');
                           setShowHousingField(false);
                         }}
-                        className="text-[10px] text-zinc-400 hover:text-rose-500"
+                        className="text-[10px] text-zinc-400 hover:text-rose-500 font-medium cursor-pointer"
                       >
                         Remove
                       </button>
                     </div>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="e.g. 1200000"
-                      value={annualRent}
-                      onChange={(e) => setAnnualRent(e.target.value === '' ? '' : Number(e.target.value))}
-                      className="w-full h-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold font-mono text-xs">
+                        ₦
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="e.g. 1200000"
+                        value={
+                          annualRents[activeYear] !== undefined
+                            ? annualRents[activeYear]
+                            : annualRent
+                        }
+                        onChange={(e) => setYearRent(activeYear, e.target.value)}
+                        className="w-full h-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-7 pr-3 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    {/* Breakdown Pills: Monthly Equivalent + 20% CRA Relief */}
+                    {activeRentVal > 0 && (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="bg-white dark:bg-zinc-900/90 border border-zinc-200/70 dark:border-zinc-800 rounded-lg p-2">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block mb-0.5">
+                            Monthly Rent
+                          </span>
+                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                            ₦{formatNaira(monthlyRentVal)}
+                            <span className="text-[10px] font-normal text-zinc-400"> / mo</span>
+                          </span>
+                        </div>
+
+                        <div className="bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40 rounded-lg p-2">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block mb-0.5">
+                            20% Tax Relief (CRA)
+                          </span>
+                          <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                            ₦{formatNaira(statutoryRentRelief)}
+                            <span className="text-[10px] font-normal text-emerald-600/70 dark:text-emerald-400/70"> / yr</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 leading-tight">
+                      💡 Under Nigerian tax law, staff qualify for 20% tax-free relief on actual annual rent paid (capped at ₦500,000/yr). You can switch years above to configure rent for future or past tax years.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── 12-Month Schedule Breakdown Drawer ── */}
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
+                <button
+                  type="button"
+                  onClick={() => setShowMonthlyBreakdown((prev) => !prev)}
+                  className="w-full flex items-center justify-between text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition py-1 cursor-pointer"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>12-Month Salary Schedule ({activeYear})</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-zinc-400 text-[10px]">
+                    <span>{showMonthlyBreakdown ? 'Hide' : 'Expand'}</span>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                        showMonthlyBreakdown ? 'rotate-180' : ''
+                      }`}
                     />
+                  </div>
+                </button>
+
+                {showMonthlyBreakdown && (
+                  <div className="mt-2.5 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800/80 space-y-3 animate-in fade-in duration-150">
+                    {/* Header Controls: Year Selector & Quick Actions */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                          Year
+                        </span>
+                        <select
+                          value={activeYear}
+                          onChange={(e) => {
+                            const newYear = Number(e.target.value);
+                            setActiveYear(newYear);
+                            if (annualRents[newYear] !== undefined) {
+                              setAnnualRent(annualRents[newYear]);
+                            }
+                          }}
+                          className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer"
+                        >
+                          {yearsOptions.map((y) => (
+                            <option key={y} value={y}>
+                              {y}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={handleCopyBaseToAllMonths}
+                          className="text-[10px] px-2.5 py-1 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold transition active:scale-95 cursor-pointer"
+                        >
+                          Copy Base to All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyJanToAllMonths}
+                          className="text-[10px] px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-semibold transition active:scale-95 cursor-pointer"
+                        >
+                          Copy Jan
+                        </button>
+                      </div>
+                    </div>
+
+                    {copyFeedback && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <Check className="w-3 h-3" />
+                        <span>{copyFeedback}</span>
+                      </div>
+                    )}
+
+                    {/* 12 Months Grid: 3 cols on mobile, 4 cols on larger */}
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                      {MONTHS_LIST.map((m) => {
+                        const isCustom =
+                          monthlySalaries[`${activeYear}-${m.key}`] !== undefined &&
+                          monthlySalaries[`${activeYear}-${m.key}`] !== monthlyGross;
+
+                        return (
+                          <div
+                            key={m.key}
+                            className={`p-1.5 rounded-lg border transition ${
+                              isCustom
+                                ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/60'
+                                : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center mb-0.5">
+                              <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
+                                {m.label}
+                              </span>
+                              {isCustom && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Custom" />
+                              )}
+                            </div>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={
+                                monthlySalaries[`${activeYear}-${m.key}`] !== undefined
+                                  ? monthlySalaries[`${activeYear}-${m.key}`]
+                                  : monthlyGross
+                              }
+                              onChange={(e) => setMonthGross(m.key, e.target.value)}
+                              className="w-full bg-transparent font-mono text-[11px] font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                              placeholder="0"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Key Metrics Strip (With Directly Editable Annual Rent Input) */}
+                    <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-zinc-200/70 dark:border-zinc-800/70 text-center">
+                      <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/60 dark:border-zinc-800/60 rounded-lg p-2 flex flex-col justify-between">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-zinc-400 block mb-0.5">
+                          Annual Gross
+                        </span>
+                        <span className="text-[11px] font-mono font-bold text-zinc-900 dark:text-zinc-100 truncate block">
+                          ₦{formatNaira(yearAnnualTotal)}
+                        </span>
+                      </div>
+
+                      {/* Directly Editable Annual Rent for Active Year */}
+                      <div className="bg-white dark:bg-zinc-950/80 border border-emerald-500/30 dark:border-emerald-500/30 rounded-lg p-2 text-left focus-within:border-emerald-500 ring-1 ring-emerald-500/10 flex flex-col justify-between">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                          {activeYear} Rent (Edit)
+                        </span>
+                        <div className="flex items-center gap-0.5">
+                          <span className="font-mono text-[10px] font-bold text-zinc-400 shrink-0">₦</span>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={
+                              annualRents[activeYear] !== undefined
+                                ? annualRents[activeYear]
+                                : (annualRent !== '' ? annualRent : '')
+                            }
+                            onChange={(e) => setYearRent(activeYear, e.target.value)}
+                            placeholder="0"
+                            className="w-full min-w-0 bg-transparent font-mono text-[11px] font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                            title={`Edit Annual Rent for ${activeYear}`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/60 dark:border-zinc-800/60 rounded-lg p-2 flex flex-col justify-between">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-zinc-400 block mb-0.5">
+                          Monthly Avg
+                        </span>
+                        <span className="text-[11px] font-mono font-bold text-zinc-900 dark:text-zinc-100 truncate block">
+                          ₦{formatNaira(yearAnnualTotal / 12)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

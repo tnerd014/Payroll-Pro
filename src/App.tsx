@@ -908,6 +908,7 @@ export const App: React.FC = () => {
                 emailedPayslips={emailedPayslips}
                 onRecordEmailedPayslips={recordEmailedPayslips}
                 isAdmin={isAdmin}
+                isReadOnly={isCloudOffline}
               />
             ) : state.activeView === 'loans' ? (
               <LoansAdvancesView

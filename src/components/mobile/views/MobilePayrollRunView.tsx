@@ -131,7 +131,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
   return (
     <div className="space-y-3.5 pb-2 select-none">
       
-      {/* ── Top Period Banner & Search Filter Bar (Sticky & Compact) ── */}
+      {/* â”€â”€ Top Period Banner & Search Filter Bar (Sticky & Compact) â”€â”€ */}
       <div className="sticky -top-3.5 z-30 pt-1 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
         <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           {!isSearchOpen ? (
@@ -139,7 +139,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
               {/* Left: Count & Lock Status */}
               <div className="min-w-0 flex-1 flex items-center gap-1.5">
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
-                  {filteredItems.length} Enrolled{selectedDept !== 'ALL' ? ` • ${selectedDept}` : ''}
+                  {filteredItems.length} Enrolled{selectedDept !== 'ALL' ? ` â€¢ ${selectedDept}` : ''}
                 </p>
                 {isLocked && (
                   <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border bg-amber-500/10 border-amber-500/20 shrink-0" title="Payroll Locked">
@@ -248,7 +248,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
         </div>
       </div>
 
-      {/* ── Employee Payroll Cards Stack ── */}
+      {/* â”€â”€ Employee Payroll Cards Stack â”€â”€ */}
       <div className="space-y-2.5">
         {filteredItems.length === 0 ? (
           <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center space-y-2">
@@ -273,7 +273,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
         )}
       </div>
 
-      {/* ── Speed Dial Backdrop ── */}
+      {/* â”€â”€ Speed Dial Backdrop â”€â”€ */}
       {isSpeedDialOpen && hasMultipleActions && (
         <div
           className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
@@ -281,7 +281,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
         />
       )}
 
-      {/* ── Floating Action Button ── */}
+      {/* â”€â”€ Floating Action Button â”€â”€ */}
       <div className="fixed bottom-[80px] right-4 z-50 flex flex-col items-end gap-2.5 pointer-events-auto">
         {/* Expanded Speed Dial Action Menu */}
         {isSpeedDialOpen && hasMultipleActions && (
@@ -363,7 +363,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
         </button>
       </div>
 
-      {/* ── Modals & Drawers ── */}
+      {/* â”€â”€ Modals & Drawers â”€â”€ */}
       {selectedSlipItem && (
         <MobilePayslipPreviewSheet
           isOpen={Boolean(selectedSlipItem)}

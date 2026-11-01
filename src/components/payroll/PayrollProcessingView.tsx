@@ -66,6 +66,7 @@ interface PayrollProcessingViewProps {
   emailedPayslips?: Record<string, EmailedPayslipRecord>;
   onRecordEmailedPayslips?: (records: EmailedPayslipRecord[]) => void;
   isAdmin?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
@@ -100,8 +101,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   emailedPayslips = {},
   onRecordEmailedPayslips,
   isAdmin = true,
+  isReadOnly = false,
 }) => {
   const isAuditor = currentUser?.role === 'Auditor';
+  const isWriteDisabled = isAuditor || isReadOnly;
   const currentPeriodKey = `${year}-${(selectedMonth || '').toLowerCase()}`;
   const [activeSubTab, setActiveSubTab] = useState<'processing' | 'paye' | 'pension'>('processing');
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
@@ -322,7 +325,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   return (
     <div className="space-y-4 max-w-6xl mx-auto select-none">
       
-      {/* ── Top Header ── */}
+      {/* â”€â”€ Top Header â”€â”€ */}
       <div className="pt-2.5 pb-3.5 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
@@ -424,7 +427,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
               <span>Back to v{activeSnapshot?.version || nextVersion}</span>
             </button>
           ) : isLocked ? (
-            !isAuditor ? (
+            !isWriteDisabled ? (
               <button
                 type="button"
                 onClick={() => setIsUnlockModalOpen(true)}
@@ -437,11 +440,11 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             ) : (
               <div className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-200 dark:border-zinc-700 select-none">
                 <Lock className="w-3.5 h-3.5 text-amber-500" />
-                <span>Locked (Auditor View)</span>
+                <span>{isReadOnly ? 'Locked (Offline Read-Only)' : 'Locked (Auditor View)'}</span>
               </div>
             )
           ) : (
-            !isAuditor ? (
+            !isWriteDisabled ? (
               <button
                 type="button"
                 onClick={() => setIsLockModalOpen(true)}
@@ -457,7 +460,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             ) : (
               <div className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-200 dark:border-zinc-700 select-none">
                 <Unlock className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Draft (Auditor View)</span>
+                <span>{isReadOnly ? 'Draft (Offline Read-Only)' : 'Draft (Auditor View)'}</span>
               </div>
             )
           )}
@@ -490,7 +493,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
               <div className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
                 Finalized on {displaySnapshot.finalizedAt ? formatDateTime(displaySnapshot.finalizedAt) : 'Unknown date'}
                 {displaySnapshot.finalizedBy ? ` by ${displaySnapshot.finalizedBy}` : ''}
-                {displaySnapshot.notes ? ` • Note: "${displaySnapshot.notes}"` : ''}
+                {displaySnapshot.notes ? ` â€¢ Note: "${displaySnapshot.notes}"` : ''}
                 {' '}&bull; Calculations, payslips, and exports reflect Version {displaySnapshot.version}.
               </div>
             </div>
@@ -550,13 +553,15 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
               (Live calculation active. Update salaries or staff in Employee Directory, then click Finalize &amp; Lock to save Version {nextVersion})
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsLockModalOpen(true)}
-            className="self-start sm:self-auto px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-medium text-[11px] transition shadow-2xs"
-          >
-            Lock v{nextVersion}
-          </button>
+          {!isWriteDisabled && (
+            <button
+              type="button"
+              onClick={() => setIsLockModalOpen(true)}
+              className="self-start sm:self-auto px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-medium text-[11px] transition shadow-2xs"
+            >
+              Lock v{nextVersion}
+            </button>
+          )}
         </div>
       )}
 

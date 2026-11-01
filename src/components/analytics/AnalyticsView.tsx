@@ -124,7 +124,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     setSchedulePage(1);
   }, [activeTab, rangeMode, activeMonthKey, activeYear, selectedDept, selectedEmpType]);
 
-  const years = [2024, 2025, 2026, 2027, 2028];
+  // Dynamic year range — always centred on the current calendar year so
+  // new years are added automatically without any code change needed.
+  const years = useMemo(() => {
+    const cy = new Date().getFullYear();
+    return [cy - 2, cy - 1, cy, cy + 1, cy + 2];
+  }, []);
 
   const currentMonthObj = MONTHS.find(m => m.key === activeMonthKey);
   const activeMonthLabel = currentMonthObj?.label || initialMonthLabel;

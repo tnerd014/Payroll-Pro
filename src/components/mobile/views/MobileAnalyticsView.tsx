@@ -88,7 +88,12 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printModalType, setPrintModalType] = useState<ScheduleReportType>('bank');
 
-  const years = [2024, 2025, 2026, 2027, 2028];
+  // Dynamic year range — always centred on the current calendar year so
+  // new years are added automatically without any code change needed.
+  const years = useMemo(() => {
+    const cy = new Date().getFullYear();
+    return [cy - 2, cy - 1, cy, cy + 1, cy + 2];
+  }, []);
   const currentMonthObj = MONTHS.find(m => m.key === activeMonthKey);
   const activeMonthLabel = currentMonthObj?.label || initialMonthLabel;
 
@@ -255,7 +260,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 pb-2 select-none">
+    <div className="space-y-4 pb-6 select-none">
       
       {/* ── 1. Top Controls Bar (Sticky, Minimalist & Tactile) ── */}
       <div className="sticky -top-3.5 z-30 pt-1 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
@@ -877,9 +882,9 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
         </div>
       )}
 
-      {/* ── 7. Ergonomic Action Dock: Print & Export (Sticky / Pinned above bottom nav) ── */}
-      <div className="pt-2">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-2.5 shadow-xs flex items-center gap-2">
+      {/* ── 7. Ergonomic Action Dock: Print & Export (Docked flush directly above bottom nav) ── */}
+      <div className="sticky bottom-0 z-30 -mx-4 px-4 py-2 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
+        <div className="flex items-center gap-2 max-w-lg mx-auto">
           
           {/* Print PDF Button */}
           <button

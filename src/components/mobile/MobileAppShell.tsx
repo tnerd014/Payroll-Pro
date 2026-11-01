@@ -328,7 +328,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
       <main 
         ref={mainScrollRef}
         key={activeView}
-        className={`flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain ${(activeView === 'payslip-designer' || activeView === 'payslips' || activeView === 'profile') ? 'p-0' : 'px-4 pt-3.5 pb-3'}`}
+        className={`flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain ${(activeView === 'payslip-designer' || activeView === 'payslips' || activeView === 'profile') ? 'p-0' : activeView === 'analytics' ? 'px-4 pt-3.5 pb-0' : 'px-4 pt-3.5 pb-3'}`}
         style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
       >
         {activeView === 'dashboard' ? (

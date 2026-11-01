@@ -3,19 +3,28 @@ package com.payrollpro.app;
 import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CancellationSignal;
+import android.os.ParcelFileDescriptor;
+import android.print.PageRange;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
+import android.print.PrintDocumentInfo;
 import android.print.PrintManager;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.Properties;
 import java.util.concurrent.Executor;
+import javax.activation.DataHandler;
 import javax.mail.Authenticator;
 import javax.mail.Message;
 import javax.mail.Multipart;
@@ -26,6 +35,7 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
+import javax.mail.util.ByteArrayDataSource;
 import org.json.JSONObject;
 
 public class MainActivity extends BridgeActivity {
@@ -54,7 +64,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     // ──────────────────────────────────────────────
-    //  Print Bridge
+    // Print Bridge
     // ──────────────────────────────────────────────
     private void setupPrintBridge() {
         try {
@@ -85,7 +95,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     // ──────────────────────────────────────────────
-    //  Biometric Bridge
+    // Biometric Bridge
     // ──────────────────────────────────────────────
     private void setupBiometricBridge() {
         try {
@@ -99,13 +109,11 @@ public class MainActivity extends BridgeActivity {
                             int canAuth;
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                 canAuth = biometricManager.canAuthenticate(
-                                    BiometricManager.Authenticators.BIOMETRIC_STRONG |
-                                    BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                                );
+                                        BiometricManager.Authenticators.BIOMETRIC_STRONG |
+                                                BiometricManager.Authenticators.DEVICE_CREDENTIAL);
                             } else {
                                 canAuth = biometricManager.canAuthenticate(
-                                    BiometricManager.Authenticators.BIOMETRIC_STRONG
-                                );
+                                        BiometricManager.Authenticators.BIOMETRIC_STRONG);
                             }
                             return canAuth == BiometricManager.BIOMETRIC_SUCCESS;
                         } catch (Exception e) {
@@ -118,27 +126,30 @@ public class MainActivity extends BridgeActivity {
                         runOnUiThread(() -> {
                             try {
                                 Executor executor = ContextCompat.getMainExecutor(MainActivity.this);
-                                BiometricPrompt biometricPrompt = new BiometricPrompt(MainActivity.this, executor, new BiometricPrompt.AuthenticationCallback() {
-                                    @Override
-                                    public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                                        super.onAuthenticationError(errorCode, errString);
-                                        sendBiometricResult(callbackId, false, errString.toString());
-                                    }
+                                BiometricPrompt biometricPrompt = new BiometricPrompt(MainActivity.this, executor,
+                                        new BiometricPrompt.AuthenticationCallback() {
+                                            @Override
+                                            public void onAuthenticationError(int errorCode,
+                                                    @NonNull CharSequence errString) {
+                                                super.onAuthenticationError(errorCode, errString);
+                                                sendBiometricResult(callbackId, false, errString.toString());
+                                            }
 
-                                    @Override
-                                    public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
-                                        super.onAuthenticationSucceeded(result);
-                                        sendBiometricResult(callbackId, true, null);
-                                    }
+                                            @Override
+                                            public void onAuthenticationSucceeded(
+                                                    @NonNull BiometricPrompt.AuthenticationResult result) {
+                                                super.onAuthenticationSucceeded(result);
+                                                sendBiometricResult(callbackId, true, null);
+                                            }
 
-                                    @Override
-                                    public void onAuthenticationFailed() {
-                                        super.onAuthenticationFailed();
-                                    }
-                                });
+                                            @Override
+                                            public void onAuthenticationFailed() {
+                                                super.onAuthenticationFailed();
+                                            }
+                                        });
 
                                 BiometricPrompt.PromptInfo.Builder builder = new BiometricPrompt.PromptInfo.Builder()
-                                    .setTitle(title != null && !title.isEmpty() ? title : "Biometric Verification");
+                                        .setTitle(title != null && !title.isEmpty() ? title : "Biometric Verification");
 
                                 if (subtitle != null && !subtitle.isEmpty()) {
                                     builder.setSubtitle(subtitle);
@@ -146,9 +157,8 @@ public class MainActivity extends BridgeActivity {
 
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                                     builder.setAllowedAuthenticators(
-                                        BiometricManager.Authenticators.BIOMETRIC_STRONG |
-                                        BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                                    );
+                                            BiometricManager.Authenticators.BIOMETRIC_STRONG |
+                                                    BiometricManager.Authenticators.DEVICE_CREDENTIAL);
                                 } else {
                                     builder.setNegativeButtonText("Cancel");
                                 }
@@ -165,7 +175,9 @@ public class MainActivity extends BridgeActivity {
                             try {
                                 WebView wv = getBridge().getWebView();
                                 String cleanError = error != null ? JSONObject.quote(error) : "null";
-                                String script = String.format("window.__handleAndroidBiometric && window.__handleAndroidBiometric('%s', %b, %s);", callbackId, success, cleanError);
+                                String script = String.format(
+                                        "window.__handleAndroidBiometric && window.__handleAndroidBiometric('%s', %b, %s);",
+                                        callbackId, success, cleanError);
                                 wv.evaluateJavascript(script, null);
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -180,11 +192,11 @@ public class MainActivity extends BridgeActivity {
     }
 
     // ──────────────────────────────────────────────
-    //  Native SMTP Bridge
-    //  Exposed as window.AndroidSMTP in the WebView.
-    //  All methods run on a background thread to avoid
-    //  blocking the UI (Android NetworkOnMainThread).
-    //  Results are posted back via evaluateJavascript.
+    // Native SMTP Bridge
+    // Exposed as window.AndroidSMTP in the WebView.
+    // All methods run on a background thread to avoid
+    // blocking the UI (Android NetworkOnMainThread).
+    // Results are posted back via evaluateJavascript.
     // ──────────────────────────────────────────────
     private void setupSmtpBridge() {
         try {
@@ -219,11 +231,10 @@ public class MainActivity extends BridgeActivity {
                     Session session = buildSession(cfg);
                     Transport transport = session.getTransport(secure ? "smtps" : "smtp");
                     transport.connect(
-                        cfg.getString("host"),
-                        port,
-                        cfg.getString("user"),
-                        cfg.getString("pass")
-                    );
+                            cfg.getString("host"),
+                            port,
+                            cfg.getString("user"),
+                            cfg.getString("pass"));
                     transport.close();
                     postSmtpResult(callbackId, true, null);
                 } catch (Exception e) {
@@ -235,27 +246,71 @@ public class MainActivity extends BridgeActivity {
         /**
          * Sends a payslip email with optional base64-encoded PDF attachment.
          * Called from JS as: AndroidSMTP.sendEmail(callbackId, payloadJson)
-         * payloadJson: { smtp:{host,port,user,pass,secure,fromEmail}, recipient, subject, body, htmlContent, attachPdf, fileName, pdfBase64? }
+         * payloadJson: { smtp:{host,port,user,pass,secure,fromEmail}, recipient,
+         * subject, body, htmlContent, attachPdf, fileName, pdfBase64? }
          */
         @JavascriptInterface
         public void sendEmail(final String callbackId, final String payloadJson) {
+            try {
+                JSONObject payload = new JSONObject(payloadJson);
+                JSONObject cfg = payload.getJSONObject("smtp");
+                boolean attachPdf = payload.optBoolean("attachPdf", false);
+                String htmlContent = payload.optString("htmlContent", "");
+                String pdfBase64 = payload.optString("pdfBase64", "");
+
+                if (attachPdf) {
+                    if (!pdfBase64.isEmpty()) {
+                        byte[] pdfBytes = Base64.decode(pdfBase64, Base64.DEFAULT);
+                        sendMimeMessage(callbackId, payload, cfg, pdfBytes);
+                    } else if (!htmlContent.isEmpty()) {
+                        // Generate PDF natively from HTML using Android PrintDocumentAdapter
+                        generatePdfFromHtml(htmlContent, new PdfCallback() {
+                            @Override
+                            public void onSuccess(byte[] pdfBytes) {
+                                sendMimeMessage(callbackId, payload, cfg, pdfBytes);
+                            }
+
+                            @Override
+                            public void onError(Exception error) {
+                                // Fallback: dispatch without attachment if PDF layout fails
+                                sendMimeMessage(callbackId, payload, cfg, null);
+                            }
+                        });
+                    } else {
+                        sendMimeMessage(callbackId, payload, cfg, null);
+                    }
+                } else {
+                    sendMimeMessage(callbackId, payload, cfg, null);
+                }
+            } catch (Exception e) {
+                postSmtpResult(callbackId, false, e.getMessage());
+            }
+        }
+
+        private void sendMimeMessage(final String callbackId, JSONObject payload, JSONObject cfg, byte[] pdfBytes) {
             new Thread(() -> {
                 try {
-                    JSONObject payload = new JSONObject(payloadJson);
-                    JSONObject cfg = payload.getJSONObject("smtp");
                     int port = cfg.getInt("port");
                     boolean secure = cfg.optBoolean("secure", port == 465);
                     Session session = buildSession(cfg);
 
-                    String fromEmail = cfg.optString("fromEmail", cfg.getString("user"));
-                    String fromName = payload.optString("fromName", "Payroll Pro");
-                    String recipient = payload.getString("recipient");
+                    String fromEmail = cfg.optString("fromEmail", "").trim();
+                    if (fromEmail.isEmpty()) {
+                        fromEmail = cfg.optString("user", "").trim();
+                    }
+                    String fromName = payload.optString("fromName", "Payroll Pro").trim();
+                    if (fromName.isEmpty()) {
+                        fromName = "Payroll Pro";
+                    }
+                    String recipient = payload.optString("recipient", "").trim();
+                    if (recipient.isEmpty()) {
+                        postSmtpResult(callbackId, false, "Recipient email address is empty.");
+                        return;
+                    }
                     String subject = payload.getString("subject");
                     String body = payload.optString("body", "");
                     String htmlContent = payload.optString("htmlContent", "");
-                    boolean attachPdf = payload.optBoolean("attachPdf", false);
                     String fileName = payload.optString("fileName", "payslip.pdf");
-                    String pdfBase64 = payload.optString("pdfBase64", "");
 
                     MimeMessage message = new MimeMessage(session);
                     message.setFrom(new InternetAddress(fromEmail, fromName));
@@ -278,11 +333,10 @@ public class MainActivity extends BridgeActivity {
                     }
 
                     // PDF attachment
-                    if (attachPdf && !pdfBase64.isEmpty()) {
-                        byte[] pdfBytes = Base64.decode(pdfBase64, Base64.DEFAULT);
+                    if (pdfBytes != null && pdfBytes.length > 0) {
                         MimeBodyPart pdfPart = new MimeBodyPart();
+                        pdfPart.setDataHandler(new DataHandler(new ByteArrayDataSource(pdfBytes, "application/pdf")));
                         pdfPart.setFileName(fileName);
-                        pdfPart.setContent(pdfBytes, "application/pdf");
                         pdfPart.setDisposition(MimeBodyPart.ATTACHMENT);
                         multipart.addBodyPart(pdfPart);
                     }
@@ -292,11 +346,10 @@ public class MainActivity extends BridgeActivity {
                     // Authenticate and send
                     Transport transport = session.getTransport(secure ? "smtps" : "smtp");
                     transport.connect(
-                        cfg.getString("host"),
-                        port,
-                        cfg.getString("user"),
-                        cfg.getString("pass")
-                    );
+                            cfg.getString("host"),
+                            port,
+                            cfg.getString("user"),
+                            cfg.getString("pass"));
                     transport.sendMessage(message, message.getAllRecipients());
                     transport.close();
 
@@ -363,14 +416,137 @@ public class MainActivity extends BridgeActivity {
                 try {
                     String errorJson = error != null ? JSONObject.quote(error) : "null";
                     String script = String.format(
-                        "window.__handleAndroidSmtp && window.__handleAndroidSmtp('%s', %b, %s);",
-                        callbackId, success, errorJson
-                    );
+                            "window.__handleAndroidSmtp && window.__handleAndroidSmtp('%s', %b, %s);",
+                            callbackId, success, errorJson);
                     webView.evaluateJavascript(script, null);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             });
         }
+    }
+
+    // ──────────────────────────────────────────────
+    //  Native Headless HTML to PDF Converter
+    // ──────────────────────────────────────────────
+    private interface PdfCallback {
+        void onSuccess(byte[] pdfBytes);
+        void onError(Exception error);
+    }
+
+    private void generatePdfFromHtml(final String htmlContent, final PdfCallback callback) {
+        runOnUiThread(() -> {
+            try {
+                final WebView pdfWebView = new WebView(MainActivity.this);
+                pdfWebView.getSettings().setJavaScriptEnabled(true);
+                pdfWebView.getSettings().setDomStorageEnabled(true);
+                pdfWebView.getSettings().setLoadWithOverviewMode(true);
+                pdfWebView.getSettings().setUseWideViewPort(true);
+
+                pdfWebView.setWebViewClient(new WebViewClient() {
+                    private boolean isFinished = false;
+
+                    @Override
+                    public void onPageFinished(WebView view, String url) {
+                        if (isFinished) return;
+                        isFinished = true;
+
+                        // Brief delay to allow CSS web fonts and styles to complete layout
+                        view.postDelayed(() -> {
+                            try {
+                                PrintAttributes attributes = new PrintAttributes.Builder()
+                                        .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                                        .setResolution(new PrintAttributes.Resolution("pdf", "pdf", 300, 300))
+                                        .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+                                        .build();
+
+                                final PrintDocumentAdapter adapter = pdfWebView.createPrintDocumentAdapter("payslip");
+                                final File tempPdfFile = File.createTempFile("payslip_", ".pdf", getCacheDir());
+                                final ParcelFileDescriptor pfd = ParcelFileDescriptor.open(
+                                        tempPdfFile,
+                                        ParcelFileDescriptor.MODE_READ_WRITE
+                                );
+
+                                adapter.onLayout(
+                                        null,
+                                        attributes,
+                                        new CancellationSignal(),
+                                        new PrintDocumentAdapter.LayoutResultCallback() {
+                                            @Override
+                                            public void onLayoutFinished(PrintDocumentInfo info, boolean changed) {
+                                                adapter.onWrite(
+                                                        new PageRange[]{PageRange.ALL_PAGES},
+                                                        pfd,
+                                                        new CancellationSignal(),
+                                                        new PrintDocumentAdapter.WriteResultCallback() {
+                                                            @Override
+                                                            public void onWriteFinished(PageRange[] pages) {
+                                                                try {
+                                                                    pfd.close();
+                                                                    byte[] pdfBytes = readFileToBytes(tempPdfFile);
+                                                                    tempPdfFile.delete();
+                                                                    callback.onSuccess(pdfBytes);
+                                                                } catch (Exception e) {
+                                                                    callback.onError(e);
+                                                                }
+                                                            }
+
+                                                            @Override
+                                                            public void onWriteFailed(CharSequence error) {
+                                                                try { pfd.close(); } catch (Exception ignored) {}
+                                                                tempPdfFile.delete();
+                                                                callback.onError(new Exception(error != null ? error.toString() : "PDF write failed"));
+                                                            }
+
+                                                            @Override
+                                                            public void onWriteCancelled() {
+                                                                try { pfd.close(); } catch (Exception ignored) {}
+                                                                tempPdfFile.delete();
+                                                                callback.onError(new Exception("PDF write cancelled"));
+                                                            }
+                                                        }
+                                                );
+                                            }
+
+                                            @Override
+                                            public void onLayoutFailed(CharSequence error) {
+                                                try { pfd.close(); } catch (Exception ignored) {}
+                                                tempPdfFile.delete();
+                                                callback.onError(new Exception(error != null ? error.toString() : "PDF layout failed"));
+                                            }
+
+                                            @Override
+                                            public void onLayoutCancelled() {
+                                                try { pfd.close(); } catch (Exception ignored) {}
+                                                tempPdfFile.delete();
+                                                callback.onError(new Exception("PDF layout cancelled"));
+                                            }
+                                        },
+                                        null
+                                );
+                            } catch (Exception e) {
+                                callback.onError(e);
+                            }
+                        }, 500);
+                    }
+                });
+
+                pdfWebView.loadDataWithBaseURL("https://localhost/", htmlContent, "text/html", "UTF-8", null);
+            } catch (Exception e) {
+                callback.onError(e);
+            }
+        });
+    }
+
+    private byte[] readFileToBytes(File file) throws Exception {
+        FileInputStream fis = new FileInputStream(file);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = fis.read(buffer)) != -1) {
+            bos.write(buffer, 0, read);
+        }
+        fis.close();
+        return bos.toByteArray();
     }
 }

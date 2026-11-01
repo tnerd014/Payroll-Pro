@@ -1,12 +1,12 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { 
-  EmailSettings, 
-  CalculatedPayrollItem, 
-  CompanyProfile, 
-  PayslipDesignConfig, 
+import {
+  EmailSettings,
+  CalculatedPayrollItem,
+  CompanyProfile,
+  PayslipDesignConfig,
   DEFAULT_PAYSLIP_DESIGN,
-  PRESET_HEX_MAP 
+  PRESET_HEX_MAP
 } from '../types';
 import { formatNaira } from '../engine/payePensionEngine';
 import { CustomizablePayslipView } from '../components/payslip/CustomizablePayslipView';
@@ -246,12 +246,12 @@ export function renderPayslipToHtml(
   const safeFullName = escapeHtml(item.fullName);
 
   // Font family resolution
-  const fontStack = 
+  const fontStack =
     config.fontFamily === 'serif'
       ? "Georgia, 'Times New Roman', Cambria, serif"
       : config.fontFamily === 'mono'
-      ? "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace"
-      : "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+        ? "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace"
+        : "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -378,12 +378,12 @@ export function renderConsolidatedPayslipsToHtml(
   const safeFullName = escapeHtml(firstItem?.fullName || 'Employee');
   const payslipTitle = config.payslipTitle || 'Payslips';
 
-  const fontStack = 
+  const fontStack =
     config.fontFamily === 'serif'
       ? "Georgia, 'Times New Roman', Cambria, serif"
       : config.fontFamily === 'mono'
-      ? "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace"
-      : "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+        ? "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace"
+        : "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -455,7 +455,7 @@ export async function testEmailServiceConnection(settings: EmailSettings): Promi
       host: (settings.smtp.host || '').trim(),
       user: (settings.smtp.user || '').trim(),
       pass: (settings.smtp.pass || '').trim().replace(/\s+/g, ''),
-      fromEmail: (settings.smtp.fromEmail || '').trim(),
+      fromEmail: (settings.smtp.fromEmail || '').trim() || (settings.smtp.user || '').trim(),
     };
 
     // Desktop (Electron): use native Node.js nodemailer
@@ -470,9 +470,9 @@ export async function testEmailServiceConnection(settings: EmailSettings): Promi
       return await invokeAndroidSmtp('testConnection', sanitizedSmtp);
     }
 
-    return { 
-      success: false, 
-      error: 'Direct SMTP requires the Payroll Pro Desktop app or Android APK. In a browser, switch to Resend API instead.' 
+    return {
+      success: false,
+      error: 'Direct SMTP requires the Payroll Pro Desktop app or Android APK. In a browser, switch to Resend API instead.'
     };
   }
 
@@ -514,18 +514,18 @@ export async function testEmailServiceConnection(settings: EmailSettings): Promi
  * Dispatches an individual employee's payslip (single month or multi-month consolidated PDF)
  */
 export async function sendIndividualPayslipEmail(payload: EmailDispatchPayload): Promise<EmailDispatchResult> {
-  const { 
-    settings, 
-    company, 
-    item, 
-    recipientEmail, 
-    monthLabel, 
-    year, 
-    config, 
-    subjectTemplate, 
-    bodyTemplate, 
+  const {
+    settings,
+    company,
+    item,
+    recipientEmail,
+    monthLabel,
+    year,
+    config,
+    subjectTemplate,
+    bodyTemplate,
     attachPdf = true,
-    periods = [] 
+    periods = []
   } = payload;
 
   if (!recipientEmail || !recipientEmail.includes('@')) {
@@ -555,7 +555,7 @@ export async function sendIndividualPayslipEmail(payload: EmailDispatchPayload):
       host: (settings.smtp.host || '').trim(),
       user: (settings.smtp.user || '').trim(),
       pass: (settings.smtp.pass || '').trim().replace(/\s+/g, ''),
-      fromEmail: (settings.smtp.fromEmail || '').trim(),
+      fromEmail: (settings.smtp.fromEmail || '').trim() || (settings.smtp.user || '').trim(),
     };
 
     // Desktop (Electron): use native nodemailer
@@ -572,8 +572,7 @@ export async function sendIndividualPayslipEmail(payload: EmailDispatchPayload):
       });
     }
 
-    // Mobile (Capacitor Android APK): use native JavaMail bridge
-    // PDF generation is not supported on Android yet — send HTML body only
+    // Mobile (Capacitor Android APK): use native JavaMail bridge with background PDF generation
     const androidSMTP = getAndroidSMTP();
     if (androidSMTP?.sendEmail) {
       return await invokeAndroidSmtp('sendEmail', {
@@ -582,15 +581,15 @@ export async function sendIndividualPayslipEmail(payload: EmailDispatchPayload):
         subject,
         body: bodyText,
         htmlContent: htmlPayslip,
-        attachPdf: false, // PDF rendering requires Electron; HTML payslip is embedded instead
+        attachPdf: attachPdf ?? true,
         fileName,
         fromName: settings.smtp.fromName || '',
       });
     }
 
-    return { 
-      success: false, 
-      error: 'SMTP sending requires the Payroll Pro Desktop app or Android APK. In a browser, switch to Resend API.' 
+    return {
+      success: false,
+      error: 'SMTP sending requires the Payroll Pro Desktop app or Android APK. In a browser, switch to Resend API.'
     };
   }
 
