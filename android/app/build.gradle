@@ -22,6 +22,11 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/NOTICE.md', 'META-INF/NOTICE', 'META-INF/LICENSE', 'META-INF/LICENSE.md']
+        }
+    }
 }
 
 repositories {
