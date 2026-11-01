@@ -157,6 +157,62 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
 
   const [hasPendingSync, setHasPendingSync] = useState(false);
   const [appVersion, setAppVersion] = useState('v1.0.4');
+  const [updateState, setUpdateState] = useState<{ status: string; downloadPercent: number; latestVersion: string; message: string; restartRequired: boolean; downloadPath: string; downloadUrl: string; releaseUrl: string; }>({
+    status: 'idle',
+    downloadPercent: 0,
+    latestVersion: '',
+    message: '',
+    restartRequired: false,
+    downloadPath: '',
+    downloadUrl: '',
+    releaseUrl: '',
+  });
+
+  const updateBadgeTitle = updateState.status === 'downloading'
+    ? `Download in progress: ${updateState.downloadPercent}%`
+    : updateState.restartRequired || updateState.status === 'downloaded'
+      ? 'Update downloaded. Restart to install.'
+      : updateState.status === 'available'
+        ? 'Update available'
+        : updateState.message || 'Check for updates';
+
+  const handleInstallPendingUpdate = async () => {
+    const electronAPI = (window as any).electronAPI;
+    if (!electronAPI?.installPendingUpdate) {
+      if (updateState.releaseUrl) {
+        openExternalReleaseLink(updateState.releaseUrl);
+      }
+      return;
+    }
+
+    try {
+      const result = await electronAPI.installPendingUpdate();
+      if (!result?.success) {
+        alert(result?.error || 'Unable to start the installer.');
+      }
+    } catch (error) {
+      console.error('Failed to install pending update:', error);
+      alert('Unable to install the update right now.');
+    }
+  };
+
+  const handleDismissUpdateNotice = async () => {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI?.dismissUpdateNotice) {
+      await electronAPI.dismissUpdateNotice();
+    }
+    setUpdateState((prev) => ({
+      ...prev,
+      status: 'idle',
+      latestVersion: '',
+      message: '',
+      restartRequired: false,
+      downloadPercent: 0,
+      downloadPath: '',
+      downloadUrl: '',
+      releaseUrl: '',
+    }));
+  };
 
   useEffect(() => {
     if ((window as any).electronAPI?.getVersion) {
@@ -164,6 +220,18 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         if (version) setAppVersion(`v${version}`);
       }).catch(() => undefined);
     }
+  }, []);
+
+  useEffect(() => {
+    if ((window as any).electronAPI?.onUpdateState) {
+      const unsubscribe = (window as any).electronAPI.onUpdateState((state: any) => {
+        if (state) {
+          setUpdateState((prev) => ({ ...prev, ...state }));
+        }
+      });
+      return () => unsubscribe?.();
+    }
+    return undefined;
   }, []);
 
   useEffect(() => {
@@ -255,16 +323,30 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         return;
       }
 
-      const shouldOpen = window.confirm(
-        `A new version (${result.latestVersion}) is available. Open the release page to download it now?`
+      const shouldDownload = window.confirm(
+        `A new version (${result.latestVersion}) is available. Download and install it now?`
       );
 
-      if (shouldOpen && result.releaseUrl) {
-        if (electronAPI?.openUpdateRelease) {
-          await electronAPI.openUpdateRelease(result.releaseUrl);
-        } else {
-          openExternalReleaseLink(result.releaseUrl);
+      if (!shouldDownload) {
+        return;
+      }
+
+      if (electronAPI?.downloadUpdate) {
+        await electronAPI.downloadUpdate({
+          latestVersion: result.latestVersion,
+          releaseUrl: result.releaseUrl,
+          downloadUrl: result.assetUrl || result.assetUrls?.windowsInstaller,
+        });
+        return;
+      }
+
+      if (result.assetUrl || result.assetUrls?.windowsInstaller) {
+        const downloadUrl = result.assetUrl || result.assetUrls?.windowsInstaller;
+        if (downloadUrl) {
+          window.open(downloadUrl, '_blank', 'noopener,noreferrer');
         }
+      } else if (result.releaseUrl) {
+        openExternalReleaseLink(result.releaseUrl);
       }
     } catch (error) {
       console.error('Failed to check for updates:', error);
@@ -694,7 +776,49 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
                   <RefreshCw className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
                   <span>Check for Updates</span>
                 </div>
+                {(updateState.status === 'downloading' || updateState.restartRequired || updateState.status === 'downloaded') && (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                    {updateState.status === 'downloading' ? `${updateState.downloadPercent}%` : 'Ready'}
+                  </span>
+                )}
               </button>
+
+              {updateState.status === 'downloading' && (
+                <div className="px-3 pb-2">
+                  <div className="mb-1 flex items-center justify-between text-[10px] text-zinc-500 dark:text-zinc-400">
+                    <span>{updateState.message || 'Downloading update…'}</span>
+                    <span>{updateState.downloadPercent}%</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-200"
+                      style={{ width: `${Math.max(0, Math.min(100, updateState.downloadPercent))}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {(updateState.restartRequired || updateState.status === 'downloaded') && (
+                <div className="border-t border-zinc-100 px-3 py-2 dark:border-zinc-800">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                        Restart required
+                      </div>
+                      <div className="truncate text-[10px] text-zinc-500 dark:text-zinc-400">
+                        {updateState.message || 'Update downloaded. Restart to install.'}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleInstallPendingUpdate}
+                      className="inline-flex items-center justify-center rounded-md bg-amber-500 px-2 py-1 text-[10px] font-semibold text-white shadow-sm hover:bg-amber-600"
+                    >
+                      Restart now
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={() => {
@@ -884,6 +1008,30 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
       {/* Right: User Pill, Theme Toggle + Native Controls */}
       <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: "no-drag" } as any}>
         
+        {updateState.status === 'downloading' && (
+          <button
+            type="button"
+            title={updateBadgeTitle}
+            onClick={handleInstallPendingUpdate}
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-500/10 dark:text-emerald-300"
+          >
+            <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+            <span>{updateState.downloadPercent}%</span>
+          </button>
+        )}
+
+        {(updateState.restartRequired || updateState.status === 'downloaded') && (
+          <button
+            type="button"
+            title={updateBadgeTitle}
+            onClick={handleInstallPendingUpdate}
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-500/10 dark:text-amber-300"
+          >
+            <Download className="h-2.5 w-2.5" />
+            <span>Restart to install</span>
+          </button>
+        )}
+
         {/* Network / Offline & Sync Status Indicator */}
         {!getSavedCloudConfig().isEnabled ? (
           <div 
@@ -920,6 +1068,18 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             </span>
             <span>Synced</span>
           </div>
+        )}
+
+        {updateState.status === 'available' && (
+          <button
+            type="button"
+            title={updateBadgeTitle}
+            onClick={handleInstallPendingUpdate}
+            className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 shadow-sm transition hover:border-violet-300 hover:bg-violet-100 dark:border-violet-700/60 dark:bg-violet-500/10 dark:text-violet-300"
+          >
+            <RefreshCw className="h-2.5 w-2.5" />
+            <span>Update available</span>
+          </button>
         )}
 
         {currentUser && (

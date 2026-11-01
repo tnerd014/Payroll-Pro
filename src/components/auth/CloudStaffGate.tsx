@@ -49,7 +49,12 @@ import {
   SupabaseCloudConfig,
   isStandaloneOfflineMode,
   setStandaloneOfflineMode,
-  LOCAL_STANDALONE_ADMIN
+  LOCAL_STANDALONE_ADMIN,
+  areAdvancedModesEnabled,
+  getRuntimeMode,
+  setRuntimeMode,
+  isOfflineModeAllowed,
+  AppRuntimeMode,
 } from '../../services/supabaseClient';
 import { loadCompaniesRegistry } from '../../store/usePayrollStore';
 import { SUPABASE_SQL_SCHEMA } from '../../constants/supabaseSchema';
@@ -124,6 +129,9 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
   const [isLoadingCheck, setIsLoadingCheck] = useState(true);
   const [helpMenuOpen, setHelpMenuOpen] = useState(false);
   const [appVersion, setAppVersion] = useState('v1.0.4');
+  const advancedModesEnabled = areAdvancedModesEnabled();
+  const currentRuntimeMode = getRuntimeMode();
+  const canUseOfflineFallback = isOfflineModeAllowed();
 
   useEffect(() => {
     if ((window as any).electronAPI?.getVersion) {
@@ -241,15 +249,24 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
     setConnectError(null);
 
     const cfg = getSavedCloudConfig();
-    // If user previously selected standalone offline mode, bypass server connect gate
-    if (isStandaloneOfflineMode() && !cfg.isEnabled) {
+    const runtimeMode = getRuntimeMode();
+    const useOfflineMode = isOfflineModeAllowed();
+
+    // If user previously selected standalone offline mode, bypass server connect gate only when
+    // the current release explicitly allows local/offline operating modes.
+    if (isStandaloneOfflineMode() && !cfg.isEnabled && useOfflineMode) {
       const localAdmin = getActiveTeamMember() || LOCAL_STANDALONE_ADMIN;
       onAuthenticated(localAdmin, loadCompaniesRegistry());
       return;
     }
 
     if (!cfg.isEnabled || !cfg.url || !cfg.anonKey) {
-      setViewMode('connect_server');
+      if (runtimeMode === 'cloud_only' || !useOfflineMode) {
+        setViewMode('connect_server');
+        setConnectError('This release is configured for cloud-only access. Connect to the team server to continue.');
+      } else {
+        setViewMode('connect_server');
+      }
       setIsLoadingCheck(false);
       return;
     }
@@ -323,6 +340,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
         lastConnectedAt: new Date().toISOString()
       };
       saveCloudConfig(newConfig);
+      setRuntimeMode('cloud_only');
       setCloudConfig(newConfig);
 
       const adminRes = await checkHasAdminUser();
@@ -383,6 +401,12 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
   };
 
   const handleContinueOffline = () => {
+    if (!canUseOfflineFallback) {
+      setConnectError('This release is configured for cloud-only access. Please connect to the team server to continue.');
+      return;
+    }
+
+    setRuntimeMode('local_only');
     setStandaloneOfflineMode(true);
     setActiveTeamMember(LOCAL_STANDALONE_ADMIN);
     onAuthenticated(LOCAL_STANDALONE_ADMIN, loadCompaniesRegistry());
@@ -911,14 +935,16 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   >
                     Change Server
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleContinueOffline}
-                    className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition cursor-pointer flex items-center gap-1"
-                  >
-                    <WifiOff className="w-3 h-3 text-zinc-400" />
-                    <span>Work Offline</span>
-                  </button>
+                  {canUseOfflineFallback && (
+                    <button
+                      type="button"
+                      onClick={handleContinueOffline}
+                      className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition cursor-pointer flex items-center gap-1"
+                    >
+                      <WifiOff className="w-3 h-3 text-zinc-400" />
+                      <span>Work Offline</span>
+                    </button>
+                  )}
                 </div>
               </form>
             </>
@@ -986,26 +1012,55 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   )}
                 </button>
 
-                <div className="relative my-3">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
-                  </div>
-                  <div className="relative flex justify-center text-[10px] uppercase font-semibold">
-                    <span className="bg-white dark:bg-[#121215] px-2 text-zinc-400">or work offline</span>
-                  </div>
-                </div>
+                {canUseOfflineFallback && (
+                  <>
+                    <div className="relative my-3">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
+                      </div>
+                      <div className="relative flex justify-center text-[10px] uppercase font-semibold">
+                        <span className="bg-white dark:bg-[#121215] px-2 text-zinc-400">or work offline</span>
+                      </div>
+                    </div>
 
-                <button
-                  type="button"
-                  onClick={handleContinueOffline}
-                  className="w-full h-9 bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-medium rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-2 border border-zinc-200/80 dark:border-zinc-700/60 shadow-2xs"
-                >
-                  <WifiOff className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>Continue in Offline / Standalone Mode</span>
-                </button>
-                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center">
-                  Store company records privately on this device. No server required.
-                </p>
+                    <button
+                      type="button"
+                      onClick={handleContinueOffline}
+                      className="w-full h-9 bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-medium rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-2 border border-zinc-200/80 dark:border-zinc-700/60 shadow-2xs"
+                    >
+                      <WifiOff className="w-3.5 h-3.5 text-zinc-500" />
+                      <span>Continue in Offline / Standalone Mode</span>
+                    </button>
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center">
+                      Store company records privately on this device. No server required.
+                    </p>
+                  </>
+                )}
+
+                {advancedModesEnabled && (
+                  <div className="pt-2">
+                    <div className="text-[10px] uppercase tracking-[0.16em] text-zinc-400 text-center">Advanced runtime mode</div>
+                    <div className="mt-2 grid grid-cols-3 gap-1.5">
+                      {(['cloud_only', 'local_only', 'hybrid'] as AppRuntimeMode[]).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => {
+                            const nextMode = setRuntimeMode(mode);
+                            setConnectError(nextMode === 'cloud_only'
+                              ? 'Cloud-only access is active for this release.'
+                              : `Runtime mode switched to ${nextMode.replace('_', ' ')}.`);
+                          }}
+                          className={`h-8 rounded-md text-[10px] font-medium transition ${currentRuntimeMode === mode
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                            : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'}`}
+                        >
+                          {mode.replace('_', ' ')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="pt-2 flex items-center justify-between text-[11px]">
                   {cloudConfig.url && (

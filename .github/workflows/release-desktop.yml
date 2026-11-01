@@ -1,6 +1,6 @@
 name: Release Desktop Build
 
-on:
+'on':
   push:
     tags:
       - 'v*'

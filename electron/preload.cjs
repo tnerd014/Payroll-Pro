@@ -3,6 +3,14 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => ipcRenderer.invoke('get-version'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: (payload) => ipcRenderer.invoke('download-update', payload),
+  installPendingUpdate: () => ipcRenderer.invoke('install-pending-update'),
+  dismissUpdateNotice: () => ipcRenderer.invoke('dismiss-update-notice'),
+  onUpdateState: (callback) => {
+    const handler = (_event, state) => callback(state);
+    ipcRenderer.on('update-state-changed', handler);
+    return () => ipcRenderer.removeListener('update-state-changed', handler);
+  },
   openUpdateRelease: (url) => ipcRenderer.invoke('open-update-release', url),
   windowMinimize: () => ipcRenderer.send('window-minimize'),
   windowMaximize: () => ipcRenderer.send('window-maximize'),

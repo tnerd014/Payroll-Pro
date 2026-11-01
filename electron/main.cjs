@@ -1,9 +1,28 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const fs = require('fs');
 const path = require('path');
 
 let mainWindow = null;
+let updateState = {
+  status: 'idle',
+  version: '',
+  latestVersion: '',
+  releaseUrl: '',
+  downloadUrl: '',
+  downloadPath: '',
+  downloadPercent: 0,
+  message: '',
+  restartRequired: false,
+};
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 const GITHUB_REPO = 'tunde014/Payroll-Pro';
+
+function emitUpdateState(nextState = {}) {
+  updateState = { ...updateState, ...nextState };
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-state-changed', updateState);
+  }
+}
 
 function normalizeVersion(value) {
   return String(value || '').trim().replace(/^v/i, '');
@@ -189,6 +208,10 @@ ipcMain.handle('check-for-updates', async () => {
     const payload = await response.json();
     const latestVersion = normalizeVersion(payload?.tag_name || payload?.name || '');
     const releaseUrl = payload?.html_url || `https://github.com/${GITHUB_REPO}/releases`;
+    const eligibleAsset = (payload?.assets || []).find((asset) => {
+      const name = String(asset?.name || '').toLowerCase();
+      return name.endsWith('.exe') && !name.includes('blockmap') && !name.includes('portable');
+    }) || (payload?.assets || []).find((asset) => String(asset?.name || '').toLowerCase().endsWith('.exe'));
 
     if (!latestVersion) {
       return {
@@ -203,6 +226,7 @@ ipcMain.handle('check-for-updates', async () => {
       currentVersion,
       latestVersion,
       releaseUrl,
+      assetUrl: eligibleAsset?.browser_download_url || '',
       upToDate: result >= 0,
       updateAvailable: result < 0,
     };
@@ -212,6 +236,138 @@ ipcMain.handle('check-for-updates', async () => {
       error: error && error.message ? error.message : 'Unable to check for updates right now.',
     };
   }
+});
+
+ipcMain.handle('download-update', async (_, options = {}) => {
+  try {
+    const downloadUrl = options.downloadUrl || options.assetUrl;
+    if (!downloadUrl) {
+      return { success: false, error: 'No installer URL was supplied for the update.' };
+    }
+
+    const targetVersion = options.latestVersion || app.getVersion();
+    const targetPath = path.join(app.getPath('downloads'), `Payroll-Pro-Setup-${targetVersion}.exe`);
+    const response = await fetch(downloadUrl, {
+      headers: {
+        Accept: 'application/octet-stream',
+        'User-Agent': 'Payroll-Pro-Desktop-App',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Download failed with HTTP ${response.status}.`);
+    }
+
+    const contentLength = Number(response.headers.get('content-length') || '0');
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('The update payload did not provide a download stream.');
+    }
+
+    const chunks = [];
+    let downloaded = 0;
+
+    emitUpdateState({
+      status: 'downloading',
+      version: app.getVersion(),
+      latestVersion: targetVersion,
+      releaseUrl: options.releaseUrl || '',
+      downloadUrl,
+      downloadPath: targetPath,
+      downloadPercent: 0,
+      message: 'Downloading update…',
+      restartRequired: false,
+    });
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        downloaded += value.length;
+        const percent = contentLength > 0 ? Math.min(100, Math.max(0, Math.round((downloaded / contentLength) * 100))) : 0;
+        emitUpdateState({
+          status: 'downloading',
+          version: app.getVersion(),
+          latestVersion: targetVersion,
+          releaseUrl: options.releaseUrl || '',
+          downloadUrl,
+          downloadPath: targetPath,
+          downloadPercent: percent,
+          message: `Downloading update… ${percent}%`,
+          restartRequired: false,
+        });
+      }
+    }
+
+    if (fs.existsSync(targetPath)) {
+      fs.unlinkSync(targetPath);
+    }
+    fs.writeFileSync(targetPath, Buffer.concat(chunks));
+
+    emitUpdateState({
+      status: 'downloaded',
+      version: app.getVersion(),
+      latestVersion: targetVersion,
+      releaseUrl: options.releaseUrl || '',
+      downloadUrl,
+      downloadPath: targetPath,
+      downloadPercent: 100,
+      message: 'Download complete. Restart to install.',
+      restartRequired: true,
+    });
+
+    return {
+      success: true,
+      downloadPath: targetPath,
+      latestVersion: targetVersion,
+      downloadPercent: 100,
+    };
+  } catch (error) {
+    emitUpdateState({
+      status: 'error',
+      message: error && error.message ? error.message : 'Update download failed.',
+      downloadPercent: 0,
+      restartRequired: false,
+    });
+    return {
+      success: false,
+      error: error && error.message ? error.message : 'Update download failed.',
+    };
+  }
+});
+
+ipcMain.handle('install-pending-update', async () => {
+  try {
+    const installerPath = updateState.downloadPath;
+    if (!installerPath || !fs.existsSync(installerPath)) {
+      return { success: false, error: 'No downloaded installer was found.' };
+    }
+
+    await shell.openPath(installerPath);
+    app.quit();
+    return { success: true, installerPath };
+  } catch (error) {
+    return {
+      success: false,
+      error: error && error.message ? error.message : 'Unable to start the installation.',
+    };
+  }
+});
+
+ipcMain.handle('dismiss-update-notice', async () => {
+  emitUpdateState({
+    status: 'idle',
+    version: app.getVersion(),
+    latestVersion: '',
+    releaseUrl: '',
+    downloadUrl: '',
+    downloadPath: '',
+    downloadPercent: 0,
+    message: '',
+    restartRequired: false,
+  });
+  return { success: true };
 });
 
 ipcMain.handle('open-update-release', async (_, url) => {

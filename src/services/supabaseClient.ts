@@ -20,6 +20,66 @@ export { hashCredential, verifyCredential, isBcryptHash };
 export const SUPABASE_CONFIG_STORAGE_KEY = 'PAYROLL_PRO_SUPABASE_CONFIG_V1';
 export const ACTIVE_TEAM_MEMBER_STORAGE_KEY = 'PAYROLL_PRO_ACTIVE_MEMBER_V1';
 export const STANDALONE_OFFLINE_MODE_KEY = 'PAYROLL_PRO_STANDALONE_OFFLINE_MODE_V1';
+export const APP_RUNTIME_MODE_KEY = 'PAYROLL_PRO_RUNTIME_MODE_V1';
+export const ENABLE_ADVANCED_MODES_KEY = 'PAYROLL_PRO_ENABLE_ADVANCED_MODES_V1';
+
+export type AppRuntimeMode = 'cloud_only' | 'local_only' | 'hybrid';
+
+export function areAdvancedModesEnabled(): boolean {
+  try {
+    const flag = localStorage.getItem(ENABLE_ADVANCED_MODES_KEY);
+    if (flag === 'true') return true;
+    if (typeof window !== 'undefined') {
+      return Boolean((window as any).__PAYROLL_PRO_ENABLE_ADVANCED_MODES__);
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function getAvailableRuntimeModes(): AppRuntimeMode[] {
+  return areAdvancedModesEnabled() ? ['cloud_only', 'local_only', 'hybrid'] : ['cloud_only'];
+}
+
+export function getRuntimeMode(): AppRuntimeMode {
+  const availableModes = getAvailableRuntimeModes();
+  try {
+    const stored = localStorage.getItem(APP_RUNTIME_MODE_KEY) as AppRuntimeMode | null;
+    if (stored && availableModes.includes(stored)) {
+      return stored;
+    }
+  } catch {
+    // noop
+  }
+
+  const fallback = availableModes[0] || 'cloud_only';
+  try {
+    localStorage.setItem(APP_RUNTIME_MODE_KEY, fallback);
+  } catch {
+    // noop
+  }
+  return fallback;
+}
+
+export function setRuntimeMode(mode: AppRuntimeMode): AppRuntimeMode {
+  const availableModes = getAvailableRuntimeModes();
+  const normalized = availableModes.includes(mode) ? mode : (availableModes[0] || 'cloud_only');
+  try {
+    localStorage.setItem(APP_RUNTIME_MODE_KEY, normalized);
+  } catch {
+    // noop
+  }
+  return normalized;
+}
+
+export function isCloudOnlyRelease(): boolean {
+  return getRuntimeMode() === 'cloud_only';
+}
+
+export function isOfflineModeAllowed(): boolean {
+  return areAdvancedModesEnabled() && getRuntimeMode() !== 'cloud_only';
+}
 
 export const LOCAL_STANDALONE_ADMIN: TeamMember = {
   id: 'local_offline_operator',

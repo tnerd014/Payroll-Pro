@@ -3,6 +3,7 @@ export interface GitHubReleaseCheckResult {
   currentVersion: string;
   latestVersion?: string;
   releaseUrl?: string;
+  assetUrl?: string;
   upToDate?: boolean;
   updateAvailable?: boolean;
   error?: string;
@@ -55,6 +56,10 @@ export async function checkForGithubReleaseUpdate(currentVersion: string): Promi
     const payload = await response.json();
     const latestVersion = normalizeReleaseVersion(payload?.tag_name || payload?.name || '');
     const releaseUrl = payload?.html_url || `https://github.com/${GITHUB_REPO}/releases`;
+    const asset = (payload?.assets || []).find((candidate: any) => {
+      const fileName = String(candidate?.name || '').toLowerCase();
+      return fileName.endsWith('.exe') && !fileName.includes('blockmap') && !fileName.includes('portable');
+    }) || (payload?.assets || []).find((candidate: any) => String(candidate?.name || '').toLowerCase().endsWith('.exe'));
 
     if (!latestVersion) {
       return {
@@ -67,16 +72,18 @@ export async function checkForGithubReleaseUpdate(currentVersion: string): Promi
     const tagName = payload?.tag_name || latestVersion;
     const releaseDownloadBase = `https://github.com/${GITHUB_REPO}/releases/download/${tagName}`;
     const result = compareReleaseVersions(currentVersion, latestVersion);
+    const assetUrl = asset?.browser_download_url || `${releaseDownloadBase}/Payroll-Pro-Setup-${latestVersion}.exe`;
 
     return {
       success: true,
       currentVersion,
       latestVersion,
       releaseUrl,
+      assetUrl,
       upToDate: result >= 0,
       updateAvailable: result < 0,
       assetUrls: {
-        windowsInstaller: `${releaseDownloadBase}/Payroll-Pro-Setup-${latestVersion}-x64.exe`,
+        windowsInstaller: assetUrl,
         windowsPortable: `${releaseDownloadBase}/Payroll-Pro-Portable-${latestVersion}.exe`,
         androidApk: `${releaseDownloadBase}/app-release.apk`,
         androidBundle: `${releaseDownloadBase}/app-release.aab`,

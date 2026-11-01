@@ -33,6 +33,9 @@ import {
   LogOut,
   Smartphone,
   RefreshCw,
+  BookOpen,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 import { CompanyAccount, DEFAULT_SECURITY_QUESTIONS, TeamMember } from '../../types';
 import { formatDate } from '../../engine/dateUtils';
@@ -42,6 +45,8 @@ import { TeamMembersPage } from '../team/TeamMembersPage';
 import { UserProfilePage } from '../profile/UserProfilePage';
 import { getSavedCloudConfig, SupabaseCloudConfig } from '../../services/supabaseClient';
 import { LegalModal } from '../legal/LegalModal';
+import { openInstructionManualPdf } from '../legal/openManual';
+import { checkForGithubReleaseUpdate, openExternalReleaseLink } from '../../utils/releaseUpdate';
 
 interface WindowsAccountPickerProps {
   companies: CompanyAccount[];
@@ -111,6 +116,8 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms'>('privacy');
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
+  const [appVersion, setAppVersion] = useState('v1.0.4');
   const [cloudConfig, setCloudConfig] = useState<SupabaseCloudConfig>(() => getSavedCloudConfig());
   // Local mode = no cloud server configured/connected; hide cloud-specific UI
   const isLocalMode = !cloudConfig.isEnabled;
@@ -137,6 +144,50 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isUserMenuOpen]);
+
+  useEffect(() => {
+    if ((window as any).electronAPI?.getVersion) {
+      (window as any).electronAPI.getVersion().then((version: string) => {
+        if (version) setAppVersion(`v${version}`);
+      }).catch(() => undefined);
+    }
+  }, []);
+
+  const handleCheckForUpdates = async () => {
+    setHelpMenuOpen(false);
+    const electronAPI = (window as any).electronAPI;
+
+    try {
+      const result = electronAPI?.checkForUpdates
+        ? await electronAPI.checkForUpdates()
+        : await checkForGithubReleaseUpdate(appVersion.replace(/^v/i, ''));
+
+      if (!result?.success) {
+        alert(result?.error || 'Unable to check for updates right now.');
+        return;
+      }
+
+      if (result.upToDate) {
+        alert(`You are already on the latest version (${result.currentVersion}).`);
+        return;
+      }
+
+      const shouldOpen = window.confirm(
+        `A new version (${result.latestVersion}) is available. Open the release page to download it now?`
+      );
+
+      if (shouldOpen && result.releaseUrl) {
+        if (electronAPI?.openUpdateRelease) {
+          await electronAPI.openUpdateRelease(result.releaseUrl);
+        } else {
+          openExternalReleaseLink(result.releaseUrl);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
+      alert('Unable to check for updates right now. Please try again later.');
+    }
+  };
 
   const handleCompaniesSynced = (updated: CompanyAccount[]) => {
     setCloudConfig(getSavedCloudConfig());
@@ -792,6 +843,87 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 )}
               </div>
             )}
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setHelpMenuOpen((open) => !open)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                title="Help"
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                <span>Help</span>
+              </button>
+
+              {helpMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-60 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
+                  <button
+                    type="button"
+                    onClick={handleCheckForUpdates}
+                    className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+                      <span>Check for Updates</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openInstructionManualPdf();
+                      setHelpMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Instruction Manual (PDF)</span>
+                    </div>
+                    <ExternalLink className="w-3 h-3 text-zinc-400" />
+                  </button>
+
+                  <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLegalModalTab('terms');
+                      setIsLegalModalOpen(true);
+                      setHelpMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>Terms of Service</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLegalModalTab('privacy');
+                      setIsLegalModalOpen(true);
+                      setHelpMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>Privacy Policy</span>
+                    </div>
+                  </button>
+
+                  <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+
+                  <div className="px-3 py-1.5 text-[10px] text-zinc-400 dark:text-zinc-500 flex items-center justify-between select-none">
+                    <span>Payroll Pro</span>
+                    <span className="font-mono">{appVersion}</span>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={onToggleTheme}
