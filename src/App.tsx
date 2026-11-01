@@ -60,29 +60,69 @@ export const App: React.FC = () => {
   const lastActivityRef = useRef(Date.now());
 
   useEffect(() => {
-    const updateActivity = () => { lastActivityRef.current = Date.now(); };
-    window.addEventListener('mousemove', updateActivity);
-    window.addEventListener('mousedown', updateActivity);
-    window.addEventListener('keydown', updateActivity);
-    window.addEventListener('touchstart', updateActivity);
-    window.addEventListener('scroll', updateActivity);
-
-    const interval = setInterval(() => {
+    const checkAndLockIfExpired = () => {
       const lockMins = getInactivityLockMinutes();
       if (lockMins > 0 && authenticatedMemberRef.current) {
         const elapsed = (Date.now() - lastActivityRef.current) / 1000 / 60;
-        if (elapsed >= lockMins && !isScreenLocked) {
+        if (elapsed >= lockMins) {
           setIsScreenLocked(true);
+          return true;
         }
       }
-    }, 15000);
+      return false;
+    };
+
+    const updateActivity = () => {
+      if (isScreenLocked) return;
+      // Before resetting the timer, check if the user was already inactive while away
+      if (checkAndLockIfExpired()) {
+        return;
+      }
+      lastActivityRef.current = Date.now();
+    };
+
+    // User interaction events in capture phase so touch/clicks upon wake-up evaluate first
+    window.addEventListener('mousemove', updateActivity, { capture: true, passive: true });
+    window.addEventListener('mousedown', updateActivity, { capture: true, passive: true });
+    window.addEventListener('keydown', updateActivity, { capture: true, passive: true });
+    window.addEventListener('touchstart', updateActivity, { capture: true, passive: true });
+    window.addEventListener('pointerdown', updateActivity, { capture: true, passive: true });
+    window.addEventListener('scroll', updateActivity, { capture: true, passive: true });
+
+    // Instantly check when app/tab regains focus or phone screen wakes up
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndLockIfExpired();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+
+    // Explicit manual lock trigger event
+    const handleExplicitLock = () => {
+      if (authenticatedMemberRef.current) {
+        setIsScreenLocked(true);
+      }
+    };
+    window.addEventListener('payroll-pro-lock-screen', handleExplicitLock);
+
+    // Fast check interval every 2 seconds
+    const interval = setInterval(() => {
+      if (!isScreenLocked) {
+        checkAndLockIfExpired();
+      }
+    }, 2000);
 
     return () => {
-      window.removeEventListener('mousemove', updateActivity);
-      window.removeEventListener('mousedown', updateActivity);
-      window.removeEventListener('keydown', updateActivity);
-      window.removeEventListener('touchstart', updateActivity);
-      window.removeEventListener('scroll', updateActivity);
+      window.removeEventListener('mousemove', updateActivity, { capture: true });
+      window.removeEventListener('mousedown', updateActivity, { capture: true });
+      window.removeEventListener('keydown', updateActivity, { capture: true });
+      window.removeEventListener('touchstart', updateActivity, { capture: true });
+      window.removeEventListener('pointerdown', updateActivity, { capture: true });
+      window.removeEventListener('scroll', updateActivity, { capture: true });
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      window.removeEventListener('payroll-pro-lock-screen', handleExplicitLock);
       clearInterval(interval);
     };
   }, [isScreenLocked]);
@@ -651,6 +691,8 @@ export const App: React.FC = () => {
           onUpdateEmployee={updateEmployee}
           onDeleteEmployee={deleteEmployee}
           onAddLoan={addLoan}
+          onUpdateLoan={updateLoan}
+          onDeleteLoan={deleteLoan}
           onPauseResumeLoan={pauseResumeLoan}
           onRecordManualPayment={recordManualLoanRepayment}
           onUpdateCompany={updateCompanyProfile}
@@ -666,6 +708,7 @@ export const App: React.FC = () => {
           onRecordEmailedPayslips={recordEmailedPayslips}
           onUpdateEmployeeEmail={(id, email) => updateEmployee(id, { email })}
           isAdmin={isAdmin}
+          isCloudOffline={isCloudOffline}
           isPhoneFramePreview={isSimulatorMode && !isMobileViewport}
           onTogglePhoneFrame={toggleSimulatorMode}
         />
@@ -830,6 +873,7 @@ export const App: React.FC = () => {
                 addEmployeeTrigger={addEmployeeTrigger}
                 loans={state.loans || []}
                 currentUser={effectiveMember}
+                isReadOnly={isCloudOffline}
               />
             ) : state.activeView === 'payroll' ? (
               <PayrollProcessingView
@@ -882,6 +926,7 @@ export const App: React.FC = () => {
                 onApplyLoanDeduction={applyPeriodLoanDeduction}
                 onApplyAllLoanDeductions={applyAllPeriodLoanDeductions}
                 currentUser={effectiveMember}
+                isReadOnly={isCloudOffline}
               />
             ) : (
               <div className="max-w-6xl mx-auto space-y-4">
@@ -919,6 +964,7 @@ export const App: React.FC = () => {
                     onSavePreset={savePayslipPreset}
                     onDeletePreset={deletePayslipPreset}
                     loans={state.loans || []}
+                    isReadOnly={isCloudOffline}
                   />
                 )}
 

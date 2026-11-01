@@ -1,3 +1,4 @@
+import { verifyBiometric } from '../utils/security';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { 
   CompanyProfile, 
@@ -2102,6 +2103,188 @@ export async function loginStaffMember(
 /**
  * Retrieves the security question for a given user identifier (email or username)
  */
+/**
+ * Authenticates a staff member using enrolled device biometrics (Fingerprint / Windows Hello / Touch ID)
+ */
+export async function loginStaffMemberWithBiometric(
+  identifier: string
+): Promise<{
+  success: boolean;
+  member?: TeamMember;
+  mustChangePassword?: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  const cleanId = identifier.trim().toLowerCase();
+
+  try {
+    let row: any = null;
+
+    // 1. Fetch user record from Supabase if connected
+    if (client) {
+      const { data, error } = await client
+        .from('team_members')
+        .select('*')
+        .or("email.ilike." + cleanId + ",username.ilike." + cleanId)
+        .eq('is_active', true);
+
+      if (!error && data && data.length > 0) {
+        row = data[0];
+      }
+    }
+
+    // 2. Fallback to cached active member session if offline
+    if (!row) {
+      try {
+        const activeRaw = localStorage.getItem(ACTIVE_TEAM_MEMBER_STORAGE_KEY);
+        if (activeRaw) {
+          const cached = JSON.parse(activeRaw);
+          if (
+            cached.username?.toLowerCase() === cleanId ||
+            cached.email?.toLowerCase() === cleanId
+          ) {
+            row = {
+              id: cached.id,
+              name: cached.name,
+              email: cached.email,
+              username: cached.username,
+              role: cached.role,
+              security_question: cached.securityQuestion,
+              recovery_email: cached.recoveryEmail,
+              phone: cached.phone,
+              avatar_color: cached.avatarColor,
+              two_factor_enabled: cached.twoFactorEnabled,
+              two_factor_secret: cached.twoFactorSecret,
+              two_factor_backup_codes: cached.twoFactorBackupCodes,
+              biometric_enabled: cached.biometricEnabled,
+              biometric_device_name: cached.biometricDeviceName,
+              created_at: cached.createdAt,
+              updated_at: cached.updatedAt,
+            };
+          }
+        }
+      } catch {}
+    }
+
+    if (!row) {
+      return {
+        success: false,
+        error: 'User account not found. Please check your email or username.',
+      };
+    }
+
+    // 3. Verify that biometric enrollment exists on this device
+    const enrolledBio = localStorage.getItem('payroll_pro_bio_' + row.id);
+    if (!enrolledBio && !row.biometric_enabled) {
+      return {
+        success: false,
+        error:
+          'Biometrics is not registered for this account on this device. Sign in with your password first, then enable Biometric Passkey in Settings.',
+      };
+    }
+
+    // 4. Trigger the hardware biometric verification
+    const bioResult = await verifyBiometric(row.id, true);
+    if (!bioResult.success) {
+      return {
+        success: false,
+        error: bioResult.error || 'Biometric scan was not recognized or cancelled.',
+      };
+    }
+
+    const mustChange = Boolean(row.must_change_password);
+
+    const member: TeamMember = {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      username: row.username,
+      role: row.role,
+      securityQuestion: row.security_question,
+      recoveryEmail: row.recovery_email,
+      mustChangePassword: mustChange,
+      isActive: true,
+      phone: row.phone || '',
+      avatarColor: row.avatar_color || '',
+      twoFactorEnabled: Boolean(row.two_factor_enabled),
+      twoFactorSecret: row.two_factor_secret || '',
+      twoFactorBackupCodes: Array.isArray(row.two_factor_backup_codes) ? row.two_factor_backup_codes : [],
+      biometricEnabled: true,
+      biometricDeviceName: row.biometric_device_name || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+
+    setActiveTeamMember(member);
+    await logAuditEvent('', 'Global System', 'Biometric Sign-In', member.name + ' signed in using biometric passkey');
+
+    return { success: true, member, mustChangePassword: mustChange };
+  } catch (err: any) {
+    console.error('Biometric login error:', err);
+    return { success: false, error: err?.message || 'Biometric authentication error' };
+  }
+}
+
+/**
+ * Checks if a staff member has biometric login enabled AND enrolled on this device
+ */
+export async function checkStaffBiometricEnrolled(identifier: string): Promise<boolean> {
+  if (!identifier || !identifier.trim()) return false;
+  const cleanId = identifier.trim().toLowerCase();
+
+  // 1. Check local enrollment mapping
+  const localMappedId = localStorage.getItem('payroll_pro_bio_enrolled_' + cleanId);
+  if (localMappedId && localStorage.getItem('payroll_pro_bio_' + localMappedId)) {
+    return true;
+  }
+
+  // 2. Check cached active member if available
+  try {
+    const activeRaw = localStorage.getItem(ACTIVE_TEAM_MEMBER_STORAGE_KEY);
+    if (activeRaw) {
+      const cached = JSON.parse(activeRaw);
+      if (
+        (cached.username?.toLowerCase() === cleanId || cached.email?.toLowerCase() === cleanId) &&
+        cached.biometricEnabled &&
+        localStorage.getItem('payroll_pro_bio_' + cached.id)
+      ) {
+        try {
+          localStorage.setItem('payroll_pro_bio_enrolled_' + cleanId, cached.id);
+        } catch {}
+        return true;
+      }
+    }
+  } catch {}
+
+  // 3. Query Supabase
+  const client = getSupabaseClient();
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from('team_members')
+        .select('id, biometric_enabled')
+        .or('email.ilike.' + cleanId + ',username.ilike.' + cleanId)
+        .eq('is_active', true)
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        const row = data[0];
+        const hasLocalCred = Boolean(localStorage.getItem('payroll_pro_bio_' + row.id));
+        if (Boolean(row.biometric_enabled) && hasLocalCred) {
+          try {
+            localStorage.setItem('payroll_pro_bio_enrolled_' + cleanId, row.id);
+          } catch {}
+          return true;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to check biometric enrollment status:', err);
+    }
+  }
+
+  return false;
+}
+
 export async function getStaffSecurityQuestion(identifier: string): Promise<{
   success: boolean;
   securityQuestion?: string;

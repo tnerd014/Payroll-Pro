@@ -126,6 +126,8 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
     exportNibssBankTransferCsv(items, [], company, monthLabel, year);
   };
 
+  const hasMultipleActions = Boolean(isLocked);
+
   return (
     <div className="space-y-3.5 pb-2 select-none">
       
@@ -272,17 +274,17 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
       </div>
 
       {/* ── Speed Dial Backdrop ── */}
-      {isSpeedDialOpen && (
+      {isSpeedDialOpen && hasMultipleActions && (
         <div
           className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
           onClick={() => setIsSpeedDialOpen(false)}
         />
       )}
 
-      {/* ── Expandable Speed Dial Floating Action Button ── */}
+      {/* ── Floating Action Button ── */}
       <div className="fixed bottom-[80px] right-4 z-50 flex flex-col items-end gap-2.5 pointer-events-auto">
         {/* Expanded Speed Dial Action Menu */}
-        {isSpeedDialOpen && (
+        {isSpeedDialOpen && hasMultipleActions && (
           <div className="flex flex-col items-end gap-2 mb-1 animate-in slide-in-from-bottom-2 fade-in duration-200">
             {/* Action 1: Bank Schedule (when locked) */}
             {isLocked && (
@@ -322,19 +324,33 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
           </div>
         )}
 
-        {/* Primary Toggle Floating Action Button */}
+        {/* Primary Floating Action Button */}
         <button
           type="button"
-          onClick={() => setIsSpeedDialOpen(!isSpeedDialOpen)}
+          onClick={() => {
+            if (!hasMultipleActions) {
+              onNavigate?.('payslips');
+            } else {
+              setIsSpeedDialOpen(!isSpeedDialOpen);
+            }
+          }}
           className={`relative w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-90 outline-none focus:outline-none focus:ring-0 select-none ${
-            isSpeedDialOpen
+            isSpeedDialOpen && hasMultipleActions
               ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rotate-90 shadow-2xl'
               : 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 border border-zinc-700/50 dark:border-zinc-200/50'
           }`}
-          title={isSpeedDialOpen ? 'Close Actions' : 'Payroll Actions'}
-          aria-label={isSpeedDialOpen ? 'Close Actions' : 'Payroll Actions'}
+          title={
+            hasMultipleActions
+              ? isSpeedDialOpen ? 'Close Actions' : 'Payroll Actions'
+              : 'View Payslips'
+          }
+          aria-label={
+            hasMultipleActions
+              ? isSpeedDialOpen ? 'Close Actions' : 'Payroll Actions'
+              : 'View Payslips'
+          }
         >
-          {isSpeedDialOpen ? (
+          {isSpeedDialOpen && hasMultipleActions ? (
             <X className="w-5 h-5 transition-transform" />
           ) : (
             <div className="relative flex items-center justify-center">

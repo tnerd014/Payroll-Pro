@@ -26,8 +26,6 @@ import {
   AlertOctagon,
   Info,
   Plus,
-  Lock,
-  KeyRound,
   Eye,
   EyeOff,
   Edit2,
@@ -50,7 +48,6 @@ import {
   TaxBracket,
   ExtraReliefCondition,
   SalaryCalculationMode,
-  DEFAULT_SECURITY_QUESTIONS,
   EmailSettings,
   DEFAULT_EMAIL_SETTINGS
 } from '../../../types';
@@ -94,6 +91,7 @@ interface MobileSettingsViewProps {
   onNavigate: (view: AppView) => void;
   emailSettings?: EmailSettings;
   onUpdateEmailSettings?: (settings: Partial<EmailSettings>) => void;
+  isReadOnly?: boolean;
 }
 
 export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
@@ -122,9 +120,11 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   onNavigate,
   emailSettings,
   onUpdateEmailSettings,
+  isReadOnly = false,
 }) => {
   const isAdmin = !currentUser || currentUser.role === 'Admin';
   const isAuditor = currentUser?.role === 'Auditor';
+  const isWriteDisabled = isAuditor || isReadOnly;
   const [activeTab, setActiveTab] = useState<MobileSettingsTab>(initialTab || 'profile');
 
   // Sync external initialTab if requested
@@ -150,17 +150,6 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   const [newDeptInput, setNewDeptInput] = useState('');
   const [editingDeptName, setEditingDeptName] = useState<string | null>(null);
   const [editingDeptVal, setEditingDeptVal] = useState('');
-
-  // Password protection state
-  const [showPassword, setShowPassword] = useState(false);
-  const [isCustomSecurityQuestion, setIsCustomSecurityQuestion] = useState(() => {
-    return Boolean(company.securityQuestion && !DEFAULT_SECURITY_QUESTIONS.slice(0, 4).includes(company.securityQuestion));
-  });
-  const [customSecurityQuestionText, setCustomSecurityQuestionText] = useState(() => {
-    return (company.securityQuestion && !DEFAULT_SECURITY_QUESTIONS.slice(0, 4).includes(company.securityQuestion))
-      ? company.securityQuestion
-      : '';
-  });
 
   // --- EXCEL SYNC STATE ---
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -346,12 +335,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       (companyForm.address || '').trim() !== (company.address || '').trim() ||
       (companyForm.phone || '').trim() !== (company.phone || '').trim() ||
       (companyForm.email || '').trim() !== (company.email || '').trim() ||
-      (companyForm.logoUrl || '') !== (company.logoUrl || '') ||
-      Boolean(companyForm.hasPassword) !== Boolean(company.hasPassword) ||
-      (companyForm.password || '') !== (company.password || '') ||
-      (companyForm.passwordHint || '') !== (company.passwordHint || '') ||
-      (companyForm.securityQuestion || '') !== (company.securityQuestion || '') ||
-      (companyForm.securityAnswer || '').trim() !== (company.securityAnswer || '').trim()
+      (companyForm.logoUrl || '') !== (company.logoUrl || '')
     );
   }, [companyForm, company]);
 
@@ -381,9 +365,6 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   useEffect(() => {
     if (!isProfileDirty) {
       setCompanyForm(company);
-      const isCustom = Boolean(company.securityQuestion && !DEFAULT_SECURITY_QUESTIONS.slice(0, 4).includes(company.securityQuestion));
-      setIsCustomSecurityQuestion(isCustom);
-      setCustomSecurityQuestionText(isCustom ? (company.securityQuestion || '') : '');
     }
   }, [company, isProfileDirty]);
 
@@ -447,36 +428,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
   // Save all modifications
   const handleSaveAll = () => {
-    if (isAuditor) return;
+    if (isWriteDisabled) return;
     if (!isAllowanceValid) {
       alert(`Allowance allocation sum must equal exactly 100%. Current sum: ${allowanceSum}%`);
       setActiveTab('payroll');
       return;
     }
 
-    if (companyForm.hasPassword) {
-      if (!companyForm.password?.trim()) {
-        alert('Please enter a company password or PIN, or disable password protection.');
-        setActiveTab('profile');
-        return;
-      }
-      if (!companyForm.securityAnswer?.trim()) {
-        alert('Please provide a security answer for password recovery.');
-        setActiveTab('profile');
-        return;
-      }
-    }
-
     if (isProfileDirty) {
-      const payload: Partial<CompanyProfile> = {
-        ...companyForm,
-        hasPassword: Boolean(companyForm.hasPassword && companyForm.password),
-        password: companyForm.hasPassword ? companyForm.password : '',
-        passwordHint: companyForm.hasPassword ? (companyForm.passwordHint || '') : '',
-        securityQuestion: companyForm.hasPassword ? (companyForm.securityQuestion || DEFAULT_SECURITY_QUESTIONS[0]) : '',
-        securityAnswer: companyForm.hasPassword ? (companyForm.securityAnswer?.trim() || '') : '',
-      };
-      onUpdateCompany(payload);
+      onUpdateCompany(companyForm);
     }
     if (isPayrollDirty) {
       onUpdatePayrollVariables(pvForm);
@@ -503,7 +463,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   // Department Management handlers
   const handleAddDept = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor) return;
+    if (isWriteDisabled) return;
     const trimmed = newDeptInput.trim();
     if (!trimmed) return;
     if (departments.some(d => d.toLowerCase() === trimmed.toLowerCase())) {
@@ -641,7 +601,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
   const handleAddEmploymentRule = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAuditor) return;
+    if (isWriteDisabled) return;
     const trimmed = newTypeName.trim();
     if (!trimmed) return;
     if (activeRules.some(r => r.name.toLowerCase() === trimmed.toLowerCase())) {
@@ -664,7 +624,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   };
 
   const handleDeleteEmploymentRule = (ruleId: string) => {
-    if (isAuditor) return;
+    if (isWriteDisabled) return;
     const target = activeRules.find(r => r.id === ruleId);
     if (!target) return;
     if (confirm(`Remove the employment type "${target.name}"? Existing employees assigned to this type will retain their current settings.`)) {
@@ -675,7 +635,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
   // Reset all tax and payroll variables to statutory defaults
   const handleResetTaxDefaults = () => {
-    if (isAuditor) return;
+    if (isWriteDisabled) return;
     if (confirm('Reset all allowance variables and PAYE tax brackets to Nigerian statutory defaults?')) {
       setPvForm(DEFAULT_PAYROLL_VARIABLES);
       setTvForm(DEFAULT_PAYE_VARIABLES);
@@ -706,6 +666,13 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   return (
     <div className="space-y-3.5 pb-2 select-none">
       
+      {/* ── Offline read-only banner ── */}
+      {isReadOnly && (
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 text-xs font-medium">
+          <span className="shrink-0">⚠️</span>
+          <span>Offline Mode — Settings are view-only. Reconnect to make changes.</span>
+        </div>
+      )}
       {/* ── 1. Minimalist Compact Header ── */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -720,7 +687,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               </div>
             )}
             
-            {!isAuditor && (
+            {!isWriteDisabled && (
               <button
                 type="button"
                 onClick={() => logoInputRef.current?.click()}
@@ -749,7 +716,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
         </div>
 
-        {!isAuditor && companyForm.logoUrl && (
+        {!isWriteDisabled && companyForm.logoUrl && (
           <button
             type="button"
             onClick={handleRemoveLogo}
@@ -1066,141 +1033,6 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 })
               )}
             </div>
-          </div>
-
-          {/* Card 4: Security & Access Protection */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs p-3.5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                    Password Protection
-                  </h4>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">
-                    Require PIN/Password on app launch or company switch
-                  </p>
-                </div>
-              </div>
-
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  checked={Boolean(companyForm.hasPassword)}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setCompanyForm(prev => ({
-                      ...prev,
-                      hasPassword: checked,
-                      password: checked ? prev.password || '' : '',
-                      passwordHint: checked ? prev.passwordHint || '' : '',
-                      securityQuestion: checked ? prev.securityQuestion || DEFAULT_SECURITY_QUESTIONS[0] : '',
-                      securityAnswer: checked ? prev.securityAnswer || '' : '',
-                    }));
-                  }}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-
-            {companyForm.hasPassword && (
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 space-y-3 animate-in fade-in duration-150">
-                {/* Password / PIN input */}
-                <div>
-                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                    Company Password / PIN
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={companyForm.password || ''}
-                      onChange={(e) => setCompanyForm(prev => ({ ...prev, password: e.target.value }))}
-                      placeholder="Enter 4-8 digit PIN or password"
-                      className="w-full h-9 px-3 pr-10 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Password Hint */}
-                <div>
-                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                    Password Hint (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={companyForm.passwordHint || ''}
-                    onChange={(e) => setCompanyForm(prev => ({ ...prev, passwordHint: e.target.value }))}
-                    placeholder="e.g. CAC registration year"
-                    className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Security Question */}
-                <div>
-                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                    Security Recovery Question
-                  </label>
-                  <select
-                    value={isCustomSecurityQuestion ? DEFAULT_SECURITY_QUESTIONS[4] : (companyForm.securityQuestion || DEFAULT_SECURITY_QUESTIONS[0])}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === DEFAULT_SECURITY_QUESTIONS[4]) {
-                        setIsCustomSecurityQuestion(true);
-                        setCompanyForm(prev => ({ ...prev, securityQuestion: customSecurityQuestionText }));
-                      } else {
-                        setIsCustomSecurityQuestion(false);
-                        setCompanyForm(prev => ({ ...prev, securityQuestion: val }));
-                      }
-                    }}
-                    className="w-full h-9 px-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    {DEFAULT_SECURITY_QUESTIONS.map((q, idx) => (
-                      <option key={idx} value={q}>{q}</option>
-                    ))}
-                  </select>
-
-                  {isCustomSecurityQuestion && (
-                    <input
-                      type="text"
-                      value={customSecurityQuestionText}
-                      onChange={(e) => {
-                        setCustomSecurityQuestionText(e.target.value);
-                        setCompanyForm(prev => ({ ...prev, securityQuestion: e.target.value }));
-                      }}
-                      placeholder="Enter your custom recovery question..."
-                      className="w-full h-9 px-3 mt-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  )}
-                </div>
-
-                {/* Security Answer */}
-                <div>
-                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                    Security Answer (Recovery)
-                  </label>
-                  <input
-                    type="text"
-                    value={companyForm.securityAnswer || ''}
-                    onChange={(e) => setCompanyForm(prev => ({ ...prev, securityAnswer: e.target.value }))}
-                    placeholder="Enter answer (case-insensitive for reset)"
-                    className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <p className="text-[10px] text-zinc-400 mt-1">
-                    Used to reset PIN if forgotten without losing company data.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
         </div>
@@ -1899,7 +1731,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 className="hidden"
                 id="mobile-excel-import-file"
               />
-              {!isAuditor && (
+              {!isWriteDisabled && (
                 <label
                   htmlFor="mobile-excel-import-file"
                   className="h-10 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 text-center"
@@ -2147,12 +1979,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           {/* Unconfigured Alert Banner */}
           {!((emailForm.provider === 'smtp' && Boolean(emailForm.smtp.host && emailForm.smtp.user && emailForm.smtp.pass)) ||
             (emailForm.provider === 'resend' && Boolean(emailForm.resend.apiKey))) && (
-            <div className="p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-200 shadow-2xs">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div className="leading-relaxed">
-                <strong className="font-semibold text-amber-900 dark:text-amber-100">Mail Delivery Unconfigured:</strong>{' '}
-                <span>Configure your company SMTP server (Gmail, Outlook, or corporate mail) or Resend API key to start dispatching.</span>
-              </div>
+            <div className="p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <strong className="font-semibold text-amber-900 dark:text-amber-100">Mail Delivery Unconfigured</strong>
             </div>
           )}
 
@@ -2587,9 +2416,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           <div className="pt-1 pb-4">
             <button
               type="button"
-              disabled={isAuditor || !isEmailDirty}
+              disabled={isWriteDisabled || !isEmailDirty}
               onClick={() => {
-                if (isAuditor) return;
+                if (isWriteDisabled) return;
                 if (onUpdateEmailSettings) {
                   onUpdateEmailSettings(emailForm);
                   setSavedToast(true);
@@ -2842,7 +2671,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       )}
 
       {/* ── 4. Floating Thumb-Zone Save Bar (Floats Safely Above Bottom Nav) ── */}
-      {isAnyDirty && !isAuditor && (
+      {isAnyDirty && !isWriteDisabled && (
         <div className="fixed bottom-[80px] left-4 right-4 z-50 max-w-md mx-auto p-2.5 px-3 rounded-2xl bg-zinc-900/95 dark:bg-zinc-100/95 text-white dark:text-zinc-900 shadow-2xl backdrop-blur-md border border-zinc-700/60 dark:border-zinc-300/60 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 animate-pulse" />

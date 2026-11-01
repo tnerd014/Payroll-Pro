@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { 
   AppView, 
@@ -23,6 +23,7 @@ import { MobileTopAppBar } from './MobileTopAppBar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileMoreSheet } from './MobileMoreSheet';
 import { AndroidDeviceFrame } from './AndroidDeviceFrame';
+import { initializeMobileBackHandler, registerBackHandler } from '../../utils/mobileBackHandler';
 import { MobileDashboardView } from './views/MobileDashboardView';
 import { MobilePayrollRunView } from './views/MobilePayrollRunView';
 import { MobileStaffDirectoryView } from './views/MobileStaffDirectoryView';
@@ -82,6 +83,8 @@ interface MobileAppShellProps {
   onUpdateEmployee: (id: string, updates: Partial<Employee>) => void;
   onDeleteEmployee: (id: string) => void;
   onAddLoan: (loan: any) => void;
+  onUpdateLoan?: (id: string, updates: Partial<EmployeeLoan>) => void;
+  onDeleteLoan?: (id: string) => void;
   onPauseResumeLoan: (id: string) => void;
   onRecordManualPayment: (id: string, amt: number, notes?: string) => void;
   onUpdateCompany: (profile: Partial<CompanyProfile>) => void;
@@ -99,6 +102,7 @@ interface MobileAppShellProps {
   onRecordEmailedPayslips?: (records: EmailedPayslipRecord[]) => void;
   onUpdateEmployeeEmail?: (id: string, email: string) => void;
   isAdmin?: boolean;
+  isCloudOffline?: boolean;
 
   // Simulator Toggle
   isPhoneFramePreview: boolean;
@@ -146,6 +150,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onUpdateEmployee,
   onDeleteEmployee,
   onAddLoan,
+  onUpdateLoan,
+  onDeleteLoan,
   onPauseResumeLoan,
   onRecordManualPayment,
   onUpdateCompany,
@@ -161,6 +167,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   onRecordEmailedPayslips,
   onUpdateEmployeeEmail,
   isAdmin = true,
+  isCloudOffline = false,
   isPhoneFramePreview,
   onTogglePhoneFrame,
 }) => {
@@ -173,8 +180,80 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     return settingsInitialTab === 'email' ? 'email' : undefined;
   });
 
+  // Mobile navigation history stack for Android hardware back button
+  const [viewHistory, setViewHistory] = useState<AppView[]>([activeView || 'dashboard']);
+  const [showExitToast, setShowExitToast] = useState(false);
+  const isPoppingRef = useRef(false);
+
+  // Sync forward view transitions into history
+  useEffect(() => {
+    if (isPoppingRef.current) {
+      isPoppingRef.current = false;
+      return;
+    }
+    setViewHistory(prev => {
+      if (prev[prev.length - 1] === activeView) return prev;
+      return [...prev, activeView];
+    });
+  }, [activeView]);
+
+  // Handle popping back through the view history stack
+  const popViewHistory = useCallback((): boolean => {
+    let didPop = false;
+    let targetView: AppView = 'dashboard';
+
+    setViewHistory(prev => {
+      if (prev.length > 1) {
+        const next = [...prev];
+        next.pop(); // remove current view
+        const prevTarget = next[next.length - 1];
+        if (prevTarget && prevTarget !== activeView) {
+          targetView = prevTarget;
+          didPop = true;
+          return next;
+        }
+      }
+      // Fallback: if on a sub-view (not dashboard), go back to dashboard
+      if (activeView !== 'dashboard') {
+        targetView = 'dashboard';
+        didPop = true;
+        return ['dashboard'];
+      }
+      return prev;
+    });
+
+    if (didPop) {
+      isPoppingRef.current = true;
+      onNavigate(targetView);
+      return true;
+    }
+
+    return false; // at root dashboard
+  }, [activeView, onNavigate]);
+
+  // Intercept email payslips modal on Android hardware back button
+  useEffect(() => {
+    if (!isEmailPayslipsOpen) return;
+    return registerBackHandler(() => {
+      setIsEmailPayslipsOpen(false);
+      return true;
+    });
+  }, [isEmailPayslipsOpen]);
+
+  // Initialize Android hardware back button and browser popstate listener
+  useEffect(() => {
+    const cleanup = initializeMobileBackHandler(
+      popViewHistory,
+      () => {
+        setShowExitToast(true);
+        setTimeout(() => setShowExitToast(false), 2000);
+      }
+    );
+    return cleanup;
+  }, [popViewHistory]);
+
   // Keep mobileSettingsTab in sync when settingsInitialTab changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (settingsInitialTab === 'email') {
       setMobileSettingsTab('email');
     }
@@ -296,6 +375,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             currentMonth={selectedMonth}
             currentYear={selectedYear}
             currentUser={currentUser}
+            isReadOnly={isCloudOffline}
           />
         ) : activeView === 'loans' ? (
           <MobileLoansDirectoryView
@@ -307,9 +387,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             selectedMonth={selectedMonth}
             selectedYear={selectedYear}
             onAddLoan={onAddLoan}
+            onUpdateLoan={onUpdateLoan}
+            onDeleteLoan={onDeleteLoan}
             onPauseResumeLoan={onPauseResumeLoan}
             onRecordManualPayment={onRecordManualPayment}
             currentUser={currentUser}
+            isReadOnly={isCloudOffline}
           />
         ) : activeView === 'analytics' ? (
           <MobileAnalyticsView
@@ -369,6 +452,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             onBack={() => onNavigate(previousView || 'payroll')}
             loans={loans}
             isLocked={isLocked}
+            isReadOnly={isCloudOffline}
           />
         ) : (activeView === 'settings' || activeView === 'variables' || activeView === 'excel') ? (
           (activeView === 'settings' && !isAdmin) ? (
@@ -417,6 +501,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
               onNavigate={onNavigate}
               emailSettings={emailSettings}
               onUpdateEmailSettings={onUpdateEmailSettings}
+              isReadOnly={isCloudOffline}
             />
           )
         ) : activeView === 'profile' && !isLocalUser ? (
@@ -492,6 +577,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
           payrollVariables={payrollVariables}
           payeTaxVariables={payeTaxVariables}
         />
+      )}
+
+      {/* Android Exit Confirmation Toast */}
+      {showExitToast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[999] px-4 py-2 bg-zinc-900/95 dark:bg-zinc-100/95 text-white dark:text-zinc-900 text-xs font-semibold rounded-full shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 pointer-events-none select-none">
+          Press back again to exit
+        </div>
       )}
     </AndroidDeviceFrame>
   );

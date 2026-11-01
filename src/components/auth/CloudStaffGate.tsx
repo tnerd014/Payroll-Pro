@@ -28,7 +28,8 @@ import {
   FileText,
   ShieldCheck,
   HelpCircle,
-  ExternalLink
+  ExternalLink,
+  Fingerprint
 } from 'lucide-react';
 import { 
   getSavedCloudConfig, 
@@ -38,6 +39,8 @@ import {
   checkHasAdminUser,
   registerInitialAdmin,
   loginStaffMember,
+  loginStaffMemberWithBiometric,
+  checkStaffBiometricEnrolled,
   getStaffSecurityQuestion,
   resetPasswordWithSecurityAnswer,
   generateTemporaryRecoveryPassword,
@@ -62,7 +65,7 @@ import { TeamMember, DEFAULT_SECURITY_QUESTIONS, CompanyAccount } from '../../ty
 import { formatDate } from '../../engine/dateUtils';
 import appLogo from '../../../assets/icon.png';
 import { LegalModal } from '../legal/LegalModal';
-import { verifyMfaToken } from '../../utils/security';
+import { verifyMfaToken, checkBiometricSupport } from '../../utils/security';
 import { checkForGithubReleaseUpdate, openExternalReleaseLink } from '../../utils/releaseUpdate';
 
 // =============================================================================
@@ -206,6 +209,49 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [isBiometricLoading, setIsBiometricLoading] = useState(false);
+  const [isBiometricEnrolledForUser, setIsBiometricEnrolledForUser] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    checkBiometricSupport()
+      .then((cap) => {
+        if (mounted) setIsBiometricAvailable(Boolean(cap.platformAuthenticatorAvailable || cap.isSupported));
+      })
+      .catch(() => {
+        if (mounted) setIsBiometricAvailable(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const cleanId = loginIdentifier.trim();
+    if (!isBiometricAvailable || !cleanId) {
+      setIsBiometricEnrolledForUser(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      checkStaffBiometricEnrolled(cleanId).then((enrolled) => {
+        if (active) {
+          setIsBiometricEnrolledForUser(enrolled);
+        }
+      }).catch(() => {
+        if (active) {
+          setIsBiometricEnrolledForUser(false);
+        }
+      });
+    }, 150);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [loginIdentifier, isBiometricAvailable]);
 
   // Initial Admin Setup Form
   const [adminName, setAdminName] = useState('');
@@ -263,7 +309,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
     if (!cfg.isEnabled || !cfg.url || !cfg.anonKey) {
       if (runtimeMode === 'cloud_only' || !useOfflineMode) {
         setViewMode('connect_server');
-        setConnectError('This release is configured for cloud-only access. Connect to the team server to continue.');
+        setConnectError('Connect to the team server to continue.');
       } else {
         setViewMode('connect_server');
       }
@@ -402,7 +448,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
 
   const handleContinueOffline = () => {
     if (!canUseOfflineFallback) {
-      setConnectError('This release is configured for cloud-only access. Please connect to the team server to continue.');
+      setConnectError('Connect to the team server to continue.');
       return;
     }
 
@@ -465,6 +511,53 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
     }
   };
 
+  const handleBiometricLogin = async () => {
+    if (!loginIdentifier.trim()) {
+      setLoginError('Please enter your work email or username to use biometric sign-in');
+      return;
+    }
+
+    setIsBiometricLoading(true);
+    setLoginError(null);
+
+    const res = await loginStaffMemberWithBiometric(loginIdentifier.trim());
+    setIsBiometricLoading(false);
+
+    if (res.success && res.member) {
+      try {
+        if (rememberMe) {
+          localStorage.setItem('payroll_pro_remember_me', 'true');
+          localStorage.setItem('payroll_pro_remembered_staff', loginIdentifier.trim());
+        }
+      } catch (err) {
+        console.warn('Failed to update remember me preference:', err);
+      }
+
+      setCurrentMember(res.member);
+      if (res.mustChangePassword) {
+        setViewMode('must_change_password');
+      } else if (res.member.twoFactorEnabled && res.member.twoFactorSecret) {
+        setPending2FaMember(res.member);
+        setTwoFaCode('');
+        setTwoFaError(null);
+        setViewMode('two_factor');
+      } else {
+        const compRes = await fetchCompaniesFromSupabase();
+        joinPresenceChannel({
+          memberId: res.member.id,
+          name: res.member.name,
+          role: res.member.role,
+          companyId: compRes.companies?.[0]?.id || '',
+          companyName: compRes.companies?.[0]?.name || '',
+          joinedAt: new Date().toISOString(),
+          lastSeenAt: new Date().toISOString(),
+        });
+        onAuthenticated(res.member, compRes.companies || []);
+      }
+    } else {
+      setLoginError(res.error || 'Biometric authentication failed');
+    }
+  };
   const handleVerify2Fa = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pending2FaMember) return;
@@ -912,20 +1005,38 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   </div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={isLoggingIn}
-                  className="w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  {isLoggingIn ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <>
-                      <span>Sign In</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={isLoggingIn || isBiometricLoading}
+                    className="flex-1 h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isLoggingIn ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <span>Sign In</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+
+                  {isBiometricAvailable && isBiometricEnrolledForUser && (
+                    <button
+                      type="button"
+                      onClick={handleBiometricLogin}
+                      disabled={isLoggingIn || isBiometricLoading}
+                      title="Quick Sign In with Fingerprint / Windows Hello"
+                      className="h-9 w-9 bg-violet-50 dark:bg-violet-950/60 hover:bg-violet-100 dark:hover:bg-violet-900/60 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 rounded-lg flex items-center justify-center cursor-pointer transition shadow-xs shrink-0 disabled:opacity-50"
+                    >
+                      {isBiometricLoading ? (
+                        <RefreshCw className="w-4 h-4 animate-spin text-violet-600 dark:text-violet-400" />
+                      ) : (
+                        <Fingerprint className="w-4 h-4" />
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
 
                 <div className="flex items-center justify-between pt-2 text-[11px]">
                   <button

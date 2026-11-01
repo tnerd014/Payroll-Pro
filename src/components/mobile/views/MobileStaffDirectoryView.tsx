@@ -27,6 +27,7 @@ interface MobileStaffDirectoryViewProps {
   currentMonth?: string;
   currentYear?: number;
   currentUser?: TeamMember | null;
+  isReadOnly?: boolean;
 }
 
 export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> = ({
@@ -40,8 +41,10 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
   currentMonth,
   currentYear,
   currentUser,
+  isReadOnly = false,
 }) => {
   const isAuditor = currentUser?.role === 'Auditor';
+  const isWriteDisabled = isAuditor || isReadOnly;
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedDept, setSelectedDept] = useState('ALL');
@@ -218,7 +221,7 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
       </div>
 
       {/* ── Android Material 3 Floating Action Button (FAB) ── */}
-      {!isAuditor && (
+      {!isWriteDisabled && (
         <div className="fixed bottom-[80px] right-4 z-50 pointer-events-auto">
           <button
             type="button"
@@ -243,7 +246,7 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
             handleEdit(emp);
           }}
           onDelete={onDeleteEmployee}
-          isReadOnly={isAuditor}
+          isReadOnly={isWriteDisabled}
         />
       )}
 

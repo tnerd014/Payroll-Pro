@@ -89,15 +89,13 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isThemePickerOpen, setIsThemePickerOpen] = useState(false);
   const [isColumnsModalOpen, setIsColumnsModalOpen] = useState(false);
-  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
 
   const datePickerRef = useRef<HTMLDivElement>(null);
   const themePickerRef = useRef<HTMLDivElement>(null);
-  const actionMenuRef = useRef<HTMLDivElement>(null);
 
   // Close popover dropdowns when tapping outside
   useEffect(() => {
-    if (!isDatePickerOpen && !isThemePickerOpen && !isActionMenuOpen) return;
+    if (!isDatePickerOpen && !isThemePickerOpen) return;
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
       if (isDatePickerOpen && datePickerRef.current && !datePickerRef.current.contains(target)) {
@@ -106,9 +104,6 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
       if (isThemePickerOpen && themePickerRef.current && !themePickerRef.current.contains(target)) {
         setIsThemePickerOpen(false);
       }
-      if (isActionMenuOpen && actionMenuRef.current && !actionMenuRef.current.contains(target)) {
-        setIsActionMenuOpen(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
@@ -116,7 +111,7 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [isDatePickerOpen, isThemePickerOpen, isActionMenuOpen]);
+  }, [isDatePickerOpen, isThemePickerOpen]);
 
   // Date picker state: Year and Multi-Month selection
   const [printYear, setPrintYear] = useState<number>(year || new Date().getFullYear());
@@ -682,58 +677,45 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
         </div>
       </div>
 
-      {/* ── 4. Bottom Action Dock ── */}
-      <div className="pt-1 relative" ref={actionMenuRef}>
-        {isActionMenuOpen && (
-          <div className="absolute bottom-full mb-2 left-0 right-0 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 animate-in fade-in slide-in-from-bottom-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsActionMenuOpen(false);
-                handlePrint();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm font-semibold transition active:scale-[0.99] cursor-pointer"
-            >
-              <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300">
-                <Printer className="w-4 h-4" />
-              </div>
-              <span>Print</span>
-            </button>
-            {onEmailPayslips && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsActionMenuOpen(false);
-                  onEmailPayslips({
-                    selectedEmployeeIds: checkedEmployeeIds.length > 0
-                      ? checkedEmployeeIds
-                      : previewItem?.employeeId
-                        ? [previewItem.employeeId]
-                        : [],
-                    selectedMonthKeys: selectedMonthKeys,
-                    year: printYear,
-                  });
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-sm font-semibold transition active:scale-[0.99] cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <span>Email</span>
-              </button>
-            )}
-          </div>
-        )}
-
+      {/* ── 4. Bottom Action Dock: Side-by-Side Print & Email ── */}
+      <div className={`pt-1 ${onEmailPayslips ? 'grid grid-cols-2 gap-2.5' : 'flex'} w-full`}>
+        {/* Print Button */}
         <button
           type="button"
-          onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
-          className="w-full h-12 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm tracking-wide shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+          onClick={handlePrint}
+          className={`h-12 px-4 rounded-2xl font-bold text-sm tracking-wide shadow-md flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer transition-all ${
+            onEmailPayslips
+              ? 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 border border-zinc-700/50 dark:border-zinc-200/50'
+              : 'w-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
+          }`}
+          title="Print Payslips"
         >
-          <Printer className="w-4 h-4" />
+          <Printer className={`w-4 h-4 ${onEmailPayslips ? 'text-emerald-400 dark:text-emerald-600' : ''}`} />
           <span>Print</span>
-          <ChevronDown className={`w-4 h-4 ml-1 transition-transform duration-200 ${isActionMenuOpen ? 'rotate-180' : ''}`} />
         </button>
+
+        {/* Email Button */}
+        {onEmailPayslips && (
+          <button
+            type="button"
+            onClick={() => {
+              onEmailPayslips({
+                selectedEmployeeIds: checkedEmployeeIds.length > 0
+                  ? checkedEmployeeIds
+                  : previewItem?.employeeId
+                    ? [previewItem.employeeId]
+                    : [],
+                selectedMonthKeys: selectedMonthKeys,
+                year: printYear,
+              });
+            }}
+            className="h-12 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm tracking-wide shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+            title="Email Payslips"
+          >
+            <Mail className="w-4 h-4" />
+            <span>Email</span>
+          </button>
+        )}
       </div>
 
 

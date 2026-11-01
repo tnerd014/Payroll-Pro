@@ -6,6 +6,7 @@ import {
   EmploymentTypeRule 
 } from '../types';
 import { getMidMonthProrationRatio } from './dateUtils';
+import { getPrivacyMaskPreference } from '../services/supabaseClient';
 
 export const DEFAULT_EMPLOYMENT_TYPE_RULES: EmploymentTypeRule[] = [
   {
@@ -313,7 +314,11 @@ export function calculatePayrollItem(
 }
 
 export function formatNaira(amount: number): string {
-  return '₦' + (Number(amount) || 0).toLocaleString('en-NG', {
+  const value = Number(amount) || 0;
+  if (typeof window !== 'undefined' && getPrivacyMaskPreference()) {
+    return '₦••••••';
+  }
+  return '₦' + value.toLocaleString('en-NG', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -321,6 +326,9 @@ export function formatNaira(amount: number): string {
 
 export function formatCompactNaira(amount: number): string {
   const val = Number(amount) || 0;
+  if (typeof window !== 'undefined' && getPrivacyMaskPreference()) {
+    return '₦••••••';
+  }
   if (Math.abs(val) >= 1_000_000) {
     return '₦' + (val / 1_000_000).toFixed(2) + 'M';
   }

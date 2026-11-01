@@ -449,6 +449,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     setBiometricTestResult(null);
     if (isBiometricEnrolled) {
       removeBiometric(currentUser.id);
+      try {
+        if (currentUser.username) localStorage.removeItem('payroll_pro_bio_enrolled_' + currentUser.username.toLowerCase());
+        if (currentUser.email) localStorage.removeItem('payroll_pro_bio_enrolled_' + currentUser.email.toLowerCase());
+      } catch {}
       setIsBiometricEnrolled(false);
       const updated: TeamMember = { ...currentUser, biometricEnabled: false };
       setActiveTeamMember(updated);
@@ -466,6 +470,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     setIsTestingBiometric(false);
     if (res.success) {
       setIsBiometricEnrolled(true);
+      try {
+        if (currentUser.username) localStorage.setItem('payroll_pro_bio_enrolled_' + currentUser.username.toLowerCase(), currentUser.id);
+        if (currentUser.email) localStorage.setItem('payroll_pro_bio_enrolled_' + currentUser.email.toLowerCase(), currentUser.id);
+      } catch {}
       const updated: TeamMember = { ...currentUser, biometricEnabled: true, biometricDeviceName: getDeviceDisplayName() };
       setActiveTeamMember(updated);
       if (onUpdateCurrentUser) onUpdateCurrentUser(updated);
@@ -530,7 +538,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
       {/* ── Toast notification ────────────────────────────────────────── */}
       {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="fixed top-12 md:top-14 left-1/2 -translate-x-1/2 z-[10001] pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200">
           <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium border ${
             toast.type === 'success'
               ? 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700'

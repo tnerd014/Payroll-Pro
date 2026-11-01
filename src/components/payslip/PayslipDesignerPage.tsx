@@ -1,19 +1,19 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { 
-  Palette, 
-  Layers, 
-  Type, 
-  Sparkles, 
-  Printer, 
-  RotateCcw, 
-  ArrowLeft, 
-  ChevronUp, 
-  ChevronDown, 
-  Eye, 
-  EyeOff, 
-  GripVertical, 
-  Check, 
-  Sliders, 
+import {
+  Palette,
+  Layers,
+  Type,
+  Sparkles,
+  Printer,
+  RotateCcw,
+  ArrowLeft,
+  ChevronUp,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  GripVertical,
+  Check,
+  Sliders,
   FileText,
   User,
   Layout,
@@ -33,14 +33,14 @@ import {
   X,
   Plus
 } from 'lucide-react';
-import { 
+import {
   CompanyAccount,
-  CompanyProfile, 
-  Employee, 
-  PayrollVariables, 
-  PayeTaxVariables, 
-  CalculatedPayrollItem, 
-  PayslipDesignConfig, 
+  CompanyProfile,
+  Employee,
+  PayrollVariables,
+  PayeTaxVariables,
+  CalculatedPayrollItem,
+  PayslipDesignConfig,
   PayslipCustomPreset,
   PayslipSectionId,
   PayslipThemeColor,
@@ -77,6 +77,7 @@ interface PayslipDesignerPageProps {
   onDeletePreset?: (id: string) => void;
   loans?: EmployeeLoan[];
   isMobile?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
@@ -96,6 +97,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
   onDeletePreset,
   loans = [],
   isMobile: isMobileProp,
+  isReadOnly = false,
 }) => {
   const isMobile = isMobileProp ?? (typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [mobileViewMode, setMobileViewMode] = useState<'preview' | 'controls'>('preview');
@@ -166,7 +168,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
       const match = savedPresets.find(p => p.name.trim().toLowerCase() === activePresetName.trim().toLowerCase());
       if (match) return match;
     }
-    return savedPresets.find(p => 
+    return savedPresets.find(p =>
       p.design.customColor === payslipDesign.customColor &&
       p.design.headerLayout === payslipDesign.headerLayout &&
       p.design.themeColor === payslipDesign.themeColor
@@ -174,6 +176,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
   }, [savedPresets, activePresetId, activePresetName, payslipDesign]);
 
   const handleUpdateCurrentPreset = (presetToUpdate?: PayslipCustomPreset | null) => {
+    if (isReadOnly) return;
     const target = presetToUpdate || activeCustomPreset;
     if (!target) {
       setShowSaveThemeModal(true);
@@ -192,12 +195,12 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
   const currentFontScale = typeof payslipDesign.fontScale === 'number' && payslipDesign.fontScale >= 60 && payslipDesign.fontScale <= 160
     ? payslipDesign.fontScale
     : payslipDesign.fontSize === 'compact'
-    ? 88
-    : payslipDesign.fontSize === 'large'
-    ? 114
-    : payslipDesign.fontSize === 'xl'
-    ? 128
-    : 100;
+      ? 88
+      : payslipDesign.fontSize === 'large'
+        ? 114
+        : payslipDesign.fontSize === 'xl'
+          ? 128
+          : 100;
 
   const handleSetFontSizePreset = (size: PayslipFontSize, scale: number) => {
     onUpdatePayslipDesign({ fontSize: size, fontScale: scale });
@@ -205,10 +208,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
   const handleAdjustFontScale = (delta: number) => {
     const next = Math.max(76, Math.min(140, currentFontScale + delta));
-    const size: PayslipFontSize = 
+    const size: PayslipFontSize =
       next <= 90 ? 'compact' :
-      next <= 105 ? 'standard' :
-      next <= 120 ? 'large' : 'xl';
+        next <= 105 ? 'standard' :
+          next <= 120 ? 'large' : 'xl';
     onUpdatePayslipDesign({ fontScale: next, fontSize: size });
   };
 
@@ -294,6 +297,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
   }, [selectedDesignKey, targetCompanyAccount, targetSavedPresets]);
 
   const handleApplyImportedDesign = () => {
+    if (isReadOnly) return;
     if (!activeSelectedDesign) return;
     onUpdatePayslipDesign(activeSelectedDesign);
     if (alsoSaveAsPreset && onSavePreset) {
@@ -306,6 +310,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
   };
 
   const handleSaveCustomPreset = (nameToSave?: unknown, presetId?: string) => {
+    if (isReadOnly) return;
     const rawName = typeof nameToSave === 'string' ? nameToSave : customPresetName;
     const trimmed = rawName.trim();
     if (!trimmed || !onSavePreset) return;
@@ -560,11 +565,11 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
   return (
     <div className={`flex flex-col ${isMobile ? 'h-full min-h-0' : 'h-[calc(100vh-36px)]'} overflow-hidden bg-zinc-50/50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 select-none`}>
-      
+
       {/* Top Header Bar - Responsive, fits without blowout */}
       <div className="shrink-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md px-3 sm:px-6 py-2 border-b border-zinc-200 dark:border-zinc-800 no-print">
         <div className="flex items-center justify-between gap-2">
-          
+
           {/* Left: Back button + Title */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
@@ -615,9 +620,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
+                  disabled={isReadOnly}
                   onClick={() => handleUpdateCurrentPreset(activeCustomPreset)}
-                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer shrink-0 active:scale-95"
-                  title={`Update and overwrite saved theme "${activeCustomPreset.name}" with current changes`}
+                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer shrink-0 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={isReadOnly ? "Updating themes disabled in offline mode" : `Update and overwrite saved theme "${activeCustomPreset.name}" with current changes`}
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Update "{activeCustomPreset.name}"</span>
@@ -626,12 +632,14 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
                 <button
                   type="button"
+                  disabled={isReadOnly}
                   onClick={() => {
+                    if (isReadOnly) return;
                     setCustomPresetName('');
                     setShowSaveThemeModal(true);
                   }}
-                  className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors shadow-2xs cursor-pointer shrink-0"
-                  title="Save current styling & layout as a new separate theme"
+                  className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors shadow-2xs cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={isReadOnly ? "Saving themes disabled in offline mode" : "Save current styling & layout as a new separate theme"}
                 >
                   <Plus className="w-3 h-3" />
                   <span>Save as New</span>
@@ -640,9 +648,13 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
             ) : (
               <button
                 type="button"
-                onClick={() => setShowSaveThemeModal(true)}
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer shrink-0 active:scale-95"
-                title="Save current styling & layout as a reusable theme"
+                disabled={isReadOnly}
+                onClick={() => {
+                  if (isReadOnly) return;
+                  setShowSaveThemeModal(true);
+                }}
+                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer shrink-0 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                title={isReadOnly ? "Saving themes disabled in offline mode" : "Save current styling & layout as a reusable theme"}
               >
                 <Bookmark className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Save Theme</span>
@@ -653,9 +665,13 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
             {/* Reset Template (hidden on mobile, visible on sm+) */}
             <button
               type="button"
-              onClick={onResetPayslipDesign}
-              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer shrink-0"
-              title="Reset to default design"
+              disabled={isReadOnly}
+              onClick={() => {
+                if (isReadOnly) return;
+                onResetPayslipDesign();
+              }}
+              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isReadOnly ? "Reset disabled in offline mode" : "Reset to default design"}
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
@@ -664,9 +680,13 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
             {/* Import Design (hidden on mobile, visible on sm+) */}
             <button
               type="button"
-              onClick={() => setShowImportModal(true)}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-2xs cursor-pointer shrink-0"
-              title="Import design from another company"
+              disabled={isReadOnly}
+              onClick={() => {
+                if (isReadOnly) return;
+                setShowImportModal(true);
+              }}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-2xs cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isReadOnly ? "Importing designs disabled in offline mode" : "Import design from another company"}
             >
               <FolderInput className="w-3.5 h-3.5" />
               <span>Import</span>
@@ -681,11 +701,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
           <button
             type="button"
             onClick={() => setMobileViewMode('preview')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer ${
-              mobileViewMode === 'preview'
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer ${mobileViewMode === 'preview'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-            }`}
+              }`}
           >
             <Eye className="w-3.5 h-3.5" />
             <span>Live Preview</span>
@@ -693,11 +712,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
           <button
             type="button"
             onClick={() => setMobileViewMode('controls')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer ${
-              mobileViewMode === 'controls'
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg transition-all cursor-pointer ${mobileViewMode === 'controls'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-            }`}
+              }`}
           >
             <Sliders className="w-3.5 h-3.5" />
             <span>Customize</span>
@@ -707,21 +725,19 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
       {/* Main Two-Column Studio Layout: Studio columns have independent scroll! */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 p-2 sm:p-5 overflow-hidden">
-        
+
         {/* Left Control Panel (5 Cols) - Scrollable independently */}
-        <div className={`lg:col-span-5 h-full overflow-y-auto bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 space-y-4 shadow-2xs no-print pr-3 ${
-          mobileViewMode === 'controls' ? 'block' : 'hidden lg:block'
-        }`}>
-          
+        <div className={`lg:col-span-5 h-full overflow-y-auto bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 space-y-4 shadow-2xs no-print pr-3 ${mobileViewMode === 'controls' ? 'block' : 'hidden lg:block'
+          }`}>
+
           {/* Sub Navigation Tabs */}
           <div className="flex border-b border-zinc-200 dark:border-zinc-800 text-xs font-medium gap-4">
             <button
               onClick={() => setActiveTab('layout')}
-              className={`pb-2 transition-colors relative flex items-center gap-1.5 ${
-                activeTab === 'layout' 
-                  ? 'text-zinc-900 dark:text-zinc-100 font-semibold' 
+              className={`pb-2 transition-colors relative flex items-center gap-1.5 ${activeTab === 'layout'
+                  ? 'text-zinc-900 dark:text-zinc-100 font-semibold'
                   : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-              }`}
+                }`}
             >
               <Layers className="w-3.5 h-3.5" />
               <span>Arrangement</span>
@@ -732,11 +748,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
             <button
               onClick={() => setActiveTab('theme')}
-              className={`pb-2 transition-colors relative flex items-center gap-1.5 ${
-                activeTab === 'theme' 
-                  ? 'text-zinc-900 dark:text-zinc-100 font-semibold' 
+              className={`pb-2 transition-colors relative flex items-center gap-1.5 ${activeTab === 'theme'
+                  ? 'text-zinc-900 dark:text-zinc-100 font-semibold'
                   : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-              }`}
+                }`}
             >
               <Palette className="w-3.5 h-3.5" />
               <span>Theme & Style</span>
@@ -747,11 +762,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
             <button
               onClick={() => setActiveTab('text')}
-              className={`pb-2 transition-colors relative flex items-center gap-1.5 ${
-                activeTab === 'text' 
-                  ? 'text-zinc-900 dark:text-zinc-100 font-semibold' 
+              className={`pb-2 transition-colors relative flex items-center gap-1.5 ${activeTab === 'text'
+                  ? 'text-zinc-900 dark:text-zinc-100 font-semibold'
                   : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-              }`}
+                }`}
             >
               <Type className="w-3.5 h-3.5" />
               <span>Headers & Text</span>
@@ -762,11 +776,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
             <button
               onClick={() => setActiveTab('presets')}
-              className={`pb-2 transition-colors relative flex items-center gap-1.5 ${
-                activeTab === 'presets' 
-                  ? 'text-zinc-900 dark:text-zinc-100 font-semibold' 
+              className={`pb-2 transition-colors relative flex items-center gap-1.5 ${activeTab === 'presets'
+                  ? 'text-zinc-900 dark:text-zinc-100 font-semibold'
                   : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-              }`}
+                }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Presets</span>
@@ -797,11 +810,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                   return (
                     <div
                       key={section.id}
-                      className={`flex items-center justify-between p-2 rounded-md border text-xs transition-all ${
-                        section.enabled
+                      className={`flex items-center justify-between p-2 rounded-md border text-xs transition-all ${section.enabled
                           ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs'
                           : 'bg-zinc-100/60 dark:bg-zinc-900/30 border-transparent text-zinc-400 opacity-60'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-2">
                         <GripVertical className="w-3.5 h-3.5 text-zinc-400 cursor-grab" />
@@ -836,11 +848,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                         <button
                           type="button"
                           onClick={() => handleToggleSection(section.id)}
-                          className={`p-1 rounded transition-colors ${
-                            section.enabled 
-                              ? 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800' 
+                          className={`p-1 rounded transition-colors ${section.enabled
+                              ? 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                               : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
-                          }`}
+                            }`}
                           title={section.enabled ? 'Hide Section' : 'Show Section'}
                         >
                           {section.enabled ? (
@@ -863,22 +874,20 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                     <button
                       type="button"
                       onClick={() => onUpdatePayslipDesign({ breakdownLayout: 'two-column' })}
-                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${
-                        payslipDesign.breakdownLayout === 'two-column'
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${payslipDesign.breakdownLayout === 'two-column'
                           ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs'
                           : 'text-zinc-500'
-                      }`}
+                        }`}
                     >
                       Side by Side
                     </button>
                     <button
                       type="button"
                       onClick={() => onUpdatePayslipDesign({ breakdownLayout: 'single-column' })}
-                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${
-                        payslipDesign.breakdownLayout === 'single-column'
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${payslipDesign.breakdownLayout === 'single-column'
                           ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs'
                           : 'text-zinc-500'
-                      }`}
+                        }`}
                     >
                       Stacked
                     </button>
@@ -893,11 +902,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                         key={d}
                         type="button"
                         onClick={() => onUpdatePayslipDesign({ density: d })}
-                        className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize transition ${
-                          payslipDesign.density === d
+                        className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize transition ${payslipDesign.density === d
                             ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs'
                             : 'text-zinc-500'
-                        }`}
+                          }`}
                       >
                         {d}
                       </button>
@@ -909,7 +917,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                   <span className="font-medium text-zinc-700 dark:text-zinc-300">Rounded Cards</span>
                   <button
                     type="button"
-                    onClick={() => onUpdatePayslipDesign({ 
+                    onClick={() => onUpdatePayslipDesign({
                       roundedCorners: !payslipDesign.roundedCorners,
                       cornerRadius: !payslipDesign.roundedCorners ? 'md' : 'none'
                     })}
@@ -921,7 +929,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                     <input
                       type="checkbox"
                       checked={payslipDesign.roundedCorners}
-                      onChange={() => onUpdatePayslipDesign({ 
+                      onChange={() => onUpdatePayslipDesign({
                         roundedCorners: !payslipDesign.roundedCorners,
                         cornerRadius: !payslipDesign.roundedCorners ? 'md' : 'none'
                       })}
@@ -935,8 +943,8 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
           {/* TAB 2: Theme & Appearance ("the theme") */}
           {activeTab === 'theme' && (() => {
-            const activeColorHex = 
-              payslipDesign.customColor || 
+            const activeColorHex =
+              payslipDesign.customColor ||
               (payslipDesign.themeColor && payslipDesign.themeColor.startsWith('#')
                 ? payslipDesign.themeColor
                 : PRESET_HEX_MAP[payslipDesign.themeColor] || '#18181b');
@@ -1038,11 +1046,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                         key={tint.id}
                         type="button"
                         onClick={() => onUpdatePayslipDesign({ accentTintStyle: tint.id as any })}
-                        className={`p-2 rounded-md border text-center transition cursor-pointer ${
-                          currentAccentTint === tint.id
+                        className={`p-2 rounded-md border text-center transition cursor-pointer ${currentAccentTint === tint.id
                             ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800 font-semibold text-zinc-900 dark:text-zinc-100 ring-1 ring-zinc-900 dark:ring-zinc-100 shadow-2xs'
                             : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900/40'
-                        }`}
+                          }`}
                       >
                         <span className="text-xs block font-medium">{tint.label}</span>
                         <span className="text-[10px] text-zinc-400 block mt-0.5">{tint.desc}</span>
@@ -1069,11 +1076,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                         key={tbl.id}
                         type="button"
                         onClick={() => onUpdatePayslipDesign({ tableStyle: tbl.id as any })}
-                        className={`p-2 rounded-md border text-center transition cursor-pointer ${
-                          currentTableStyle === tbl.id
+                        className={`p-2 rounded-md border text-center transition cursor-pointer ${currentTableStyle === tbl.id
                             ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800 font-semibold text-zinc-900 dark:text-zinc-100 ring-1 ring-zinc-900 dark:ring-zinc-100 shadow-2xs'
                             : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900/40'
-                        }`}
+                          }`}
                       >
                         <span className="text-xs block font-medium">{tbl.label}</span>
                         <span className="text-[10px] text-zinc-400 block mt-0.5">{tbl.desc}</span>
@@ -1100,15 +1106,14 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                       <button
                         key={r.id}
                         type="button"
-                        onClick={() => onUpdatePayslipDesign({ 
+                        onClick={() => onUpdatePayslipDesign({
                           cornerRadius: r.id as any,
                           roundedCorners: r.id !== 'none'
                         })}
-                        className={`p-1.5 rounded-md border text-center transition cursor-pointer ${
-                          currentCornerRadius === r.id
+                        className={`p-1.5 rounded-md border text-center transition cursor-pointer ${currentCornerRadius === r.id
                             ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800 font-semibold text-zinc-900 dark:text-zinc-100 ring-1 ring-zinc-900 dark:ring-zinc-100 shadow-2xs'
                             : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-900/40'
-                        }`}
+                          }`}
                       >
                         <span className="text-xs block font-medium">{r.label}</span>
                         <span className="text-[10px] text-zinc-400 block">{r.desc}</span>
@@ -1128,11 +1133,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                         key={h.id}
                         type="button"
                         onClick={() => onUpdatePayslipDesign({ headerLayout: h.id })}
-                        className={`w-full flex items-start gap-3 p-2.5 rounded-md border text-left text-xs transition cursor-pointer ${
-                          payslipDesign.headerLayout === h.id
+                        className={`w-full flex items-start gap-3 p-2.5 rounded-md border text-left text-xs transition cursor-pointer ${payslipDesign.headerLayout === h.id
                             ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800 font-semibold ring-1 ring-zinc-900 dark:ring-zinc-100 shadow-2xs'
                             : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 bg-white dark:bg-zinc-900/40'
-                        }`}
+                          }`}
                       >
                         <input
                           type="radio"
@@ -1170,11 +1174,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                           key={f.id}
                           type="button"
                           onClick={() => onUpdatePayslipDesign({ fontFamily: f.id })}
-                          className={`p-2 rounded-md border text-center text-xs transition cursor-pointer ${
-                            payslipDesign.fontFamily === f.id
+                          className={`p-2 rounded-md border text-center text-xs transition cursor-pointer ${payslipDesign.fontFamily === f.id
                               ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-100 dark:bg-zinc-800 font-bold ring-1 ring-zinc-900 dark:ring-zinc-100 shadow-2xs'
                               : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 bg-white dark:bg-zinc-900/40'
-                          }`}
+                            }`}
                         >
                           <span className="block font-medium">{f.label}</span>
                           <span className="text-[10px] text-zinc-400 block mt-0.5">{f.preview}</span>
@@ -1212,11 +1215,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                             key={p.id}
                             type="button"
                             onClick={() => handleSetFontSizePreset(p.id, p.scale)}
-                            className={`py-1.5 px-1 rounded border text-center transition cursor-pointer ${
-                              isActive
+                            className={`py-1.5 px-1 rounded border text-center transition cursor-pointer ${isActive
                                 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-bold shadow-2xs'
                                 : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-zinc-400 text-zinc-700 dark:text-zinc-300'
-                            }`}
+                              }`}
                           >
                             <span className="text-xs block font-semibold leading-tight">{p.label}</span>
                             <span className="text-[9.5px] block opacity-75 mt-0.5">{p.scale}%</span>
@@ -1294,11 +1296,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                         key={w.id}
                         type="button"
                         onClick={() => onUpdatePayslipDesign({ watermark: w.id as any })}
-                        className={`p-2 rounded border text-left text-xs transition cursor-pointer ${
-                          payslipDesign.watermark === w.id
+                        className={`p-2 rounded border text-left text-xs transition cursor-pointer ${payslipDesign.watermark === w.id
                             ? 'border-zinc-900 dark:border-zinc-100 font-bold bg-zinc-100 dark:bg-zinc-800 ring-1 ring-zinc-900 dark:ring-zinc-100 shadow-2xs'
                             : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 bg-white dark:bg-zinc-900/40'
-                        }`}
+                          }`}
                       >
                         <span className="truncate block">{w.label}</span>
                       </button>
@@ -1341,11 +1342,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                               key={op.value}
                               type="button"
                               onClick={() => onUpdatePayslipDesign({ watermarkOpacity: op.value })}
-                              className={`py-1 px-1.5 text-[10px] font-medium rounded border transition cursor-pointer ${
-                                Math.abs(currentWatermarkOpacity - op.value) < 0.015
+                              className={`py-1 px-1.5 text-[10px] font-medium rounded border transition cursor-pointer ${Math.abs(currentWatermarkOpacity - op.value) < 0.015
                                   ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-bold'
                                   : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-900'
-                              }`}
+                                }`}
                             >
                               {op.label}
                             </button>
@@ -1419,8 +1419,9 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                     <button
                       type="button"
                       onClick={handleSaveCustomPreset}
-                      disabled={!customPresetName.trim()}
+                      disabled={isReadOnly || !customPresetName.trim()}
                       className="px-3.5 py-1.5 rounded font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs text-xs"
+                      title={isReadOnly ? "Preset saving disabled in offline mode" : undefined}
                     >
                       <Save className="w-3.5 h-3.5" />
                       <span>Save Preset</span>
@@ -1468,11 +1469,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                         key={p.id}
                         type="button"
                         onClick={() => handleSetFontSizePreset(p.id, p.scale)}
-                        className={`py-1.5 px-1 rounded border text-center transition cursor-pointer ${
-                          isActive
+                        className={`py-1.5 px-1 rounded border text-center transition cursor-pointer ${isActive
                             ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-bold shadow-2xs'
                             : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-zinc-400 text-zinc-700 dark:text-zinc-300'
-                        }`}
+                          }`}
                       >
                         <span className="text-xs block font-medium">{p.label}</span>
                         <span className="text-[9.5px] block opacity-75">{p.scale}%</span>
@@ -1603,11 +1603,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                         key={opt.id}
                         type="button"
                         onClick={() => onUpdatePayslipDesign({ breakdownFontSize: opt.id })}
-                        className={`px-2 py-1.5 rounded text-xs border text-center transition cursor-pointer flex flex-col items-center justify-center ${
-                          isSelected
+                        className={`px-2 py-1.5 rounded text-xs border text-center transition cursor-pointer flex flex-col items-center justify-center ${isSelected
                             ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-xs'
                             : 'bg-white dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
-                        }`}
+                          }`}
                       >
                         <span className="text-[11px] leading-tight font-medium">{opt.label}</span>
                         <span className={`text-[9px] ${isSelected ? 'opacity-80' : 'text-zinc-400 dark:text-zinc-500'}`}>
@@ -1656,11 +1655,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                         key={opt.id}
                         type="button"
                         onClick={() => onUpdatePayslipDesign({ netPayFontSize: opt.id })}
-                        className={`px-2 py-1.5 rounded text-xs border text-center transition cursor-pointer flex flex-col items-center justify-center ${
-                          isSelected
+                        className={`px-2 py-1.5 rounded text-xs border text-center transition cursor-pointer flex flex-col items-center justify-center ${isSelected
                             ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-xs'
                             : 'bg-white dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
-                        }`}
+                          }`}
                       >
                         <span className="text-[11px] leading-tight font-medium">{opt.label}</span>
                         <span className={`text-[9px] ${isSelected ? 'opacity-80' : 'text-zinc-400 dark:text-zinc-500'}`}>
@@ -1693,11 +1691,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                       key={chip}
                       type="button"
                       onClick={() => onUpdatePayslipDesign({ grossPayLabel: chip })}
-                      className={`px-1.5 py-0.5 rounded text-[10px] border transition cursor-pointer ${
-                        (payslipDesign.grossPayLabel || 'Total Gross Remuneration') === chip
+                      className={`px-1.5 py-0.5 rounded text-[10px] border transition cursor-pointer ${(payslipDesign.grossPayLabel || 'Total Gross Remuneration') === chip
                           ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-medium'
                           : 'bg-zinc-50 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
-                      }`}
+                        }`}
                     >
                       {chip}
                     </button>
@@ -1723,11 +1720,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                       key={chip}
                       type="button"
                       onClick={() => onUpdatePayslipDesign({ totalDeductionsLabel: chip })}
-                      className={`px-1.5 py-0.5 rounded text-[10px] border transition cursor-pointer ${
-                        (payslipDesign.totalDeductionsLabel || 'Total Deductions') === chip
+                      className={`px-1.5 py-0.5 rounded text-[10px] border transition cursor-pointer ${(payslipDesign.totalDeductionsLabel || 'Total Deductions') === chip
                           ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-medium'
                           : 'bg-zinc-50 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
-                      }`}
+                        }`}
                     >
                       {chip}
                     </button>
@@ -1753,11 +1749,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                       key={chip}
                       type="button"
                       onClick={() => onUpdatePayslipDesign({ employerCostLabel: chip })}
-                      className={`px-1.5 py-0.5 rounded text-[10px] border transition cursor-pointer ${
-                        (payslipDesign.employerCostLabel || 'Total Employer Cost') === chip
+                      className={`px-1.5 py-0.5 rounded text-[10px] border transition cursor-pointer ${(payslipDesign.employerCostLabel || 'Total Employer Cost') === chip
                           ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-medium'
                           : 'bg-zinc-50 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
-                      }`}
+                        }`}
                     >
                       {chip}
                     </button>
@@ -1846,10 +1841,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                   </span>
                   <div className="space-y-1.5">
                     {savedPresets.map(preset => {
-                      const presetColor = 
-                        preset.design.customColor || 
-                        (preset.design.themeColor?.startsWith('#') 
-                          ? preset.design.themeColor 
+                      const presetColor =
+                        preset.design.customColor ||
+                        (preset.design.themeColor?.startsWith('#')
+                          ? preset.design.themeColor
                           : PRESET_HEX_MAP[preset.design.themeColor] || '#18181b');
                       return (
                         <div
@@ -1949,10 +1944,9 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
         </div>
 
         {/* Right Preview Canvas (7 Cols) - Stationary / Independent scroll */}
-        <div className={`lg:col-span-7 h-full overflow-y-auto flex flex-col items-center pr-1 ${
-          mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'
-        }`}>
-          
+        <div className={`lg:col-span-7 h-full overflow-y-auto flex flex-col items-center pr-1 ${mobileViewMode === 'preview' ? 'flex' : 'hidden lg:flex'
+          }`}>
+
           {/* Zoom and Preview Toolbar */}
           <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-2 px-1 text-xs text-zinc-500 no-print shrink-0">
             <div className="flex items-center gap-1.5">
@@ -2002,11 +1996,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setZoomFit(true)}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
-                    zoomFit
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${zoomFit
                       ? 'bg-emerald-600 text-white'
                       : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-                  }`}
+                    }`}
                   title="Auto-fit payslip to phone/screen width"
                 >
                   Fit
@@ -2018,11 +2011,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                     setZoomFit(false);
                     setZoomLevel(100);
                   }}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
-                    !zoomFit && zoomLevel === 100
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${!zoomFit && zoomLevel === 100
                       ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900'
                       : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-                  }`}
+                    }`}
                   title="100% full print size"
                 >
                   100%
@@ -2058,15 +2050,15 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
           </div>
 
           {/* Scaled Preview Canvas Wrapper - Measured and auto-fitted */}
-          <div 
+          <div
             ref={canvasContainerRef}
             className="w-full flex flex-col items-center justify-start bg-zinc-200/50 dark:bg-zinc-950 p-2 sm:p-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-x-auto min-h-[480px] mb-4"
           >
-            <div 
-              style={{ 
-                width: `${Math.round(700 * effectiveScale)}px`, 
+            <div
+              style={{
+                width: `${Math.round(700 * effectiveScale)}px`,
                 height: payslipHeight ? `${Math.round(payslipHeight * effectiveScale)}px` : 'auto',
-                maxWidth: '100%' 
+                maxWidth: '100%'
               }}
               className="relative mx-auto transition-all duration-150 overflow-hidden"
             >
@@ -2176,8 +2168,9 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
               <button
                 type="button"
                 onClick={() => handleSaveCustomPreset()}
-                disabled={!customPresetName.trim()}
-                className="px-3.5 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-md transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                disabled={isReadOnly || !customPresetName.trim()}
+                className="px-3.5 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-md transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:cursor-not-allowed"
+                title={isReadOnly ? "Saving disabled in offline mode" : undefined}
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>Save Theme</span>
@@ -2216,7 +2209,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
 
             {/* Modal Body - 2 Columns */}
             <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 overflow-hidden divide-y md:divide-y-0 md:divide-x divide-zinc-200 dark:divide-zinc-800">
-              
+
               {/* Left Column: Companies List */}
               <div className="md:col-span-5 flex flex-col h-full bg-zinc-50/60 dark:bg-zinc-900/30 p-3.5 space-y-3 overflow-hidden">
                 {/* Search Company */}
@@ -2253,11 +2246,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                             setSelectedImportCompanyId(comp.id);
                             setSelectedDesignKey('active');
                           }}
-                          className={`w-full text-left p-2.5 rounded-xl border transition flex items-center gap-2.5 cursor-pointer ${
-                            isSelected
+                          className={`w-full text-left p-2.5 rounded-xl border transition flex items-center gap-2.5 cursor-pointer ${isSelected
                               ? 'bg-white dark:bg-zinc-800 border-zinc-900/20 dark:border-zinc-600 shadow-sm ring-1 ring-zinc-900/10 dark:ring-zinc-100/10'
                               : 'bg-white/70 dark:bg-zinc-900/50 border-zinc-200/80 dark:border-zinc-800/80 hover:bg-white dark:hover:bg-zinc-800/60'
-                          }`}
+                            }`}
                         >
                           {/* Logo or Initial Avatar */}
                           {comp.logoUrl ? (
@@ -2321,11 +2313,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                       </span>
                       <div
                         onClick={() => setSelectedDesignKey('active')}
-                        className={`p-3 rounded-xl border transition cursor-pointer flex flex-col gap-2 ${
-                          selectedDesignKey === 'active'
+                        className={`p-3 rounded-xl border transition cursor-pointer flex flex-col gap-2 ${selectedDesignKey === 'active'
                             ? 'bg-zinc-50 dark:bg-zinc-800/70 border-zinc-900 dark:border-zinc-400 ring-1 ring-zinc-900 dark:ring-zinc-400 shadow-2xs'
                             : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900/40'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -2341,11 +2332,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                             <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                               Live
                             </span>
-                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                              selectedDesignKey === 'active'
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedDesignKey === 'active'
                                 ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
                                 : 'border-zinc-300 dark:border-zinc-600'
-                            }`}>
+                              }`}>
                               {selectedDesignKey === 'active' && <Check className="w-2.5 h-2.5" />}
                             </div>
                           </div>
@@ -2387,11 +2377,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                               <div
                                 key={preset.id}
                                 onClick={() => setSelectedDesignKey(preset.id)}
-                                className={`p-3 rounded-xl border transition cursor-pointer flex flex-col gap-2 ${
-                                  isSelected
+                                className={`p-3 rounded-xl border transition cursor-pointer flex flex-col gap-2 ${isSelected
                                     ? 'bg-zinc-50 dark:bg-zinc-800/70 border-zinc-900 dark:border-zinc-400 ring-1 ring-zinc-900 dark:ring-zinc-400 shadow-2xs'
                                     : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900/40'
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2">
@@ -2403,11 +2392,10 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                                       {preset.name}
                                     </span>
                                   </div>
-                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                                    isSelected
+                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected
                                       ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
                                       : 'border-zinc-300 dark:border-zinc-600'
-                                  }`}>
+                                    }`}>
                                     {isSelected && <Check className="w-2.5 h-2.5" />}
                                   </div>
                                 </div>

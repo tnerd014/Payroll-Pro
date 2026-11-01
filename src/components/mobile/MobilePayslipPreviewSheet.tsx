@@ -17,6 +17,7 @@ import {
 import { formatNaira } from '../../engine/payePensionEngine';
 import { CustomizablePayslipView } from '../payslip/CustomizablePayslipView';
 import { PinchZoomContainer } from './PinchZoomContainer';
+import { registerBackHandler } from '../../utils/mobileBackHandler';
 
 interface MobilePayslipPreviewSheetProps {
   isOpen: boolean;
@@ -56,6 +57,15 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Intercept Android hardware back button
+  useEffect(() => {
+    if (!isOpen) return;
+    return registerBackHandler(() => {
+      onClose();
+      return true;
+    });
   }, [isOpen, onClose]);
 
   // ResizeObserver for available container width (giving full screen room)

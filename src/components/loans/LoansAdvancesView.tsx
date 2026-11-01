@@ -35,6 +35,7 @@ interface LoansAdvancesViewProps {
   onApplyLoanDeduction?: (loanId: string, periodKey?: string) => void;
   onApplyAllLoanDeductions?: (periodKey?: string) => void;
   currentUser?: TeamMember | null;
+  isReadOnly?: boolean;
 }
 
 export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
@@ -51,8 +52,10 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   onApplyLoanDeduction,
   onApplyAllLoanDeductions,
   currentUser,
+  isReadOnly = false,
 }) => {
   const isAuditor = currentUser?.role === 'Auditor';
+  const isWriteDisabled = isAuditor || isReadOnly;
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'All' | LoanType>('All');
@@ -381,7 +384,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {!isAuditor && (
+            {!isWriteDisabled && (
               <button
                 type="button"
                 onClick={handleOpenAddModal}
@@ -520,7 +523,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                           ? 'No staff loans or salary advances registered yet.' 
                           : 'No facilities match your search.'}
                       </p>
-                      {loans.length === 0 && !isAuditor && (
+                      {loans.length === 0 && !isWriteDisabled && (
                         <button
                           type="button"
                           onClick={handleOpenAddModal}
@@ -684,7 +687,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                               className="fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left loan-actions-dropdown"
                             >
                               {/* 1. Edit Facility */}
-                              {!isAuditor && (
+                              {!isWriteDisabled && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -700,7 +703,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                               )}
 
                               {/* 2. Pause / Resume Deductions */}
-                              {!isPaid && !isAuditor && (
+                              {!isPaid && !isWriteDisabled && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -739,7 +742,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                               </button>
 
                               {/* 4. Delete Facility */}
-                              {!isAuditor && (
+                              {!isWriteDisabled && (
                                 <>
                                   <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
                                   <button

@@ -663,6 +663,7 @@ interface EmployeeListViewProps {
   employmentTypeRules?: EmploymentTypeRule[];
   addEmployeeTrigger?: number;
   currentUser?: TeamMember | null;
+  isReadOnly?: boolean;
 }
 
 export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
@@ -680,8 +681,10 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
   employmentTypeRules,
   addEmployeeTrigger,
   currentUser,
+  isReadOnly = false,
 }) => {
   const isAuditor = currentUser?.role === 'Auditor';
+  const isWriteDisabled = isAuditor || isReadOnly;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('ALL');
   const [selectedType, setSelectedType] = useState('ALL');
@@ -941,9 +944,10 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {!isAuditor && (
+            {!isWriteDisabled && (
               <button
                 onClick={() => { setEditingEmp(null); setModalTab('quick'); setIsModalOpen(true); }}
+                disabled={isWriteDisabled}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none cursor-pointer"
               >
                 <UserPlus className="w-3.5 h-3.5" />
@@ -1187,9 +1191,9 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                       </td>
                       <td className="py-2.5 px-3.5 text-center">
                         <button
-                          disabled={isAuditor}
+                          disabled={isWriteDisabled}
                           onClick={() => {
-                            if (isAuditor) return;
+                            if (isWriteDisabled) return;
                             if (emp.status === 'Active') {
                               setExitingEmp(emp);
                             } else {
@@ -1197,13 +1201,13 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                             }
                           }}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition border ${
-                            isAuditor ? 'cursor-default opacity-90' : 'cursor-pointer'
+                            isWriteDisabled ? 'cursor-default opacity-90' : 'cursor-pointer'
                           } ${
                             emp.status === 'Active' 
-                              ? `bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ${!isAuditor ? 'hover:bg-emerald-500/20' : ''} border-emerald-500/20` 
-                              : `bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 ${!isAuditor ? 'hover:bg-zinc-500/20' : ''} border-zinc-500/20`
+                              ? `bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ${!isWriteDisabled ? 'hover:bg-emerald-500/20' : ''} border-emerald-500/20` 
+                              : `bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 ${!isWriteDisabled ? 'hover:bg-zinc-500/20' : ''} border-zinc-500/20`
                           }`}
-                          title={isAuditor ? `Status: ${emp.status}` : (emp.status === 'Active' ? 'Click to mark as inactive / exited' : 'Click to re-activate / re-hire')}
+                          title={isWriteDisabled ? `Status: ${emp.status}` : (emp.status === 'Active' ? 'Click to mark as inactive / exited' : 'Click to re-activate / re-hire')}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${emp.status === 'Active' ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
                           <span>{emp.status}</span>
@@ -1263,7 +1267,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                                 <span>View Profile</span>
                               </button>
 
-                              {!isAuditor && (
+                              {!isWriteDisabled && (
                                 <>
                                   <button
                                     type="button"
@@ -1372,7 +1376,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
           currentYear={currentYear}
           onClose={() => setViewingEmp(null)}
           onEdit={(e) => { setViewingEmp(null); handleEdit(e); }}
-          isReadOnly={isAuditor}
+          isReadOnly={isWriteDisabled}
         />
       )}
 

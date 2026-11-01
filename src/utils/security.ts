@@ -367,11 +367,28 @@ export async function registerBiometric(
 /**
  * Prompts user for biometric verification (Fingerprint / Face / Windows Hello)
  */
-export async function verifyBiometric(userId: string): Promise<{ success: boolean; error?: string }> {
+export async function verifyBiometric(userId: string, allowMfaPrompt = false): Promise<{ success: boolean; error?: string }> {
   try {
     const raw = localStorage.getItem(`payroll_pro_bio_${userId}`);
     if (!raw) {
       return { success: false, error: 'Biometric login is not enrolled on this device.' };
+    }
+
+    if (!allowMfaPrompt) {
+      try {
+        const activeMemberRaw = localStorage.getItem('PAYROLL_PRO_ACTIVE_MEMBER_V1');
+      if (activeMemberRaw) {
+        const activeMember = JSON.parse(activeMemberRaw);
+        if (activeMember?.id === userId && activeMember?.twoFactorEnabled) {
+          return {
+            success: false,
+            error: 'Two-factor authentication is enabled for this account. Biometric unlock cannot bypass MFA.',
+          };
+        }
+      }
+    } catch {
+      // Ignore malformed session data and continue with biometric verification.
+      }
     }
 
     // 1. Android Native App
@@ -420,14 +437,14 @@ export function removeBiometric(userId: string): void {
  * Helper to display current device / environment
  */
 export function getDeviceDisplayName(): string {
-  if (typeof window === 'undefined') return 'Desktop Terminal';
+  if (typeof window === 'undefined') return 'Desktop';
   const ua = navigator.userAgent;
   if (/android/i.test(ua)) return 'Android Mobile';
   if (/iphone|ipad|ipod/i.test(ua)) return 'Apple iOS Device';
-  if (/electron/i.test(ua) || (window as any).electronAPI) return 'Payroll Pro Desktop (Electron)';
-  if (/windows/i.test(ua)) return 'Windows PC (Web)';
-  if (/macintosh|mac os x/i.test(ua)) return 'Apple macOS (Web)';
-  return 'Web Terminal';
+  if (/electron/i.test(ua) || (window as any).electronAPI) return 'Desktop';
+  if (/windows/i.test(ua)) return 'Windows PC';
+  if (/macintosh|mac os x/i.test(ua)) return 'macOS';
+  return 'Web';
 }
 
 // ─── 3. PASSWORD STRENGTH METER ───────────────────────────────────────────────

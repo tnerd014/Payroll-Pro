@@ -171,6 +171,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
   const [body, setBody] = useState(emailSettings.defaultBodyTemplate);
   const [attachPdf, setAttachPdf] = useState(emailSettings.attachPdf ?? true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [tabFilter, setTabFilter] = useState<'all' | 'pending' | 'sent' | 'revised'>('all');
   const [filterMissingEmail, setFilterMissingEmail] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -842,12 +843,11 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
             <button
               type="button"
               onClick={() => setShowTemplateModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
               title="Customize Email Subject, Body & PDF Settings"
             >
               <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span className="hidden sm:inline">Customize Template &amp; PDF</span>
-              <span className="sm:hidden">Template</span>
             </button>
             {onOpenSettings && isActualAdmin && (
               <button
@@ -941,7 +941,9 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
           )}
 
           {/* Filter Bar & Summary Counters */}
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs pt-1">
+
+          {/* ── DESKTOP filter bar (md and up) ── */}
+          <div className="hidden md:flex flex-row justify-between items-center gap-2 text-xs pt-1">
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
@@ -950,8 +952,17 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search staff, code, email..."
-                  className="pl-8 pr-3 py-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-xs text-zinc-900 dark:text-zinc-100 w-48 focus:outline-none focus:border-blue-500"
+                  className="pl-8 pr-7 py-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-xs text-zinc-900 dark:text-zinc-100 w-48 focus:outline-none focus:border-blue-500"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* Status Tab Filters */}
@@ -1048,6 +1059,169 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                 </>
               )}
             </div>
+          </div>
+
+          {/* ── MOBILE filter bar (below md) ── */}
+          <div className="flex md:hidden flex-col gap-2 pt-1 text-xs">
+            {/* Row 1: Select-All checkbox + counters */}
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={filteredRecipients.length > 0 && filteredRecipients.filter(r => r.email).every(r => r.selected)}
+                  onChange={() => {
+                    const allEligibleSelected = filteredRecipients.filter(r => r.email).every(r => r.selected);
+                    if (allEligibleSelected) {
+                      // deselect all
+                      filteredRecipients.forEach(r => {
+                        if (r.selected) handleToggleSelectOne(r.employeeId);
+                      });
+                    } else {
+                      // select all with email
+                      filteredRecipients.forEach(r => {
+                        if (!r.selected && r.email) handleToggleSelectOne(r.employeeId);
+                      });
+                    }
+                  }}
+                  disabled={isSending}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-zinc-300 dark:border-zinc-700 cursor-pointer disabled:opacity-30"
+                />
+                <span className="text-zinc-600 dark:text-zinc-400 font-medium">Select All</span>
+              </label>
+              <div className="flex items-center gap-2 text-zinc-500">
+                <span>Selected: <strong className="text-zinc-900 dark:text-zinc-100">{selectedCount}</strong></span>
+                <span>&bull;</span>
+                <span>Sent: <strong className="text-emerald-600">{sentCount}</strong></span>
+              </div>
+            </div>
+
+            {/* Row 2: Tab filters + Search icon trigger */}
+            {!isMobileSearchOpen ? (
+              <div className="flex items-center gap-1">
+                {/* Tab filter pills */}
+                <div className="flex items-center gap-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 flex-1 min-w-0 overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => setTabFilter('all')}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap ${
+                      tabFilter === 'all'
+                        ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    All ({totalCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTabFilter('pending')}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap ${
+                      tabFilter === 'pending'
+                        ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    Pending ({pendingCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTabFilter('sent')}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap ${
+                      tabFilter === 'sent'
+                        ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    Sent ({sentCount})
+                  </button>
+                  {revisedCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setTabFilter('revised')}
+                      className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap ${
+                        tabFilter === 'revised'
+                          ? 'bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-2xs font-semibold'
+                          : 'text-amber-600/80 dark:text-amber-400/80 hover:text-amber-700 dark:hover:text-amber-300'
+                      }`}
+                    >
+                      Revised ({revisedCount})
+                    </button>
+                  )}
+                </div>
+                {/* Search icon button — dot indicator when active */}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileSearchOpen(true)}
+                  className="relative shrink-0 p-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition"
+                  title="Search"
+                >
+                  <Search className="w-4 h-4" />
+                  {searchQuery && (
+                    <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500" />
+                  )}
+                </button>
+              </div>
+            ) : (
+              /* Search expanded row */
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search staff, code, email..."
+                    autoFocus
+                    className="pl-8 pr-7 py-1.5 w-full bg-zinc-50 dark:bg-zinc-900 border border-blue-400 dark:border-blue-600 rounded text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setIsMobileSearchOpen(false); setSearchQuery(''); }}
+                  className="shrink-0 text-[11px] font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {/* Row 3: Extra filter pills (Select Pending Only / Missing Email) */}
+            {(sentCount > 0 && pendingCount > 0 || missingEmailCount > 0) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {sentCount > 0 && pendingCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSelectPendingOnly}
+                    className="px-2 py-1 rounded text-[11px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 font-medium cursor-pointer"
+                    title="Select only un-sent staff"
+                  >
+                    Select Pending Only
+                  </button>
+                )}
+                {missingEmailCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterMissingEmail(!filterMissingEmail)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded border transition text-[11px] font-medium ${
+                      filterMissingEmail
+                        ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800'
+                        : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800'
+                    }`}
+                  >
+                    <AlertCircle className="w-3 h-3 text-amber-500" />
+                    <span>{missingEmailCount} Missing Email</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Desktop Table View */}

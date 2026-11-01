@@ -14,12 +14,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
-  Home
+  Home,
+  CalendarDays
 } from 'lucide-react';
 import { CompanyProfile, CompanyAccount, TeamMember, AppView } from '../../types';
 import { MONTHS } from '../../store/usePayrollStore';
 import { MobileBottomSheet } from './MobileBottomSheet';
 import { isStandaloneOfflineMode, getSavedCloudConfig } from '../../services/supabaseClient';
+import { registerBackHandler } from '../../utils/mobileBackHandler';
 
 interface MobileTopAppBarProps {
   activeView?: AppView;
@@ -62,14 +64,20 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
 }) => {
   const [isCompanySheetOpen, setIsCompanySheetOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isPeriodPickerOpen, setIsPeriodPickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(selectedYear);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const periodPickerRef = useRef<HTMLDivElement>(null);
   const isLocalUser = currentUser?.id === 'local_offline_operator' || isStandaloneOfflineMode() || !getSavedCloudConfig().isEnabled;
 
   useEffect(() => {
-    if (!isUserMenuOpen) return;
+    if (!isUserMenuOpen && !isPeriodPickerOpen) return;
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setIsUserMenuOpen(false);
+      }
+      if (periodPickerRef.current && !periodPickerRef.current.contains(e.target as Node)) {
+        setIsPeriodPickerOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -78,6 +86,23 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
+  }, [isUserMenuOpen, isPeriodPickerOpen]);
+
+  // Intercept Android hardware back button for dropdowns
+  useEffect(() => {
+    if (!isPeriodPickerOpen) return;
+    return registerBackHandler(() => {
+      setIsPeriodPickerOpen(false);
+      return true;
+    });
+  }, [isPeriodPickerOpen]);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    return registerBackHandler(() => {
+      setIsUserMenuOpen(false);
+      return true;
+    });
   }, [isUserMenuOpen]);
 
   // Only show the monthly cycle bar on cycle-dependent pages (Dashboard & Payroll Run)
@@ -237,15 +262,85 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          {/* Center: Period Title & Status Chip (Single Line Guaranteed) */}
-          <div className="flex items-center gap-2 whitespace-nowrap">
-            <span className="text-xs font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
-              {currentMonthLabel} {selectedYear}
-            </span>
+          {/* Center: Clickable Period Title → opens calendar picker */}
+          <div className="relative" ref={periodPickerRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setPickerYear(selectedYear);
+                setIsPeriodPickerOpen(!isPeriodPickerOpen);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl hover:bg-zinc-200/60 dark:hover:bg-zinc-700/60 active:scale-95 transition-all cursor-pointer"
+              title="Pick month & year"
+            >
+              <span className="text-xs font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
+                {currentMonthLabel} {selectedYear}
+              </span>
+              <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform duration-200 ${isPeriodPickerOpen ? 'rotate-180' : ''}`} />
+            </button>
             {isLocked && (
-              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500/10 border border-amber-500/20" title="Payroll Locked">
+              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/10 border border-amber-500/20" title="Payroll Locked">
                 <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
               </span>
+            )}
+
+            {/* ── Calendar Dropdown Picker ── */}
+            {isPeriodPickerOpen && (
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-1 duration-150">
+                {/* Year navigator */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setPickerYear(y => y - 1)}
+                    className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition cursor-pointer active:scale-90"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                  </button>
+                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono">{pickerYear}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPickerYear(y => y + 1)}
+                    className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition cursor-pointer active:scale-90"
+                  >
+                    <ChevronRight className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                  </button>
+                </div>
+
+                {/* Month grid */}
+                <div className="grid grid-cols-4 gap-1.5 p-3">
+                  {MONTHS.map((m) => {
+                    const isSelected = m.key === selectedMonth && pickerYear === selectedYear;
+                    return (
+                      <button
+                        key={m.key}
+                        type="button"
+                        onClick={() => {
+                          onPeriodChange(m.key, pickerYear);
+                          setIsPeriodPickerOpen(false);
+                        }}
+                        className={`h-9 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                        }`}
+                      >
+                        {m.label.slice(0, 3)}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Done button */}
+                <div className="px-3 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsPeriodPickerOpen(false)}
+                    className="w-full h-9 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold hover:opacity-90 active:scale-[0.98] transition cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 

@@ -1,19 +1,19 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  ArrowLeft, 
-  RotateCcw, 
-  Palette, 
-  Check, 
-  CheckCircle2, 
-  ChevronLeft, 
-  ChevronRight, 
-  Sparkles, 
-  Layers, 
-  Type, 
-  Building2, 
-  ShieldCheck, 
-  Save, 
+import {
+  ArrowLeft,
+  RotateCcw,
+  Palette,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  Layers,
+  Type,
+  Building2,
+  ShieldCheck,
+  Save,
   Sliders,
   Printer,
   Share2,
@@ -30,17 +30,17 @@ import {
   Trash2,
   Bookmark
 } from 'lucide-react';
-import { 
-  CompanyProfile, 
-  Employee, 
-  PayrollVariables, 
-  PayeTaxVariables, 
-  CalculatedPayrollItem, 
-  PayslipDesignConfig, 
+import {
+  CompanyProfile,
+  Employee,
+  PayrollVariables,
+  PayeTaxVariables,
+  CalculatedPayrollItem,
+  PayslipDesignConfig,
   DEFAULT_PAYSLIP_DESIGN,
   EmployeeLoan,
   PayslipCustomPreset,
-  PayrollSnapshot 
+  PayrollSnapshot
 } from '../../../types';
 import { calculatePayrollItem, formatNaira, formatCompactNaira } from '../../../engine/payePensionEngine';
 import { isEmployeeActiveForPeriod } from '../../../engine/dateUtils';
@@ -67,6 +67,7 @@ interface MobilePayslipDesignerViewProps {
   onBack: () => void;
   loans?: EmployeeLoan[];
   isLocked?: boolean;
+  isReadOnly?: boolean;
 }
 
 const BRAND_PALETTES = [
@@ -99,13 +100,14 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
   onBack,
   loans = [],
   isLocked = false,
+  isReadOnly = false,
 }) => {
   // Navigation & view mode: Design Studio as default
   const [activeTab, setActiveTab] = useState<'customize' | 'preview'>('customize');
   const [selectedEmpIndex, setSelectedEmpIndex] = useState(0);
   const [isStaffPickerOpen, setIsStaffPickerOpen] = useState(false);
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
-  
+
   // Save preset modal & feedback toasts
   const [isSavePresetModalOpen, setIsSavePresetModalOpen] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
@@ -115,7 +117,7 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
   const [customHexInput, setCustomHexInput] = useState(payslipDesign.customColor || '');
 
   // Document Text & Headings Accordion State
-  const [isTextControlsOpen, setIsTextControlsOpen] = useState(true);
+  const [isTextControlsOpen, setIsTextControlsOpen] = useState(false);
 
   // Compute calculated items for all available employees
   const computedItems: CalculatedPayrollItem[] = useMemo(() => {
@@ -129,27 +131,27 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
         const currentPeriodKey = `${year}-${selectedMonth}`;
         return activeEmps.map(emp => {
           const base = calculatePayrollItem(emp, payrollVariables, payeTaxVariables, selectedMonth, year);
-        let totalLoanDeduction = 0;
-        (loans || []).forEach(l => {
-          if (!l || l.employeeId !== emp.id) return;
-          const periodRecord = (l.history || []).find(h => h.periodKey === currentPeriodKey);
-          if (periodRecord) {
-            totalLoanDeduction += Math.max(0, Number(periodRecord.amount) || 0);
-          } else if (l.status === 'Active' && (l.remainingBalance || 0) > 0) {
-            const monthly = l.type === 'Salary Advance'
-              ? (l.remainingBalance || 0)
-              : Math.min(Number(l.monthlyDeduction) || 0, Number(l.remainingBalance) || 0);
-            totalLoanDeduction += Math.max(0, monthly);
-          }
-        });
+          let totalLoanDeduction = 0;
+          (loans || []).forEach(l => {
+            if (!l || l.employeeId !== emp.id) return;
+            const periodRecord = (l.history || []).find(h => h.periodKey === currentPeriodKey);
+            if (periodRecord) {
+              totalLoanDeduction += Math.max(0, Number(periodRecord.amount) || 0);
+            } else if (l.status === 'Active' && (l.remainingBalance || 0) > 0) {
+              const monthly = l.type === 'Salary Advance'
+                ? (l.remainingBalance || 0)
+                : Math.min(Number(l.monthlyDeduction) || 0, Number(l.remainingBalance) || 0);
+              totalLoanDeduction += Math.max(0, monthly);
+            }
+          });
 
-        return {
-          ...base,
-          loanDeduction: totalLoanDeduction,
-          totalDeductions: base.totalDeductions + totalLoanDeduction,
-          netTakeHome: Math.max(0, base.netTakeHome - totalLoanDeduction),
-        };
-      });
+          return {
+            ...base,
+            loanDeduction: totalLoanDeduction,
+            totalDeductions: base.totalDeductions + totalLoanDeduction,
+            netTakeHome: Math.max(0, base.netTakeHome - totalLoanDeduction),
+          };
+        });
       }
     }
 
@@ -202,7 +204,7 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
   const filteredStaffList = useMemo(() => {
     if (!staffSearchQuery.trim()) return computedItems;
     const q = staffSearchQuery.toLowerCase();
-    return computedItems.filter(item => 
+    return computedItems.filter(item =>
       (item.fullName || '').toLowerCase().includes(q) ||
       (item.employeeCode || '').toLowerCase().includes(q) ||
       (item.department || '').toLowerCase().includes(q)
@@ -229,11 +231,13 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
   };
 
   const handleSaveCurrentDesign = () => {
+    if (isReadOnly) return;
     setSaveToast('Design settings saved & applied!');
     setTimeout(() => setSaveToast(null), 2500);
   };
 
   const handleCreateNewPreset = () => {
+    if (isReadOnly) return;
     if (!newPresetName.trim()) return;
     if (onSavePreset) {
       onSavePreset(newPresetName.trim(), payslipDesign);
@@ -249,7 +253,7 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
   };
 
   const handleToggleSection = (id: string) => {
-    const list = (payslipDesign.sectionOrder || []).map(s => 
+    const list = (payslipDesign.sectionOrder || []).map(s =>
       s.id === id ? { ...s, enabled: !s.enabled } : s
     );
     onUpdatePayslipDesign({ sectionOrder: list });
@@ -271,7 +275,7 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
 
   return (
     <div className="flex flex-col min-h-screen bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 pb-6 select-none">
-      
+
       {/* ── 1. Top Minimalist App Header ── */}
       <header className="sticky top-0 z-30 bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md px-3.5 py-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between gap-2 shadow-2xs">
         <div className="flex items-center gap-2 min-w-0">
@@ -300,9 +304,13 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
           {onSavePreset && (
             <button
               type="button"
-              onClick={() => setIsSavePresetModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800/60 text-pink-700 dark:text-pink-300 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs"
-              title="Save current styling as a new reusable preset"
+              disabled={isReadOnly}
+              onClick={() => {
+                if (isReadOnly) return;
+                setIsSavePresetModalOpen(true);
+              }}
+              className="px-2.5 py-1.5 rounded-xl bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800/60 text-pink-700 dark:text-pink-300 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isReadOnly ? "Preset saving disabled in offline mode" : "Save current styling as a new reusable preset"}
             >
               <Bookmark className="w-3.5 h-3.5" />
               <span>Save Preset</span>
@@ -312,9 +320,13 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
           {/* Reset Design Button */}
           <button
             type="button"
-            onClick={onResetPayslipDesign}
-            className="w-8 h-8 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90"
-            title="Reset to Default Design"
+            disabled={isReadOnly}
+            onClick={() => {
+              if (isReadOnly) return;
+              onResetPayslipDesign();
+            }}
+            className="w-8 h-8 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center justify-center transition-colors cursor-pointer active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            title={isReadOnly ? "Reset disabled in offline mode" : "Reset to Default Design"}
             aria-label="Reset to Default Design"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -336,11 +348,10 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
           <button
             type="button"
             onClick={() => setActiveTab('customize')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'customize'
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'customize'
                 ? 'bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 shadow-xs'
                 : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-            }`}
+              }`}
           >
             <Palette className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" />
             <span>Design Studio</span>
@@ -349,11 +360,10 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
           <button
             type="button"
             onClick={() => setActiveTab('preview')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'preview'
+            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${activeTab === 'preview'
                 ? 'bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 shadow-xs'
                 : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
-            }`}
+              }`}
           >
             <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Full Preview &amp; Print</span>
@@ -388,15 +398,14 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                   return (
                     <div
                       key={preset.id}
-                      className={`relative snap-start shrink-0 w-36 p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                        isSelected
+                      className={`relative snap-start shrink-0 w-36 p-3 rounded-2xl border text-left transition-all cursor-pointer ${isSelected
                           ? 'bg-pink-50/80 dark:bg-pink-950/40 border-pink-500 shadow-xs ring-1 ring-pink-500/50'
                           : 'bg-white dark:bg-[#121215] border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
+                        }`}
                       onClick={() => onUpdatePayslipDesign(preset.design)}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <div 
+                        <div
                           style={{ backgroundColor: preset.design.customColor || preset.design.themeColor || '#059669' }}
                           className="w-5 h-5 rounded-full shadow-2xs border border-white dark:border-zinc-900"
                         />
@@ -441,14 +450,13 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                       key={theme.id}
                       type="button"
                       onClick={() => onUpdatePayslipDesign(theme.config)}
-                      className={`snap-start shrink-0 w-36 p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${
-                        isSelected
+                      className={`snap-start shrink-0 w-36 p-3 rounded-2xl border text-left transition-all cursor-pointer active:scale-95 ${isSelected
                           ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 shadow-xs ring-1 ring-emerald-500/50'
                           : 'bg-white dark:bg-[#121215] border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <div 
+                        <div
                           style={{ backgroundColor: theme.color }}
                           className="w-5 h-5 rounded-full shadow-2xs border border-white dark:border-zinc-900"
                         />
@@ -495,9 +503,8 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                         setCustomHexInput(c.hex);
                       }}
                       style={{ backgroundColor: c.hex }}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform cursor-pointer shadow-xs active:scale-90 ${
-                        isActive ? 'scale-110 ring-3 ring-pink-500/50 ring-offset-2 dark:ring-offset-[#121215]' : 'hover:scale-105'
-                      }`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform cursor-pointer shadow-xs active:scale-90 ${isActive ? 'scale-110 ring-3 ring-pink-500/50 ring-offset-2 dark:ring-offset-[#121215]' : 'hover:scale-105'
+                        }`}
                       title={c.label}
                     >
                       {isActive && <Check className="w-3.5 h-3.5 text-white drop-shadow" />}
@@ -510,7 +517,7 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
               <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between gap-2">
                 <span className="text-[11px] text-zinc-500 font-medium">Custom Hex:</span>
                 <div className="flex items-center gap-2">
-                  <div 
+                  <div
                     style={{ backgroundColor: activeColor }}
                     className="w-5 h-5 rounded-full border border-zinc-300 dark:border-zinc-700 shrink-0"
                   />
@@ -543,11 +550,10 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                       key={t.id}
                       type="button"
                       onClick={() => onUpdatePayslipDesign({ accentTintStyle: t.id as any })}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                        payslipDesign.accentTintStyle === t.id
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${payslipDesign.accentTintStyle === t.id
                           ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
                           : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
-                      }`}
+                        }`}
                     >
                       {t.label}
                     </button>
@@ -575,11 +581,10 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                       key={h.id}
                       type="button"
                       onClick={() => onUpdatePayslipDesign({ headerLayout: h.id as any })}
-                      className={`py-2 px-1 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
-                        payslipDesign.headerLayout === h.id
+                      className={`py-2 px-1 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${payslipDesign.headerLayout === h.id
                           ? 'bg-pink-50 dark:bg-pink-950/40 border-pink-500 text-pink-700 dark:text-pink-300 shadow-2xs'
                           : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 bg-zinc-50/50 dark:bg-zinc-900/40'
-                      }`}
+                        }`}
                     >
                       {h.label}
                     </button>
@@ -594,22 +599,20 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                   <button
                     type="button"
                     onClick={() => onUpdatePayslipDesign({ breakdownLayout: 'two-column' })}
-                    className={`py-2 px-2 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
-                      payslipDesign.breakdownLayout === 'two-column'
+                    className={`py-2 px-2 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${payslipDesign.breakdownLayout === 'two-column'
                         ? 'bg-pink-50 dark:bg-pink-950/40 border-pink-500 text-pink-700 dark:text-pink-300 shadow-2xs'
                         : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 bg-zinc-50/50 dark:bg-zinc-900/40'
-                    }`}
+                      }`}
                   >
                     ◫ Side-by-Side
                   </button>
                   <button
                     type="button"
                     onClick={() => onUpdatePayslipDesign({ breakdownLayout: 'single-column' })}
-                    className={`py-2 px-2 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
-                      payslipDesign.breakdownLayout === 'single-column'
+                    className={`py-2 px-2 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${payslipDesign.breakdownLayout === 'single-column'
                         ? 'bg-pink-50 dark:bg-pink-950/40 border-pink-500 text-pink-700 dark:text-pink-300 shadow-2xs'
                         : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 bg-zinc-50/50 dark:bg-zinc-900/40'
-                    }`}
+                      }`}
                   >
                     ☰ Stacked
                   </button>
@@ -626,11 +629,10 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                         key={d}
                         type="button"
                         onClick={() => onUpdatePayslipDesign({ density: d })}
-                        className={`flex-1 py-1 text-[10px] font-bold rounded-md capitalize transition-colors cursor-pointer ${
-                          payslipDesign.density === d
+                        className={`flex-1 py-1 text-[10px] font-bold rounded-md capitalize transition-colors cursor-pointer ${payslipDesign.density === d
                             ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs'
                             : 'text-zinc-500 hover:text-zinc-800'
-                        }`}
+                          }`}
                       >
                         {d[0].toUpperCase() + d.slice(1, 4)}
                       </button>
@@ -650,11 +652,10 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                         key={f.id}
                         type="button"
                         onClick={() => onUpdatePayslipDesign({ fontFamily: f.id as any })}
-                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-colors cursor-pointer ${
-                          payslipDesign.fontFamily === f.id
+                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-colors cursor-pointer ${payslipDesign.fontFamily === f.id
                             ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs'
                             : 'text-zinc-500 hover:text-zinc-800'
-                        }`}
+                          }`}
                       >
                         {f.label}
                       </button>
@@ -666,7 +667,7 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
 
             {/* Document Headings & Text Labels (Editable Template Constants) */}
             <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3.5 space-y-3.5 shadow-xs">
-              <div 
+              <div
                 className="flex items-center justify-between cursor-pointer select-none"
                 onClick={() => setIsTextControlsOpen(prev => !prev)}
               >
@@ -843,32 +844,30 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                   { id: 'employer_contributions', label: 'Employer Cost', active: isSectionEnabled('employer_contributions'), toggle: () => handleToggleSection('employer_contributions') },
                   { id: 'signatures', label: 'Signatures Block', active: isSectionEnabled('signatures'), toggle: () => handleToggleSection('signatures') },
                   { id: 'footer_notes', label: 'Footer Disclaimer', active: isSectionEnabled('footer_notes'), toggle: () => handleToggleSection('footer_notes') },
-                  { 
-                    id: 'watermark', 
-                    label: 'Confidential Mark', 
-                    active: payslipDesign.watermark === 'confidential', 
-                    toggle: () => onUpdatePayslipDesign({ 
+                  {
+                    id: 'watermark',
+                    label: 'Confidential Mark',
+                    active: payslipDesign.watermark === 'confidential',
+                    toggle: () => onUpdatePayslipDesign({
                       watermark: payslipDesign.watermark === 'confidential' ? 'none' : 'confidential',
-                      watermarkOpacity: 0.06 
-                    }) 
+                      watermarkOpacity: 0.06
+                    })
                   },
                 ].map(item => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={item.toggle}
-                    className={`flex items-center justify-between p-2.5 rounded-xl border text-left text-xs font-semibold transition-all cursor-pointer active:scale-98 ${
-                      item.active
+                    className={`flex items-center justify-between p-2.5 rounded-xl border text-left text-xs font-semibold transition-all cursor-pointer active:scale-98 ${item.active
                         ? 'bg-pink-50/70 dark:bg-pink-950/30 border-pink-500/40 text-pink-800 dark:text-pink-200'
                         : 'bg-zinc-50 dark:bg-zinc-900/40 border-zinc-200/80 dark:border-zinc-800 text-zinc-400'
-                    }`}
+                      }`}
                   >
                     <span className="truncate pr-1">{item.label}</span>
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
-                      item.active 
-                        ? 'bg-pink-600 text-white' 
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${item.active
+                        ? 'bg-pink-600 text-white'
                         : 'bg-zinc-200 dark:bg-zinc-700 text-transparent'
-                    }`}>
+                      }`}>
                       <Check className="w-2.5 h-2.5" />
                     </div>
                   </button>
@@ -876,17 +875,6 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
               </div>
             </div>
 
-            {/* Bottom Save & Apply Button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleSaveCurrentDesign}
-                className="w-full py-3.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs tracking-wide shadow-md active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
-                <span>Save &amp; Apply Design</span>
-              </button>
-            </div>
 
           </div>
         )}
@@ -999,7 +987,7 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
       {/* ── 3. Quick Employee Picker Modal ── */}
       {isStaffPickerOpen && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div 
+          <div
             className="w-full max-h-[80vh] bg-white dark:bg-[#121215] border-t border-zinc-200 dark:border-zinc-800 rounded-t-3xl p-4 flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200"
             onClick={e => e.stopPropagation()}
           >
@@ -1061,11 +1049,10 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                         setSelectedEmpIndex(originalIndex !== -1 ? originalIndex : 0);
                         setIsStaffPickerOpen(false);
                       }}
-                      className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-all cursor-pointer ${
-                        isSelected
+                      className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-all cursor-pointer ${isSelected
                           ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500/60 ring-1 ring-emerald-500/40'
                           : 'bg-zinc-50/50 dark:bg-zinc-900/40 border-zinc-200/60 dark:border-zinc-800/60 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                      }`}
+                        }`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
@@ -1102,7 +1089,7 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
       {/* ── 4. Save Custom Preset Modal ── */}
       {isSavePresetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div 
+          <div
             className="w-full max-w-sm bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 space-y-3.5 shadow-2xl animate-in zoom-in-95 duration-150"
             onClick={e => e.stopPropagation()}
           >
@@ -1151,8 +1138,8 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
               <button
                 type="button"
                 onClick={handleCreateNewPreset}
-                disabled={!newPresetName.trim()}
-                className="flex-1 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 disabled:opacity-40 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+                disabled={isReadOnly || !newPresetName.trim()}
+                className="flex-1 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 disabled:opacity-40 text-white text-xs font-bold transition cursor-pointer shadow-xs disabled:cursor-not-allowed"
               >
                 Save Preset
               </button>
@@ -1175,6 +1162,20 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
         </div>,
         document.body
       )}
+
+      {/* ── Sticky Save & Apply Design Button ── */}
+      <div className="sticky bottom-0 z-20 px-3.5 py-3 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800/80">
+        <button
+          type="button"
+          disabled={isReadOnly}
+          onClick={handleSaveCurrentDesign}
+          className="w-full py-3.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs tracking-wide shadow-md active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          title={isReadOnly ? "Saving disabled in offline mode" : undefined}
+        >
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+          <span>Save &amp; Apply Design</span>
+        </button>
+      </div>
 
     </div>
   );

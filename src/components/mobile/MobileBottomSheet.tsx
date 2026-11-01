@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { registerBackHandler } from '../../utils/mobileBackHandler';
 
 interface MobileBottomSheetProps {
   isOpen: boolean;
@@ -36,6 +37,15 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = ({
       document.body.style.overflow = '';
     };
   }, [isOpen]);
+
+  // Intercept Android hardware back button to dismiss the bottom sheet
+  useEffect(() => {
+    if (!isOpen) return;
+    return registerBackHandler(() => {
+      onClose();
+      return true;
+    });
+  }, [isOpen, onClose]);
 
   if (!isOpen || !mounted) return null;
 
