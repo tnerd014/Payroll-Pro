@@ -100,12 +100,15 @@ export async function checkForGithubReleaseUpdate(currentVersion: string): Promi
 
     const exeInstallerAsset = assets.find((candidate: any) => {
       const fileName = String(candidate?.name || '').toLowerCase();
+      return fileName.endsWith('.exe') && fileName.includes('setup') && !fileName.includes('blockmap');
+    }) || assets.find((candidate: any) => {
+      const fileName = String(candidate?.name || '').toLowerCase();
       return fileName.endsWith('.exe') && !fileName.includes('blockmap') && !fileName.includes('portable');
     }) || assets.find((candidate: any) => String(candidate?.name || '').toLowerCase().endsWith('.exe'));
 
     const exePortableAsset = assets.find((candidate: any) => {
       const fileName = String(candidate?.name || '').toLowerCase();
-      return fileName.endsWith('.exe') && fileName.includes('portable');
+      return fileName.endsWith('.exe') && !fileName.includes('setup') && !fileName.includes('blockmap');
     });
 
     const apkAsset = assets.find((candidate: any) => {
@@ -130,7 +133,7 @@ export async function checkForGithubReleaseUpdate(currentVersion: string): Promi
     const releaseDownloadBase = `https://github.com/${GITHUB_REPO}/releases/download/${tagName}`;
     const result = compareReleaseVersions(resolvedCurrent, latestVersion);
     const windowsInstallerUrl = exeInstallerAsset?.browser_download_url || `${releaseDownloadBase}/Payroll-Pro-Setup-${latestVersion}.exe`;
-    const windowsPortableUrl = exePortableAsset?.browser_download_url || `${releaseDownloadBase}/Payroll-Pro-Portable-${latestVersion}.exe`;
+    const windowsPortableUrl = exePortableAsset?.browser_download_url || `${releaseDownloadBase}/Payroll-Pro-${latestVersion}.exe`;
     const androidApkUrl = apkAsset?.browser_download_url || `${releaseDownloadBase}/app-release.apk`;
     const androidBundleUrl = aabAsset?.browser_download_url || `${releaseDownloadBase}/app-release.aab`;
 

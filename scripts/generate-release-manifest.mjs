@@ -15,8 +15,8 @@ const manifest = {
   publishedAt: new Date().toISOString(),
   platforms: {
     windows: {
-      installer: `${releaseDownloadBase}/Payroll-Pro-Setup-${version}-x64.exe`,
-      portable: `${releaseDownloadBase}/Payroll-Pro-Portable-${version}.exe`,
+      installer: `${releaseDownloadBase}/Payroll-Pro-Setup-${version}.exe`,
+      portable: `${releaseDownloadBase}/Payroll-Pro-${version}.exe`,
       releaseNotesUrl: releaseUrl,
     },
     android: {

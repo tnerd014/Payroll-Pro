@@ -58,6 +58,8 @@ jobs:
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
+          draft: false
+          prerelease: false
           files: |
             release/app-release.apk
             release/latest.json

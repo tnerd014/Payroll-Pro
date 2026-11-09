@@ -42,6 +42,8 @@ jobs:
       - name: Upload manifest to GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          draft: false
+          prerelease: false
           files: |
             release/latest.json
         env:

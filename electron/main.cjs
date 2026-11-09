@@ -224,6 +224,9 @@ ipcMain.handle('check-for-updates', async () => {
     const releaseUrl = payload?.html_url || `https://github.com/${GITHUB_REPO}/releases`;
     const eligibleAsset = (payload?.assets || []).find((asset) => {
       const name = String(asset?.name || '').toLowerCase();
+      return name.endsWith('.exe') && name.includes('setup') && !name.includes('blockmap');
+    }) || (payload?.assets || []).find((asset) => {
+      const name = String(asset?.name || '').toLowerCase();
       return name.endsWith('.exe') && !name.includes('blockmap') && !name.includes('portable');
     }) || (payload?.assets || []).find((asset) => String(asset?.name || '').toLowerCase().endsWith('.exe'));
 
@@ -373,8 +376,20 @@ ipcMain.handle('install-pending-update', async () => {
       return { success: false, error: 'No downloaded installer was found.' };
     }
 
-    await shell.openPath(installerPath);
-    app.quit();
+    try {
+      const { spawn } = require('child_process');
+      const child = spawn(installerPath, [], {
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+    } catch {
+      await shell.openPath(installerPath);
+    }
+
+    setTimeout(() => {
+      app.quit();
+    }, 600);
     return { success: true, installerPath };
   } catch (error) {
     return {
