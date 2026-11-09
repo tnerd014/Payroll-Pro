@@ -21,6 +21,7 @@ import {
 } from '../../types';
 import { MobileTopAppBar } from './MobileTopAppBar';
 import { MobileBottomNav } from './MobileBottomNav';
+import { MONTHS } from '../../store/usePayrollStore';
 import { MobileMoreSheet } from './MobileMoreSheet';
 import { AndroidDeviceFrame } from './AndroidDeviceFrame';
 import { initializeMobileBackHandler, registerBackHandler } from '../../utils/mobileBackHandler';
@@ -175,6 +176,23 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   const [isEmailPayslipsOpen, setIsEmailPayslipsOpen] = useState(false);
   const [emailModalContext, setEmailModalContext] = useState<EmailPayslipContext | null>(null);
   const [previousView, setPreviousView] = useState<AppView>('payroll');
+  const [, setPrivacyRenderTick] = useState(0);
+
+  useEffect(() => {
+    const handlePrivacyChange = () => setPrivacyRenderTick(t => t + 1);
+    window.addEventListener('payroll-privacy-mask-changed', handlePrivacyChange);
+    return () => window.removeEventListener('payroll-privacy-mask-changed', handlePrivacyChange);
+  }, []);
+
+  // Automatically default the active cycle to the current real-world month & year on mount
+  useEffect(() => {
+    const currentRealMonthKey = MONTHS[new Date().getMonth()]?.key || 'oct';
+    const currentRealYear = new Date().getFullYear();
+    if (selectedMonth !== currentRealMonthKey || selectedYear !== currentRealYear) {
+      onPeriodChange(currentRealMonthKey, currentRealYear);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCompanyId]);
   const isAuditor = currentUser?.role === 'Auditor';
   const [mobileSettingsTab, setMobileSettingsTab] = useState<MobileSettingsTab | undefined>(() => {
     return settingsInitialTab === 'email' ? 'email' : undefined;

@@ -392,6 +392,12 @@ export const App: React.FC = () => {
   const [refreshTick, setRefreshTick] = useState(0);
   const [addEmployeeTrigger, setAddEmployeeTrigger] = useState(0);
 
+  useEffect(() => {
+    const handlePrivacyChange = () => setRefreshTick(t => t + 1);
+    window.addEventListener('payroll-privacy-mask-changed', handlePrivacyChange);
+    return () => window.removeEventListener('payroll-privacy-mask-changed', handlePrivacyChange);
+  }, []);
+
   const handleSoftReload = () => {
     reloadFromStorage();
     setRefreshTick(t => t + 1);

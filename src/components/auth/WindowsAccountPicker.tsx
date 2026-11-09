@@ -36,6 +36,7 @@ import {
   BookOpen,
   FileText,
   ExternalLink,
+  Download,
 } from 'lucide-react';
 import { CompanyAccount, DEFAULT_SECURITY_QUESTIONS, TeamMember } from '../../types';
 import { formatDate } from '../../engine/dateUtils';
@@ -151,6 +152,13 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
       (window as any).electronAPI.getVersion().then((version: string) => {
         if (version) setAppVersion(`v${version}`);
       }).catch(() => undefined);
+    } else if ((window as any).AndroidUpdater?.getVersion) {
+      try {
+        const version = (window as any).AndroidUpdater.getVersion();
+        if (version) setAppVersion(`v${version}`);
+      } catch {
+        // Ignore bridge error
+      }
     }
   }, []);
 
@@ -173,16 +181,33 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
         return;
       }
 
-      const shouldOpen = window.confirm(
-        `A new version (${result.latestVersion}) is available. Open the release page to download it now?`
+      const shouldDownload = window.confirm(
+        `A new version (${result.latestVersion}) is available. Download and install it now?`
       );
 
-      if (shouldOpen && result.releaseUrl) {
-        if (electronAPI?.openUpdateRelease) {
-          await electronAPI.openUpdateRelease(result.releaseUrl);
-        } else {
-          openExternalReleaseLink(result.releaseUrl);
+      if (!shouldDownload) return;
+
+      if (electronAPI?.downloadUpdate) {
+        const dlRes = await electronAPI.downloadUpdate({
+          latestVersion: result.latestVersion,
+          releaseUrl: result.releaseUrl,
+          downloadUrl: result.assetUrl || result.assetUrls?.windowsInstaller,
+        });
+        if (dlRes?.success && electronAPI?.installPendingUpdate) {
+          await electronAPI.installPendingUpdate();
         }
+        return;
+      }
+
+      const isAndroidDevice = typeof navigator !== 'undefined' && (/android/i.test(navigator.userAgent) || Boolean((window as any).AndroidUpdater));
+      const targetAssetUrl = isAndroidDevice
+        ? (result.assetUrls?.androidApk || result.assetUrl)
+        : (result.assetUrl || result.assetUrls?.windowsInstaller);
+
+      if (targetAssetUrl) {
+        openExternalReleaseLink(targetAssetUrl);
+      } else if (result.releaseUrl) {
+        openExternalReleaseLink(result.releaseUrl);
       }
     } catch (error) {
       console.error('Failed to check for updates:', error);
@@ -677,6 +702,14 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleCheckForUpdates}
+                title="Check for updates"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+              </button>
 
               <button
                 type="button"

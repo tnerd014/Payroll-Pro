@@ -191,21 +191,35 @@ ipcMain.handle('get-version', () => app.getVersion());
 ipcMain.handle('check-for-updates', async () => {
   try {
     const currentVersion = app.getVersion();
-    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'Payroll-Pro-Desktop-App',
-      },
+    const headers = {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'Payroll-Pro-Desktop-App',
+    };
+    let response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+      headers,
     });
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: `GitHub release check failed (HTTP ${response.status}).`,
-      };
+    let payload = null;
+    if (response.ok) {
+      payload = await response.json();
+    } else {
+      const listResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=5`, {
+        headers,
+      });
+      if (listResponse.ok) {
+        const list = await listResponse.json();
+        if (Array.isArray(list) && list.length > 0) {
+          payload = list.find((r) => !r.draft) || list[0];
+        }
+      }
+      if (!payload) {
+        return {
+          success: false,
+          error: `GitHub release check failed (HTTP ${response.status}).`,
+        };
+      }
     }
 
-    const payload = await response.json();
     const latestVersion = normalizeVersion(payload?.tag_name || payload?.name || '');
     const releaseUrl = payload?.html_url || `https://github.com/${GITHUB_REPO}/releases`;
     const eligibleAsset = (payload?.assets || []).find((asset) => {
@@ -220,9 +234,10 @@ ipcMain.handle('check-for-updates', async () => {
       };
     }
 
+    const tagName = payload?.tag_name || `v${latestVersion}`;
     const result = compareVersions(currentVersion, latestVersion);
     const updateAvailable = result < 0;
-    const assetUrl = eligibleAsset?.browser_download_url || '';
+    const assetUrl = eligibleAsset?.browser_download_url || `https://github.com/${GITHUB_REPO}/releases/download/${tagName}/Payroll-Pro-Setup-${latestVersion}.exe`;
 
     if (updateAvailable && updateState.status === 'idle') {
       emitUpdateState({

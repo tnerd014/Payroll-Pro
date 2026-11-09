@@ -334,6 +334,11 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   useEffect(() => {
     checkBiometricSupport().then((cap) => setBiometricCapability(cap));
+    const handlePrivacyChange = () => {
+      setPrivacyMask(getPrivacyMaskPreference());
+    };
+    window.addEventListener('payroll-privacy-mask-changed', handlePrivacyChange);
+    return () => window.removeEventListener('payroll-privacy-mask-changed', handlePrivacyChange);
   }, []);
 
   useEffect(() => {

@@ -1,6 +1,9 @@
 package com.payrollpro.app;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.print.PdfPrintHelper;
@@ -40,6 +43,7 @@ public class MainActivity extends BridgeActivity {
         setupPrintBridge();
         setupBiometricBridge();
         setupSmtpBridge();
+        setupUpdaterBridge();
     }
 
     @Override
@@ -48,6 +52,7 @@ public class MainActivity extends BridgeActivity {
         setupPrintBridge();
         setupBiometricBridge();
         setupSmtpBridge();
+        setupUpdaterBridge();
     }
 
     @Override
@@ -56,6 +61,45 @@ public class MainActivity extends BridgeActivity {
         setupPrintBridge();
         setupBiometricBridge();
         setupSmtpBridge();
+        setupUpdaterBridge();
+    }
+
+    // ----------------------------------------------
+    // App Updater Bridge (Version & External APK Download)
+    // ----------------------------------------------
+    private void setupUpdaterBridge() {
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                WebView webView = getBridge().getWebView();
+                webView.addJavascriptInterface(new Object() {
+                    @JavascriptInterface
+                    public String getVersion() {
+                        try {
+                            PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+                            return pInfo.versionName != null ? pInfo.versionName : "1.0.6";
+                        } catch (Exception e) {
+                            return "1.0.6";
+                        }
+                    }
+
+                    @JavascriptInterface
+                    public void openUrl(final String url) {
+                        if (url == null || url.trim().isEmpty()) return;
+                        runOnUiThread(() -> {
+                            try {
+                                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url.trim()));
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(intent);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        });
+                    }
+                }, "AndroidUpdater");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     // ----------------------------------------------

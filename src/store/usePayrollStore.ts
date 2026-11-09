@@ -609,8 +609,8 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
               ? parsed.payeTaxVariables.taxBrackets
               : DEFAULT_PAYE_VARIABLES.taxBrackets,
           },
-          selectedMonth: parsed.selectedMonth || (MONTHS[new Date().getMonth()]?.key || 'oct'),
-          selectedYear: Number(parsed.selectedYear) || new Date().getFullYear(),
+          selectedMonth: MONTHS[new Date().getMonth()]?.key || 'oct',
+          selectedYear: new Date().getFullYear(),
           snapshots: (parsed.snapshots && Array.isArray(parsed.snapshots))
             ? parsed.snapshots.filter(Boolean)
             : [],

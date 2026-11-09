@@ -15,13 +15,17 @@ import {
   ChevronRight,
   Check,
   Home,
-  CalendarDays
+  CalendarDays,
+  Eye,
+  EyeOff,
+  Download
 } from 'lucide-react';
 import { CompanyProfile, CompanyAccount, TeamMember, AppView } from '../../types';
 import { MONTHS } from '../../store/usePayrollStore';
 import { MobileBottomSheet } from './MobileBottomSheet';
-import { isStandaloneOfflineMode, getSavedCloudConfig } from '../../services/supabaseClient';
+import { isStandaloneOfflineMode, getSavedCloudConfig, getPrivacyMaskPreference, setPrivacyMaskPreference } from '../../services/supabaseClient';
 import { registerBackHandler } from '../../utils/mobileBackHandler';
+import { checkForGithubReleaseUpdate, openExternalReleaseLink, getRuntimeAppVersion } from '../../utils/releaseUpdate';
 
 interface MobileTopAppBarProps {
   activeView?: AppView;
@@ -66,9 +70,103 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isPeriodPickerOpen, setIsPeriodPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(selectedYear);
+  const [privacyMask, setPrivacyMask] = useState<boolean>(() => getPrivacyMaskPreference());
+  const [appVersion, setAppVersion] = useState('v1.0.6');
+  const [availableUpdate, setAvailableUpdate] = useState<{ latestVersion: string; downloadUrl: string; releaseUrl: string } | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const periodPickerRef = useRef<HTMLDivElement>(null);
   const isLocalUser = currentUser?.id === 'local_offline_operator' || isStandaloneOfflineMode() || !getSavedCloudConfig().isEnabled;
+
+  useEffect(() => {
+    let active = true;
+    getRuntimeAppVersion('1.0.6').then((ver) => {
+      if (!active) return;
+      setAppVersion(`v${ver}`);
+      setTimeout(async () => {
+        if (!active) return;
+        try {
+          const result = await checkForGithubReleaseUpdate(ver);
+          if (active && result?.success && result.updateAvailable) {
+            setAvailableUpdate({
+              latestVersion: result.latestVersion || '',
+              downloadUrl: result.assetUrls?.androidApk || result.assetUrl || '',
+              releaseUrl: result.releaseUrl || '',
+            });
+          }
+        } catch {
+          // Ignore background check error
+        }
+      }, 3500);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleCheckForUpdates = async () => {
+    setIsUserMenuOpen(false);
+    if (isCheckingUpdate) return;
+    setIsCheckingUpdate(true);
+    try {
+      const electronAPI = (window as any).electronAPI;
+      const ver = await getRuntimeAppVersion(appVersion.replace(/^v/i, ''));
+      const result = electronAPI?.checkForUpdates
+        ? await electronAPI.checkForUpdates()
+        : await checkForGithubReleaseUpdate(ver);
+
+      if (!result?.success) {
+        alert(result?.error || 'Unable to check for updates right now.');
+        return;
+      }
+
+      if (result.upToDate) {
+        alert(`You are already on the latest version (v${result.currentVersion}).`);
+        return;
+      }
+
+      const shouldDownload = window.confirm(
+        `A new version (v${result.latestVersion}) is available. Download and install it now?`
+      );
+      if (!shouldDownload) return;
+
+      if (electronAPI?.downloadUpdate) {
+        const dlRes = await electronAPI.downloadUpdate({
+          latestVersion: result.latestVersion,
+          releaseUrl: result.releaseUrl,
+          downloadUrl: result.assetUrl || result.assetUrls?.windowsInstaller,
+        });
+        if (dlRes?.success && electronAPI?.installPendingUpdate) {
+          await electronAPI.installPendingUpdate();
+        }
+        return;
+      }
+
+      const targetUrl = result.assetUrls?.androidApk || result.assetUrl || result.releaseUrl;
+      if (targetUrl) {
+        openExternalReleaseLink(targetUrl);
+      }
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
+      alert('Unable to check for updates right now. Please try again later.');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  useEffect(() => {
+    const handlePrivacyChange = () => {
+      setPrivacyMask(getPrivacyMaskPreference());
+    };
+    window.addEventListener('payroll-privacy-mask-changed', handlePrivacyChange);
+    return () => window.removeEventListener('payroll-privacy-mask-changed', handlePrivacyChange);
+  }, []);
+
+  const handleTogglePrivacyMask = () => {
+    const next = !privacyMask;
+    setPrivacyMask(next);
+    setPrivacyMaskPreference(next);
+  };
 
   useEffect(() => {
     if (!isUserMenuOpen && !isPeriodPickerOpen) return;
@@ -167,7 +265,29 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
 
         {/* Right Action Icons */}
         <div className="flex items-center gap-1 shrink-0">
-          
+          {availableUpdate && (
+            <button
+              type="button"
+              onClick={handleCheckForUpdates}
+              className="px-2 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+              title={`Update v${availableUpdate.latestVersion} available`}
+            >
+              <Download className="w-3 h-3" />
+              <span>v{availableUpdate.latestVersion}</span>
+            </button>
+          )}
+
+          {/* Privacy Shield Toggle */}
+          <button
+            type="button"
+            onClick={handleTogglePrivacyMask}
+            className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+            title={privacyMask ? 'Disable Privacy Shield (Show Figures)' : 'Enable Privacy Shield (Mask Figures)'}
+            aria-label={privacyMask ? 'Disable Privacy Shield' : 'Enable Privacy Shield'}
+          >
+            {privacyMask ? <EyeOff className="w-3.5 h-3.5 text-teal-500" /> : <Eye className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-300" />}
+          </button>
+
           {/* Light / Dark Mode Toggle */}
           <button
             type="button"
@@ -228,6 +348,17 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
                     >
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                       <span>Company Settings</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCheckForUpdates}
+                      className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Download className="w-3.5 h-3.5 text-sky-500" />
+                        <span>Check for Updates</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-zinc-400">{appVersion}</span>
                     </button>
                     <button
                       type="button"

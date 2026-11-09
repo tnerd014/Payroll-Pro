@@ -141,6 +141,13 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
       (window as any).electronAPI.getVersion().then((version: string) => {
         if (version) setAppVersion(`v${version}`);
       }).catch(() => undefined);
+    } else if ((window as any).AndroidUpdater?.getVersion) {
+      try {
+        const version = (window as any).AndroidUpdater.getVersion();
+        if (version) setAppVersion(`v${version}`);
+      } catch {
+        // Ignore bridge error
+      }
     }
   }, []);
 
@@ -163,16 +170,33 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
         return;
       }
 
-      const shouldOpen = window.confirm(
-        `A new version (${result.latestVersion}) is available. Open the release page to download it now?`
+      const shouldDownload = window.confirm(
+        `A new version (${result.latestVersion}) is available. Download and install it now?`
       );
 
-      if (shouldOpen && result.releaseUrl) {
-        if (electronAPI?.openUpdateRelease) {
-          await electronAPI.openUpdateRelease(result.releaseUrl);
-        } else {
-          openExternalReleaseLink(result.releaseUrl);
+      if (!shouldDownload) return;
+
+      if (electronAPI?.downloadUpdate) {
+        const dlRes = await electronAPI.downloadUpdate({
+          latestVersion: result.latestVersion,
+          releaseUrl: result.releaseUrl,
+          downloadUrl: result.assetUrl || result.assetUrls?.windowsInstaller,
+        });
+        if (dlRes?.success && electronAPI?.installPendingUpdate) {
+          await electronAPI.installPendingUpdate();
         }
+        return;
+      }
+
+      const isAndroidDevice = typeof navigator !== 'undefined' && (/android/i.test(navigator.userAgent) || Boolean((window as any).AndroidUpdater));
+      const targetAssetUrl = isAndroidDevice
+        ? (result.assetUrls?.androidApk || result.assetUrl)
+        : (result.assetUrl || result.assetUrls?.windowsInstaller);
+
+      if (targetAssetUrl) {
+        openExternalReleaseLink(targetAssetUrl);
+      } else if (result.releaseUrl) {
+        openExternalReleaseLink(result.releaseUrl);
       }
     } catch (error) {
       console.error('Failed to check for updates:', error);

@@ -1208,6 +1208,9 @@ export function setPrivacyMaskPreference(enabled: boolean): void {
     } else {
       localStorage.removeItem(PRIVACY_MASK_KEY);
     }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('payroll-privacy-mask-changed', { detail: { enabled } }));
+    }
   } catch (e) {
     console.warn('Failed to save privacy mask preference:', e);
   }

@@ -260,6 +260,17 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         .catch(() => {
           setTimeout(() => runStartupUpdateCheck(currentVer), 4000);
         });
+    } else if ((window as any).AndroidUpdater?.getVersion) {
+      try {
+        const version = (window as any).AndroidUpdater.getVersion();
+        if (version) {
+          currentVer = version;
+          setAppVersion(`v${version}`);
+        }
+      } catch {
+        // Ignore bridge error
+      }
+      setTimeout(() => runStartupUpdateCheck(currentVer), 4000);
     } else {
       setTimeout(() => runStartupUpdateCheck(currentVer), 4000);
     }
@@ -375,15 +386,18 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
       }
 
       if (electronAPI?.downloadUpdate) {
-        await electronAPI.downloadUpdate({
+        const dlRes = await electronAPI.downloadUpdate({
           latestVersion: result.latestVersion,
           releaseUrl: result.releaseUrl,
           downloadUrl: result.assetUrl || result.assetUrls?.windowsInstaller,
         });
+        if (dlRes?.success && electronAPI?.installPendingUpdate) {
+          await electronAPI.installPendingUpdate();
+        }
         return;
       }
 
-      const isAndroidDevice = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+      const isAndroidDevice = typeof navigator !== 'undefined' && (/android/i.test(navigator.userAgent) || Boolean((window as any).AndroidUpdater));
       const targetAssetUrl = isAndroidDevice
         ? (result.assetUrls?.androidApk || result.assetUrl)
         : (result.assetUrl || result.assetUrls?.windowsInstaller);
