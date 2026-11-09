@@ -24,10 +24,14 @@ export function hashCredential(plainText?: string | null): string {
 }
 
 /**
- * Verifies a plaintext password or PIN attempt against a stored credential.
- * Supports transparent upgrade from legacy plaintext passwords.
+ * Verifies a plaintext password, PIN, or security answer attempt against a stored credential.
+ * Supports transparent upgrade from legacy plaintext passwords and optional case-insensitivity.
  */
-export function verifyCredential(attempt?: string | null, stored?: string | null): boolean {
+export function verifyCredential(
+  attempt?: string | null,
+  stored?: string | null,
+  caseInsensitive: boolean = false
+): boolean {
   if (!attempt || !stored) return false;
   const cleanAttempt = attempt.trim();
   const cleanStored = stored.trim();
@@ -35,12 +39,21 @@ export function verifyCredential(attempt?: string | null, stored?: string | null
 
   if (isBcryptHash(cleanStored)) {
     try {
-      return bcrypt.compareSync(cleanAttempt, cleanStored);
+      if (bcrypt.compareSync(cleanAttempt, cleanStored)) {
+        return true;
+      }
+      if (caseInsensitive && cleanAttempt !== cleanAttempt.toLowerCase()) {
+        return bcrypt.compareSync(cleanAttempt.toLowerCase(), cleanStored);
+      }
+      return false;
     } catch {
       return false;
     }
   }
 
   // Legacy plaintext match
+  if (caseInsensitive) {
+    return cleanAttempt.toLowerCase() === cleanStored.toLowerCase();
+  }
   return cleanAttempt === cleanStored;
 }

@@ -195,6 +195,17 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 1.11 EMPLOYEE HISTORY TABLE (Immutable automatic row backup on every update/delete)
+CREATE TABLE IF NOT EXISTS public.employee_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employee_id TEXT NOT NULL,
+    company_id TEXT NOT NULL,
+    operation TEXT NOT NULL, -- 'UPDATE', 'DELETE', 'STALE_WRITE_BLOCKED'
+    old_data JSONB NOT NULL,
+    new_data JSONB DEFAULT NULL,
+    changed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ==============================================================================
 -- 2. SCHEMA SELF-HEALING (Ensure all columns exist if tables pre-date updates)
 -- ==============================================================================
@@ -228,6 +239,7 @@ ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS end_date TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS original_hire_date TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS stints JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS client_updated_at TIMESTAMPTZ DEFAULT NULL;
 
 -- Payroll Variables columns
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS salary_calculation_mode TEXT DEFAULT 'gross-to-net';
@@ -287,13 +299,68 @@ ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS company_name TEXT DEFAULT
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS actor_id TEXT DEFAULT '';
 
 -- ==============================================================================
--- 3. AUTOMATIC UPDATED_AT TRIGGER FUNCTION
+-- 3. AUTOMATIC UPDATED_AT, STALE-WRITE GUARD & ROW-BACKUP TRIGGERS
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Backend Safeguard 1: Prevents stale offline clients or un-updated legacy apps
+-- from overwriting newer employee records (such as updated account numbers or salaries).
+CREATE OR REPLACE FUNCTION public.guard_employee_stale_writes()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- 1. Block legacy un-updated clients that do not send client_updated_at from wiping out
+    --    already-populated bank details or reverting newer changes during bulk syncs.
+    IF NEW.client_updated_at IS NULL THEN
+        IF (OLD.account_number IS NOT NULL AND OLD.account_number <> '' AND (NEW.account_number IS NULL OR NEW.account_number = '')) THEN
+            NEW.account_number := OLD.account_number;
+            NEW.bank_name := OLD.bank_name;
+        END IF;
+    END IF;
+
+    -- 2. Timestamp conflict check: if the incoming edit was made BEFORE the cloud record's
+    --    last update (with a 5-second clock-skew tolerance), reject the stale overwrite!
+    IF NEW.client_updated_at IS NOT NULL AND OLD.updated_at IS NOT NULL THEN
+        IF NEW.client_updated_at < (OLD.updated_at - INTERVAL '5 seconds') THEN
+            INSERT INTO public.employee_history (employee_id, company_id, operation, old_data, new_data)
+            VALUES (OLD.id, OLD.company_id, 'STALE_WRITE_BLOCKED', to_jsonb(OLD), to_jsonb(NEW));
+            RETURN OLD;
+        END IF;
+    END IF;
+
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Backend Safeguard 2: Automatically archives a full JSON snapshot of every employee record
+-- whenever key payroll fields (account number, bank, salary, status) are updated or deleted.
+CREATE OR REPLACE FUNCTION public.log_employee_history()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        INSERT INTO public.employee_history (employee_id, company_id, operation, old_data, new_data)
+        VALUES (OLD.id, OLD.company_id, 'DELETE', to_jsonb(OLD), NULL);
+        RETURN OLD;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        IF (OLD.account_number IS DISTINCT FROM NEW.account_number) OR
+           (OLD.bank_name IS DISTINCT FROM NEW.bank_name) OR
+           (OLD.monthly_gross IS DISTINCT FROM NEW.monthly_gross) OR
+           (OLD.monthly_salaries IS DISTINCT FROM NEW.monthly_salaries) OR
+           (OLD.status IS DISTINCT FROM NEW.status) OR
+           (OLD.first_name IS DISTINCT FROM NEW.first_name) OR
+           (OLD.last_name IS DISTINCT FROM NEW.last_name) THEN
+            INSERT INTO public.employee_history (employee_id, company_id, operation, old_data, new_data)
+            VALUES (OLD.id, OLD.company_id, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
+        END IF;
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -305,7 +372,11 @@ BEGIN
 
     DROP TRIGGER IF EXISTS trg_employees_updated_at ON public.employees;
     CREATE TRIGGER trg_employees_updated_at BEFORE UPDATE ON public.employees
-    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION public.guard_employee_stale_writes();
+
+    DROP TRIGGER IF EXISTS trg_employees_history_log ON public.employees;
+    CREATE TRIGGER trg_employees_history_log AFTER UPDATE OR DELETE ON public.employees
+    FOR EACH ROW EXECUTE FUNCTION public.log_employee_history();
 
     DROP TRIGGER IF EXISTS trg_payroll_variables_updated_at ON public.payroll_variables;
     CREATE TRIGGER trg_payroll_variables_updated_at BEFORE UPDATE ON public.payroll_variables
@@ -339,6 +410,8 @@ CREATE INDEX IF NOT EXISTS idx_departments_company ON public.departments(company
 CREATE INDEX IF NOT EXISTS idx_loans_company_emp ON public.employee_loans(company_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_snapshots_company_period ON public.payroll_snapshots(company_id, year, month_key);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON public.audit_logs(company_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_employee_history_company ON public.employee_history(company_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_employee_history_emp ON public.employee_history(employee_id, changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_team_members_active ON public.team_members(is_active);
 CREATE INDEX IF NOT EXISTS idx_team_members_role ON public.team_members(role);
 CREATE INDEX IF NOT EXISTS idx_team_members_email ON public.team_members(email);
@@ -369,6 +442,7 @@ ALTER TABLE public.payslip_designs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payslip_presets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.employee_history ENABLE ROW LEVEL SECURITY;
 
 DO $$ 
 BEGIN
@@ -404,6 +478,9 @@ BEGIN
 
     DROP POLICY IF EXISTS "Anon Access Audit Logs" ON public.audit_logs;
     CREATE POLICY "Anon Access Audit Logs" ON public.audit_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Anon Access Employee History" ON public.employee_history;
+    CREATE POLICY "Anon Access Employee History" ON public.employee_history FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 END $$;
 
 -- ==============================================================================

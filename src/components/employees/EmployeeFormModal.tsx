@@ -399,7 +399,8 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     onClose();
   };
 
-  const yearsOptions = [2024, 2025, 2026, 2027, 2028];
+  const baseYear = Math.max(new Date().getFullYear(), currentYear || 0, activeYear || 0);
+  const yearsOptions = [baseYear - 2, baseYear - 1, baseYear, baseYear + 1, baseYear + 2];
 
   return (
     <div className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden select-none">

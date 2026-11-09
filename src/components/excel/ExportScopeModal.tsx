@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { 
   FileSpreadsheet, 
   Download, 
@@ -75,7 +75,8 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
     }, 400);
   };
 
-  const years = [2024, 2025, 2026, 2027, 2028];
+  const baseYear = Math.max(new Date().getFullYear(), currentYear || 0, selectedYear || 0);
+  const years = Array.from({ length: baseYear + 2 - 2024 + 1 }, (_, i) => 2024 + i);
 
   const informationScopeOptions: { id: ExportInformationScope; label: string; desc: string }[] = [
     {

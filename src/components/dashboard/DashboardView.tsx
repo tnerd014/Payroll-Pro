@@ -92,10 +92,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [isFilterOpen]);
 
   const years = useMemo(() => {
-    const cy = new Date().getFullYear();
-    const set = new Set([cy - 2, cy - 1, cy, cy + 1, cy + 2, 2024, 2025, 2026, 2027, 2028]);
+    const cy = Math.max(new Date().getFullYear(), filterYear || 0);
+    const set = new Set([cy - 2, cy - 1, cy, cy + 1, cy + 2]);
     return Array.from(set).sort((a, b) => a - b);
-  }, []);
+  }, [filterYear]);
 
   const isAllMonths = filterMonth === 'ALL';
   const currentMonthObj = MONTHS.find(m => m.key === filterMonth);

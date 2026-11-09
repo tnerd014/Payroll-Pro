@@ -152,7 +152,9 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
         snapshots,
         payslipDesign,
         [],
-        emailSettings
+        emailSettings,
+        undefined,
+        { forceOverwrite: true }
       );
       if (res.success) {
         setSyncFeedback({

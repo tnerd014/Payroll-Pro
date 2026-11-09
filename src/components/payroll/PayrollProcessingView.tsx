@@ -325,7 +325,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   return (
     <div className="space-y-4 max-w-6xl mx-auto select-none">
       
-      {/* â”€â”€ Top Header â”€â”€ */}
+      {/* ── Top Header ── */}
       <div className="pt-2.5 pb-3.5 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
@@ -356,9 +356,12 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             onChange={(e) => onPeriodChange(selectedMonth, Number(e.target.value))}
             className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
           >
-            {[2024, 2025, 2026, 2027].map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
+            {(() => {
+              const cy = Math.max(new Date().getFullYear(), year || 0);
+              return [cy - 2, cy - 1, cy, cy + 1, cy + 2].map(y => (
+                <option key={y} value={y}>{y}</option>
+              ));
+            })()}
           </select>
 
           {/* Unified Version Status & Dropdown Switcher */}
@@ -493,7 +496,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
               <div className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
                 Finalized on {displaySnapshot.finalizedAt ? formatDateTime(displaySnapshot.finalizedAt) : 'Unknown date'}
                 {displaySnapshot.finalizedBy ? ` by ${displaySnapshot.finalizedBy}` : ''}
-                {displaySnapshot.notes ? ` â€¢ Note: "${displaySnapshot.notes}"` : ''}
+                {displaySnapshot.notes ? ` • Note: "${displaySnapshot.notes}"` : ''}
                 {' '}&bull; Calculations, payslips, and exports reflect Version {displaySnapshot.version}.
               </div>
             </div>

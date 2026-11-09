@@ -3,12 +3,9 @@ package com.payrollpro.app;
 import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.CancellationSignal;
-import android.os.ParcelFileDescriptor;
-import android.print.PageRange;
+import android.print.PdfPrintHelper;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
-import android.print.PrintDocumentInfo;
 import android.print.PrintManager;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
@@ -19,9 +16,7 @@ import androidx.biometric.BiometricManager;
 import androidx.biometric.BiometricPrompt;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 import javax.activation.DataHandler;
@@ -63,9 +58,9 @@ public class MainActivity extends BridgeActivity {
         setupSmtpBridge();
     }
 
-    // ──────────────────────────────────────────────
+    // ----------------------------------------------
     // Print Bridge
-    // ──────────────────────────────────────────────
+    // ----------------------------------------------
     private void setupPrintBridge() {
         try {
             if (getBridge() != null && getBridge().getWebView() != null) {
@@ -94,9 +89,9 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    // ──────────────────────────────────────────────
+    // ----------------------------------------------
     // Biometric Bridge
-    // ──────────────────────────────────────────────
+    // ----------------------------------------------
     private void setupBiometricBridge() {
         try {
             if (getBridge() != null && getBridge().getWebView() != null) {
@@ -191,13 +186,13 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    // ──────────────────────────────────────────────
+    // ----------------------------------------------
     // Native SMTP Bridge
     // Exposed as window.AndroidSMTP in the WebView.
     // All methods run on a background thread to avoid
     // blocking the UI (Android NetworkOnMainThread).
     // Results are posted back via evaluateJavascript.
-    // ──────────────────────────────────────────────
+    // ----------------------------------------------
     private void setupSmtpBridge() {
         try {
             if (getBridge() != null && getBridge().getWebView() != null) {
@@ -264,7 +259,7 @@ public class MainActivity extends BridgeActivity {
                         sendMimeMessage(callbackId, payload, cfg, pdfBytes);
                     } else if (!htmlContent.isEmpty()) {
                         // Generate PDF natively from HTML using Android PrintDocumentAdapter
-                        generatePdfFromHtml(htmlContent, new PdfCallback() {
+                        generatePdfFromHtml(htmlContent, new PdfPrintHelper.Callback() {
                             @Override
                             public void onSuccess(byte[] pdfBytes) {
                                 sendMimeMessage(callbackId, payload, cfg, pdfBytes);
@@ -378,7 +373,7 @@ public class MainActivity extends BridgeActivity {
             props.put("mail.smtp.writetimeout", "25000");
 
             if (secure) {
-                // SSL/TLS — port 465
+                // SSL/TLS -- port 465
                 props.put("mail.smtp.socketFactory.port", String.valueOf(port));
                 props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
                 props.put("mail.smtp.socketFactory.fallback", "false");
@@ -397,7 +392,7 @@ public class MainActivity extends BridgeActivity {
                 props.put("mail.smtps.timeout", "25000");
                 props.put("mail.smtps.writetimeout", "25000");
             } else {
-                // STARTTLS — port 587
+                // STARTTLS -- port 587
                 props.put("mail.smtp.starttls.enable", "true");
                 props.put("mail.smtp.starttls.required", "true");
             }
@@ -426,15 +421,11 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    // ──────────────────────────────────────────────
-    //  Native Headless HTML to PDF Converter
-    // ──────────────────────────────────────────────
-    private interface PdfCallback {
-        void onSuccess(byte[] pdfBytes);
-        void onError(Exception error);
-    }
-
-    private void generatePdfFromHtml(final String htmlContent, final PdfCallback callback) {
+    // ----------------------------------------------
+    // Native Headless HTML to PDF Converter
+    // Native Headless HTML-to-PDF Converter
+    // ----------------------------------------------
+    private void generatePdfFromHtml(final String htmlContent, final PdfPrintHelper.Callback callback) {
         runOnUiThread(() -> {
             try {
                 final WebView pdfWebView = new WebView(MainActivity.this);
@@ -451,7 +442,6 @@ public class MainActivity extends BridgeActivity {
                         if (isFinished) return;
                         isFinished = true;
 
-                        // Brief delay to allow CSS web fonts and styles to complete layout
                         view.postDelayed(() -> {
                             try {
                                 PrintAttributes attributes = new PrintAttributes.Builder()
@@ -462,68 +452,8 @@ public class MainActivity extends BridgeActivity {
 
                                 final PrintDocumentAdapter adapter = pdfWebView.createPrintDocumentAdapter("payslip");
                                 final File tempPdfFile = File.createTempFile("payslip_", ".pdf", getCacheDir());
-                                final ParcelFileDescriptor pfd = ParcelFileDescriptor.open(
-                                        tempPdfFile,
-                                        ParcelFileDescriptor.MODE_READ_WRITE
-                                );
 
-                                adapter.onLayout(
-                                        null,
-                                        attributes,
-                                        new CancellationSignal(),
-                                        new PrintDocumentAdapter.LayoutResultCallback() {
-                                            @Override
-                                            public void onLayoutFinished(PrintDocumentInfo info, boolean changed) {
-                                                adapter.onWrite(
-                                                        new PageRange[]{PageRange.ALL_PAGES},
-                                                        pfd,
-                                                        new CancellationSignal(),
-                                                        new PrintDocumentAdapter.WriteResultCallback() {
-                                                            @Override
-                                                            public void onWriteFinished(PageRange[] pages) {
-                                                                try {
-                                                                    pfd.close();
-                                                                    byte[] pdfBytes = readFileToBytes(tempPdfFile);
-                                                                    tempPdfFile.delete();
-                                                                    callback.onSuccess(pdfBytes);
-                                                                } catch (Exception e) {
-                                                                    callback.onError(e);
-                                                                }
-                                                            }
-
-                                                            @Override
-                                                            public void onWriteFailed(CharSequence error) {
-                                                                try { pfd.close(); } catch (Exception ignored) {}
-                                                                tempPdfFile.delete();
-                                                                callback.onError(new Exception(error != null ? error.toString() : "PDF write failed"));
-                                                            }
-
-                                                            @Override
-                                                            public void onWriteCancelled() {
-                                                                try { pfd.close(); } catch (Exception ignored) {}
-                                                                tempPdfFile.delete();
-                                                                callback.onError(new Exception("PDF write cancelled"));
-                                                            }
-                                                        }
-                                                );
-                                            }
-
-                                            @Override
-                                            public void onLayoutFailed(CharSequence error) {
-                                                try { pfd.close(); } catch (Exception ignored) {}
-                                                tempPdfFile.delete();
-                                                callback.onError(new Exception(error != null ? error.toString() : "PDF layout failed"));
-                                            }
-
-                                            @Override
-                                            public void onLayoutCancelled() {
-                                                try { pfd.close(); } catch (Exception ignored) {}
-                                                tempPdfFile.delete();
-                                                callback.onError(new Exception("PDF layout cancelled"));
-                                            }
-                                        },
-                                        null
-                                );
+                                PdfPrintHelper.printAdapterToFile(adapter, attributes, tempPdfFile, callback);
                             } catch (Exception e) {
                                 callback.onError(e);
                             }
@@ -536,17 +466,5 @@ public class MainActivity extends BridgeActivity {
                 callback.onError(e);
             }
         });
-    }
-
-    private byte[] readFileToBytes(File file) throws Exception {
-        FileInputStream fis = new FileInputStream(file);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        byte[] buffer = new byte[8192];
-        int read;
-        while ((read = fis.read(buffer)) != -1) {
-            bos.write(buffer, 0, read);
-        }
-        fis.close();
-        return bos.toByteArray();
     }
 }

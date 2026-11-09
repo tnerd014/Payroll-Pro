@@ -47,6 +47,7 @@ import { getSavedCloudConfig, SupabaseCloudConfig } from '../../services/supabas
 import { LegalModal } from '../legal/LegalModal';
 import { openInstructionManualPdf } from '../legal/openManual';
 import { checkForGithubReleaseUpdate, openExternalReleaseLink } from '../../utils/releaseUpdate';
+import { verifyCredential } from '../../utils/cryptoAuth';
 
 interface WindowsAccountPickerProps {
   companies: CompanyAccount[];
@@ -344,21 +345,21 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
     if (!selectedForPassword) return;
 
-    const storedAnswer = (selectedForPassword.securityAnswer || '').trim().toLowerCase();
-    const inputAnswer = recoveryAnswerInput.trim().toLowerCase();
+    const storedAnswer = (selectedForPassword.securityAnswer || '').trim();
+    const inputAnswer = recoveryAnswerInput.trim();
 
     if (storedAnswer) {
-      if (inputAnswer !== storedAnswer) {
+      if (!verifyCredential(inputAnswer, storedAnswer, true)) {
         setRecoveryError('Incorrect answer. Please verify and try again.');
         return;
       }
     } else {
       // Fallback for legacy accounts without a configured security answer
-      const storedHint = (selectedForPassword.passwordHint || '').trim().toLowerCase();
-      const storedPass = (selectedForPassword.password || '').trim().toLowerCase();
-      if (storedHint && inputAnswer === storedHint) {
+      const storedHint = (selectedForPassword.passwordHint || '').trim();
+      const storedPass = (selectedForPassword.password || '').trim();
+      if (storedHint && verifyCredential(inputAnswer, storedHint, true)) {
         // match
-      } else if (storedPass && inputAnswer === storedPass) {
+      } else if (storedPass && verifyCredential(inputAnswer, storedPass, true)) {
         // match
       } else if (!inputAnswer && !storedAnswer && !storedPass) {
         // allow proceed if no security was ever stored
@@ -484,7 +485,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
           setPwdModalError('Please enter your current password to disable protection.');
           return;
         }
-        if (pwdModalCurrentPassword !== passwordModalCompany.password) {
+        if (!verifyCredential(pwdModalCurrentPassword, passwordModalCompany.password)) {
           setPwdModalError('Current password is incorrect.');
           return;
         }
@@ -506,7 +507,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
         setPwdModalError('Please enter your current password.');
         return;
       }
-      if (pwdModalCurrentPassword !== passwordModalCompany.password) {
+      if (!verifyCredential(pwdModalCurrentPassword, passwordModalCompany.password)) {
         setPwdModalError('Current password is incorrect.');
         return;
       }

@@ -527,7 +527,8 @@ export async function uploadCompanyDataToSupabase(
   payslipDesign?: PayslipDesignConfig,
   savedPresets?: PayslipCustomPreset[],
   emailSettings?: any,
-  emailedPayslips?: Record<string, any>
+  emailedPayslips?: Record<string, any>,
+  options?: { dirtyEmployeeIds?: Set<string> | string[]; forceOverwrite?: boolean }
 ): Promise<{ success: boolean; error?: string }> {
   const client = getSupabaseClient();
   if (!client) {
@@ -576,46 +577,95 @@ export async function uploadCompanyDataToSupabase(
       await client.from('departments').upsert(deptRows, { onConflict: 'company_id,name' });
     }
 
-    // 3. Sync Employees (Upsert active employees first, then safely prune any deleted IDs)
-    const currentEmpIds = (employees || []).map(e => e.id).filter(Boolean);
-    if (currentEmpIds.length > 0) {
-      const empRows = employees.map(e => ({
-        id: e.id,
-        company_id: companyId,
-        code: e.code,
-        first_name: e.firstName,
-        last_name: e.lastName,
-        department: e.department || 'GENERAL',
-        position: e.position || 'STAFF',
-        email: e.email || '',
-        phone: e.phone || '',
-        monthly_gross: e.monthlyGross || 0,
-        annual_rent: e.annualRent || 0,
-        annual_rents: e.annualRents || {},
-        bank_name: e.bankName || '',
-        account_number: e.accountNumber || '',
-        has_pension: Boolean(e.hasPension),
-        has_paye: Boolean(e.hasPaye),
-        paye_number: e.payeNumber || '',
-        pension_number: e.pensionNumber || '',
-        pfa_name: e.pfaName || '',
-        status: e.status || 'Active',
-        employment_type: e.employmentType || 'Full-Time',
-        state_of_residence: e.stateOfResidence || 'Lagos',
-        start_date: e.startDate || '',
-        end_date: e.endDate || '',
-        original_hire_date: e.originalHireDate || '',
-        stints: e.stints || [],
-        monthly_salaries: e.monthlySalaries || {},
-        updated_at: new Date().toISOString(),
-      }));
+    // 3. Sync Employees (Timestamp-aware & dirty-set-aware to prevent stale offline overwrites)
+    const dirtySet = options?.dirtyEmployeeIds
+      ? new Set(Array.isArray(options.dirtyEmployeeIds) ? options.dirtyEmployeeIds : Array.from(options.dirtyEmployeeIds))
+      : null;
 
-      // Upsert all current employees in a single batch API call.
-      // NOTE: This bulk sync intentionally NEVER deletes cloud employees. Individual deletions
-      // go through deleteEmployeeFromCloud(). Pruning here caused total data loss whenever a
-      // device uploaded an empty or stale local copy (e.g. a fresh device opening a company).
-      const { error: empErr } = await client.from('employees').upsert(empRows);
-      if (empErr) throw new Error(`Employees upsert failed: ${empErr.message}`);
+    let candidates = (employees || []).filter(e => e && e.id);
+    if (dirtySet !== null && !options?.forceOverwrite) {
+      candidates = candidates.filter(e => dirtySet.has(e.id));
+    }
+
+    if (candidates.length > 0) {
+      let cloudTimestamps = new Map<string, number>();
+      if (!options?.forceOverwrite) {
+        const { data: existingCloudEmps } = await client
+          .from('employees')
+          .select('id, updated_at')
+          .eq('company_id', companyId);
+
+        if (existingCloudEmps && Array.isArray(existingCloudEmps)) {
+          existingCloudEmps.forEach((row: any) => {
+            if (row.id && row.updated_at) {
+              const t = new Date(row.updated_at).getTime();
+              if (!isNaN(t)) cloudTimestamps.set(row.id, t);
+            }
+          });
+        }
+      }
+
+      // Filter out any employee whose local record is older than the cloud version (or lacks updatedAt when cloud already has one)
+      const safeToUpload = options?.forceOverwrite
+        ? candidates
+        : candidates.filter(e => {
+            const cloudTime = cloudTimestamps.get(e.id);
+            if (!cloudTime) return true; // New employee not yet in cloud
+            if (!e.updatedAt) {
+              // If explicitly marked dirty on this device, allow; otherwise never overwrite newer cloud data with untimestamped local cache
+              return dirtySet ? dirtySet.has(e.id) : false;
+            }
+            const localTime = new Date(e.updatedAt).getTime();
+            if (isNaN(localTime)) return false;
+            return localTime >= cloudTime;
+          });
+
+      if (safeToUpload.length > 0) {
+        const nowIso = new Date().toISOString();
+        const empRows = safeToUpload.map(e => ({
+          id: e.id,
+          company_id: companyId,
+          code: e.code,
+          first_name: e.firstName,
+          last_name: e.lastName,
+          department: e.department || 'GENERAL',
+          position: e.position || 'STAFF',
+          email: e.email || '',
+          phone: e.phone || '',
+          monthly_gross: e.monthlyGross || 0,
+          annual_rent: e.annualRent || 0,
+          annual_rents: e.annualRents || {},
+          bank_name: e.bankName || '',
+          account_number: e.accountNumber || '',
+          has_pension: Boolean(e.hasPension),
+          has_paye: Boolean(e.hasPaye),
+          paye_number: e.payeNumber || '',
+          pension_number: e.pensionNumber || '',
+          pfa_name: e.pfaName || '',
+          status: e.status || 'Active',
+          employment_type: e.employmentType || 'Full-Time',
+          state_of_residence: e.stateOfResidence || 'Lagos',
+          start_date: e.startDate || '',
+          end_date: e.endDate || '',
+          original_hire_date: e.originalHireDate || '',
+          stints: e.stints || [],
+          monthly_salaries: e.monthlySalaries || {},
+          updated_at: e.updatedAt || nowIso,
+          client_updated_at: e.updatedAt || nowIso,
+        }));
+
+        // Upsert only validated/modified employees in a single batch API call.
+        // NOTE: This bulk sync intentionally NEVER deletes cloud employees. Individual deletions
+        // go through deleteEmployeeFromCloud().
+        let { error: empErr } = await client.from('employees').upsert(empRows);
+        // Graceful fallback if client_updated_at column hasn't been added to database yet
+        if (empErr && empErr.message && empErr.message.includes('client_updated_at')) {
+          const fallbackRows = empRows.map(({ client_updated_at, ...rest }) => rest);
+          const retryEmp = await client.from('employees').upsert(fallbackRows);
+          empErr = retryEmp.error;
+        }
+        if (empErr) throw new Error(`Employees upsert failed: ${empErr.message}`);
+      }
     }
 
     // 4. Upsert Payroll Variables
@@ -866,6 +916,7 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       originalHireDate: e.original_hire_date || '',
       stints: Array.isArray(e.stints) ? e.stints : [],
       monthlySalaries: e.monthly_salaries || {},
+      updatedAt: e.updated_at || undefined,
     }));
 
     const formattedLoans: EmployeeLoan[] = (loanData || []).map(l => ({
@@ -1065,10 +1116,10 @@ export async function uploadAllLocalCompaniesToSupabase(companies: CompanyAccoun
       email: c.email || '',
       logo_url: c.logoUrl || '',
       has_password: Boolean(c.hasPassword),
-      password: c.password || '',
+      password: c.password ? hashCredential(c.password) : '',
       password_hint: c.passwordHint || '',
       security_question: c.securityQuestion || '',
-      security_answer: c.securityAnswer || '',
+      security_answer: c.securityAnswer ? hashCredential(c.securityAnswer.trim().toLowerCase()) : '',
       updated_at: new Date().toISOString(),
     }));
 
@@ -1428,7 +1479,9 @@ export async function saveTeamMemberToCloud(member: TeamMember): Promise<{
     }
     if (member.passwordHint !== undefined) payload.password_hint = member.passwordHint;
     if (member.securityQuestion !== undefined) payload.security_question = member.securityQuestion;
-    if (member.securityAnswer !== undefined) payload.security_answer = member.securityAnswer;
+    if (member.securityAnswer !== undefined) {
+      payload.security_answer = member.securityAnswer ? hashCredential(member.securityAnswer.trim().toLowerCase()) : '';
+    }
     if (member.recoveryEmail !== undefined) payload.recovery_email = member.recoveryEmail;
     if (member.tempPassword !== undefined) payload.temp_password = member.tempPassword;
     if (member.mustChangePassword !== undefined) payload.must_change_password = member.mustChangePassword;
@@ -1608,6 +1661,7 @@ export async function saveSingleEmployeeToCloud(employee: Employee, companyId: s
   if (!client) return { success: false, error: 'Cloud server not connected.' };
 
   try {
+    const editTime = employee.updatedAt || new Date().toISOString();
     const row = {
       id: employee.id,
       company_id: companyId,
@@ -1636,9 +1690,15 @@ export async function saveSingleEmployeeToCloud(employee: Employee, companyId: s
       original_hire_date: employee.originalHireDate || '',
       stints: employee.stints || [],
       monthly_salaries: employee.monthlySalaries || {},
-      updated_at: new Date().toISOString(),
+      updated_at: editTime,
+      client_updated_at: editTime,
     };
     let { error } = await client.from('employees').upsert([row]);
+    if (error && error.message?.includes('client_updated_at')) {
+      const { client_updated_at, ...rowWithoutClientTs } = row;
+      const retryTs = await client.from('employees').upsert([rowWithoutClientTs]);
+      error = retryTs.error;
+    }
     // Fallback if cloud schema is missing newer optional columns
     if (error && (error.message?.includes('column') || error.code === '42703')) {
       const coreRow = {
@@ -1963,16 +2023,18 @@ export async function registerInitialAdmin(data: {
     // Purge any legacy dummy test seed if present
     await client.from('team_members').delete().eq('id', 'user-admin-default');
     const adminId = 'admin-' + Date.now();
+    const hashedAdminPass = hashCredential(data.password);
+    const hashedAdminAnswer = hashCredential(data.securityAnswer.trim().toLowerCase());
     const payload: Record<string, any> = {
       id: adminId,
       name: data.name.trim(),
       email: data.email.trim().toLowerCase(),
       username: data.username.trim().toLowerCase(),
       role: 'Admin',
-      password: data.password,
-      pin: data.password,
+      password: hashedAdminPass,
+      pin: hashedAdminPass,
       security_question: data.securityQuestion.trim(),
-      security_answer: data.securityAnswer.trim().toLowerCase(),
+      security_answer: hashedAdminAnswer,
       recovery_email: data.recoveryEmail?.trim().toLowerCase() || data.email.trim().toLowerCase(),
       temp_password: '',
       must_change_password: false,
@@ -1989,7 +2051,7 @@ export async function registerInitialAdmin(data: {
         // Strip optional recovery fields if database table was created with an older schema
         delete payload.must_change_password;
         delete payload.temp_password;
-        payload.pin = data.password;
+        payload.pin = hashedAdminPass;
         insertRes = await client.from('team_members').insert(payload);
         
         // If still missing security_question or other columns:
@@ -2058,10 +2120,10 @@ export async function loginStaffMember(
     }
 
     const row = data[0];
-    const isMasterMatch = Boolean(row.password && row.password === cleanPass);
-    const isTempMatch = Boolean(row.temp_password && row.temp_password === cleanPass);
-    // Legacy fallback ONLY if the account never had a password set
-    const isLegacyPinMatch = Boolean(!row.password && row.pin && row.pin === cleanPass);
+    const isMasterMatch = Boolean(row.password && verifyCredential(cleanPass, row.password));
+    const isTempMatch = Boolean(row.temp_password && verifyCredential(cleanPass, row.temp_password));
+    // Legacy fallback if the account uses `pin` or has not set a separate `password`
+    const isLegacyPinMatch = Boolean(row.pin && verifyCredential(cleanPass, row.pin));
 
     if (!isMasterMatch && !isTempMatch && !isLegacyPinMatch) {
       return { success: false, error: 'Incorrect password. Click "Forgot Password" if you need to recover access.' };
@@ -2075,7 +2137,11 @@ export async function loginStaffMember(
       email: row.email,
       username: row.username,
       role: row.role,
+      pin: row.pin,
+      password: row.password,
+      passwordHint: row.password_hint || '',
       securityQuestion: row.security_question,
+      securityAnswer: row.security_answer,
       recoveryEmail: row.recovery_email,
       mustChangePassword: mustChange,
       isActive: true,
@@ -2353,17 +2419,19 @@ export async function resetPasswordWithSecurityAnswer(
       return { success: false, error: 'Account not found.' };
     }
 
-    const actualAnswer = (data[0].security_answer || '').trim().toLowerCase();
-    if (!actualAnswer || actualAnswer !== cleanAnswer) {
+    const storedAnswer = data[0].security_answer || '';
+    if (!storedAnswer || !verifyCredential(cleanAnswer, storedAnswer, true)) {
       return { success: false, error: 'Incorrect answer to security question. Please try again.' };
     }
+
+    const hashedNewPass = hashCredential(newPassword.trim());
 
     // Answer matched! Update password, sync pin, and clear any temporary state
     const { error: updateError } = await client
       .from('team_members')
       .update({
-        password: newPassword.trim(),
-        pin: newPassword.trim(),
+        password: hashedNewPass,
+        pin: hashedNewPass,
         temp_password: '',
         must_change_password: false,
         updated_at: new Date().toISOString(),
@@ -2445,11 +2513,12 @@ export async function updateAuthenticatedPassword(
   if (!client) return { success: false, error: 'Cloud server not connected' };
 
   try {
+    const hashedNewPass = hashCredential(newPassword.trim());
     const { error } = await client
       .from('team_members')
       .update({
-        password: newPassword.trim(),
-        pin: newPassword.trim(),
+        password: hashedNewPass,
+        pin: hashedNewPass,
         temp_password: '',
         must_change_password: false,
         updated_at: new Date().toISOString(),
@@ -2461,6 +2530,8 @@ export async function updateAuthenticatedPassword(
     // Update active session locally
     const current = getActiveTeamMember();
     if (current && current.id === userId) {
+      current.password = hashedNewPass;
+      current.pin = hashedNewPass;
       current.mustChangePassword = false;
       setActiveTeamMember(current);
     }

@@ -65,6 +65,7 @@ export interface Employee {
   endDate?: string; // ISO date YYYY-MM-DD (exit/termination date)
   originalHireDate?: string; // ISO date YYYY-MM-DD (first ever hire date)
   stints?: EmploymentStint[]; // Historical and active employment stints
+  updatedAt?: string; // ISO timestamp for conflict resolution
 }
 
 export interface EmploymentStint {

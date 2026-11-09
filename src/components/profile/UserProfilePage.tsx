@@ -39,6 +39,7 @@ import {
   setPrivacyMaskPreference,
 } from '../../services/supabaseClient';
 import { generateQrSvg } from '../../utils/qrCode';
+import { verifyCredential, isBcryptHash } from '../../utils/cryptoAuth';
 import {
   generateMfaSecret,
   formatMfaSecret,
@@ -341,10 +342,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     if (currentUser) {
       setName(currentUser.name || '');
       setPhone(currentUser.phone || '');
-      setPin(currentUser.pin || '');
+      setPin(isBcryptHash(currentUser.pin) ? '' : (currentUser.pin || ''));
       setPasswordHint(currentUser.passwordHint || '');
       setSecurityQuestion(currentUser.securityQuestion || DEFAULT_SECURITY_QUESTIONS[0]);
-      setSecurityAnswer(currentUser.securityAnswer || '');
+      setSecurityAnswer(isBcryptHash(currentUser.securityAnswer) ? '' : (currentUser.securityAnswer || ''));
       setRecoveryEmail(currentUser.recoveryEmail || '');
       setIs2FaEnabled(Boolean(currentUser.twoFactorEnabled));
       if (currentUser.twoFactorSecret) setMfaSecret(currentUser.twoFactorSecret);
@@ -402,7 +403,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   const savePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
-    if (currentUser.password && currentPw !== currentUser.password) { setPasswordError('Current password does not match.'); return; }
+    if (currentUser.password && !verifyCredential(currentPw, currentUser.password)) { setPasswordError('Current password does not match.'); return; }
     if (newPw.length < 6) { setPasswordError('Password must be at least 6 characters.'); return; }
     if (newPw !== confirmPw) { setPasswordError('Passwords do not match.'); return; }
     setIsSaving(true);

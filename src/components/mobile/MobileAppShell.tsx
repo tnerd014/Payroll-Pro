@@ -362,6 +362,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             onUpdateEmployeeEmail={onUpdateEmployeeEmail}
             isAdmin={isAdmin}
             onOpenEmailSettings={handleOpenEmailSettingsFlow}
+            isReadOnly={isCloudOffline}
           />
         ) : activeView === 'employees' ? (
           <MobileStaffDirectoryView

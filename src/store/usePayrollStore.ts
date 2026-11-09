@@ -46,11 +46,14 @@ import {
   deleteSnapshotFromCloud
 } from '../services/supabaseClient';
 import { saveCompanyDataToDb, migrateFromLocalStorageIfNeeded } from './payrollDb';
+import { verifyCredential } from '../utils/cryptoAuth';
 
 export const STORAGE_KEY = 'PAYROLL_PRO_LOCAL_STORAGE_V5';
 export const COMPANIES_REGISTRY_KEY = 'PAYROLL_PRO_COMPANIES_REGISTRY_V1';
 export const COMPANY_DATA_PREFIX = 'PAYROLL_PRO_DATA_COMPANY_';
 export const PENDING_OFFLINE_SYNC_PREFIX = 'PAYROLL_PRO_PENDING_SYNC_';
+export const DIRTY_EMPLOYEES_PREFIX = 'PAYROLL_PRO_DIRTY_EMPS_';
+export const DELETED_EMPLOYEES_PREFIX = 'PAYROLL_PRO_DELETED_EMPS_';
 export const THEME_PREFERENCE_KEY = 'PAYROLL_PRO_THEME_PREF';
 
 export const MONTHS = [
@@ -265,7 +268,15 @@ export function purgeAllLocalDataOnDisconnect(): void {
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith(COMPANY_DATA_PREFIX) || key === COMPANIES_REGISTRY_KEY || key === STORAGE_KEY)) {
+      if (
+        key &&
+        (key.startsWith(COMPANY_DATA_PREFIX) ||
+          key.startsWith(PENDING_OFFLINE_SYNC_PREFIX) ||
+          key.startsWith(DIRTY_EMPLOYEES_PREFIX) ||
+          key.startsWith(DELETED_EMPLOYEES_PREFIX) ||
+          key === COMPANIES_REGISTRY_KEY ||
+          key === STORAGE_KEY)
+      ) {
         keysToRemove.push(key);
       }
     }
@@ -276,8 +287,88 @@ export function purgeAllLocalDataOnDisconnect(): void {
 }
 
 // ─────────────────────────────────────────────────────────────
-// OFFLINE PENDING-SYNC HELPERS
+// OFFLINE PENDING-SYNC & DIRTY EMPLOYEE HELPERS
 // ─────────────────────────────────────────────────────────────
+
+export function getDirtyEmployeeIds(companyId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(DIRTY_EMPLOYEES_PREFIX + companyId);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? new Set(parsed.filter(Boolean)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function markEmployeesDirty(companyId: string, employeeIds: string[]): void {
+  if (!companyId || employeeIds.length === 0) return;
+  try {
+    const current = getDirtyEmployeeIds(companyId);
+    employeeIds.forEach(id => {
+      if (id) current.add(id);
+    });
+    localStorage.setItem(DIRTY_EMPLOYEES_PREFIX + companyId, JSON.stringify(Array.from(current)));
+  } catch (e) {
+    console.warn('Failed to mark employees dirty:', e);
+  }
+}
+
+export function unmarkEmployeeDirty(companyId: string, employeeId: string): void {
+  if (!companyId || !employeeId) return;
+  try {
+    const current = getDirtyEmployeeIds(companyId);
+    if (current.delete(employeeId)) {
+      if (current.size === 0) {
+        localStorage.removeItem(DIRTY_EMPLOYEES_PREFIX + companyId);
+      } else {
+        localStorage.setItem(DIRTY_EMPLOYEES_PREFIX + companyId, JSON.stringify(Array.from(current)));
+      }
+    }
+  } catch {}
+}
+
+export function clearDirtyEmployees(companyId: string): void {
+  if (!companyId) return;
+  try {
+    localStorage.removeItem(DIRTY_EMPLOYEES_PREFIX + companyId);
+  } catch {}
+}
+
+export function getPendingDeletedEmployeeIds(companyId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_EMPLOYEES_PREFIX + companyId);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? new Set(parsed.filter(Boolean)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function markEmployeePendingDelete(companyId: string, employeeId: string): void {
+  if (!companyId || !employeeId) return;
+  try {
+    const current = getPendingDeletedEmployeeIds(companyId);
+    current.add(employeeId);
+    localStorage.setItem(DELETED_EMPLOYEES_PREFIX + companyId, JSON.stringify(Array.from(current)));
+    unmarkEmployeeDirty(companyId, employeeId);
+  } catch {}
+}
+
+export function unmarkEmployeePendingDelete(companyId: string, employeeId: string): void {
+  if (!companyId || !employeeId) return;
+  try {
+    const current = getPendingDeletedEmployeeIds(companyId);
+    if (current.delete(employeeId)) {
+      if (current.size === 0) {
+        localStorage.removeItem(DELETED_EMPLOYEES_PREFIX + companyId);
+      } else {
+        localStorage.setItem(DELETED_EMPLOYEES_PREFIX + companyId, JSON.stringify(Array.from(current)));
+      }
+    }
+  } catch {}
+}
 
 export function hasPendingOfflineSync(companyId: string): boolean {
   try {
@@ -326,6 +417,7 @@ let isSyncingAllPending = false;
 /**
  * Uploads the locally stored data of EVERY company flagged as pending (not just the
  * active one). Clears each flag only after a successful upload.
+ * Only uploads employees that were explicitly modified on this device (and passes timestamp check).
  */
 export async function syncAllPendingCompanies(): Promise<{ synced: string[]; failed: string[] }> {
   const result = { synced: [] as string[], failed: [] as string[] };
@@ -342,12 +434,25 @@ export async function syncAllPendingCompanies(): Promise<{ synced: string[]; fai
       // Only upload companies that actually have local data saved
       if (!localStorage.getItem(COMPANY_DATA_PREFIX + companyId)) {
         localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + companyId);
+        clearDirtyEmployees(companyId);
         continue;
       }
       const account = registry.find(c => c.id === companyId);
       const data = loadCompanyData(companyId, account);
       const company = { ...data.company, id: companyId };
+      const dirtyEmpIds = getDirtyEmployeeIds(companyId);
+      const deletedEmpIds = getPendingDeletedEmployeeIds(companyId);
+
       try {
+        // 1. Replay any offline employee deletions first
+        for (const delId of Array.from(deletedEmpIds)) {
+          const delRes = await deleteEmployeeFromCloud(delId, companyId);
+          if (delRes.success) {
+            unmarkEmployeePendingDelete(companyId, delId);
+          }
+        }
+
+        // 2. Upload company data, restricting employee upserts ONLY to dirty employees
         const res = await uploadCompanyDataToSupabase(
           company,
           data.employees,
@@ -359,10 +464,12 @@ export async function syncAllPendingCompanies(): Promise<{ synced: string[]; fai
           data.payslipDesign,
           data.savedPayslipPresets || [],
           data.emailSettings,
-          data.emailedPayslips
+          data.emailedPayslips,
+          { dirtyEmployeeIds: dirtyEmpIds }
         );
         if (res.success) {
           localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + companyId);
+          clearDirtyEmployees(companyId);
           result.synced.push(companyId);
           logAuditEvent(
             companyId,
@@ -382,6 +489,55 @@ export async function syncAllPendingCompanies(): Promise<{ synced: string[]; fai
     isSyncingAllPending = false;
     window.dispatchEvent(new Event('payroll-sync-status-changed'));
   }
+  return result;
+}
+
+export function mergeEmployeesWithCloud(
+  localEmployees: Employee[],
+  cloudEmployees: Employee[],
+  dirtyIds: Set<string>,
+  deletedIds: Set<string>,
+  pendingMap?: Map<string, { employee: Employee; timestamp: number }>
+): Employee[] {
+  const localMap = new Map(localEmployees.map(e => [e.id, e]));
+  const seenIds = new Set<string>();
+  const result: Employee[] = [];
+
+  for (const cloudEmp of cloudEmployees) {
+    if (!cloudEmp || !cloudEmp.id) continue;
+    if (deletedIds.has(cloudEmp.id)) continue; // Deleted locally while offline
+    seenIds.add(cloudEmp.id);
+
+    const inFlight = pendingMap?.get(cloudEmp.id);
+    if (inFlight) {
+      result.push(inFlight.employee);
+      continue;
+    }
+
+    if (dirtyIds.has(cloudEmp.id)) {
+      const localEmp = localMap.get(cloudEmp.id);
+      if (localEmp) {
+        const localTime = localEmp.updatedAt ? new Date(localEmp.updatedAt).getTime() : 0;
+        const cloudTime = cloudEmp.updatedAt ? new Date(cloudEmp.updatedAt).getTime() : 0;
+        if (!cloudTime || (localTime && localTime >= cloudTime)) {
+          result.push(localEmp);
+          continue;
+        }
+      }
+    }
+
+    result.push(cloudEmp);
+  }
+
+  // Include locally created employees not yet present in cloud
+  for (const localEmp of localEmployees) {
+    if (!localEmp || !localEmp.id) continue;
+    if (seenIds.has(localEmp.id) || deletedIds.has(localEmp.id)) continue;
+    if (dirtyIds.has(localEmp.id) || pendingMap?.has(localEmp.id)) {
+      result.push(localEmp);
+    }
+  }
+
   return result;
 }
 
@@ -546,6 +702,7 @@ export function usePayrollStore() {
     setCompanies(currentList);
     if (activeCompanyId) {
       const activeAcc = currentList.find(c => c.id === activeCompanyId);
+      skipNextAutoSyncRef.current = true;
       setState(loadCompanyData(activeCompanyId, activeAcc));
     }
   };
@@ -694,10 +851,34 @@ export function usePayrollStore() {
   const pendingLocalEmployeesRef = useRef<Map<string, { employee: Employee; timestamp: number }>>(new Map());
   // True once the active company's cloud copy has been loaded (or there is nothing to load).
   // Until then we must NEVER upload, otherwise an empty/stale local copy overwrites the cloud.
-  const cloudReadyRef = useRef(true);
+  const cloudReadyRef = useRef(false);
   // Set right before programmatic state loads (company open / cloud download) so they
   // are not mistaken for user edits and uploaded back.
   const skipNextAutoSyncRef = useRef(false);
+  // Snapshot of the last synced/loaded business data fingerprint per company so pure UI changes
+  // (activeView, isDarkTheme, selectedMonth, selectedYear) never trigger cloud uploads or offline flags.
+  const lastSyncedSignatureRef = useRef<string>('');
+
+  const getSyncableSignature = (s: AppState, compId: string | null): string => {
+    try {
+      return JSON.stringify({
+        cid: compId,
+        company: s.company,
+        employees: s.employees,
+        departments: s.departments,
+        payrollVariables: s.payrollVariables,
+        payeTaxVariables: s.payeTaxVariables,
+        loans: s.loans || [],
+        snapshots: s.snapshots,
+        payslipDesign: s.payslipDesign,
+        savedPayslipPresets: s.savedPayslipPresets || [],
+        emailSettings: s.emailSettings,
+        emailedPayslips: s.emailedPayslips,
+      });
+    } catch {
+      return '';
+    }
+  };
 
   // Auto-sync state changes: immediate local save, debounced upload when online, or queue if offline
   useEffect(() => {
@@ -705,6 +886,7 @@ export function usePayrollStore() {
 
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      lastSyncedSignatureRef.current = getSyncableSignature(state, activeCompanyId);
       return;
     }
 
@@ -716,11 +898,20 @@ export function usePayrollStore() {
       return;
     }
 
+    const currentSignature = getSyncableSignature(state, activeCompanyId);
+
     // LOAD GUARD: this state change came from opening a company / applying a cloud download
     if (skipNextAutoSyncRef.current) {
       skipNextAutoSyncRef.current = false;
+      lastSyncedSignatureRef.current = currentSignature;
       return;
     }
+
+    // UI-ONLY GUARD: Ignore changes that only affect UI state (activeView, theme, period selector)
+    if (currentSignature === lastSyncedSignatureRef.current) {
+      return;
+    }
+    lastSyncedSignatureRef.current = currentSignature;
 
     // HYDRATION GUARD: cloud copy not loaded yet — queue the edit instead of uploading
     if (!cloudReadyRef.current) {
@@ -748,6 +939,7 @@ export function usePayrollStore() {
 
       syncTimeoutRef.current = setTimeout(() => {
         isLocalUploadInProgressRef.current = true;
+        const dirtyEmpIds = getDirtyEmployeeIds(activeCompanyId);
         uploadCompanyDataToSupabase(
           state.company,
           state.employees,
@@ -759,10 +951,12 @@ export function usePayrollStore() {
           state.payslipDesign,
           state.savedPayslipPresets || [],
           state.emailSettings,
-          state.emailedPayslips
+          state.emailedPayslips,
+          { dirtyEmployeeIds: dirtyEmpIds }
         ).then(res => {
           if (res.success) {
             localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId);
+            clearDirtyEmployees(activeCompanyId);
           } else {
             // Upload failed without throwing (e.g. connection dropped mid-sync) — keep it queued
             console.warn('Auto-sync upload failed:', res.error);
@@ -831,8 +1025,9 @@ export function usePayrollStore() {
         return;
       }
 
-      // 1b. Never overwrite local offline edits that haven't been uploaded yet
-      if (hasPendingOfflineSync(activeCompanyId) || pendingLocalEmployeesRef.current.size > 0) {
+      // 1b. Do not block all realtime updates just because pending flag exists — mergeEmployeesWithCloud
+      // protects any locally dirty or in-flight employees while allowing other colleagues' updates through.
+      if (pendingLocalEmployeesRef.current.size > 0) {
         return;
       }
 
@@ -841,6 +1036,8 @@ export function usePayrollStore() {
       debounceTimer = setTimeout(() => {
         downloadCompanyDataFromSupabase(activeCompanyId).then(res => {
           if (!res.success) return;
+          cloudReadyRef.current = true;
+          skipNextAutoSyncRef.current = true;
           setState(prev => {
             // Isolation guard: Never apply cloud updates if the user switched companies in the interim
             if (prev.company?.id && prev.company.id !== activeCompanyId) {
@@ -852,17 +1049,17 @@ export function usePayrollStore() {
             }
 
             // SMART MERGE: Never overwrite locally edited employees with older cloud versions
-            let mergedEmployees = prev.employees;
-            if (res.employees) {
-              const pendingMap = pendingLocalEmployeesRef.current;
-              mergedEmployees = res.employees.map(cloudEmp => {
-                const pending = pendingMap.get(cloudEmp.id);
-                if (pending) {
-                  return pending.employee;
-                }
-                return cloudEmp;
-              });
-            }
+            const dirtyIds = getDirtyEmployeeIds(activeCompanyId);
+            const deletedIds = getPendingDeletedEmployeeIds(activeCompanyId);
+            const mergedEmployees = res.employees
+              ? mergeEmployeesWithCloud(
+                  prev.employees,
+                  res.employees,
+                  dirtyIds,
+                  deletedIds,
+                  pendingLocalEmployeesRef.current
+                )
+              : prev.employees;
 
             return {
               ...prev,
@@ -1033,7 +1230,7 @@ export function usePayrollStore() {
     }
 
     if (targetComp.hasPassword && targetComp.password) {
-      if (!passwordAttempt || passwordAttempt !== targetComp.password) {
+      if (!passwordAttempt || !verifyCredential(passwordAttempt, targetComp.password)) {
         return { success: false, error: 'Incorrect password. Please try again.' };
       }
     }
@@ -1043,6 +1240,8 @@ export function usePayrollStore() {
       clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = null;
     }
+
+    cloudReadyRef.current = false;
 
     const loadedData = loadCompanyData(companyId, targetComp);
     const hasCachedRecords = Boolean(
@@ -1058,12 +1257,10 @@ export function usePayrollStore() {
     };
 
     const cfg = getSavedCloudConfig();
-    if (cfg.isEnabled && hasPendingOfflineSync(companyId)) {
-      // Offline edits exist: push up in background if online, but don't overwrite local data
-      checkRealConnectivity().then(online => {
-        if (online) syncAllPendingCompanies().catch(() => {});
-      });
-    } else if (cfg.isEnabled) {
+    if (cfg.isEnabled) {
+      const dirtyIds = getDirtyEmployeeIds(companyId);
+      const deletedIds = getPendingDeletedEmployeeIds(companyId);
+
       if (!hasCachedRecords) {
         // Option 1: First-time opening or empty cache - pre-load cloud data directly before switching views
         try {
@@ -1074,10 +1271,13 @@ export function usePayrollStore() {
             )
           ]);
           if (res.success) {
+            cloudReadyRef.current = true;
             finalData = {
               ...finalData,
               company: res.company ? { ...finalData.company, ...res.company, id: companyId } : finalData.company,
-              employees: res.employees || [],
+              employees: res.employees
+                ? mergeEmployeesWithCloud(finalData.employees, res.employees, dirtyIds, deletedIds, pendingLocalEmployeesRef.current)
+                : [],
               departments: (res.departments && res.departments.length > 0) ? res.departments : finalData.departments,
               payrollVariables: res.payrollVariables || finalData.payrollVariables,
               payeTaxVariables: res.payeTaxVariables || finalData.payeTaxVariables,
@@ -1093,18 +1293,21 @@ export function usePayrollStore() {
           // Fall back to local data if network stalls
         }
       } else {
-        // Local records already exist: switch instantly and silently check cloud in background
+        // Local records already exist: switch instantly and always merge fresh cloud records in background
         downloadCompanyDataFromSupabase(companyId).then(res => {
           if (!res.success) return;
+          cloudReadyRef.current = true;
+          skipNextAutoSyncRef.current = true;
           setState(prev => {
             if (activeCompanyIdRef.current !== companyId) return prev;
+            const currentDirtyIds = getDirtyEmployeeIds(companyId);
+            const currentDeletedIds = getPendingDeletedEmployeeIds(companyId);
             return {
               ...prev,
               company: res.company ? { ...prev.company, ...res.company, id: companyId } : prev.company,
-              employees: res.employees ? res.employees.map(ce => {
-                const pending = pendingLocalEmployeesRef.current.get(ce.id);
-                return pending ? pending.employee : ce;
-              }) : prev.employees,
+              employees: res.employees
+                ? mergeEmployeesWithCloud(prev.employees, res.employees, currentDirtyIds, currentDeletedIds, pendingLocalEmployeesRef.current)
+                : prev.employees,
               departments: (res.departments && res.departments.length > 0) ? res.departments : prev.departments,
               payrollVariables: res.payrollVariables || prev.payrollVariables,
               payeTaxVariables: res.payeTaxVariables || prev.payeTaxVariables,
@@ -1118,9 +1321,19 @@ export function usePayrollStore() {
           });
         }).catch(() => {});
       }
+
+      if (hasPendingOfflineSync(companyId)) {
+        // Offline edits exist: push dirty changes up in background if online
+        checkRealConnectivity().then(online => {
+          if (online) syncAllPendingCompanies().catch(() => {});
+        });
+      }
+    } else {
+      cloudReadyRef.current = true;
     }
 
     // Set state and activeCompanyId with complete hydrated data
+    skipNextAutoSyncRef.current = true;
     setState(finalData);
     setActiveCompanyId(companyId);
 
@@ -1216,6 +1429,8 @@ export function usePayrollStore() {
         );
       }
 
+      cloudReadyRef.current = true;
+      skipNextAutoSyncRef.current = true;
       setState(newAppState);
       setActiveCompanyId(newId);
 
@@ -1376,6 +1591,10 @@ export function usePayrollStore() {
   const setSelectedPeriod = (monthKey: string, year: number) => {
     setState(s => {
       const synced = autoSyncLoansForPeriod(s.loans || [], year, monthKey);
+      const loansChanged = JSON.stringify(synced) !== JSON.stringify(s.loans || []);
+      if (!loansChanged) {
+        return { ...s, selectedMonth: monthKey, selectedYear: year };
+      }
       return { ...s, selectedMonth: monthKey, selectedYear: year, loans: synced };
     });
   };
@@ -1383,6 +1602,7 @@ export function usePayrollStore() {
   const addEmployee = (emp: Omit<Employee, 'id'>) => {
     const sanitizedGross = Math.max(0, Number(emp.monthlyGross) || 0);
     const sanitizedRent = Math.max(0, Number(emp.annualRent) || 0);
+    const nowIso = new Date().toISOString();
     const newEmp: Employee = {
       ...emp,
       monthlyGross: sanitizedGross,
@@ -1390,24 +1610,35 @@ export function usePayrollStore() {
       annualRents: emp.annualRents || {},
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'emp-' + crypto.randomUUID() : 'emp-' + Date.now(),
       employmentType: emp.employmentType || 'Full-Time',
+      updatedAt: nowIso,
     };
 
-    // Shield from realtime echo overwrites
+    // Shield from realtime echo overwrites & mark dirty until cloud confirms
     lastLocalUploadTimeRef.current = Date.now();
     pendingLocalEmployeesRef.current.set(newEmp.id, { employee: newEmp, timestamp: Date.now() });
+    if (activeCompanyId) {
+      markEmployeesDirty(activeCompanyId, [newEmp.id]);
+    }
 
     setState(s => ({ ...s, employees: [newEmp, ...s.employees] }));
 
     // Immediate single-employee direct cloud save
     if (activeCompanyId && getSavedCloudConfig().isEnabled) {
-      saveSingleEmployeeToCloud(newEmp, activeCompanyId).then(res => {
+      const compId = activeCompanyId;
+      saveSingleEmployeeToCloud(newEmp, compId).then(res => {
         if (res.success) {
+          unmarkEmployeeDirty(compId, newEmp.id);
           setTimeout(() => {
             pendingLocalEmployeesRef.current.delete(newEmp.id);
           }, 4000);
+        } else {
+          localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + compId, 'true');
+          window.dispatchEvent(new Event('payroll-sync-status-changed'));
         }
       }).catch(err => {
         console.warn('Direct cloud save for new employee error:', err);
+        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + compId, 'true');
+        window.dispatchEvent(new Event('payroll-sync-status-changed'));
       });
     }
 
@@ -1421,6 +1652,7 @@ export function usePayrollStore() {
 
   const addEmployees = (emps: Omit<Employee, 'id'>[]) => {
     if (!emps || emps.length === 0) return;
+    const nowIso = new Date().toISOString();
     const newEmps: Employee[] = emps.map((emp) => ({
       ...emp,
       monthlyGross: Math.max(0, Number(emp.monthlyGross) || 0),
@@ -1428,11 +1660,15 @@ export function usePayrollStore() {
       annualRents: emp.annualRents || {},
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'emp-' + crypto.randomUUID() : 'emp-' + Date.now() + '-' + Math.random().toString(36).slice(2),
       employmentType: emp.employmentType || 'Full-Time',
+      updatedAt: nowIso,
     }));
 
-    // Shield from realtime echo overwrites
+    // Shield from realtime echo overwrites & mark dirty for upload
     lastLocalUploadTimeRef.current = Date.now();
     newEmps.forEach(ne => pendingLocalEmployeesRef.current.set(ne.id, { employee: ne, timestamp: Date.now() }));
+    if (activeCompanyId) {
+      markEmployeesDirty(activeCompanyId, newEmps.map(ne => ne.id));
+    }
 
     setState(s => ({ ...s, employees: [...newEmps, ...s.employees] }));
     logAuditEvent(
@@ -1453,13 +1689,17 @@ export function usePayrollStore() {
       sanitizedUpdates.annualRent = Math.max(0, Number(sanitizedUpdates.annualRent) || 0);
     }
 
+    const nowIso = new Date().toISOString();
     const updatedEmployee: Employee = existing
-      ? { ...existing, ...sanitizedUpdates }
-      : { id, ...(sanitizedUpdates as any) };
+      ? { ...existing, ...sanitizedUpdates, updatedAt: nowIso }
+      : { id, ...(sanitizedUpdates as any), updatedAt: nowIso };
 
-    // 1. Immediately shield local state from incoming realtime echo overwrites
+    // 1. Immediately shield local state from incoming realtime echo overwrites & mark dirty
     lastLocalUploadTimeRef.current = Date.now();
     pendingLocalEmployeesRef.current.set(id, { employee: updatedEmployee, timestamp: Date.now() });
+    if (activeCompanyId) {
+      markEmployeesDirty(activeCompanyId, [id]);
+    }
 
     setState(s => ({
       ...s,
@@ -1468,16 +1708,22 @@ export function usePayrollStore() {
 
     // 2. Direct single-employee cloud save: writes directly to cloud without waiting for debounced bulk sync
     if (activeCompanyId && getSavedCloudConfig().isEnabled) {
-      saveSingleEmployeeToCloud(updatedEmployee, activeCompanyId).then(res => {
+      const compId = activeCompanyId;
+      saveSingleEmployeeToCloud(updatedEmployee, compId).then(res => {
         if (res.success) {
+          unmarkEmployeeDirty(compId, id);
           setTimeout(() => {
             pendingLocalEmployeesRef.current.delete(id);
           }, 4000);
         } else {
           console.warn('Single employee cloud save failed:', res.error);
+          localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + compId, 'true');
+          window.dispatchEvent(new Event('payroll-sync-status-changed'));
         }
       }).catch(err => {
         console.warn('Single employee cloud save error:', err);
+        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + compId, 'true');
+        window.dispatchEvent(new Event('payroll-sync-status-changed'));
       });
     }
 
@@ -1498,6 +1744,11 @@ export function usePayrollStore() {
 
   const deleteEmployee = (id: string) => {
     const existing = state.employees.find(e => e.id === id);
+    if (activeCompanyId) {
+      markEmployeePendingDelete(activeCompanyId, id);
+    }
+    pendingLocalEmployeesRef.current.delete(id);
+
     setState(s => ({
       ...s,
       employees: s.employees.filter(e => e.id !== id),
@@ -1511,8 +1762,20 @@ export function usePayrollStore() {
         `Deleted employee ${existing.firstName} ${existing.lastName} (${existing.code})`
       );
     }
-    deleteEmployeeFromCloud(id, activeCompanyId || undefined).catch(err => {
+    const compId = activeCompanyId;
+    deleteEmployeeFromCloud(id, compId || undefined).then(res => {
+      if (res.success && compId) {
+        unmarkEmployeePendingDelete(compId, id);
+      } else if (compId) {
+        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + compId, 'true');
+        window.dispatchEvent(new Event('payroll-sync-status-changed'));
+      }
+    }).catch(err => {
       console.warn('Could not immediately delete employee from cloud:', err);
+      if (compId) {
+        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + compId, 'true');
+        window.dispatchEvent(new Event('payroll-sync-status-changed'));
+      }
     });
   };
 
@@ -1521,6 +1784,7 @@ export function usePayrollStore() {
     mode: 'merge' | 'overwrite',
     importScope: 'all' | 'salary-only' | 'bank-only' = 'all'
   ) => {
+    const nowIso = new Date().toISOString();
     if (mode === 'overwrite' && importScope === 'all') {
       const formatted: Employee[] = incoming.map((item, idx) => ({
         id: item.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? 'emp-' + crypto.randomUUID() : `emp-${Date.now()}-${idx}`),
@@ -1543,12 +1807,17 @@ export function usePayrollStore() {
         pensionNumber: item.pensionNumber || '',
         pfaName: item.pfaName || '',
         status: item.status || 'Active',
+        updatedAt: nowIso,
       }));
 
+      if (activeCompanyId) {
+        markEmployeesDirty(activeCompanyId, formatted.map(e => e.id));
+      }
       setState(s => ({ ...s, employees: formatted }));
       return;
     }
 
+    const touchedIds: string[] = [];
     setState(s => {
       const existingMap = new Map(s.employees.map(e => [e.code.toLowerCase(), e]));
 
@@ -1556,6 +1825,7 @@ export function usePayrollStore() {
         const codeKey = (item.code || '').toLowerCase();
         if (existingMap.has(codeKey)) {
           const current = existingMap.get(codeKey)!;
+          touchedIds.push(current.id);
           
           if (importScope === 'salary-only') {
             // Update salary / gross / rent only without modifying personal or bank details
@@ -1563,6 +1833,7 @@ export function usePayrollStore() {
               ...current,
               monthlyGross: Number(item.monthlyGross) > 0 ? Number(item.monthlyGross) : current.monthlyGross,
               annualRent: Number(item.annualRent) ?? current.annualRent,
+              updatedAt: nowIso,
             });
           } else if (importScope === 'bank-only') {
             // Update bank details, account number, PAYE ID, Pension PIN only
@@ -1573,6 +1844,7 @@ export function usePayrollStore() {
               payeNumber: item.payeNumber !== undefined ? item.payeNumber : current.payeNumber,
               pensionNumber: item.pensionNumber !== undefined ? item.pensionNumber : current.pensionNumber,
               pfaName: item.pfaName !== undefined ? item.pfaName : current.pfaName,
+              updatedAt: nowIso,
             });
           } else {
             // Full merge
@@ -1582,6 +1854,7 @@ export function usePayrollStore() {
               employmentType: item.employmentType || current.employmentType || 'Full-Time',
               monthlyGross: Number(item.monthlyGross) || current.monthlyGross,
               annualRent: Number(item.annualRent) ?? current.annualRent,
+              updatedAt: nowIso,
             });
           }
         } else {
@@ -1607,10 +1880,16 @@ export function usePayrollStore() {
             pensionNumber: item.pensionNumber || '',
             pfaName: item.pfaName || '',
             status: item.status || 'Active',
+            updatedAt: nowIso,
           };
+          touchedIds.push(newEmp.id);
           existingMap.set(newEmp.code.toLowerCase(), newEmp);
         }
       });
+
+      if (activeCompanyId && touchedIds.length > 0) {
+        markEmployeesDirty(activeCompanyId, touchedIds);
+      }
 
       return {
         ...s,
@@ -1888,12 +2167,24 @@ export function usePayrollStore() {
     const trimmedOld = oldName.trim();
     const trimmedNew = newName.trim().toUpperCase();
     if (!trimmedNew || trimmedOld === trimmedNew) return;
+    const nowIso = new Date().toISOString();
     setState(s => {
       const current = s.departments || DEFAULT_DEPARTMENTS;
+      const affectedIds: string[] = [];
+      const updatedEmployees = s.employees.map(emp => {
+        if (emp.department === trimmedOld) {
+          affectedIds.push(emp.id);
+          return { ...emp, department: trimmedNew, updatedAt: nowIso };
+        }
+        return emp;
+      });
+      if (activeCompanyId && affectedIds.length > 0) {
+        markEmployeesDirty(activeCompanyId, affectedIds);
+      }
       return {
         ...s,
         departments: current.map(d => d === trimmedOld ? trimmedNew : d),
-        employees: s.employees.map(emp => emp.department === trimmedOld ? { ...emp, department: trimmedNew } : emp)
+        employees: updatedEmployees
       };
     });
   };
