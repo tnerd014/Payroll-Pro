@@ -131,7 +131,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
 
   const [isLoadingCheck, setIsLoadingCheck] = useState(true);
   const [helpMenuOpen, setHelpMenuOpen] = useState(false);
-  const [appVersion, setAppVersion] = useState('v1.0.5');
+  const [appVersion, setAppVersion] = useState('v1.0.6');
   const advancedModesEnabled = areAdvancedModesEnabled();
   const currentRuntimeMode = getRuntimeMode();
   const canUseOfflineFallback = isOfflineModeAllowed();

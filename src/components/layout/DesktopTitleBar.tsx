@@ -156,7 +156,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   }, []);
 
   const [hasPendingSync, setHasPendingSync] = useState(false);
-  const [appVersion, setAppVersion] = useState('v1.0.5');
+  const [appVersion, setAppVersion] = useState('v1.0.6');
   const [updateState, setUpdateState] = useState<{ status: string; downloadPercent: number; latestVersion: string; message: string; restartRequired: boolean; downloadPath: string; downloadUrl: string; releaseUrl: string; }>({
     status: 'idle',
     downloadPercent: 0,
@@ -215,10 +215,53 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   };
 
   useEffect(() => {
+    let currentVer = '1.0.6';
+    const runStartupUpdateCheck = async (ver: string) => {
+      try {
+        const electronAPI = (window as any).electronAPI;
+        const result = electronAPI?.checkForUpdates
+          ? await electronAPI.checkForUpdates()
+          : await checkForGithubReleaseUpdate(ver.replace(/^v/i, ''));
+
+        if (result?.success && result.updateAvailable) {
+          const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+          const targetDownloadUrl = isAndroid
+            ? (result.assetUrls?.androidApk || result.assetUrl || '')
+            : (result.assetUrl || result.assetUrls?.windowsInstaller || '');
+
+          setUpdateState((prev) =>
+            prev.status === 'downloading' || prev.status === 'downloaded'
+              ? prev
+              : {
+                  ...prev,
+                  status: 'available',
+                  latestVersion: result.latestVersion || '',
+                  downloadUrl: targetDownloadUrl,
+                  releaseUrl: result.releaseUrl || '',
+                  message: `Update v${result.latestVersion} available`,
+                }
+          );
+        }
+      } catch {
+        // Silently ignore network errors on background startup check
+      }
+    };
+
     if ((window as any).electronAPI?.getVersion) {
-      (window as any).electronAPI.getVersion().then((version: string) => {
-        if (version) setAppVersion(`v${version}`);
-      }).catch(() => undefined);
+      (window as any).electronAPI
+        .getVersion()
+        .then((version: string) => {
+          if (version) {
+            currentVer = version;
+            setAppVersion(`v${version}`);
+          }
+          setTimeout(() => runStartupUpdateCheck(currentVer), 4000);
+        })
+        .catch(() => {
+          setTimeout(() => runStartupUpdateCheck(currentVer), 4000);
+        });
+    } else {
+      setTimeout(() => runStartupUpdateCheck(currentVer), 4000);
     }
   }, []);
 
@@ -340,11 +383,13 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         return;
       }
 
-      if (result.assetUrl || result.assetUrls?.windowsInstaller) {
-        const downloadUrl = result.assetUrl || result.assetUrls?.windowsInstaller;
-        if (downloadUrl) {
-          window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-        }
+      const isAndroidDevice = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+      const targetAssetUrl = isAndroidDevice
+        ? (result.assetUrls?.androidApk || result.assetUrl)
+        : (result.assetUrl || result.assetUrls?.windowsInstaller);
+
+      if (targetAssetUrl) {
+        openExternalReleaseLink(targetAssetUrl);
       } else if (result.releaseUrl) {
         openExternalReleaseLink(result.releaseUrl);
       }
@@ -1074,11 +1119,11 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           <button
             type="button"
             title={updateBadgeTitle}
-            onClick={handleInstallPendingUpdate}
+            onClick={handleCheckForUpdates}
             className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 shadow-sm transition hover:border-violet-300 hover:bg-violet-100 dark:border-violet-700/60 dark:bg-violet-500/10 dark:text-violet-300"
           >
             <RefreshCw className="h-2.5 w-2.5" />
-            <span>Update available</span>
+            <span>Update v{updateState.latestVersion || ''} available</span>
           </button>
         )}
 

@@ -15,7 +15,7 @@ let updateState = {
   restartRequired: false,
 };
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-const GITHUB_REPO = 'tunde014/Payroll-Pro';
+const GITHUB_REPO = 'tnerd014/Payroll-Pro';
 
 function emitUpdateState(nextState = {}) {
   updateState = { ...updateState, ...nextState };
@@ -221,14 +221,28 @@ ipcMain.handle('check-for-updates', async () => {
     }
 
     const result = compareVersions(currentVersion, latestVersion);
+    const updateAvailable = result < 0;
+    const assetUrl = eligibleAsset?.browser_download_url || '';
+
+    if (updateAvailable && updateState.status === 'idle') {
+      emitUpdateState({
+        status: 'available',
+        version: currentVersion,
+        latestVersion,
+        releaseUrl,
+        downloadUrl: assetUrl,
+        message: `Update v${latestVersion} is available`,
+      });
+    }
+
     return {
       success: true,
       currentVersion,
       latestVersion,
       releaseUrl,
-      assetUrl: eligibleAsset?.browser_download_url || '',
+      assetUrl,
       upToDate: result >= 0,
-      updateAvailable: result < 0,
+      updateAvailable,
     };
   } catch (error) {
     return {

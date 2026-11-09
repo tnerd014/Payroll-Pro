@@ -1,7 +1,7 @@
 {
   "name": "PayrollPro",
   "private": true,
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -49,6 +49,14 @@
   "build": {
     "appId": "com.payrollpro.desktop",
     "productName": "Payroll Pro",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tnerd014",
+        "repo": "Payroll-Pro",
+        "releaseType": "release"
+      }
+    ],
     "directories": {
       "output": "release"
     },

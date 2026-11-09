@@ -15,7 +15,7 @@ export interface GitHubReleaseCheckResult {
   };
 }
 
-export const GITHUB_REPO = 'tunde014/Payroll-Pro';
+export const GITHUB_REPO = 'tnerd014/Payroll-Pro';
 
 export function normalizeReleaseVersion(value: string): string {
   return String(value || '').trim().replace(/^v/i, '');

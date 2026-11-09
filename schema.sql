@@ -314,9 +314,16 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION public.guard_employee_stale_writes()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- 1. Block legacy un-updated clients that do not send client_updated_at from wiping out
-    --    already-populated bank details or reverting newer changes during bulk syncs.
+    -- 1. If the incoming write is from an OLD un-updated app (client_updated_at IS NULL):
     IF NEW.client_updated_at IS NULL THEN
+        -- 1a. If this employee was already saved/locked by v1.0.6+, block legacy apps from overwriting it
+        IF OLD.client_updated_at IS NOT NULL THEN
+            INSERT INTO public.employee_history (employee_id, company_id, operation, old_data, new_data)
+            VALUES (OLD.id, OLD.company_id, 'LEGACY_APP_WRITE_BLOCKED', to_jsonb(OLD), to_jsonb(NEW));
+            RETURN OLD;
+        END IF;
+
+        -- 1b. Never let an old app wipe out a populated account number or bank name with empty text
         IF (OLD.account_number IS NOT NULL AND OLD.account_number <> '' AND (NEW.account_number IS NULL OR NEW.account_number = '')) THEN
             NEW.account_number := OLD.account_number;
             NEW.bank_name := OLD.bank_name;

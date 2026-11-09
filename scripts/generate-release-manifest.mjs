@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const repo = process.env.GITHUB_REPOSITORY || 'tunde014/Payroll-Pro';
+const repo = process.env.GITHUB_REPOSITORY || 'tnerd014/Payroll-Pro';
 const tagName = process.env.GITHUB_REF_NAME || process.env.npm_package_version || 'v1.0.0';
 const version = String(tagName).replace(/^v/i, '');
 const releaseUrl = `https://github.com/${repo}/releases/tag/${tagName}`;
