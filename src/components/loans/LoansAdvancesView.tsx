@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Edit3
+  Edit3,
+  Eye
 } from 'lucide-react';
 import { Employee, EmployeeLoan, LoanType, LoanStatus, CalculatedPayrollItem, CompanyProfile, TeamMember } from '../../types';
 import { formatNaira, formatDate } from '../../engine/payePensionEngine';
@@ -110,6 +111,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedLoanForLedger, setSelectedLoanForLedger] = useState<EmployeeLoan | null>(null);
   const [editingLoan, setEditingLoan] = useState<EmployeeLoan | null>(null);
+  const [viewingLoan, setViewingLoan] = useState<EmployeeLoan | null>(null);
 
   // Edit Loan Form State
   const [editPrincipal, setEditPrincipal] = useState<number | ''>('');
@@ -372,7 +374,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   return (
     <div className="space-y-4">
       {/* ── Top Header ── */}
-      <div className="pt-2.5 pb-3 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="pt-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -550,7 +552,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                   return (
                     <tr 
                       key={loan.id} 
-                      className={`hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors ${
+                      onClick={() => setViewingLoan(loan)}
+                      className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer ${
                         activeMenuLoanId === loan.id ? 'relative z-30' : 'relative z-0'
                       }`}
                     >
@@ -644,102 +647,129 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                         </span>
                       </td>
 
-                      {/* Simplified 3-Dot Actions Menu */}
+                      {/* Simplified Actions: Direct "View" + 3-Dot Menu */}
                       <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                        <div className="relative inline-block text-left loan-actions-menu">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (activeMenuLoanId === loan.id) {
-                                setActiveMenuLoanId(null);
-                                setMenuCoords(null);
-                              } else {
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                const spaceBelow = window.innerHeight - rect.bottom;
-                                const spaceAbove = rect.top;
-                                const openUp = spaceBelow < 170 && spaceAbove > spaceBelow;
-                                setMenuCoords({
-                                  top: openUp ? undefined : rect.bottom + 4,
-                                  bottom: openUp ? Math.max(10, window.innerHeight - rect.top + 4) : undefined,
-                                  right: Math.max(10, window.innerWidth - rect.right),
-                                });
-                                setActiveMenuLoanId(loan.id);
-                              }
+                              setViewingLoan(loan);
                             }}
-                            className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                              activeMenuLoanId === loan.id
-                                ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
-                                : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                            }`}
-                            title="Actions menu"
+                            className="px-2.5 py-1 rounded text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                            title="View facility details"
                           >
-                            <MoreVertical className="w-3.5 h-3.5" />
+                            View
                           </button>
 
-                          {activeMenuLoanId === loan.id && menuCoords && (
-                            <div
-                              style={{ 
-                                top: menuCoords.top !== undefined ? `${menuCoords.top}px` : undefined,
-                                bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
-                                right: `${menuCoords.right}px` 
-                              }}
-                              className="fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left loan-actions-dropdown"
-                            >
-                              {/* 1. Edit Facility */}
-                              {!isWriteDisabled && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveMenuLoanId(null);
-                                    setMenuCoords(null);
-                                    setEditingLoan(loan);
-                                  }}
-                                  className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                                  <span>Edit Facility</span>
-                                </button>
-                              )}
-
-                              {/* 2. Pause / Resume Deductions */}
-                              {!isPaid && !isWriteDisabled && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveMenuLoanId(null);
-                                    setMenuCoords(null);
-                                    onPauseResumeLoan(loan.id);
-                                  }}
-                                  className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                                >
-                                  {isPaused ? (
-                                    <>
-                                      <PlayCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                                      <span>Resume Deductions</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <PauseCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                      <span>Pause Deductions</span>
-                                    </>
-                                  )}
-                                </button>
-                              )}
-
-                              {/* 3. Repayment Ledger */}
-                              <button
-                                type="button"
-                                onClick={() => {
+                          <div className="relative inline-block text-left loan-actions-menu">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (activeMenuLoanId === loan.id) {
                                   setActiveMenuLoanId(null);
                                   setMenuCoords(null);
-                                  setSelectedLoanForLedger(loan);
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const spaceBelow = window.innerHeight - rect.bottom;
+                                  const spaceAbove = rect.top;
+                                  const openUp = spaceBelow < 170 && spaceAbove > spaceBelow;
+                                  setMenuCoords({
+                                    top: openUp ? undefined : rect.bottom + 4,
+                                    bottom: openUp ? Math.max(10, window.innerHeight - rect.top + 4) : undefined,
+                                    right: Math.max(10, window.innerWidth - rect.right),
+                                  });
+                                  setActiveMenuLoanId(loan.id);
+                                }
+                              }}
+                              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                                activeMenuLoanId === loan.id
+                                  ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100'
+                                  : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                              }`}
+                              title="Actions menu"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+
+                            {activeMenuLoanId === loan.id && menuCoords && (
+                              <div
+                                style={{ 
+                                  top: menuCoords.top !== undefined ? `${menuCoords.top}px` : undefined,
+                                  bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
+                                  right: `${menuCoords.right}px` 
                                 }}
-                                className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                className="fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left loan-actions-dropdown"
                               >
-                                <History className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                                <span>Repayment Ledger</span>
-                              </button>
+                                {/* 0. View Facility */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuLoanId(null);
+                                    setMenuCoords(null);
+                                    setViewingLoan(loan);
+                                  }}
+                                  className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                  <span>View Details</span>
+                                </button>
+
+                                {/* 1. Edit Facility */}
+                                {!isWriteDisabled && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuLoanId(null);
+                                      setMenuCoords(null);
+                                      setEditingLoan(loan);
+                                    }}
+                                    className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                    <span>Edit Facility</span>
+                                  </button>
+                                )}
+
+                                {/* 2. Pause / Resume Deductions */}
+                                {!isPaid && !isWriteDisabled && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveMenuLoanId(null);
+                                      setMenuCoords(null);
+                                      onPauseResumeLoan(loan.id);
+                                    }}
+                                    className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                  >
+                                    {isPaused ? (
+                                      <>
+                                        <PlayCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                        <span>Resume Deductions</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <PauseCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                        <span>Pause Deductions</span>
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+
+                                {/* 3. Repayment Ledger */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuLoanId(null);
+                                    setMenuCoords(null);
+                                    setViewingLoan(loan);
+                                  }}
+                                  className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                >
+                                  <History className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                  <span>Repayment Ledger</span>
+                                </button>
 
                               {/* 4. Delete Facility */}
                               {!isWriteDisabled && (
@@ -764,8 +794,9 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                             </div>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </td>
+                  </tr>
                   );
                 })
               )}
@@ -1107,8 +1138,233 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
         </div>
       )}
 
-      {/* ================= REPAYMENT LEDGER / HISTORY MODAL ================= */}
-      {selectedLoanForLedger && (
+      {/* ================= VIEW FACILITY DETAILS MODAL ================= */}
+      {viewingLoan && (() => {
+        const emp = employeeMap.get(viewingLoan.employeeId);
+        const empFullName = emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown Staff';
+        const percentRepaid = viewingLoan.principalAmount > 0 
+          ? Math.min(100, Math.round(((viewingLoan.totalRepaid || 0) / viewingLoan.principalAmount) * 100))
+          : 100;
+        const isPaid = viewingLoan.status === 'Paid' || (viewingLoan.remainingBalance || 0) <= 0;
+        const isPaused = viewingLoan.status === 'Paused';
+        const remainingMonths = (viewingLoan.remainingBalance > 0 && viewingLoan.monthlyDeduction > 0)
+          ? Math.ceil(viewingLoan.remainingBalance / viewingLoan.monthlyDeduction)
+          : 0;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+              
+              {/* Header */}
+              <div className="flex items-start justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/80 shrink-0">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                      {empFullName}
+                    </h2>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                      isPaid 
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60'
+                        : isPaused
+                        ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60'
+                        : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60'
+                    }`}>
+                      {viewingLoan.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                    {emp?.code || 'NO-ID'} &bull; {emp?.department || 'Operations'} {emp?.position ? `&bull; ${emp.position}` : ''}
+                  </p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setViewingLoan(null)}
+                  className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content body */}
+              <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 text-xs">
+                {/* 3 Metric Cards */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-100 dark:border-zinc-800/80">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">Principal</span>
+                    <span className="text-sm font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5 block">
+                      {formatNaira(viewingLoan.principalAmount)}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-100 dark:border-zinc-800/80">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">Total Repaid</span>
+                    <span className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                      {formatNaira(viewingLoan.totalRepaid || 0)}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-100 dark:border-zinc-800/80">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">Balance</span>
+                    <span className={`text-sm font-bold font-mono mt-0.5 block ${
+                      viewingLoan.remainingBalance > 0 ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-600 dark:text-emerald-400'
+                    }`}>
+                      {formatNaira(viewingLoan.remainingBalance || 0)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Repayment Progress Bar */}
+                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                      Repayment Progress
+                    </span>
+                    <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                      {percentRepaid}% ({formatNaira(viewingLoan.totalRepaid || 0)} / {formatNaira(viewingLoan.principalAmount)})
+                    </span>
+                  </div>
+                  <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-300 ${
+                        isPaid ? 'bg-emerald-500' : 'bg-zinc-900 dark:bg-zinc-100'
+                      }`}
+                      style={{ width: `${percentRepaid}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                    <span>
+                      Monthly Auto-Deduct: <strong className="font-mono text-zinc-700 dark:text-zinc-300">{formatNaira(viewingLoan.monthlyDeduction)}</strong>
+                    </span>
+                    <span>
+                      {isPaid ? (
+                        <strong className="text-emerald-600 dark:text-emerald-400">✓ Fully Repaid</strong>
+                      ) : remainingMonths > 0 ? (
+                        <span>~{remainingMonths} pay cycles left</span>
+                      ) : null}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Facility Details Grid */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800/80 bg-white dark:bg-[#121215]">
+                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Facility Type</span>
+                    <span className="font-medium text-zinc-800 dark:text-zinc-200">{viewingLoan.type}</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800/80 bg-white dark:bg-[#121215]">
+                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Disbursement Date</span>
+                    <span className="font-mono text-zinc-800 dark:text-zinc-200">
+                      {viewingLoan.disbursementDate ? formatDate(viewingLoan.disbursementDate) : 'Not specified'}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800/80 bg-white dark:bg-[#121215]">
+                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Repayment / Due Date</span>
+                    <span className="font-mono text-zinc-800 dark:text-zinc-200">
+                      {viewingLoan.repaymentDate || viewingLoan.repaymentStartDate 
+                        ? formatDate(viewingLoan.repaymentDate || viewingLoan.repaymentStartDate)
+                        : 'On payroll cycles'}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800/80 bg-white dark:bg-[#121215]">
+                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Start Period</span>
+                    <span className="font-mono text-zinc-800 dark:text-zinc-200">
+                      {viewingLoan.startPeriodKey || '—'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {viewingLoan.notes && (
+                  <div className="p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/30 text-xs">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-0.5">Notes / Purpose</span>
+                    <p className="text-zinc-700 dark:text-zinc-300 italic">{viewingLoan.notes}</p>
+                  </div>
+                )}
+
+                {/* Repayment History Ledger */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300 px-0.5">
+                    <span>Repayment History ({viewingLoan.history?.length || 0})</span>
+                    <span className="text-[11px] font-mono text-zinc-400">
+                      Total: {formatNaira(viewingLoan.totalRepaid || 0)}
+                    </span>
+                  </div>
+
+                  {(!viewingLoan.history || viewingLoan.history.length === 0) ? (
+                    <div className="py-6 text-center text-zinc-400 text-xs border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl">
+                      No repayments recorded yet. Automatic deductions will log here each payroll run.
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                      {viewingLoan.history.map((record, idx) => (
+                        <div 
+                          key={record.id || idx}
+                          className="p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 flex items-center justify-between text-xs"
+                        >
+                          <div className="space-y-0.5">
+                            <div className="font-medium text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                              <span>{record.notes || `Payroll deduction (${record.periodKey || 'Cycle'})`}</span>
+                            </div>
+                            <div className="text-[10px] text-zinc-400 font-mono">
+                              {record.paidAt ? formatDate(record.paidAt) : 'Recorded'}
+                            </div>
+                          </div>
+                          <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-right">
+                            +{formatNaira(record.amount)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  {!isWriteDisabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const loanToEdit = viewingLoan;
+                        setViewingLoan(null);
+                        setEditingLoan(loanToEdit);
+                      }}
+                      className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700 transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit Facility</span>
+                    </button>
+                  )}
+                  {!isPaid && !isWriteDisabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onPauseResumeLoan(viewingLoan.id);
+                        setViewingLoan(prev => prev ? { ...prev, status: prev.status === 'Paused' ? 'Active' : 'Paused' } : null);
+                      }}
+                      className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700 transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {isPaused ? <PlayCircle className="w-3.5 h-3.5 text-emerald-500" /> : <PauseCircle className="w-3.5 h-3.5 text-amber-500" />}
+                      <span>{isPaused ? 'Resume' : 'Pause'}</span>
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewingLoan(null)}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Legacy Repayment Ledger Modal Fallback */}
+      {selectedLoanForLedger && !viewingLoan && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-5 shadow-2xl space-y-3.5 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800 shrink-0">

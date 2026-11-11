@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { AlertTriangle, Save, Smartphone, Lock, Fingerprint, WifiOff, RefreshCw, ShieldAlert } from 'lucide-react';
 import { usePayrollStore } from './store/usePayrollStore';
 import { DesktopTitleBar } from './components/layout/DesktopTitleBar';
@@ -12,6 +12,8 @@ import { CompanySettingsModal } from './components/settings/CompanySettingsModal
 import { WindowsAccountPicker } from './components/auth/WindowsAccountPicker';
 import { PayslipDesignerPage } from './components/payslip/PayslipDesignerPage';
 import { LoansAdvancesView } from './components/loans/LoansAdvancesView';
+import { ContributionsView } from './components/contributions/ContributionsView';
+import { AbsenceLogView } from './components/absences/AbsenceLogView';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AppView, CompanyAccount, TeamMember } from './types';
 import { CloudStaffGate } from './components/auth/CloudStaffGate';
@@ -374,11 +376,23 @@ export const App: React.FC = () => {
     recordManualLoanRepayment,
     applyPeriodLoanDeduction,
     applyAllPeriodLoanDeductions,
+    employeeContributions,
+    contributionPayouts,
+    contributionSchemes,
+    employeeAbsences,
+    saveBatchContributions,
+    deleteContribution,
+    addContributionPayout,
+    deleteContributionPayout,
+    saveEmployeeAbsence,
+    deleteEmployeeAbsence,
     resetAllData,
     reloadFromStorage,
     isCloudOffline,
     emailSettings,
     updateEmailSettings,
+    whatsappSettings,
+    updateWhatsAppSettings,
     emailedPayslips,
     recordEmailedPayslips,
   } = usePayrollStore();
@@ -388,6 +402,11 @@ export const App: React.FC = () => {
   const effectiveMember = authenticatedMember;
 
   const isAdmin = !effectiveMember || effectiveMember.role === 'Admin';
+
+  const currentPeriodKey = `${state.selectedYear}-${state.selectedMonth}`;
+  const monthAbsencesCount = useMemo(() => {
+    return (employeeAbsences || []).filter(a => a.periodKey === currentPeriodKey && Number(a.daysAbsent) > 0).length;
+  }, [employeeAbsences, currentPeriodKey]);
 
   const [refreshTick, setRefreshTick] = useState(0);
   const [addEmployeeTrigger, setAddEmployeeTrigger] = useState(0);
@@ -679,6 +698,12 @@ export const App: React.FC = () => {
           activeSnapshot={activeSnapshot}
           snapshots={state.snapshots}
           loans={state.loans || []}
+          contributions={employeeContributions}
+          contributionPayouts={contributionPayouts}
+          contributionSchemes={contributionSchemes}
+          absences={employeeAbsences}
+          onSaveAbsence={saveEmployeeAbsence}
+          onDeleteAbsence={deleteEmployeeAbsence}
           departments={state.departments || []}
           onAddDepartment={addDepartment}
           onUpdateDepartment={updateDepartment}
@@ -701,6 +726,10 @@ export const App: React.FC = () => {
           onDeleteLoan={deleteLoan}
           onPauseResumeLoan={pauseResumeLoan}
           onRecordManualPayment={recordManualLoanRepayment}
+          onSaveBatchContributions={saveBatchContributions}
+          onDeleteContribution={deleteContribution}
+          onAddPayout={addContributionPayout}
+          onDeletePayout={deleteContributionPayout}
           onUpdateCompany={updateCompanyProfile}
           onUpdatePayrollVariables={updatePayrollVariables}
           onUpdatePayeTaxVariables={updatePayeTaxVariables}
@@ -710,6 +739,8 @@ export const App: React.FC = () => {
           onOpenEmailSettings={handleOpenEmailSettings}
           emailSettings={emailSettings}
           onUpdateEmailSettings={updateEmailSettings}
+          whatsappSettings={whatsappSettings}
+          onUpdateWhatsAppSettings={updateWhatsAppSettings}
           emailedPayslips={emailedPayslips}
           onRecordEmailedPayslips={recordEmailedPayslips}
           onUpdateEmployeeEmail={(id, email) => updateEmployee(id, { email })}
@@ -820,6 +851,7 @@ export const App: React.FC = () => {
             onViewChange={handleRequestNavigate}
             staffCount={activeEmployees.length}
             activeLoansCount={state.loans?.filter(l => l.status === 'Active').length || 0}
+            absencesCount={monthAbsencesCount}
             isLocked={Boolean(activeSnapshot?.isLocked)}
             companyName={state.company.name}
             companyLogoUrl={state.company.logoUrl}
@@ -837,7 +869,7 @@ export const App: React.FC = () => {
                 ? 'flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b]'
                 : state.activeView === 'profile'
                 ? 'flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b]'
-                : 'overflow-auto px-6 pb-6 pt-0 md:px-8 md:pb-8 md:pt-0 bg-[#fbfbfb] dark:bg-[#09090b]'
+                : 'overflow-auto px-6 pb-6 pt-0.5 md:px-8 md:pb-8 md:pt-0.5 bg-[#fbfbfb] dark:bg-[#09090b]'
             }`}
           >
             {state.activeView === 'profile' && !isLocalUser ? (
@@ -862,6 +894,10 @@ export const App: React.FC = () => {
                 departments={state.departments}
                 company={state.company}
                 loans={state.loans || []}
+                contributions={employeeContributions}
+                payouts={contributionPayouts}
+                schemes={contributionSchemes}
+                absences={employeeAbsences}
               />
             ) : state.activeView === 'employees' ? (
               <EmployeeListView
@@ -907,6 +943,9 @@ export const App: React.FC = () => {
                 onSavePreset={savePayslipPreset}
                 onDeletePreset={deletePayslipPreset}
                 loans={state.loans || []}
+                absences={employeeAbsences || []}
+                onSaveAbsence={saveEmployeeAbsence}
+                onDeleteAbsence={deleteEmployeeAbsence}
                 currentUser={effectiveMember}
                 emailSettings={emailSettings}
                 onUpdateEmployeeEmail={(id, email) => updateEmployee(id, { email })}
@@ -914,6 +953,23 @@ export const App: React.FC = () => {
                 emailedPayslips={emailedPayslips}
                 onRecordEmailedPayslips={recordEmailedPayslips}
                 isAdmin={isAdmin}
+                isReadOnly={isCloudOffline}
+              />
+            ) : state.activeView === 'absences' ? (
+              <AbsenceLogView
+                employees={state.employees}
+                absences={employeeAbsences || []}
+                payrollVariables={state.payrollVariables}
+                payrollItems={currentPayrollItems}
+                company={state.company}
+                monthLabel={monthLabel}
+                selectedMonth={state.selectedMonth}
+                selectedYear={state.selectedYear}
+                snapshots={state.snapshots || []}
+                onPeriodChange={setSelectedPeriod}
+                onSaveAbsence={saveEmployeeAbsence}
+                onDeleteAbsence={deleteEmployeeAbsence}
+                currentUser={effectiveMember}
                 isReadOnly={isCloudOffline}
               />
             ) : state.activeView === 'loans' ? (
@@ -935,6 +991,26 @@ export const App: React.FC = () => {
                 currentUser={effectiveMember}
                 isReadOnly={isCloudOffline}
               />
+            ) : state.activeView === 'contributions' ? (
+              <ContributionsView
+                employees={state.employees}
+                payrollItems={currentPayrollItems}
+                contributions={employeeContributions}
+                payouts={contributionPayouts}
+                schemes={contributionSchemes}
+                company={state.company}
+                monthLabel={monthLabel}
+                selectedMonth={state.selectedMonth}
+                selectedYear={state.selectedYear}
+                snapshots={state.snapshots || []}
+                onPeriodChange={setSelectedPeriod}
+                onSaveBatchContributions={saveBatchContributions}
+                onDeleteContribution={deleteContribution}
+                onAddPayout={addContributionPayout}
+                onDeletePayout={deleteContributionPayout}
+                currentUser={effectiveMember}
+                isReadOnly={isCloudOffline}
+              />
             ) : (
               <div className="max-w-6xl mx-auto space-y-4">
                 {state.activeView === 'dashboard' && (
@@ -945,6 +1021,7 @@ export const App: React.FC = () => {
                     selectedMonth={state.selectedMonth}
                     year={state.selectedYear}
                     activeSnapshot={activeSnapshot}
+                    snapshots={state.snapshots}
                     onNavigate={handleRequestNavigate}
                     departments={state.departments}
                     employees={state.employees}
@@ -971,6 +1048,7 @@ export const App: React.FC = () => {
                     onSavePreset={savePayslipPreset}
                     onDeletePreset={deletePayslipPreset}
                     loans={state.loans || []}
+                    contributions={state.employeeContributions || []}
                     isReadOnly={isCloudOffline}
                   />
                 )}
@@ -1011,6 +1089,8 @@ export const App: React.FC = () => {
                     currentUser={effectiveMember}
                     emailSettings={emailSettings}
                     onUpdateEmailSettings={updateEmailSettings}
+                    whatsappSettings={whatsappSettings}
+                    onUpdateWhatsAppSettings={updateWhatsAppSettings}
                     isReadOnly={isCloudOffline}
                   />
                 ) : (

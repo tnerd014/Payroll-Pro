@@ -119,7 +119,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [legalModalTab, setLegalModalTab] = useState<'privacy' | 'terms'>('privacy');
   const [helpMenuOpen, setHelpMenuOpen] = useState(false);
-  const [appVersion, setAppVersion] = useState('v1.0.6');
+  const [appVersion, setAppVersion] = useState('v1.0.7');
   const [cloudConfig, setCloudConfig] = useState<SupabaseCloudConfig>(() => getSavedCloudConfig());
   // Local mode = no cloud server configured/connected; hide cloud-specific UI
   const isLocalMode = !cloudConfig.isEnabled;

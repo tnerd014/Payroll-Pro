@@ -15,7 +15,8 @@ import {
   Sparkles, 
   SlidersHorizontal, 
   RotateCcw,
-  Mail
+  Mail,
+  MessageCircle
 } from 'lucide-react';
 import { 
   CompanyProfile, 
@@ -31,7 +32,8 @@ import {
   ALL_PAYSLIP_COLUMNS,
   DEFAULT_COLUMNS,
   normalizeVisibleColumns,
-  EmailPayslipContext
+  EmailPayslipContext,
+  DEFAULT_WHATSAPP_SETTINGS
 } from '../../../types';
 import { calculatePayrollItem, formatNaira } from '../../../engine/payePensionEngine';
 import { CustomizablePayslipView } from '../../payslip/CustomizablePayslipView';
@@ -39,6 +41,7 @@ import { BUILTIN_THEMES } from '../../payslip/payslipThemes';
 import { PinchZoomContainer } from '../PinchZoomContainer';
 import { MONTHS } from '../../../store/usePayrollStore';
 import { isEmployeeActiveForPeriod } from '../../../engine/dateUtils';
+import { openWhatsAppPayslipChat } from '../../../services/whatsappService';
 
 interface MobilePayslipPrintViewProps {
   company: CompanyProfile;
@@ -677,20 +680,16 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
         </div>
       </div>
 
-      {/* ── 4. Bottom Action Dock: Side-by-Side Print & Email ── */}
-      <div className={`pt-1 ${onEmailPayslips ? 'grid grid-cols-2 gap-2.5' : 'flex'} w-full`}>
+      {/* ── 4. Bottom Action Dock: Print, Email & WhatsApp ── */}
+      <div className={`pt-1 grid ${onEmailPayslips ? 'grid-cols-3' : 'grid-cols-2'} gap-2 w-full`}>
         {/* Print Button */}
         <button
           type="button"
           onClick={handlePrint}
-          className={`h-12 px-4 rounded-2xl font-bold text-sm tracking-wide shadow-md flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer transition-all ${
-            onEmailPayslips
-              ? 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 border border-zinc-700/50 dark:border-zinc-200/50'
-              : 'w-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
-          }`}
+          className="h-12 px-3 rounded-2xl font-bold text-xs tracking-wide shadow-md flex items-center justify-center gap-1.5 active:scale-[0.98] cursor-pointer transition-all bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 border border-zinc-700/50 dark:border-zinc-200/50"
           title="Print Payslips"
         >
-          <Printer className={`w-4 h-4 ${onEmailPayslips ? 'text-emerald-400 dark:text-emerald-600' : ''}`} />
+          <Printer className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
           <span>Print</span>
         </button>
 
@@ -709,13 +708,35 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
                 year: printYear,
               });
             }}
-            className="h-12 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-sm tracking-wide shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+            className="h-12 px-3 rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs tracking-wide shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all"
             title="Email Payslips"
           >
             <Mail className="w-4 h-4" />
             <span>Email</span>
           </button>
         )}
+
+        {/* WhatsApp Button */}
+        <button
+          type="button"
+          onClick={() => {
+            if (!previewItem) return;
+            const targetEmp = employees.find(e => e.id === previewItem.employeeId);
+            openWhatsAppPayslipChat({
+              item: previewItem,
+              company,
+              monthLabel: periodLabel || monthLabel,
+              year: printYear,
+              phone: targetEmp?.phone,
+              config: payslipDesign,
+            }, true);
+          }}
+          className="h-12 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-xs tracking-wide shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+          title="Send Payslip on WhatsApp"
+        >
+          <MessageCircle className="w-4 h-4" />
+          <span>WhatsApp</span>
+        </button>
       </div>
 
 

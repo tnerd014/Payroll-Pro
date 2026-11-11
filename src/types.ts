@@ -65,8 +65,11 @@ export interface Employee {
   endDate?: string; // ISO date YYYY-MM-DD (exit/termination date)
   originalHireDate?: string; // ISO date YYYY-MM-DD (first ever hire date)
   stints?: EmploymentStint[]; // Historical and active employment stints
+  workSchedule?: WorkSchedule; // '5-day' (Mon-Fri) | '6-day' (Mon-Sat)
   updatedAt?: string; // ISO timestamp for conflict resolution
 }
+
+export type WorkSchedule = '5-day' | '6-day';
 
 export interface EmploymentStint {
   stintId: string;
@@ -86,6 +89,9 @@ export interface EmploymentTypeRule {
   description?: string;
 }
 
+export type WorkdayDivisorRule = 'actual_weekdays' | 'fixed_standard' | 'calendar_days';
+export type Section5CapEnforcement = 'strict_block' | 'advisory_warning';
+
 export interface PayrollVariables {
   basic: number;
   housing: number;
@@ -96,6 +102,8 @@ export interface PayrollVariables {
   salaryCalculationMode?: SalaryCalculationMode;
   employmentTypeRules?: EmploymentTypeRule[];
   prorateMidMonth?: boolean;
+  workdayDivisorRule?: WorkdayDivisorRule;
+  section5CapEnforcement?: Section5CapEnforcement;
 }
 
 export interface TaxBracket {
@@ -156,6 +164,15 @@ export interface CalculatedPayrollItem {
   targetNetPay?: number;
   calculationMode?: SalaryCalculationMode;
   loanDeduction?: number;
+  workSchedule?: WorkSchedule;
+  contractualGross?: number;
+  unpaidAbsenceDays?: number;
+  unpaidAbsenceDeduction?: number;
+  effectiveGross?: number;
+  contributionDeduction?: number;
+  contributionDetails?: Array<{ schemeName: string; amount: number }>;
+  isSection5CapExceeded?: boolean;
+  section5MaxAllowedDeductions?: number;
 }
 
 export type LoanType = 'Staff Loan' | 'Salary Advance';
@@ -197,6 +214,77 @@ export interface PayrollSnapshotTotals {
   totalEmployerCost: number;
   staffCount: number;
   totalLoansDeducted?: number;
+  totalContributionsDeducted?: number;
+  totalAbsenceDeducted?: number;
+}
+
+export interface ContributionScheme {
+  id: string;
+  name: string; // e.g. 'Staff Welfare Fund', 'Cooperative Society', 'Thrift / Ajo'
+  description?: string;
+  defaultAmount?: number;
+  defaultMode?: 'fixed' | 'percentage_basic' | 'percentage_gross';
+  isDefault?: boolean;
+}
+
+export interface EmployeeContribution {
+  id: string;
+  employeeId: string;
+  periodKey: string; // e.g. "2026-nov"
+  schemeName: string; // e.g. "Staff Welfare Fund"
+  amount: number;
+  isPercentage?: boolean;
+  rate?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ContributionPayout {
+  id: string;
+  employeeId: string;
+  schemeName: string;
+  amount: number;
+  payoutDate: string; // ISO date YYYY-MM-DD
+  reason: 'annual_payout' | 'partial_withdrawal' | 'exit_settlement' | 'other';
+  paymentMethod: 'bank_transfer' | 'cheque' | 'cash';
+  referenceNo?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface EmployeeContributionSummary {
+  employeeId: string;
+  employeeCode: string;
+  fullName: string;
+  department: string;
+  schemeName: string;
+  totalContributed: number;
+  totalDisbursed: number;
+  currentBalance: number;
+  lastContributionDate?: string;
+  lastPayoutDate?: string;
+}
+
+export type AbsenceType = 
+  | 'unauthorized_absence' 
+  | 'unpaid_leave' 
+  | 'suspension_half_pay' 
+  | 'suspension_unpaid';
+
+export interface EmployeeAbsenceRecord {
+  id: string;
+  employeeId: string;
+  periodKey: string; // e.g. "2026-nov"
+  daysAbsent: number; // e.g. 2, 0.5
+  absenceType: AbsenceType;
+  deductionAmount: number;
+  customOverride?: boolean;
+  notes?: string;
+  dates?: string[];
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface PayrollSnapshot {
@@ -218,6 +306,8 @@ export type AppView =
   | 'employees' 
   | 'payroll' 
   | 'loans'
+  | 'contributions'
+  | 'absences'
   | 'payslip-designer'
   | 'payslips'
   | 'analytics' 
@@ -312,6 +402,7 @@ export interface PayslipDesignConfig {
   breakdownFontSize?: BreakdownFontSize; // 'small' | 'standard' | 'large' | 'xl' (Earnings & Deductions numbers and text scale)
   grossPayLabel: string;        // e.g. "Total Emolument" or "Total Gross Remuneration"
   totalDeductionsLabel: string; // e.g. "Total Deductions"
+  welfareFundLabel?: string;    // Custom label for Staff Welfare / Cooperative Savings / Welfare Fund on payslip
   employerCostLabel: string;    // e.g. "Total Employer Cost"
   footerNote: string;
   
@@ -366,12 +457,14 @@ export const ALL_PAYSLIP_COLUMNS: PayslipColumnDef[] = [
   { id: 'housing', label: 'Housing Allowance', sectionId: 'earnings', defaultChecked: true },
   { id: 'transport', label: 'Transport Allowance', sectionId: 'earnings', defaultChecked: true },
   { id: 'other_allowances', label: 'Other Allowances', sectionId: 'earnings', defaultChecked: true },
+  { id: 'unpaid_absence', label: 'Unpaid Absence / Days Not Worked', sectionId: 'earnings', defaultChecked: true },
   { id: 'gross_pay', label: 'Total Gross Remuneration', sectionId: 'earnings', defaultChecked: true },
 
   // Statutory Deductions & Taxes
   { id: 'paye_tax', label: 'PAYE Income Tax', sectionId: 'deductions', defaultChecked: true },
   { id: 'employee_pension', label: 'Employee Pension (8%)', sectionId: 'deductions', defaultChecked: true },
   { id: 'loan_deduction', label: 'Loan / Advance Repayment', sectionId: 'deductions', defaultChecked: true },
+  { id: 'contribution_deduction', label: 'Staff Welfare / Cooperative Savings', sectionId: 'deductions', defaultChecked: true },
   { id: 'total_deductions', label: 'Total Deductions', sectionId: 'deductions', defaultChecked: true },
 
   // Net Pay & Summary
@@ -442,6 +535,7 @@ export const DEFAULT_PAYSLIP_DESIGN: PayslipDesignConfig = {
   breakdownFontSize: 'standard',
   grossPayLabel: 'Total Gross Remuneration',
   totalDeductionsLabel: 'Total Deductions',
+  welfareFundLabel: 'Staff Welfare Fund',
   employerCostLabel: 'Total Employer Cost',
   footerNote: 'This is a computer-generated payslip. Contact HR or Accounts for any payroll queries.',
   
@@ -531,6 +625,77 @@ export interface ResendConfig {
   fromName: string;
 }
 
+export type WhatsAppProviderType = 'direct' | 'cloud_api' | 'ultramsg' | 'termii';
+
+export interface WhatsAppCloudApiConfig {
+  phoneNumberId: string;
+  accessToken: string;
+  businessAccountId?: string;
+  apiVersion?: string; // default "v20.0"
+}
+
+export interface WhatsAppUltraMsgConfig {
+  instanceId: string;
+  token: string;
+}
+
+export interface WhatsAppTermiiConfig {
+  apiKey: string;
+  deviceId: string;
+  templateId?: string;
+}
+
+export interface WhatsAppSettings {
+  enabled: boolean;
+  provider: WhatsAppProviderType; // 'direct' (wa.me instant links) | 'cloud_api' | 'ultramsg' | 'termii'
+  cloudApi: WhatsAppCloudApiConfig;
+  ultramsg: WhatsAppUltraMsgConfig;
+  ultraMsg?: WhatsAppUltraMsgConfig;
+  termii: WhatsAppTermiiConfig;
+  defaultMessageTemplate: string;
+  includeNetPay: boolean;
+  includeBreakdown: boolean;
+  includePortalLink: boolean;
+  portalUrl?: string;
+  downloadPdfOnDirect?: boolean;
+}
+
+export const DEFAULT_WHATSAPP_SETTINGS: WhatsAppSettings = {
+  enabled: true,
+  provider: 'direct',
+  cloudApi: {
+    phoneNumberId: '',
+    accessToken: '',
+    businessAccountId: '',
+    apiVersion: 'v20.0',
+  },
+  ultramsg: {
+    instanceId: '',
+    token: '',
+  },
+  termii: {
+    apiKey: '',
+    deviceId: '',
+    templateId: '',
+  },
+  defaultMessageTemplate: `Hello {{employeeName}},
+
+Your official salary payslip for {{month}} {{year}} from {{companyName}} is ready.
+
+• Staff ID: {{employeeCode}}
+• Department: {{department}}
+• Net Take-Home: {{netPay}}
+
+Please find your official payslip attached. Contact Accounts / HR for any remuneration questions.
+
+Best regards,
+{{companyName}}`,
+  includeNetPay: true,
+  includeBreakdown: false,
+  includePortalLink: false,
+  portalUrl: '',
+};
+
 export interface EmailSettings {
   provider: EmailProviderType;
   smtp: SmtpConfig;
@@ -539,6 +704,7 @@ export interface EmailSettings {
   defaultBodyTemplate: string;
   attachPdf: boolean;
   replyTo?: string;
+  whatsapp?: WhatsAppSettings;
 }
 
 export const DEFAULT_EMAIL_SETTINGS: EmailSettings = {

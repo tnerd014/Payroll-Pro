@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Cloud, 
-  Lock, 
-  KeyRound, 
-  User, 
-  CheckCircle2, 
-  AlertTriangle, 
-  ArrowRight, 
+import {
+  Cloud,
+  Lock,
+  KeyRound,
+  User,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
   ArrowLeft,
-  Eye, 
-  EyeOff, 
-  RefreshCw, 
-  Database, 
-  Copy, 
-  Download, 
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Database,
+  Copy,
+  Download,
   Check,
   Server,
   Sun,
@@ -31,10 +31,10 @@ import {
   ExternalLink,
   Fingerprint
 } from 'lucide-react';
-import { 
-  getSavedCloudConfig, 
-  saveCloudConfig, 
-  testSupabaseConnection, 
+import {
+  getSavedCloudConfig,
+  saveCloudConfig,
+  testSupabaseConnection,
   fetchCompaniesFromSupabase,
   checkHasAdminUser,
   registerInitialAdmin,
@@ -84,7 +84,7 @@ interface CloudStaffGateProps {
   onToggleSimulator?: () => void;
 }
 
-export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({ 
+export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
   onAuthenticated,
   isDarkTheme = false,
   onToggleTheme,
@@ -131,7 +131,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
 
   const [isLoadingCheck, setIsLoadingCheck] = useState(true);
   const [helpMenuOpen, setHelpMenuOpen] = useState(false);
-  const [appVersion, setAppVersion] = useState('v1.0.6');
+  const [appVersion, setAppVersion] = useState('v1.0.7');
   const advancedModesEnabled = areAdvancedModesEnabled();
   const currentRuntimeMode = getRuntimeMode();
   const canUseOfflineFallback = isOfflineModeAllowed();
@@ -771,7 +771,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-zinc-900">
-      
+
       {/* Header: Android Material 3 Mobile Bar OR Desktop Native Title Bar */}
       {isMobile ? (
         <header className="no-print bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 select-none shrink-0 z-40 shadow-xs">
@@ -906,21 +906,21 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
 
             {isElectron && (
               <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1">
-                <button 
+                <button
                   onClick={() => (window as any).electronAPI?.windowMinimize?.()}
                   className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
                   title="Minimize"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <button 
+                <button
                   onClick={() => (window as any).electronAPI?.windowMaximize?.()}
                   className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
                   title="Maximize"
                 >
                   <Square className="w-2.5 h-2.5" />
                 </button>
-                <button 
+                <button
                   onClick={() => (window as any).electronAPI?.windowClose?.()}
                   className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition cursor-pointer"
                   title="Close"

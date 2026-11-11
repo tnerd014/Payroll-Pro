@@ -72,6 +72,7 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
 }) => {
   const isCol = (colId: string): boolean => {
     if (propIsCol) return propIsCol(colId);
+    if (colId.startsWith('contribution_') || colId === 'unpaid_absence' || colId === 'loan_deduction') return true;
     const cols = visibleColumns || config.visibleColumns;
     if (cols && Array.isArray(cols) && cols.length > 0) {
       return normalizeVisibleColumns(cols).includes(colId);
@@ -639,6 +640,13 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
       { id: 'housing', label: 'Housing Allowance:', val: formatNaira(item.housing) },
       { id: 'transport', label: 'Transport Allowance:', val: formatNaira(item.transport) },
       { id: 'other_allowances', label: 'Other Allowances:', val: formatNaira(item.otherAllowances) },
+      ...(item.unpaidAbsenceDeduction && item.unpaidAbsenceDeduction > 0 ? [
+        { 
+          id: 'unpaid_absence', 
+          label: `Unpaid Absence (${item.unpaidAbsenceDays || 0} ${item.unpaidAbsenceDays === 1 ? 'day' : 'days'}):`, 
+          val: `-${formatNaira(item.unpaidAbsenceDeduction)}` 
+        }
+      ] : []),
     ];
     const earningsList = rawEarnings.filter(r => isCol(r.id));
 
@@ -735,6 +743,18 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
       ...(item.loanDeduction && item.loanDeduction > 0 ? [
         { id: 'loan_deduction', label: 'Loan / Advance Repayment:', val: `-${formatNaira(item.loanDeduction)}` }
       ] : []),
+      ...(item.contributionDetails && item.contributionDetails.length > 0
+        ? item.contributionDetails.map((cd, idx) => ({
+            id: `contribution_${idx}`,
+            label: `${config.welfareFundLabel || cd.schemeName || 'Staff Welfare Fund'}:`,
+            val: `-${formatNaira(cd.amount)}`
+          }))
+        : item.contributionDeduction && item.contributionDeduction > 0
+          ? [{ id: 'contribution_deduction', label: `${config.welfareFundLabel || 'Staff Welfare Fund'}:`, val: `-${formatNaira(item.contributionDeduction)}` }]
+          : interactive && onUpdateConfig
+            ? [{ id: 'contribution_deduction', label: `${config.welfareFundLabel || 'Staff Welfare Fund'}:`, val: '-₦10,000.00' }]
+            : []
+      ),
     ];
     const deductionsList = rawDeductions.filter(r => isCol(r.id));
 
@@ -790,16 +810,34 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
         </div>
 
         <div className="space-y-1">
-          {deductionsList.map((row, idx) => (
-            <div 
-              key={row.label} 
-              style={getRowStripeStyle(idx)}
-              className={`flex justify-between text-zinc-600 dark:text-zinc-400 px-1.5 ${breakdownClasses.row} rounded`}
-            >
-              <span>{row.label}</span>
-              <span className="font-mono text-zinc-900 dark:text-zinc-100">{row.val}</span>
-            </div>
-          ))}
+          {deductionsList.map((row, idx) => {
+            const isWelfareRow = row.id.startsWith('contribution_') || row.id === 'contribution_deduction';
+            return (
+              <div 
+                key={row.id || row.label} 
+                style={getRowStripeStyle(idx)}
+                className={`flex justify-between items-center text-zinc-600 dark:text-zinc-400 px-1.5 ${breakdownClasses.row} rounded`}
+              >
+                {interactive && onUpdateConfig && isWelfareRow ? (
+                  <div className="flex items-center gap-0.5 flex-1 mr-2 min-w-0">
+                    <input
+                      type="text"
+                      value={config.welfareFundLabel || 'Staff Welfare Fund'}
+                      onChange={(e) => onUpdateConfig({ welfareFundLabel: e.target.value })}
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-transparent border-b border-dashed border-current/40 hover:border-current focus:border-current focus:outline-none transition text-inherit font-inherit py-0 px-0.5 w-full max-w-[220px]"
+                      placeholder="Staff Welfare Fund"
+                      title="Click to edit Welfare / Contribution naming on payslip"
+                    />
+                    <span>:</span>
+                  </div>
+                ) : (
+                  <span>{row.label}</span>
+                )}
+                <span className="font-mono text-zinc-900 dark:text-zinc-100 shrink-0">{row.val}</span>
+              </div>
+            );
+          })}
           {isCol('total_deductions') && (
             <div className={`flex justify-between items-center font-bold text-zinc-900 dark:text-zinc-100 ${breakdownClasses.totalRow} border-t border-zinc-200 dark:border-zinc-800 px-1.5`}>
               {interactive && onUpdateConfig ? (

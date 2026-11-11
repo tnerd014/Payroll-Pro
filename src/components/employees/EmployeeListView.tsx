@@ -932,7 +932,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="pt-2.5 pb-3 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="pt-3 pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">

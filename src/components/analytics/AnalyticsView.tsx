@@ -17,7 +17,17 @@ import {
   X,
   Layers,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  PiggyBank,
+  ArrowUpRight,
+  FileText,
+  Wallet,
+  Search,
+  RotateCcw,
+  Receipt,
+  CalendarOff,
+  Clock,
+  ChevronRight
 } from 'lucide-react';
 import { 
   CalculatedPayrollItem, 
@@ -26,12 +36,19 @@ import {
   PayrollVariables, 
   PayeTaxVariables, 
   CompanyProfile,
-  EmployeeLoan
+  EmployeeLoan,
+  EmployeeContribution,
+  ContributionPayout,
+  ContributionScheme,
+  EmployeeContributionSummary,
+  EmployeeAbsenceRecord
 } from '../../types';
 import { 
   formatNaira, 
   formatCompactNaira, 
-  calculatePayrollItem 
+  calculatePayrollItem,
+  formatDate,
+  getScheduleWorkdays
 } from '../../engine/payePensionEngine';
 import { exportPayrollProToExcel } from '../../engine/excelEngine';
 import { PrintableScheduleModal, ScheduleReportType } from './PrintableScheduleModal';
@@ -40,6 +57,7 @@ import { TablePagination } from '../common/TablePagination';
 import { SortableHeader, SortDirection } from '../common/SortableHeader';
 
 export type AnalyticsRangeMode = 'single-month' | 'full-year' | 'all-history';
+export type AnalyticsTab = 'overview' | 'departments' | 'tax' | 'pension' | 'bank' | 'contributions' | 'absences';
 
 interface AnalyticsViewProps {
   items: CalculatedPayrollItem[];
@@ -54,6 +72,10 @@ interface AnalyticsViewProps {
   departments?: string[];
   company?: CompanyProfile;
   loans?: EmployeeLoan[];
+  contributions?: EmployeeContribution[];
+  payouts?: ContributionPayout[];
+  schemes?: ContributionScheme[];
+  absences?: EmployeeAbsenceRecord[];
 }
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
@@ -69,9 +91,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   departments = [],
   company = { name: 'COMPANY LIMITED', subtitle: '', address: '', phone: '', email: '' },
   loans = [],
+  contributions = [],
+  payouts = [],
+  schemes = [],
+  absences = [],
 }) => {
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'departments' | 'tax' | 'pension' | 'bank'>('overview');
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview');
   
   // Interactive Report Filters
   const [rangeMode, setRangeMode] = useState<AnalyticsRangeMode>('single-month');
@@ -124,15 +150,591 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     setSchedulePage(1);
   }, [activeTab, rangeMode, activeMonthKey, activeYear, selectedDept, selectedEmpType]);
 
-  // Dynamic year range — always centred on the current calendar year so
-  // new years are added automatically without any code change needed.
+  // Dynamic year range — accounts for all historical snapshots (e.g. 5-year companies)
   const years = useMemo(() => {
     const cy = new Date().getFullYear();
-    return [cy - 2, cy - 1, cy, cy + 1, cy + 2];
-  }, []);
+    const set = new Set<number>([cy - 5, cy - 4, cy - 3, cy - 2, cy - 1, cy, cy + 1, cy + 2]);
+    (snapshots || []).forEach(s => {
+      const yr = Number(s.year);
+      if (!isNaN(yr) && yr > 2000) set.add(yr);
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  }, [snapshots]);
 
   const currentMonthObj = MONTHS.find(m => m.key === activeMonthKey);
   const activeMonthLabel = currentMonthObj?.label || initialMonthLabel;
+
+  // ================= CONTRIBUTIONS & WELFARE TAB STATE =================
+  const [contribScope, setContribScope] = useState<string>('ALL'); // 'ALL' or employeeId
+  const [contribTimeframe, setContribTimeframe] = useState<'month' | 'year' | 'all'>('month');
+  const [contribYear, setContribYear] = useState<number>(() => initialYear || new Date().getFullYear());
+  const [contribMonthKey, setContribMonthKey] = useState<string>(() => initialSelectedMonth || (MONTHS[new Date().getMonth()]?.key || 'oct'));
+  const [contribSearchQuery, setContribSearchQuery] = useState('');
+  const [contribPage, setContribPage] = useState(1);
+  const [contribPageSize, setContribPageSize] = useState(10);
+  const [isPrintStatementModalOpen, setIsPrintStatementModalOpen] = useState(false);
+
+  // Sync with main toolbar
+  useEffect(() => {
+    setContribYear(activeYear);
+  }, [activeYear]);
+
+  useEffect(() => {
+    setContribMonthKey(activeMonthKey);
+  }, [activeMonthKey]);
+
+  useEffect(() => {
+    if (rangeMode === 'single-month') setContribTimeframe('month');
+    else if (rangeMode === 'full-year') setContribTimeframe('year');
+    else if (rangeMode === 'all-history') setContribTimeframe('all');
+  }, [rangeMode]);
+
+  useEffect(() => {
+    setContribPage(1);
+  }, [contribScope, contribTimeframe, contribYear, contribMonthKey, contribSearchQuery]);
+
+  // ================= ABSENCES & ATTENDANCE REPORT TAB STATE =================
+  const [absenceScope, setAbsenceScope] = useState<string>('ALL'); // 'ALL' or employeeId
+  const [absenceTimeframe, setAbsenceTimeframe] = useState<'month' | 'year' | 'all'>('month');
+  const [absenceYear, setAbsenceYear] = useState<number>(() => initialYear || new Date().getFullYear());
+  const [absenceMonthKey, setAbsenceMonthKey] = useState<string>(() => initialSelectedMonth || (MONTHS[new Date().getMonth()]?.key || 'oct'));
+  const [absenceSearchQuery, setAbsenceSearchQuery] = useState('');
+  const [absencePage, setAbsencePage] = useState(1);
+  const [absencePageSize, setAbsencePageSize] = useState(10);
+  const [isPrintAbsenceModalOpen, setIsPrintAbsenceModalOpen] = useState(false);
+  const [viewingAbsenceRow, setViewingAbsenceRow] = useState<any | null>(null);
+
+  useEffect(() => {
+    setAbsenceYear(activeYear);
+  }, [activeYear]);
+
+  useEffect(() => {
+    setAbsenceMonthKey(activeMonthKey);
+  }, [activeMonthKey]);
+
+  useEffect(() => {
+    if (rangeMode === 'single-month') setAbsenceTimeframe('month');
+    else if (rangeMode === 'full-year') setAbsenceTimeframe('year');
+    else if (rangeMode === 'all-history') setAbsenceTimeframe('all');
+  }, [rangeMode]);
+
+  useEffect(() => {
+    setAbsencePage(1);
+  }, [absenceScope, absenceTimeframe, absenceYear, absenceMonthKey, absenceSearchQuery]);
+
+  const allAbsenceYears = useMemo(() => {
+    const set = new Set<number>();
+    const cy = new Date().getFullYear();
+    [cy - 5, cy - 4, cy - 3, cy - 2, cy - 1, cy, cy + 1, cy + 2].forEach(y => set.add(y));
+    (snapshots || []).forEach(s => {
+      const yr = Number(s.year);
+      if (!isNaN(yr) && yr > 2000) set.add(yr);
+    });
+    (absences || []).forEach(a => {
+      const yr = parseInt(a.periodKey?.split('-')[0], 10);
+      if (!isNaN(yr)) set.add(yr);
+    });
+    return Array.from(set).sort((a, b) => b - a);
+  }, [snapshots, absences]);
+
+  const selectedAbsenceEmployee = useMemo(() => {
+    if (absenceScope === 'ALL') return null;
+    return employees.find(e => e.id === absenceScope) || null;
+  }, [employees, absenceScope]);
+
+  const absenceReportData = useMemo(() => {
+    const all = (absences || []).map(a => {
+      const emp = employees.find(e => e.id === a.employeeId);
+      const [yStr, mKey] = (a.periodKey || '').split('-');
+      const y = parseInt(yStr, 10) || activeYear;
+      const mObj = MONTHS.find(m => m.key === mKey);
+      const periodLabel = `${mObj?.label || mKey?.toUpperCase() || ''} ${y}`;
+      const sched = emp?.workSchedule || '5-day';
+      const workdays = getScheduleWorkdays(
+        y, 
+        mKey || 'jan', 
+        sched, 
+        payrollVariables?.workdayDivisorRule || 'actual_weekdays'
+      );
+      const contractualGross = Number(emp?.monthlyGross) || 0;
+      const dailyRate = workdays > 0 ? contractualGross / workdays : 0;
+      const deductionAmount = Number(a.deductionAmount) || 0;
+      const proratedGross = Math.max(0, contractualGross - deductionAmount);
+
+      return {
+        ...a,
+        emp,
+        periodLabel,
+        year: y,
+        monthKey: mKey,
+        workSchedule: sched,
+        dailyRate,
+        contractualGross,
+        deductionAmount,
+        proratedGross,
+      };
+    });
+
+    let filtered = selectedAbsenceEmployee
+      ? all.filter(r => r.employeeId === selectedAbsenceEmployee.id)
+      : all;
+
+    if (absenceTimeframe === 'year') {
+      filtered = filtered.filter(r => r.year === absenceYear);
+    } else if (absenceTimeframe === 'month') {
+      filtered = filtered.filter(r => r.year === absenceYear && r.monthKey === absenceMonthKey);
+    }
+
+    if (absenceSearchQuery.trim()) {
+      const q = absenceSearchQuery.toLowerCase().trim();
+      filtered = filtered.filter(r => {
+        const name = `${r.emp?.firstName || ''} ${r.emp?.lastName || ''}`.toLowerCase();
+        const code = (r.emp?.code || '').toLowerCase();
+        const dept = (r.emp?.department || '').toLowerCase();
+        const notes = (r.notes || '').toLowerCase();
+        return name.includes(q) || code.includes(q) || dept.includes(q) || notes.includes(q);
+      });
+    }
+
+    filtered.sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      const mIdxA = MONTHS.findIndex(m => m.key === a.monthKey);
+      const mIdxB = MONTHS.findIndex(m => m.key === b.monthKey);
+      if (mIdxA !== mIdxB) return mIdxB - mIdxA;
+      return (a.emp?.lastName || '').localeCompare(b.emp?.lastName || '');
+    });
+
+    const totalDaysDocked = filtered.reduce((s, r) => s + (Number(r.daysAbsent) || 0), 0);
+    const totalDeductions = filtered.reduce((s, r) => s + r.deductionAmount, 0);
+    const affectedStaffCount = new Set(filtered.map(r => r.employeeId)).size;
+    const avgDeductionPerStaff = affectedStaffCount > 0 ? totalDeductions / affectedStaffCount : 0;
+
+    return {
+      rows: filtered,
+      totalDaysDocked,
+      totalDeductions,
+      affectedStaffCount,
+      avgDeductionPerStaff,
+    };
+  }, [absences, employees, selectedAbsenceEmployee, absenceTimeframe, absenceYear, absenceMonthKey, absenceSearchQuery, payrollVariables, activeYear]);
+
+  const paginatedAbsenceRows = useMemo(() => {
+    const start = (absencePage - 1) * absencePageSize;
+    return absenceReportData.rows.slice(start, start + absencePageSize);
+  }, [absenceReportData.rows, absencePage, absencePageSize]);
+
+  // CSV Export for Absences
+  const handleExportAbsencesCsv = () => {
+    const sanitize = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const headers = 'Period,Staff Code,Staff Name,Department,Schedule,Daily Rate,Absent Dates,Days Docked,Salary Deduction,Adjusted Earned Gross,Absence Type,Notes';
+    const rows = absenceReportData.rows.map(r => [
+      sanitize(r.periodLabel),
+      sanitize(r.emp?.code || ''),
+      sanitize(`${r.emp?.firstName || ''} ${r.emp?.lastName || ''}`),
+      sanitize(r.emp?.department || 'General'),
+      sanitize(r.workSchedule === '6-day' ? '6-Day (Mon–Sat)' : '5-Day (Mon–Fri)'),
+      Math.round(r.dailyRate),
+      sanitize(Array.isArray(r.dates) && r.dates.length > 0 ? r.dates.join('; ') : r.periodLabel),
+      r.daysAbsent,
+      r.deductionAmount,
+      r.proratedGross,
+      sanitize(r.absenceType),
+      sanitize(r.notes || '')
+    ].join(','));
+
+    const csvContent = [headers, ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const filename = selectedAbsenceEmployee
+      ? `Absence_Statement_${selectedAbsenceEmployee.code}_${absenceYear}.csv`
+      : `Absence_Schedule_${absenceTimeframe}_${absenceYear}.csv`;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const allContribYears = useMemo(() => {
+    const set = new Set<number>();
+    const cy = new Date().getFullYear();
+    [cy - 5, cy - 4, cy - 3, cy - 2, cy - 1, cy, cy + 1, cy + 2].forEach(y => set.add(y));
+    (snapshots || []).forEach(s => {
+      const yr = Number(s.year);
+      if (!isNaN(yr) && yr > 2000) set.add(yr);
+    });
+    (contributions || []).forEach(c => {
+      const yr = parseInt(c.periodKey?.split('-')[0], 10);
+      if (!isNaN(yr)) set.add(yr);
+    });
+    (payouts || []).forEach(p => {
+      const yr = new Date(p.payoutDate).getFullYear();
+      if (!isNaN(yr)) set.add(yr);
+    });
+    return Array.from(set).sort((a, b) => b - a);
+  }, [snapshots, contributions, payouts]);
+
+  const schemeNameFallback = schemes[0]?.name || 'Staff Welfare Fund';
+
+  // Employee cumulative ledgers (all-time)
+  const employeeContribSummaries = useMemo(() => {
+    return employees.map(emp => {
+      const empContribs = (contributions || []).filter(c => c.employeeId === emp.id);
+      const empPayouts = (payouts || []).filter(p => p.employeeId === emp.id);
+
+      const totalContributed = empContribs.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+      const totalDisbursed = empPayouts.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      const currentBalance = totalContributed - totalDisbursed;
+
+      return {
+        emp,
+        totalContributed,
+        totalDisbursed,
+        currentBalance,
+        activeThisMonth: empContribs.some(c => c.periodKey === `${contribYear}-${contribMonthKey}` && c.amount > 0),
+        activeThisYear: empContribs.some(c => c.periodKey.startsWith(`${contribYear}-`) && c.amount > 0),
+      };
+    });
+  }, [employees, contributions, payouts, contribYear, contribMonthKey]);
+
+  const selectedContribEmployee = useMemo(() => {
+    if (contribScope === 'ALL') return null;
+    return employees.find(e => e.id === contribScope) || null;
+  }, [employees, contribScope]);
+
+  // Single Employee Statement Data
+  const employeeStatementData = useMemo(() => {
+    if (!selectedContribEmployee) return { lines: [], totalInflow: 0, totalOutflow: 0, netBalance: 0, allTimeBalance: 0 };
+
+    const empId = selectedContribEmployee.id;
+    const empContribs = (contributions || []).filter(c => c.employeeId === empId);
+    const empPayouts = (payouts || []).filter(p => p.employeeId === empId);
+
+    interface RawEvent {
+      id: string;
+      date: string;
+      periodKey?: string;
+      type: 'contribution' | 'payout';
+      scheme: string;
+      amount: number;
+      notes?: string;
+    }
+
+    const events: RawEvent[] = [];
+
+    empContribs.forEach(c => {
+      let accountingDate = '';
+      if (c.periodKey) {
+        const parts = c.periodKey.split('-');
+        const y = parseInt(parts[0], 10);
+        const m = parts[1] || 'jan';
+        const mIdx = MONTHS.findIndex(mo => mo.key === m);
+        accountingDate = new Date(Date.UTC(y, mIdx >= 0 ? mIdx : 0, 25)).toISOString();
+      } else if (c.createdAt) {
+        accountingDate = c.createdAt;
+      } else {
+        accountingDate = new Date().toISOString();
+      }
+
+      events.push({
+        id: c.id,
+        date: accountingDate,
+        periodKey: c.periodKey,
+        type: 'contribution',
+        scheme: c.schemeName || schemeNameFallback,
+        amount: Number(c.amount) || 0,
+        notes: c.notes || 'Payroll Net Deduction',
+      });
+    });
+
+    empPayouts.forEach(p => {
+      events.push({
+        id: p.id,
+        date: p.payoutDate,
+        type: 'payout',
+        scheme: p.schemeName || schemeNameFallback,
+        amount: Number(p.amount) || 0,
+        notes: p.reason ? `Payout: ${p.reason.replace(/_/g, ' ')}` : 'Savings Payout',
+      });
+    });
+
+    // Chronological order from oldest to newest to compute running balance correctly.
+    // If on the exact same date or period, contributions (inflows) execute before payouts (outflows).
+    events.sort((a, b) => {
+      const tA = new Date(a.date).getTime();
+      const tB = new Date(b.date).getTime();
+      if (tA !== tB) return tA - tB;
+      if (a.type !== b.type) return a.type === 'contribution' ? -1 : 1;
+      return a.id.localeCompare(b.id);
+    });
+
+    let running = 0;
+    const allLinesWithRunning = events.map(evt => {
+      const isInflow = evt.type === 'contribution';
+      const inflow = isInflow ? evt.amount : 0;
+      const outflow = !isInflow ? evt.amount : 0;
+      running += (inflow - outflow);
+
+      let periodLabel = '';
+      if (evt.periodKey) {
+        const [yr, mk] = evt.periodKey.split('-');
+        const monthObj = MONTHS.find(m => m.key === mk);
+        periodLabel = `${monthObj?.label || mk.toUpperCase()} ${yr}`;
+      } else {
+        const d = new Date(evt.date);
+        const m = MONTHS[d.getMonth()]?.label || '';
+        periodLabel = `${m} ${d.getFullYear()}`;
+      }
+
+      return {
+        id: evt.id,
+        date: evt.date,
+        periodKey: evt.periodKey,
+        periodLabel,
+        type: evt.type,
+        scheme: evt.scheme,
+        inflow,
+        outflow,
+        runningBalance: running,
+        notes: evt.notes,
+        monthlyGross: selectedContribEmployee.monthlyGross,
+      };
+    });
+
+    const allTimeBalance = running;
+
+    const filteredLines = allLinesWithRunning.filter(line => {
+      if (contribTimeframe === 'all') return true;
+
+      if (contribTimeframe === 'year') {
+        if (line.periodKey) {
+          return line.periodKey.startsWith(`${contribYear}-`);
+        }
+        return new Date(line.date).getFullYear() === contribYear;
+      }
+
+      if (contribTimeframe === 'month') {
+        if (line.periodKey) {
+          return line.periodKey === `${contribYear}-${contribMonthKey}`;
+        }
+        const d = new Date(line.date);
+        return d.getFullYear() === contribYear && MONTHS[d.getMonth()]?.key === contribMonthKey;
+      }
+
+      return true;
+    });
+
+    const totalInflow = filteredLines.reduce((s, l) => s + l.inflow, 0);
+    const totalOutflow = filteredLines.reduce((s, l) => s + l.outflow, 0);
+    const netBalance = totalInflow - totalOutflow;
+
+    return {
+      lines: filteredLines,
+      totalInflow,
+      totalOutflow,
+      netBalance,
+      allTimeBalance,
+    };
+  }, [selectedContribEmployee, contributions, payouts, contribTimeframe, contribYear, contribMonthKey, schemeNameFallback]);
+
+  // All Staff Contribution Schedule Data
+  const allStaffContribData = useMemo(() => {
+    const q = contribSearchQuery.toLowerCase().trim();
+
+    if (contribTimeframe === 'month') {
+      const currentPeriodKey = `${contribYear}-${contribMonthKey}`;
+      const rows = employees
+        .map(emp => {
+          const contrib = (contributions || []).find(c => c.employeeId === emp.id && c.periodKey === currentPeriodKey);
+          const amount = Number(contrib?.amount) || 0;
+          const summary = employeeContribSummaries.find(s => s.emp.id === emp.id);
+          return {
+            emp,
+            contrib,
+            amount,
+            schemeName: contrib?.schemeName || schemeNameFallback,
+            currentBalance: summary?.currentBalance || 0,
+            percentGross: emp.monthlyGross > 0 ? (amount / emp.monthlyGross) * 100 : 0,
+          };
+        })
+        .filter(r => {
+          if (!r.contrib || r.amount <= 0) return false;
+          if (!q) return true;
+          return (
+            r.emp.code.toLowerCase().includes(q) ||
+            `${r.emp.firstName} ${r.emp.lastName}`.toLowerCase().includes(q) ||
+            (r.emp.department || '').toLowerCase().includes(q)
+          );
+        });
+
+      const totalDeductions = rows.reduce((s, r) => s + r.amount, 0);
+      const participatingCount = rows.length;
+      const avgContribution = participatingCount > 0 ? totalDeductions / participatingCount : 0;
+      const totalFundPool = employeeContribSummaries.reduce((s, r) => s + r.currentBalance, 0);
+
+      return {
+        mode: 'month' as const,
+        rows,
+        totalDeductions,
+        participatingCount,
+        avgContribution,
+        totalFundPool,
+      };
+    } else if (contribTimeframe === 'year') {
+      const rows = employees
+        .map(emp => {
+          const yearContribs = (contributions || []).filter(c => c.employeeId === emp.id && c.periodKey.startsWith(`${contribYear}-`) && Number(c.amount) > 0);
+          const yearPayouts = (payouts || []).filter(p => p.employeeId === emp.id && new Date(p.payoutDate).getFullYear() === contribYear);
+          const totalYearContrib = yearContribs.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+          const totalYearPayouts = yearPayouts.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+          const netYearSavings = totalYearContrib - totalYearPayouts;
+          const summary = employeeContribSummaries.find(s => s.emp.id === emp.id);
+          const monthsCount = yearContribs.length;
+
+          return {
+            emp,
+            monthsCount,
+            totalYearContrib,
+            totalYearPayouts,
+            netYearSavings,
+            currentBalance: summary?.currentBalance || 0,
+            schemeName: yearContribs[0]?.schemeName || schemeNameFallback,
+          };
+        })
+        .filter(r => {
+          if (r.totalYearContrib <= 0 && r.totalYearPayouts <= 0) return false;
+          if (!q) return true;
+          return (
+            r.emp.code.toLowerCase().includes(q) ||
+            `${r.emp.firstName} ${r.emp.lastName}`.toLowerCase().includes(q) ||
+            (r.emp.department || '').toLowerCase().includes(q)
+          );
+        });
+
+      const totalYearDeductions = rows.reduce((s, r) => s + r.totalYearContrib, 0);
+      const totalYearDisbursed = rows.reduce((s, r) => s + r.totalYearPayouts, 0);
+      const netYearFundGrowth = totalYearDeductions - totalYearDisbursed;
+      const totalFundPool = employeeContribSummaries.reduce((s, r) => s + r.currentBalance, 0);
+
+      return {
+        mode: 'year' as const,
+        rows,
+        totalYearDeductions,
+        totalYearDisbursed,
+        netYearFundGrowth,
+        participatingCount: rows.length,
+        totalFundPool,
+      };
+    } else {
+      const rows = employeeContribSummaries
+        .filter(s => {
+          if (s.totalContributed <= 0 && s.totalDisbursed <= 0) return false;
+          if (!q) return true;
+          return (
+            s.emp.code.toLowerCase().includes(q) ||
+            `${s.emp.firstName} ${s.emp.lastName}`.toLowerCase().includes(q) ||
+            (s.emp.department || '').toLowerCase().includes(q)
+          );
+        });
+
+      const totalAllTimeContributed = rows.reduce((s, r) => s + r.totalContributed, 0);
+      const totalAllTimeDisbursed = rows.reduce((s, r) => s + r.totalDisbursed, 0);
+      const totalBalanceHeld = totalAllTimeContributed - totalAllTimeDisbursed;
+
+      return {
+        mode: 'all' as const,
+        rows,
+        totalAllTimeContributed,
+        totalAllTimeDisbursed,
+        totalBalanceHeld,
+        participatingCount: rows.length,
+      };
+    }
+  }, [employees, contributions, payouts, employeeContribSummaries, contribTimeframe, contribYear, contribMonthKey, contribSearchQuery, schemeNameFallback]);
+
+  const paginatedStatementLines = useMemo(() => {
+    const start = (contribPage - 1) * contribPageSize;
+    return employeeStatementData.lines.slice(start, start + contribPageSize);
+  }, [employeeStatementData.lines, contribPage, contribPageSize]);
+
+  const paginatedAllStaffRows = useMemo(() => {
+    const start = (contribPage - 1) * contribPageSize;
+    return allStaffContribData.rows.slice(start, start + contribPageSize);
+  }, [allStaffContribData.rows, contribPage, contribPageSize]);
+
+  // CSV Export for Contributions
+  const handleExportContributionsCsv = () => {
+    let headers = '';
+    let rows: string[] = [];
+    const sanitize = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+    if (selectedContribEmployee) {
+      headers = 'Period,Date,Scheme,Monthly Gross,Contribution (Inflow),Payout (Outflow),Running Balance,Notes';
+      rows = employeeStatementData.lines.map(l => [
+        sanitize(l.periodLabel),
+        sanitize(formatDate(l.date)),
+        sanitize(l.scheme),
+        l.monthlyGross || 0,
+        l.inflow,
+        l.outflow,
+        l.runningBalance,
+        sanitize(l.notes)
+      ].join(','));
+    } else {
+      if (contribTimeframe === 'month') {
+        headers = 'Staff Code,Staff Name,Department,Scheme,Monthly Gross,Contribution Deducted,Percent of Gross,Current Balance';
+        rows = allStaffContribData.rows.map((r: any) => [
+          sanitize(r.emp.code),
+          sanitize(`${r.emp.firstName} ${r.emp.lastName}`),
+          sanitize(r.emp.department),
+          sanitize(r.schemeName),
+          r.emp.monthlyGross,
+          r.amount,
+          `${r.percentGross.toFixed(1)}%`,
+          r.currentBalance
+        ].join(','));
+      } else if (contribTimeframe === 'year') {
+        headers = 'Staff Code,Staff Name,Department,Scheme,Months Deducted,Total Year Deductions,Total Year Payouts,Net Year Added,Current Balance';
+        rows = allStaffContribData.rows.map((r: any) => [
+          sanitize(r.emp.code),
+          sanitize(`${r.emp.firstName} ${r.emp.lastName}`),
+          sanitize(r.emp.department),
+          sanitize(r.schemeName),
+          r.monthsCount,
+          r.totalYearContrib,
+          r.totalYearPayouts,
+          r.netYearSavings,
+          r.currentBalance
+        ].join(','));
+      } else {
+        headers = 'Staff Code,Staff Name,Department,Total All-Time Contributed,Total All-Time Disbursed,Current Balance Held';
+        rows = allStaffContribData.rows.map((r: any) => [
+          sanitize(r.emp.code),
+          sanitize(`${r.emp.firstName} ${r.emp.lastName}`),
+          sanitize(r.emp.department),
+          r.totalContributed,
+          r.totalDisbursed,
+          r.currentBalance
+        ].join(','));
+      }
+    }
+
+    const csvContent = [headers, ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const filename = selectedContribEmployee 
+      ? `Contribution_Statement_${selectedContribEmployee.code}_${contribYear}.csv`
+      : `Contributions_${contribTimeframe}_${contribYear}.csv`;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // Available unique departments
   const availableDepts = useMemo(() => {
@@ -671,6 +1273,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   type="button"
                   onClick={() => {
                     setIsExportMenuOpen(false);
+                    if (activeTab === 'contributions') {
+                      setIsPrintStatementModalOpen(true);
+                      return;
+                    }
+                    if (activeTab === 'absences') {
+                      setIsPrintAbsenceModalOpen(true);
+                      return;
+                    }
                     const mappedType: ScheduleReportType = activeTab === 'tax' ? 'paye' : activeTab === 'pension' ? 'pension' : 'bank';
                     setPrintModalType(mappedType);
                     setIsPrintModalOpen(true);
@@ -679,8 +1289,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 >
                   <Printer className="w-4 h-4 text-zinc-500 shrink-0" />
                   <div>
-                    <div className="font-medium text-zinc-900 dark:text-zinc-100">Print / Save PDF</div>
-                    <div className="text-[10px] text-zinc-400">Printable schedule and audit voucher</div>
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                      {activeTab === 'contributions' 
+                        ? (selectedContribEmployee ? 'Print Staff Statement' : 'Print Contribution Schedule')
+                        : activeTab === 'absences'
+                        ? (selectedAbsenceEmployee ? 'Print Absence Statement' : 'Print Absence Schedule')
+                        : 'Print / Save PDF'}
+                    </div>
+                    <div className="text-[10px] text-zinc-400">
+                      {activeTab === 'contributions'
+                        ? 'Printable statement and ledger report'
+                        : activeTab === 'absences'
+                        ? 'Printable absence and statutory proration report'
+                        : 'Printable schedule and audit voucher'}
+                    </div>
                   </div>
                 </button>
 
@@ -690,14 +1312,34 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   type="button"
                   onClick={() => {
                     setIsExportMenuOpen(false);
+                    if (activeTab === 'contributions') {
+                      handleExportContributionsCsv();
+                      return;
+                    }
+                    if (activeTab === 'absences') {
+                      handleExportAbsencesCsv();
+                      return;
+                    }
                     handleExport();
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-800 dark:text-zinc-200 transition cursor-pointer"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <div>
-                    <div className="font-medium text-zinc-900 dark:text-zinc-100">Export All Schedules (.xlsx)</div>
-                    <div className="text-[10px] text-zinc-400">Complete multi-tab Excel workbook</div>
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                      {activeTab === 'contributions' 
+                        ? 'Export Contribution Records (.csv)' 
+                        : activeTab === 'absences'
+                        ? 'Export Absence Records (.csv)'
+                        : 'Export All Schedules (.xlsx)'}
+                    </div>
+                    <div className="text-[10px] text-zinc-400">
+                      {activeTab === 'contributions' 
+                        ? 'Download filtered contribution data' 
+                        : activeTab === 'absences'
+                        ? 'Download filtered absence and proration data'
+                        : 'Complete multi-tab Excel workbook'}
+                    </div>
                   </div>
                 </button>
               </div>
@@ -711,57 +1353,84 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     <div className="flex-1 overflow-y-auto px-6 py-5 md:px-8">
       <div className="max-w-6xl mx-auto space-y-5">
 
-        {/* Tabs */}
+        {/* Tabs - Shortened labels with full title tooltips so all tabs fit seamlessly in view */}
       <div className="flex items-center gap-1 border-b border-zinc-200 dark:border-zinc-800 text-xs overflow-x-auto pb-0.5">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-3 py-2 font-medium border-b-2 transition whitespace-nowrap ${
+          title="Executive Summary & Obligations"
+          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
             activeTab === 'overview'
               ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           }`}
         >
-          Executive Summary
+          Overview
         </button>
         <button
           onClick={() => setActiveTab('departments')}
-          className={`px-3 py-2 font-medium border-b-2 transition whitespace-nowrap ${
+          title="Department Cost Centers & Breakdown"
+          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
             activeTab === 'departments'
               ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           }`}
         >
-          Department Cost Centers ({deptList.length})
+          Departments ({deptList.length})
         </button>
         <button
           onClick={() => setActiveTab('tax')}
-          className={`px-3 py-2 font-medium border-b-2 transition whitespace-nowrap ${
+          title="PAYE Tax Schedule & State Remittance"
+          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
             activeTab === 'tax'
               ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           }`}
         >
-          PAYE Tax Schedule
+          PAYE Tax
         </button>
         <button
           onClick={() => setActiveTab('pension')}
-          className={`px-3 py-2 font-medium border-b-2 transition whitespace-nowrap ${
+          title="Pension Remittance Schedule (Employee 8% + Employer 10%)"
+          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
             activeTab === 'pension'
               ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           }`}
         >
-          Pension Remittance Schedule
+          Pension
         </button>
         <button
           onClick={() => setActiveTab('bank')}
-          className={`px-3 py-2 font-medium border-b-2 transition whitespace-nowrap ${
+          title="Bank Disbursement Schedule & NUBAN Details"
+          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
             activeTab === 'bank'
               ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
               : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
           }`}
         >
-          Bank Disbursement Schedule
+          Disbursements
+        </button>
+        <button
+          onClick={() => setActiveTab('contributions')}
+          title="Staff Contributions, Savings & Welfare Deductions"
+          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+            activeTab === 'contributions'
+              ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
+              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+          }`}
+        >
+          Contributions
+        </button>
+        <button
+          onClick={() => setActiveTab('absences')}
+          title="Employee Absence & Attendance Docking Log"
+          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+            activeTab === 'absences'
+              ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
+              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+          }`}
+        >
+          Absences
         </button>
       </div>
 
@@ -1334,6 +2003,1322 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             onPageSizeChange={setSchedulePageSize}
             itemLabel="disbursement records"
           />
+        </div>
+      )}
+
+      {/* ================= TAB 6: STAFF CONTRIBUTIONS & WELFARE ================= */}
+      {activeTab === 'contributions' && (
+        <div className="space-y-4">
+          {/* Minimalist Filter Ribbon */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 shadow-2xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+              {/* Left: Staff Selector Dropdown */}
+              <div className="flex items-center gap-2 flex-1 min-w-[260px]">
+                <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Scope:</span>
+                </span>
+                <select
+                  value={contribScope}
+                  onChange={(e) => {
+                    setContribScope(e.target.value);
+                    setContribPage(1);
+                  }}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium focus:outline-hidden focus:border-zinc-400 cursor-pointer"
+                >
+                  <option value="ALL">All Contributing Staff (Company Schedule)</option>
+                  <optgroup label="Select Specific Employee Statement">
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.code} — {emp.firstName} {emp.lastName} ({emp.department || 'GENERAL'})
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Center: Timeframe Scope Mode (Monthly / Full Year / All History) */}
+              <div className="flex items-center bg-zinc-100 dark:bg-zinc-900/90 p-0.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setContribTimeframe('month'); setContribPage(1); }}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                    contribTimeframe === 'month'
+                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setContribTimeframe('year'); setContribPage(1); }}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                    contribTimeframe === 'year'
+                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                  }`}
+                >
+                  Full Year
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setContribTimeframe('all'); setContribPage(1); }}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                    contribTimeframe === 'all'
+                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                  }`}
+                >
+                  All Records
+                </button>
+              </div>
+
+              {/* Right: Year and Month Selectors */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Year Dropdown */}
+                <div className={`flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1 ${contribTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
+                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">Year:</span>
+                  <select
+                    value={contribYear}
+                    disabled={contribTimeframe === 'all'}
+                    onChange={(e) => {
+                      setContribYear(Number(e.target.value));
+                      setContribPage(1);
+                    }}
+                    className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-hidden cursor-pointer"
+                  >
+                    {allContribYears.map(y => (
+                      <option key={y} value={y} className="dark:bg-zinc-900">{y}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Month Dropdown (active when 'month') */}
+                {contribTimeframe === 'month' && (
+                  <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1">
+                    <Calendar className="w-3 h-3 text-zinc-400" />
+                    <select
+                      value={contribMonthKey}
+                      onChange={(e) => {
+                        setContribMonthKey(e.target.value);
+                        setContribPage(1);
+                      }}
+                      className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-hidden cursor-pointer"
+                    >
+                      {MONTHS.map(m => (
+                        <option key={m.key} value={m.key} className="dark:bg-zinc-900">{m.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Print Statement Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsPrintStatementModalOpen(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>{selectedContribEmployee ? 'Print Statement' : 'Print Schedule'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick search input when in All Staff mode */}
+            {contribScope === 'ALL' && (
+              <div className="flex items-center gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    placeholder="Search contributing staff by name, code, department..."
+                    value={contribSearchQuery}
+                    onChange={(e) => setContribSearchQuery(e.target.value)}
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-hidden focus:border-zinc-400"
+                  />
+                </div>
+                {contribSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setContribSearchQuery('')}
+                    className="px-2 py-1 text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ================= VIEW A: INDIVIDUAL EMPLOYEE STATEMENT ================= */}
+          {selectedContribEmployee ? (
+            <div className="space-y-4">
+              {/* Employee Summary Card */}
+              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+                      {selectedContribEmployee.firstName} {selectedContribEmployee.lastName}
+                    </span>
+                    <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                      {selectedContribEmployee.code}
+                    </span>
+                    <span className="text-zinc-400">•</span>
+                    <span className="text-zinc-500 dark:text-zinc-400">
+                      {selectedContribEmployee.department || 'GENERAL'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Monthly Gross: <span className="font-mono text-zinc-700 dark:text-zinc-300 font-medium">{formatNaira(selectedContribEmployee.monthlyGross)}</span> • Scheme: <span className="text-zinc-700 dark:text-zinc-300 font-medium">{schemeNameFallback}</span> • Period: <span className="text-zinc-900 dark:text-zinc-100 font-semibold">{contribTimeframe === 'month' ? `${MONTHS.find(m => m.key === contribMonthKey)?.label} ${contribYear}` : contribTimeframe === 'year' ? `Full Year ${contribYear}` : 'All-Time Career History'}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setContribScope('ALL')}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Return to All Staff Schedule</span>
+                </button>
+              </div>
+
+              {/* 4 Minimalist Stat Cards for this employee */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    Total Deducted ({contribTimeframe === 'month' ? `${MONTHS.find(m => m.key === contribMonthKey)?.label}` : contribTimeframe === 'year' ? `FY ${contribYear}` : 'All-Time'})
+                  </span>
+                  <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                    {formatNaira(employeeStatementData.totalInflow)}
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    Disbursed Payouts
+                  </span>
+                  <p className="text-base sm:text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                    {formatNaira(employeeStatementData.totalOutflow)}
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    Net Added in Period
+                  </span>
+                  <p className="text-base sm:text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                    {formatNaira(employeeStatementData.netBalance)}
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    Current Balance Held
+                  </span>
+                  <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                    {formatNaira(employeeStatementData.allTimeBalance)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Statement Itemized Ledger Table */}
+              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
+                <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-zinc-500" />
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                      Staff Ledger Statement ({employeeStatementData.lines.length} entries)
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-zinc-400 font-mono">
+                    All transactions in NGN (₦)
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
+                    <thead className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                      <tr>
+                        <th className="px-3 py-2.5">Period / Month</th>
+                        <th className="px-3 py-2.5">Transaction Date</th>
+                        <th className="px-3 py-2.5">Scheme</th>
+                        <th className="px-3 py-2.5">Type</th>
+                        <th className="px-3 py-2.5 text-right">Deduction (Inflow)</th>
+                        <th className="px-3 py-2.5 text-right">Payout (Outflow)</th>
+                        <th className="px-3 py-2.5 text-right">Running Balance</th>
+                        <th className="px-3 py-2.5">Narration / Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono text-xs">
+                      {employeeStatementData.lines.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-3 py-10 text-center font-sans text-zinc-400">
+                            <PiggyBank className="w-6 h-6 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
+                            <p className="text-xs font-medium">No contribution records found for {selectedContribEmployee.firstName} in the selected period.</p>
+                            <p className="text-[11px] text-zinc-400 mt-0.5">Switch the timeframe to "Full Year" or "All Records" to view other contributions.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedStatementLines.map((line) => (
+                          <tr key={line.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                            <td className="px-3 py-2.5 font-sans font-medium text-zinc-900 dark:text-zinc-100">
+                              {line.periodLabel}
+                            </td>
+                            <td className="px-3 py-2.5 text-zinc-500">
+                              {formatDate(line.date)}
+                            </td>
+                            <td className="px-3 py-2.5 font-sans text-zinc-600 dark:text-zinc-300">
+                              {line.scheme}
+                            </td>
+                            <td className="px-3 py-2.5 font-sans">
+                              {line.type === 'contribution' ? (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                  Deduction
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                  Payout
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-medium text-zinc-900 dark:text-zinc-100">
+                              {line.inflow > 0 ? formatNaira(line.inflow) : '—'}
+                            </td>
+                            <td className="px-3 py-2.5 text-right text-rose-600 dark:text-rose-400">
+                              {line.outflow > 0 ? `-${formatNaira(line.outflow)}` : '—'}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-bold text-zinc-900 dark:text-zinc-100">
+                              {formatNaira(line.runningBalance)}
+                            </td>
+                            <td className="px-3 py-2.5 font-sans text-[11px] text-zinc-500 max-w-xs truncate">
+                              {line.notes || '—'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    {employeeStatementData.lines.length > 0 && (
+                      <tfoot className="bg-zinc-50 dark:bg-zinc-800/80 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 border-t border-zinc-200 dark:border-zinc-800">
+                        <tr>
+                          <td colSpan={4} className="px-3 py-2.5 font-sans uppercase text-[11px] text-zinc-500">
+                            Total for Selected Period
+                          </td>
+                          <td className="px-3 py-2.5 text-right">
+                            {formatNaira(employeeStatementData.totalInflow)}
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-rose-600 dark:text-rose-400">
+                            {employeeStatementData.totalOutflow > 0 ? `-${formatNaira(employeeStatementData.totalOutflow)}` : '₦0.00'}
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-indigo-600 dark:text-indigo-400">
+                            {formatNaira(employeeStatementData.netBalance)}
+                          </td>
+                          <td className="px-3 py-2.5"></td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+
+                {employeeStatementData.lines.length > contribPageSize && (
+                  <TablePagination
+                    currentPage={contribPage}
+                    totalItems={employeeStatementData.lines.length}
+                    pageSize={contribPageSize}
+                    onPageChange={setContribPage}
+                    onPageSizeChange={setContribPageSize}
+                    itemLabel="statement entries"
+                  />
+                )}
+              </div>
+            </div>
+          ) : (
+            /* ================= VIEW B: ALL CONTRIBUTING STAFF SCHEDULE ================= */
+            <div className="space-y-4">
+              {/* 4 Minimalist Stat Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                {contribTimeframe === 'month' && (
+                  <>
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Deducted ({MONTHS.find(m => m.key === contribMonthKey)?.label} {contribYear})
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                        {formatNaira(allStaffContribData.totalDeductions || 0)}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Contributing Staff
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                        {allStaffContribData.participatingCount} of {employees.length}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Average Deduction
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                        {formatNaira(allStaffContribData.avgContribution || 0)}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Total Fund Pool Balance
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                        {formatNaira(allStaffContribData.totalFundPool || 0)}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {contribTimeframe === 'year' && (
+                  <>
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Total {contribYear} Deductions
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                        {formatNaira(allStaffContribData.totalYearDeductions || 0)}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Total {contribYear} Payouts
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                        {formatNaira(allStaffContribData.totalYearDisbursed || 0)}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Net Savings Added in {contribYear}
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                        {formatNaira(allStaffContribData.netYearFundGrowth || 0)}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Annual Contributors
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                        {allStaffContribData.participatingCount} staff
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {contribTimeframe === 'all' && (
+                  <>
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        All-Time Deductions
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                        {formatNaira(allStaffContribData.totalAllTimeContributed || 0)}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        All-Time Payouts
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                        {formatNaira(allStaffContribData.totalAllTimeDisbursed || 0)}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Current Pool Balance Held
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                        {formatNaira(allStaffContribData.totalBalanceHeld || 0)}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                        Enrolled Staff
+                      </span>
+                      <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                        {allStaffContribData.participatingCount} staff
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* All Staff Schedule Table */}
+              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
+                <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+                  <div className="flex items-center gap-2">
+                    <PiggyBank className="w-3.5 h-3.5 text-zinc-500" />
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                      {contribTimeframe === 'month'
+                        ? `Monthly Contribution Schedule — ${MONTHS.find(m => m.key === contribMonthKey)?.label} ${contribYear}`
+                        : contribTimeframe === 'year'
+                        ? `Annual Contribution Summary — FY ${contribYear}`
+                        : 'All-Time Cumulative Staff Savings Ledger'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-zinc-400 font-mono">
+                    {allStaffContribData.rows.length} participating records
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
+                    <thead className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                      <tr>
+                        <th className="px-3 py-2.5 w-10">#</th>
+                        <th className="px-3 py-2.5">Code</th>
+                        <th className="px-3 py-2.5">Staff Name</th>
+                        <th className="px-3 py-2.5">Department</th>
+                        {contribTimeframe === 'month' && (
+                          <>
+                            <th className="px-3 py-2.5">Scheme</th>
+                            <th className="px-3 py-2.5">Monthly Gross</th>
+                            <th className="px-3 py-2.5 text-right">Contribution (Net)</th>
+                            <th className="px-3 py-2.5 text-right">% of Gross</th>
+                            <th className="px-3 py-2.5 text-right">Fund Balance</th>
+                          </>
+                        )}
+                        {contribTimeframe === 'year' && (
+                          <>
+                            <th className="px-3 py-2.5">Months Contributed</th>
+                            <th className="px-3 py-2.5 text-right">Deducted in {contribYear}</th>
+                            <th className="px-3 py-2.5 text-right">Disbursed in {contribYear}</th>
+                            <th className="px-3 py-2.5 text-right">Net Added in {contribYear}</th>
+                            <th className="px-3 py-2.5 text-right">Current Balance</th>
+                          </>
+                        )}
+                        {contribTimeframe === 'all' && (
+                          <>
+                            <th className="px-3 py-2.5 text-right">All-Time Deducted</th>
+                            <th className="px-3 py-2.5 text-right">All-Time Disbursed</th>
+                            <th className="px-3 py-2.5 text-right">Current Fund Balance</th>
+                          </>
+                        )}
+                        <th className="px-3 py-2.5 text-right">Statement</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-normal">
+                      {allStaffContribData.rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="px-3 py-10 text-center font-sans text-zinc-400">
+                            <PiggyBank className="w-6 h-6 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
+                            <p className="text-xs font-medium">No active contributions logged for the selected period.</p>
+                            <p className="text-[11px] text-zinc-400 mt-0.5">Staff who make voluntary contributions will be scheduled here automatically.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedAllStaffRows.map((r: any, idx: number) => {
+                          const rowNum = (contribPage - 1) * contribPageSize + idx + 1;
+                          return (
+                            <tr key={r.emp.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                              <td className="px-3 py-2 font-mono text-zinc-400">{rowNum}</td>
+                              <td className="px-3 py-2 font-mono text-zinc-500">{r.emp.code}</td>
+                              <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-100">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setContribScope(r.emp.id);
+                                    setContribPage(1);
+                                  }}
+                                  className="text-left hover:underline hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                                >
+                                  {r.emp.firstName} {r.emp.lastName}
+                                </button>
+                              </td>
+                              <td className="px-3 py-2 text-zinc-500">{r.emp.department || 'GENERAL'}</td>
+
+                              {contribTimeframe === 'month' && (
+                                <>
+                                  <td className="px-3 py-2 text-zinc-500">{r.schemeName}</td>
+                                  <td className="px-3 py-2 font-mono text-zinc-600 dark:text-zinc-300">{formatNaira(r.emp.monthlyGross)}</td>
+                                  <td className="px-3 py-2 text-right font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                                    {formatNaira(r.amount)}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-zinc-500">
+                                    {r.percentGross.toFixed(1)}%
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                                    {formatNaira(r.currentBalance)}
+                                  </td>
+                                </>
+                              )}
+
+                              {contribTimeframe === 'year' && (
+                                <>
+                                  <td className="px-3 py-2 font-mono text-zinc-600 dark:text-zinc-300">
+                                    {r.monthsCount} mos
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                                    {formatNaira(r.totalYearContrib)}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                                    {r.totalYearPayouts > 0 ? `-${formatNaira(r.totalYearPayouts)}` : '₦0.00'}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-indigo-600 dark:text-indigo-400 font-semibold">
+                                    {formatNaira(r.netYearSavings)}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                                    {formatNaira(r.currentBalance)}
+                                  </td>
+                                </>
+                              )}
+
+                              {contribTimeframe === 'all' && (
+                                <>
+                                  <td className="px-3 py-2 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                                    {formatNaira(r.totalContributed)}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                                    {r.totalDisbursed > 0 ? `-${formatNaira(r.totalDisbursed)}` : '₦0.00'}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                    {formatNaira(r.currentBalance)}
+                                  </td>
+                                </>
+                              )}
+
+                              <td className="px-3 py-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setContribScope(r.emp.id);
+                                    setContribPage(1);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
+                                >
+                                  <FileText className="w-3 h-3 text-zinc-400" />
+                                  <span>Statement</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {allStaffContribData.rows.length > contribPageSize && (
+                  <TablePagination
+                    currentPage={contribPage}
+                    totalItems={allStaffContribData.rows.length}
+                    pageSize={contribPageSize}
+                    onPageChange={setContribPage}
+                    onPageSizeChange={setContribPageSize}
+                    itemLabel="contributing staff"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================= TAB 7: ATTENDANCE & ABSENCE REPORT ================= */}
+      {activeTab === 'absences' && (
+        <div className="space-y-4">
+          {/* Minimalist Filter Ribbon */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 shadow-2xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+              {/* Left: Staff Selector Dropdown */}
+              <div className="flex items-center gap-2 flex-1 min-w-[260px]">
+                <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Scope:</span>
+                </span>
+                <select
+                  value={absenceScope}
+                  onChange={(e) => {
+                    setAbsenceScope(e.target.value);
+                    setAbsencePage(1);
+                  }}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium focus:outline-hidden focus:border-zinc-400 cursor-pointer"
+                >
+                  <option value="ALL">All Affected Staff (Company Absence Schedule)</option>
+                  <optgroup label="Select Specific Employee Attendance Statement">
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.code} — {emp.firstName} {emp.lastName} ({emp.department || 'GENERAL'})
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Center: Timeframe Scope Mode (Monthly / Full Year / All History) */}
+              <div className="flex items-center bg-zinc-100 dark:bg-zinc-900/90 p-0.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setAbsenceTimeframe('month'); setAbsencePage(1); }}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                    absenceTimeframe === 'month'
+                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAbsenceTimeframe('year'); setAbsencePage(1); }}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                    absenceTimeframe === 'year'
+                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                  }`}
+                >
+                  Full Year
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAbsenceTimeframe('all'); setAbsencePage(1); }}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
+                    absenceTimeframe === 'all'
+                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                  }`}
+                >
+                  All Records
+                </button>
+              </div>
+
+              {/* Right: Year and Month Selectors */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className={`flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1 ${absenceTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
+                  <span className="text-[10px] text-zinc-400 uppercase font-semibold">Year:</span>
+                  <select
+                    value={absenceYear}
+                    disabled={absenceTimeframe === 'all'}
+                    onChange={(e) => {
+                      setAbsenceYear(Number(e.target.value));
+                      setAbsencePage(1);
+                    }}
+                    className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-hidden cursor-pointer"
+                  >
+                    {allAbsenceYears.map(y => (
+                      <option key={y} value={y} className="dark:bg-zinc-900">{y}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {absenceTimeframe === 'month' && (
+                  <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1">
+                    <Calendar className="w-3 h-3 text-zinc-400" />
+                    <select
+                      value={absenceMonthKey}
+                      onChange={(e) => {
+                        setAbsenceMonthKey(e.target.value);
+                        setAbsencePage(1);
+                      }}
+                      className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-hidden cursor-pointer"
+                    >
+                      {MONTHS.map(m => (
+                        <option key={m.key} value={m.key} className="dark:bg-zinc-900">{m.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsPrintAbsenceModalOpen(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>{selectedAbsenceEmployee ? 'Print Statement' : 'Print Schedule'}</span>
+                </button>
+              </div>
+            </div>
+
+            {absenceScope === 'ALL' && (
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-3 text-xs">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by staff name, code, department, reason..."
+                    value={absenceSearchQuery}
+                    onChange={(e) => {
+                      setAbsenceSearchQuery(e.target.value);
+                      setAbsencePage(1);
+                    }}
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:border-zinc-400"
+                  />
+                </div>
+                <div className="text-[11px] text-zinc-400">
+                  Showing <span className="font-semibold text-zinc-700 dark:text-zinc-300 font-mono">{absenceReportData.rows.length}</span> logged absence events
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3 Minimalist Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+                <span>Total Days Docked</span>
+                <Clock className="w-3.5 h-3.5 text-zinc-400" />
+              </div>
+              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                {absenceReportData.totalDaysDocked} {absenceReportData.totalDaysDocked === 1 ? 'day' : 'days'}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+                <span>Unpaid Deductions</span>
+                <span className="text-rose-500 font-bold text-xs">₦</span>
+              </div>
+              <p className="text-lg font-bold font-mono text-rose-600 dark:text-rose-400">
+                -{formatNaira(absenceReportData.totalDeductions)}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+                <span>Affected Staff</span>
+                <Users className="w-3.5 h-3.5 text-zinc-400" />
+              </div>
+              <p className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
+                {absenceReportData.affectedStaffCount} {absenceReportData.affectedStaffCount === 1 ? 'employee' : 'employees'}
+              </p>
+            </div>
+          </div>
+
+          {/* Minimalist Absence Table View */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-2xs">
+            <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+              <div className="flex items-center gap-2">
+                <CalendarOff className="w-3.5 h-3.5 text-zinc-500" />
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                  {selectedAbsenceEmployee
+                    ? `Attendance Deduction Statement — ${selectedAbsenceEmployee.firstName} ${selectedAbsenceEmployee.lastName} (${selectedAbsenceEmployee.code})`
+                    : absenceTimeframe === 'month'
+                    ? `Monthly Absence Schedule — ${MONTHS.find(m => m.key === absenceMonthKey)?.label} ${absenceYear}`
+                    : absenceTimeframe === 'year'
+                    ? `Annual Absence Schedule — FY ${absenceYear}`
+                    : 'All-Time Cumulative Absence & Attendance Log'}
+                </span>
+              </div>
+              <span className="text-[11px] text-zinc-400 font-mono">
+                {absenceReportData.rows.length} records
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
+                <thead className="bg-zinc-50/80 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-semibold">
+                  <tr>
+                    <th className="px-4 py-3">Date / Period</th>
+                    {!selectedAbsenceEmployee && <th className="px-4 py-3">Staff Name</th>}
+                    <th className="px-4 py-3 text-center">Absent Days</th>
+                    <th className="px-4 py-3 text-right">Deduction</th>
+                    <th className="px-4 py-3 text-right">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                  {absenceReportData.rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={selectedAbsenceEmployee ? 4 : 5} className="px-4 py-12 text-center text-zinc-400">
+                        <CalendarOff className="w-6 h-6 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
+                        <p className="text-xs font-medium">No absence records found for the selected timeframe and filters.</p>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">All staff had 100% attendance during this period.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedAbsenceRows.map(rec => {
+                      const datesDisplay = Array.isArray(rec.dates) && rec.dates.length > 0
+                        ? rec.dates.map(ds => {
+                            const [y, m, d] = ds.split('-').map(Number);
+                            return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                          }).join(', ')
+                        : rec.periodLabel;
+
+                      return (
+                        <tr
+                          key={rec.id}
+                          onClick={() => setViewingAbsenceRow(rec)}
+                          className="group hover:bg-zinc-50/90 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                        >
+                          {/* Date / Period */}
+                          <td className="px-4 py-3 font-medium text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" />
+                              <span>{datesDisplay}</span>
+                            </div>
+                          </td>
+
+                          {/* Staff Name with Code & Department */}
+                          {!selectedAbsenceEmployee && (
+                            <td className="px-4 py-3">
+                              <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                                {rec.emp ? `${rec.emp.firstName} ${rec.emp.lastName}` : 'Former Staff'}
+                              </p>
+                              <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
+                                {rec.emp?.code || '—'} &bull; {rec.emp?.department || 'General'}
+                              </p>
+                            </td>
+                          )}
+
+                          {/* Absent Days */}
+                          <td className="px-4 py-3 text-center whitespace-nowrap">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200/60 dark:border-zinc-700/60">
+                              {rec.daysAbsent} {rec.daysAbsent === 1 ? 'day' : 'days'}
+                            </span>
+                          </td>
+
+                          {/* Salary Deduction */}
+                          <td className="px-4 py-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                            -{formatNaira(rec.deductionAmount)}
+                          </td>
+
+                          {/* Details View Hint */}
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
+                              <span>View</span>
+                              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+                {absenceReportData.rows.length > 0 && (
+                  <tfoot className="bg-zinc-50 dark:bg-zinc-800/80 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 border-t border-zinc-200 dark:border-zinc-800">
+                    <tr>
+                      <td colSpan={selectedAbsenceEmployee ? 1 : 2} className="px-4 py-2.5 font-sans uppercase text-[11px] text-zinc-500 font-semibold">
+                        Total for Selected Scope
+                      </td>
+                      <td className="px-4 py-2.5 text-center font-bold">
+                        {absenceReportData.totalDaysDocked} {absenceReportData.totalDaysDocked === 1 ? 'day' : 'days'}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-rose-600 dark:text-rose-400 font-bold">
+                        -{formatNaira(absenceReportData.totalDeductions)}
+                      </td>
+                      <td className="px-4 py-2.5"></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+
+            {absenceReportData.rows.length > absencePageSize && (
+              <TablePagination
+                currentPage={absencePage}
+                totalItems={absenceReportData.rows.length}
+                pageSize={absencePageSize}
+                onPageChange={setAbsencePage}
+                onPageSizeChange={setAbsencePageSize}
+                itemLabel="absence records"
+              />
+            )}
+          </div>
+
+          {/* Succinct Absence View Modal */}
+          {viewingAbsenceRow && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      {viewingAbsenceRow.emp ? `${viewingAbsenceRow.emp.firstName} ${viewingAbsenceRow.emp.lastName}` : 'Former Staff'}
+                    </h3>
+                    <p className="text-xs text-zinc-500 font-mono">
+                      {viewingAbsenceRow.emp?.code || '—'} &bull; {viewingAbsenceRow.emp?.department || 'General'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewingAbsenceRow(null)}
+                    className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Specific Dates Pill Grid */}
+                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800/70 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                      Dates / Period
+                    </span>
+                    <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200 text-xs">
+                      {viewingAbsenceRow.daysAbsent} {viewingAbsenceRow.daysAbsent === 1 ? 'day' : 'days'}
+                    </span>
+                  </div>
+
+                  {Array.isArray(viewingAbsenceRow.dates) && viewingAbsenceRow.dates.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {viewingAbsenceRow.dates.map((dStr: string) => {
+                        const [y, m, d] = dStr.split('-').map(Number);
+                        const formatted = new Date(y, m - 1, d).toLocaleDateString('en-GB', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short'
+                        });
+                        return (
+                          <span
+                            key={dStr}
+                            className="px-2 py-0.5 rounded-md text-[11px] font-mono bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 shadow-2xs"
+                          >
+                            {formatted}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      {viewingAbsenceRow.periodLabel}
+                    </p>
+                  )}
+
+                  <div className="pt-1.5 border-t border-zinc-200/50 dark:border-zinc-800/50 flex items-center justify-between text-xs">
+                    <span className="text-[11px] text-zinc-400">Absence Type</span>
+                    <span className="capitalize font-medium text-zinc-700 dark:text-zinc-300">
+                      {viewingAbsenceRow.absenceType?.replace(/_/g, ' ') || 'Unauthorized'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Financial Computation Breakdown */}
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center text-zinc-500">
+                    <span>Work Schedule</span>
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                      {viewingAbsenceRow.workSchedule === '6-day' ? '6-Day (Mon–Sat)' : '5-Day (Mon–Fri)'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-zinc-500">
+                    <span>Daily Rate</span>
+                    <span className="font-mono text-zinc-700 dark:text-zinc-300">{formatNaira(viewingAbsenceRow.dailyRate)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-zinc-500">
+                    <span>Contractual Gross</span>
+                    <span className="font-mono text-zinc-700 dark:text-zinc-300">{formatNaira(viewingAbsenceRow.contractualGross)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-rose-600 dark:text-rose-400 font-semibold pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                    <span>Salary Deduction</span>
+                    <span className="font-mono">-{formatNaira(viewingAbsenceRow.deductionAmount)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span>Adjusted Gross</span>
+                    <span className="font-mono">{formatNaira(viewingAbsenceRow.proratedGross)}</span>
+                  </div>
+                </div>
+
+                {/* Notes if any */}
+                {viewingAbsenceRow.notes && (
+                  <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60">
+                    <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-0.5">
+                      Notes
+                    </span>
+                    <p className="text-xs text-zinc-700 dark:text-zinc-300 italic">
+                      "{viewingAbsenceRow.notes}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Modal Close Action */}
+                <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setViewingAbsenceRow(null)}
+                    className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Printable Statement / Schedule Modal */}
+      {isPrintStatementModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Modal Top Bar */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 print:hidden">
+              <div className="flex items-center gap-2">
+                <Printer className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                  {selectedContribEmployee ? 'Employee Contribution Statement' : 'Staff Contributions Schedule'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Document</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPrintStatementModalOpen(false)}
+                  className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Content Body */}
+            <div className="p-6 overflow-y-auto space-y-5 print:p-0 print:overflow-visible">
+              {/* Company & Document Header */}
+              <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h1 className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100 uppercase">
+                      {company.name || 'COMPANY LIMITED'}
+                    </h1>
+                    {company.subtitle && <p className="text-xs text-zinc-500">{company.subtitle}</p>}
+                    <p className="text-[11px] text-zinc-400 mt-0.5">{company.address || 'Lagos, Nigeria'}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-block px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 mb-1">
+                      Official Record
+                    </span>
+                    <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                      {selectedContribEmployee ? 'STAFF SAVINGS STATEMENT' : 'STAFF CONTRIBUTIONS SCHEDULE'}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 font-mono">
+                      Issued: {formatDate(new Date().toISOString())}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedContribEmployee ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-800 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-zinc-400 block">Staff Name</span>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">{selectedContribEmployee.firstName} {selectedContribEmployee.lastName}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-zinc-400 block">Staff Code</span>
+                      <span className="font-mono text-zinc-700 dark:text-zinc-300">{selectedContribEmployee.code}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-zinc-400 block">Department</span>
+                      <span className="text-zinc-700 dark:text-zinc-300">{selectedContribEmployee.department || 'GENERAL'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-zinc-400 block">Reporting Period</span>
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">{contribTimeframe === 'month' ? `${MONTHS.find(m => m.key === contribMonthKey)?.label} ${contribYear}` : contribTimeframe === 'year' ? `Full Year ${contribYear}` : 'All Records'}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 text-xs text-zinc-500">
+                    Reporting Scope: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{contribTimeframe === 'month' ? `${MONTHS.find(m => m.key === contribMonthKey)?.label} ${contribYear}` : contribTimeframe === 'year' ? `Full Year ${contribYear}` : 'All Historical Records'}</span> • Enrolled Staff: <span className="font-semibold font-mono">{allStaffContribData.rows.length}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Data Table */}
+              <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-zinc-100 dark:bg-zinc-800 text-[10px] uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-semibold border-b border-zinc-200 dark:border-zinc-800">
+                    {selectedContribEmployee ? (
+                      <tr>
+                        <th className="p-2.5">Period</th>
+                        <th className="p-2.5">Date</th>
+                        <th className="p-2.5">Scheme</th>
+                        <th className="p-2.5 text-right">Deduction (Inflow)</th>
+                        <th className="p-2.5 text-right">Payout (Outflow)</th>
+                        <th className="p-2.5 text-right">Balance</th>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <th className="p-2.5">Code</th>
+                        <th className="p-2.5">Staff Name</th>
+                        <th className="p-2.5">Department</th>
+                        <th className="p-2.5 text-right">Amount Deducted</th>
+                        <th className="p-2.5 text-right">Fund Balance</th>
+                      </tr>
+                    )}
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono text-xs">
+                    {selectedContribEmployee ? (
+                      employeeStatementData.lines.map(line => (
+                        <tr key={line.id}>
+                          <td className="p-2.5 font-sans">{line.periodLabel}</td>
+                          <td className="p-2.5 text-zinc-500">{formatDate(line.date)}</td>
+                          <td className="p-2.5 font-sans">{line.scheme}</td>
+                          <td className="p-2.5 text-right font-medium">{line.inflow > 0 ? formatNaira(line.inflow) : '—'}</td>
+                          <td className="p-2.5 text-right text-rose-600">{line.outflow > 0 ? `-${formatNaira(line.outflow)}` : '—'}</td>
+                          <td className="p-2.5 text-right font-bold">{formatNaira(line.runningBalance)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      allStaffContribData.rows.map((r: any) => (
+                        <tr key={r.emp.id}>
+                          <td className="p-2.5 text-zinc-500">{r.emp.code}</td>
+                          <td className="p-2.5 font-sans font-medium">{r.emp.firstName} {r.emp.lastName}</td>
+                          <td className="p-2.5 font-sans text-zinc-500">{r.emp.department || 'GENERAL'}</td>
+                          <td className="p-2.5 text-right font-medium">{formatNaira(r.amount ?? r.totalYearContrib ?? r.totalContributed ?? 0)}</td>
+                          <td className="p-2.5 text-right font-bold text-zinc-900 dark:text-zinc-100">{formatNaira(r.currentBalance || 0)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Sign-off Block */}
+              <div className="grid grid-cols-2 gap-8 pt-8 text-xs text-zinc-500 border-t border-zinc-200 dark:border-zinc-800">
+                <div className="space-y-4">
+                  <div className="h-8 border-b border-zinc-300 dark:border-zinc-700 w-48"></div>
+                  <p className="font-semibold text-zinc-800 dark:text-zinc-200">Prepared by: HR / Payroll Officer</p>
+                </div>
+                <div className="space-y-4 text-right">
+                  <div className="h-8 border-b border-zinc-300 dark:border-zinc-700 w-48 ml-auto"></div>
+                  <p className="font-semibold text-zinc-800 dark:text-zinc-200">Authorized by: Management / Trustee</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Printable Absence Schedule / Statement Modal */}
+      {isPrintAbsenceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Modal Top Bar */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 print:hidden">
+              <div className="flex items-center gap-2">
+                <Printer className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                  {selectedAbsenceEmployee ? 'Employee Absence Statement' : 'Company Absence & Attendance Schedule'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Document</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPrintAbsenceModalOpen(false)}
+                  className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Content Body */}
+            <div className="p-6 overflow-y-auto space-y-5 print:p-0 print:overflow-visible text-zinc-900 dark:text-zinc-100">
+              <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                <h2 className="text-lg font-bold tracking-tight">
+                  {company?.name || 'COMPANY LIMITED'}
+                </h2>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {company?.address || 'Corporate Headquarters'} &bull; {company?.email || 'payroll@company.ng'}
+                </p>
+                <div className="mt-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+                    {selectedAbsenceEmployee
+                      ? `OFFICIAL EMPLOYEE ABSENCE & PRORATION STATEMENT`
+                      : `STATUTORY EMPLOYEE ABSENCE & ATTENDANCE SCHEDULE`}
+                  </h3>
+                  <span className="text-xs font-mono font-medium text-zinc-500">
+                    Timeframe: {absenceTimeframe === 'month' ? `${MONTHS.find(m => m.key === absenceMonthKey)?.label} ${absenceYear}` : absenceTimeframe === 'year' ? `FY ${absenceYear}` : 'All Historical Records'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-400 mt-1">
+                  Compliance: Calculated strictly in accordance with Nigerian Labour Act Section 5 daily rate proration rules.
+                </p>
+              </div>
+
+              {/* KPI Strip */}
+              <div className="grid grid-cols-3 gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-lg border border-zinc-200 dark:border-zinc-800 text-center text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-semibold text-zinc-400 block">Total Days Docked</span>
+                  <span className="text-base font-bold font-mono">{absenceReportData.totalDaysDocked} days</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-semibold text-zinc-400 block">Total Unpaid Deductions</span>
+                  <span className="text-base font-bold font-mono text-rose-600">-{formatNaira(absenceReportData.totalDeductions)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-semibold text-zinc-400 block">Affected Staff</span>
+                  <span className="text-base font-bold font-mono">{absenceReportData.affectedStaffCount} employees</span>
+                </div>
+              </div>
+
+              {/* Table */}
+              <table className="w-full text-left text-xs border border-zinc-200 dark:border-zinc-800">
+                <thead className="bg-zinc-100 dark:bg-zinc-800 text-[10px] uppercase font-semibold text-zinc-600 dark:text-zinc-300">
+                  <tr>
+                    <th className="p-2 border-b">Period</th>
+                    {!selectedAbsenceEmployee && <th className="p-2 border-b">Staff Name</th>}
+                    {!selectedAbsenceEmployee && <th className="p-2 border-b">Department</th>}
+                    <th className="p-2 border-b">Schedule</th>
+                    <th className="p-2 border-b text-right">Daily Rate</th>
+                    <th className="p-2 border-b">Dates Absent</th>
+                    <th className="p-2 border-b text-center">Days</th>
+                    <th className="p-2 border-b text-right">Deduction</th>
+                    <th className="p-2 border-b text-right">Adjusted Gross</th>
+                    <th className="p-2 border-b">Type</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono text-xs">
+                  {absenceReportData.rows.map((r, i) => (
+                    <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                      <td className="p-2 font-mono">{r.periodLabel}</td>
+                      {!selectedAbsenceEmployee && (
+                        <td className="p-2 font-medium font-sans">{r.emp ? `${r.emp.firstName} ${r.emp.lastName}` : '—'}</td>
+                      )}
+                      {!selectedAbsenceEmployee && <td className="p-2 font-sans">{r.emp?.department || 'General'}</td>}
+                      <td className="p-2 font-sans">{r.workSchedule === '6-day' ? '6-Day' : '5-Day'}</td>
+                      <td className="p-2 text-right">{formatNaira(r.dailyRate)}</td>
+                      <td className="p-2 text-[11px] font-sans">{Array.isArray(r.dates) && r.dates.length > 0 ? r.dates.join(', ') : r.periodLabel}</td>
+                      <td className="p-2 text-center font-bold">{r.daysAbsent}d</td>
+                      <td className="p-2 text-right text-rose-600 font-bold">-{formatNaira(r.deductionAmount)}</td>
+                      <td className="p-2 text-right text-emerald-600 font-medium">{formatNaira(r.proratedGross)}</td>
+                      <td className="p-2 text-[11px] font-sans capitalize">{r.absenceType?.replace(/_/g, ' ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Signatures */}
+              <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800 grid grid-cols-2 gap-8 text-xs text-zinc-500">
+                <div>
+                  <div className="border-b border-zinc-400 w-48 mb-1"></div>
+                  <span className="font-semibold text-zinc-700 dark:text-zinc-300">Prepared By:</span> Payroll Accountant
+                </div>
+                <div className="text-right flex flex-col items-end">
+                  <div className="border-b border-zinc-400 w-48 mb-1"></div>
+                  <span className="font-semibold text-zinc-700 dark:text-zinc-300">Approved By:</span> Head of Human Resources / Auditor
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

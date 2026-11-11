@@ -8,7 +8,9 @@ import {
   Lock,
   ArrowRightLeft,
   Building2,
-  Landmark
+  Landmark,
+  PiggyBank,
+  CalendarOff
 } from 'lucide-react';
 import { AppView } from '../../types';
 import appLogo from '../../../assets/icon.png';
@@ -18,6 +20,7 @@ interface SidebarNavProps {
   onViewChange: (view: AppView) => void;
   staffCount: number;
   activeLoansCount?: number;
+  absencesCount?: number;
   isLocked: boolean;
   companyName?: string;
   companyLogoUrl?: string;
@@ -30,6 +33,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   onViewChange,
   staffCount,
   activeLoansCount,
+  absencesCount,
   isLocked,
   companyName,
   companyLogoUrl,
@@ -39,7 +43,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   const navItems = [
     { id: 'dashboard' as AppView, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'employees' as AppView, label: 'Staff Directory', icon: Users, badge: staffCount },
+    { id: 'absences' as AppView, label: 'Absence Log', icon: CalendarOff, badge: absencesCount },
     { id: 'loans' as AppView, label: 'Loans & Advances', icon: Landmark, badge: activeLoansCount },
+    { id: 'contributions' as AppView, label: 'Contributions', icon: PiggyBank },
     { id: 'payroll' as AppView, label: 'Payroll Run', icon: Calculator, isLockedIndicator: isLocked },
     { id: 'analytics' as AppView, label: 'Account Reports', icon: BarChart3 },
     ...(isAdmin ? [{ id: 'settings' as AppView, label: 'Settings', icon: Settings }] : []),

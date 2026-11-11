@@ -34,7 +34,9 @@ import {
   Mail,
   Eye,
   EyeOff,
-  Send
+  Send,
+  MessageCircle,
+  Smartphone
 } from 'lucide-react';
 import { 
   CompanyProfile, 
@@ -51,7 +53,9 @@ import {
   PayslipDesignConfig,
   TeamMember,
   EmailSettings,
-  DEFAULT_EMAIL_SETTINGS
+  DEFAULT_EMAIL_SETTINGS,
+  DEFAULT_WHATSAPP_SETTINGS,
+  WhatsAppSettings
 } from '../../types';
 import { 
   DEFAULT_PAYROLL_VARIABLES, 
@@ -69,8 +73,9 @@ import { ExportScopeModal } from '../excel/ExportScopeModal';
 import { MONTHS } from '../../store/usePayrollStore';
 import { CompanyAuditAndTeamTab } from './CompanyAuditAndTeamTab';
 import { SMTP_PRESETS, testEmailServiceConnection } from '../../services/emailService';
+import { testWhatsAppConnection } from '../../services/whatsappService';
 
-export type SettingsTab = 'branding' | 'tax' | 'excel' | 'email' | 'audit_team' | 'reset';
+export type SettingsTab = 'branding' | 'tax' | 'excel' | 'email' | 'whatsapp' | 'audit_team' | 'reset';
 
 export interface DirtyStateInfo {
   isDirty: boolean;
@@ -109,6 +114,8 @@ interface SettingsViewProps {
   currentUser?: TeamMember | null;
   emailSettings?: EmailSettings;
   onUpdateEmailSettings?: (s: Partial<EmailSettings>) => void;
+  whatsappSettings?: WhatsAppSettings;
+  onUpdateWhatsAppSettings?: (w: Partial<WhatsAppSettings>) => void;
   /** When true (cloud offline), Settings is viewable but all saves are disabled */
   isReadOnly?: boolean;
 }
@@ -143,12 +150,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser,
   emailSettings = DEFAULT_EMAIL_SETTINGS,
   onUpdateEmailSettings,
+  whatsappSettings = DEFAULT_WHATSAPP_SETTINGS,
+  onUpdateWhatsAppSettings,
   isReadOnly = false,
 }) => {
   const isAdmin = currentUser ? currentUser.role === 'Admin' : true;
   const isAuditor = currentUser?.role === 'Auditor';
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
-    if ((initialTab === 'audit_team' || initialTab === 'reset' || initialTab === 'email') && !isAdmin) return 'branding';
+    if ((initialTab === 'audit_team' || initialTab === 'reset' || initialTab === 'email' || initialTab === 'whatsapp') && !isAdmin) return 'branding';
     return initialTab;
   });
 
@@ -289,9 +298,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // WhatsApp Dispatch settings state
+  const [whatsappForm, setWhatsappForm] = useState<WhatsAppSettings>(whatsappSettings);
+  const [whatsappSaved, setWhatsappSaved] = useState(false);
+  const [showCloudApiToken, setShowCloudApiToken] = useState(false);
+  const [showUltramsgToken, setShowUltramsgToken] = useState(false);
+  const [showTermiiApiKey, setShowTermiiApiKey] = useState(false);
+  const [isTestingWhatsApp, setIsTestingWhatsApp] = useState(false);
+  const [whatsAppTestResult, setWhatsAppTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const isEmailDirty = useMemo(() => {
     return JSON.stringify(emailForm) !== JSON.stringify(emailSettings);
   }, [emailForm, emailSettings]);
+
+  const isWhatsAppDirty = useMemo(() => {
+    return JSON.stringify(whatsappForm) !== JSON.stringify(whatsappSettings);
+  }, [whatsappForm, whatsappSettings]);
 
   useEffect(() => {
     if (emailSettings && !isEmailDirty) {
@@ -299,8 +321,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   }, [emailSettings, isEmailDirty]);
 
+  useEffect(() => {
+    if (whatsappSettings && !isWhatsAppDirty) {
+      setWhatsappForm(whatsappSettings);
+    }
+  }, [whatsappSettings, isWhatsAppDirty]);
+
   const saveEmail = (): boolean => {
-    if (isAuditor || isReadOnly) return false; // silently blocked — UI already hides the button
+    if (isAuditor || isReadOnly) return false;
     if (onUpdateEmailSettings) {
       onUpdateEmailSettings(emailForm);
       setEmailSaved(true);
@@ -312,6 +340,53 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const discardEmail = () => {
     setEmailForm(emailSettings);
+  };
+
+  const saveWhatsApp = (): boolean => {
+    if (isAuditor || isReadOnly) return false;
+    if (onUpdateWhatsAppSettings) {
+      onUpdateWhatsAppSettings(whatsappForm);
+      setWhatsappSaved(true);
+      setTimeout(() => setWhatsappSaved(false), 2500);
+      return true;
+    }
+    return false;
+  };
+
+  const discardWhatsApp = () => {
+    setWhatsappForm(whatsappSettings);
+  };
+
+  const handleTestWhatsAppConnection = async () => {
+    setIsTestingWhatsApp(true);
+    setWhatsAppTestResult(null);
+    try {
+      const res = await testWhatsAppConnection(whatsappForm);
+      if (res.success) {
+        setWhatsAppTestResult({
+          success: true,
+          message: whatsappForm.provider === 'direct'
+            ? 'WhatsApp Direct Links Ready! No server configuration required.'
+            : whatsappForm.provider === 'cloud_api'
+              ? 'Meta WhatsApp Cloud API Verified! Phone number verified and active.'
+              : whatsappForm.provider === 'ultramsg'
+                ? 'UltraMsg Instance Connected! Authenticated and ready for messaging.'
+                : 'Termii API Key Verified! Account balance and route active.'
+        });
+      } else {
+        setWhatsAppTestResult({
+          success: false,
+          message: res.error || 'Failed to authenticate with WhatsApp service.'
+        });
+      }
+    } catch (err: any) {
+      setWhatsAppTestResult({
+        success: false,
+        message: err?.message || 'Error executing WhatsApp connection test.'
+      });
+    } finally {
+      setIsTestingWhatsApp(false);
+    }
   };
 
   const handleTestEmailConnection = async () => {
@@ -346,11 +421,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   useEffect(() => {
     if (!onRegisterDirtyState) return;
 
-    const isDirty = isBrandingDirty || isTaxDirty || isEmailDirty;
+    const isDirty = isBrandingDirty || isTaxDirty || isEmailDirty || isWhatsAppDirty;
     const tabName = [
       isBrandingDirty ? 'Company & Branding' : null,
       isTaxDirty ? 'Tax & Variables' : null,
-      isEmailDirty ? 'Email Delivery' : null
+      isEmailDirty ? 'Email Delivery' : null,
+      isWhatsAppDirty ? 'WhatsApp Dispatch' : null,
     ].filter(Boolean).join(', ');
 
     onRegisterDirtyState({
@@ -367,19 +443,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         if (ok && isEmailDirty) {
           ok = saveEmail();
         }
+        if (ok && isWhatsAppDirty) {
+          ok = saveWhatsApp();
+        }
         return ok;
       },
       discard: () => {
         if (isBrandingDirty) discardBranding();
         if (isTaxDirty) discardTax();
         if (isEmailDirty) discardEmail();
+        if (isWhatsAppDirty) discardWhatsApp();
       }
     });
 
     return () => {
       onRegisterDirtyState(null);
     };
-  }, [isBrandingDirty, isTaxDirty, isEmailDirty, companyForm, pv, tv, emailForm, company, payrollVariables, payeTaxVariables, emailSettings, onRegisterDirtyState, isPercentageValid]);
+  }, [isBrandingDirty, isTaxDirty, isEmailDirty, isWhatsAppDirty, companyForm, pv, tv, emailForm, whatsappForm, company, payrollVariables, payeTaxVariables, emailSettings, whatsappSettings, onRegisterDirtyState, isPercentageValid]);
 
   // Window beforeunload prompt if dirty
   useEffect(() => {
@@ -421,6 +501,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
 
+    if (activeTab === 'whatsapp' && isWhatsAppDirty) {
+      setPendingTab(targetTab);
+      setIsTabModalOpen(true);
+      return;
+    }
+
     setActiveTab(targetTab);
   };
 
@@ -432,6 +518,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       ok = saveTax();
     } else if (activeTab === 'email') {
       ok = saveEmail();
+    } else if (activeTab === 'whatsapp') {
+      ok = saveWhatsApp();
     }
 
     if (ok && pendingTab) {
@@ -448,6 +536,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       discardTax();
     } else if (activeTab === 'email') {
       discardEmail();
+    } else if (activeTab === 'whatsapp') {
+      discardWhatsApp();
     }
 
     if (pendingTab) {
@@ -849,6 +939,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </button>
               </>
             )}
+
+            {activeTab === 'whatsapp' && isAdmin && (
+              <>
+                {whatsappSaved && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium animate-in fade-in duration-200">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Saved!</span>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => saveWhatsApp()}
+                  disabled={isReadOnly || !isWhatsAppDirty}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed ${
+                    isReadOnly
+                      ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
+                      : isWhatsAppDirty
+                      ? 'bg-emerald-600 text-white hover:bg-emerald-500 ring-2 ring-emerald-500/25 cursor-pointer'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
+                  }`}
+                  title={isReadOnly ? 'Saving is disabled while offline' : isWhatsAppDirty ? 'Unsaved modifications ready to save' : 'Save WhatsApp settings'}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save WhatsApp Settings</span>
+                  {isWhatsAppDirty && !isReadOnly && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -909,6 +1029,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <span>Email Delivery</span>
               {isEmailDirty && (
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" title="Unsaved modifications" />
+              )}
+            </button>
+          )}
+
+          {isAdmin && (
+            <button
+              onClick={() => handleTabChange('whatsapp')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${
+                activeTab === 'whatsapp'
+                  ? 'bg-zinc-200/80 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 font-semibold shadow-2xs'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+              }`}
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>WhatsApp</span>
+              {isWhatsAppDirty && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Unsaved modifications" />
               )}
             </button>
           )}
@@ -2561,6 +2698,453 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     {testResult.success ? 'Handshake Succeeded' : 'Handshake Failed'}
                   </strong>
                   <span>{testResult.message}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* ================= TAB: WHATSAPP DISPATCH SETTINGS ================= */}
+      {activeTab === 'whatsapp' && isAdmin && (
+        <div className="space-y-6 max-w-4xl select-none">
+          
+          {/* Header banner */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                    <MessageCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      WhatsApp Payslip Dispatch Engine
+                    </h2>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Configure automated delivery or direct WhatsApp chat integration to send official salary payslips directly to employee WhatsApp lines.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={whatsappForm.enabled}
+                    onChange={e => setWhatsappForm(prev => ({ ...prev, enabled: e.target.checked }))}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-zinc-300 dark:border-zinc-700"
+                  />
+                  <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                    WhatsApp Active
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 1: Provider Selection */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                1. Select WhatsApp Dispatch Method
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Choose between zero-setup instant WhatsApp Web links or automated high-volume cloud gateways.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Option A: Direct Web / App Link */}
+              <button
+                type="button"
+                onClick={() => setWhatsappForm(prev => ({ ...prev, provider: 'direct' }))}
+                className={`p-3.5 rounded-lg border text-left transition cursor-pointer relative ${
+                  whatsappForm.provider === 'direct'
+                    ? 'border-emerald-600 dark:border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 shadow-xs'
+                    : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                    Direct Links (wa.me)
+                  </span>
+                  {whatsappForm.provider === 'direct' && (
+                    <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  Opens WhatsApp app or Web instantly with pre-filled message + auto-downloads official voucher. Zero setup or API keys needed.
+                </p>
+              </button>
+
+              {/* Option B: Meta WhatsApp Cloud API */}
+              <button
+                type="button"
+                onClick={() => setWhatsappForm(prev => ({ ...prev, provider: 'cloud_api' }))}
+                className={`p-3.5 rounded-lg border text-left transition cursor-pointer relative ${
+                  whatsappForm.provider === 'cloud_api'
+                    ? 'border-emerald-600 dark:border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 shadow-xs'
+                    : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <Cloud className="w-3.5 h-3.5 text-blue-600" />
+                    Meta Cloud API
+                  </span>
+                  {whatsappForm.provider === 'cloud_api' && (
+                    <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  Official WhatsApp Business Cloud API by Meta. High throughput background dispatch using verified Business Manager credentials.
+                </p>
+              </button>
+
+              {/* Option C: UltraMsg WhatsApp Gateway */}
+              <button
+                type="button"
+                onClick={() => setWhatsappForm(prev => ({ ...prev, provider: 'ultramsg' }))}
+                className={`p-3.5 rounded-lg border text-left transition cursor-pointer relative ${
+                  whatsappForm.provider === 'ultramsg'
+                    ? 'border-emerald-600 dark:border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 shadow-xs'
+                    : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <Send className="w-3.5 h-3.5 text-indigo-600" />
+                    UltraMsg Instance
+                  </span>
+                  {whatsappForm.provider === 'ultramsg' && (
+                    <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  Automated WhatsApp Web multi-device instance. Sends text and documents directly from your existing WhatsApp phone number.
+                </p>
+              </button>
+
+              {/* Option D: Termii WhatsApp */}
+              <button
+                type="button"
+                onClick={() => setWhatsappForm(prev => ({ ...prev, provider: 'termii' }))}
+                className={`p-3.5 rounded-lg border text-left transition cursor-pointer relative ${
+                  whatsappForm.provider === 'termii'
+                    ? 'border-emerald-600 dark:border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20 shadow-xs'
+                    : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                    Termii API
+                  </span>
+                  {whatsappForm.provider === 'termii' && (
+                    <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-500 leading-relaxed">
+                  Nigerian &amp; African telecommunications gateway with WhatsApp business notifications and OTP routes.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* Section 2: Provider Credentials & Server Parameters */}
+          {whatsappForm.provider === 'cloud_api' && (
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  2. Meta WhatsApp Cloud API Credentials
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Obtain these from your Meta for Developers dashboard under WhatsApp &gt; API Setup.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    Phone Number ID <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={whatsappForm.cloudApi.phoneNumberId}
+                    onChange={e => setWhatsappForm(prev => ({
+                      ...prev,
+                      cloudApi: { ...prev.cloudApi, phoneNumberId: e.target.value }
+                    }))}
+                    placeholder="e.g. 104829104829104"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    WhatsApp Business Account ID (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={whatsappForm.cloudApi.businessAccountId || ''}
+                    onChange={e => setWhatsappForm(prev => ({
+                      ...prev,
+                      cloudApi: { ...prev.cloudApi, businessAccountId: e.target.value }
+                    }))}
+                    placeholder="e.g. 102938475610293"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                      System User Permanent Access Token <span className="text-rose-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowCloudApiToken(!showCloudApiToken)}
+                      className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      {showCloudApiToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showCloudApiToken ? 'Hide' : 'Reveal'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type={showCloudApiToken ? 'text' : 'password'}
+                    value={whatsappForm.cloudApi.accessToken}
+                    onChange={e => setWhatsappForm(prev => ({
+                      ...prev,
+                      cloudApi: { ...prev.cloudApi, accessToken: e.target.value }
+                    }))}
+                    placeholder="EAABw..."
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {whatsappForm.provider === 'ultramsg' && (
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  2. UltraMsg Gateway Parameters
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Found on your UltraMsg dashboard for your connected WhatsApp instance.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    Instance ID <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={whatsappForm.ultramsg.instanceId}
+                    onChange={e => setWhatsappForm(prev => ({
+                      ...prev,
+                      ultramsg: { ...prev.ultramsg, instanceId: e.target.value }
+                    }))}
+                    placeholder="e.g. instance12345"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                      Instance Token <span className="text-rose-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowUltramsgToken(!showUltramsgToken)}
+                      className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      {showUltramsgToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showUltramsgToken ? 'Hide' : 'Reveal'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type={showUltramsgToken ? 'text' : 'password'}
+                    value={whatsappForm.ultramsg.token}
+                    onChange={e => setWhatsappForm(prev => ({
+                      ...prev,
+                      ultramsg: { ...prev.ultramsg, token: e.target.value }
+                    }))}
+                    placeholder="e.g. abcdef123456"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {whatsappForm.provider === 'termii' && (
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  2. Termii Nigeria Gateway Credentials
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Available from your Termii dashboard &gt; Settings &gt; API Configuration.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                      Termii API Key <span className="text-rose-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowTermiiApiKey(!showTermiiApiKey)}
+                      className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
+                    >
+                      {showTermiiApiKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showTermiiApiKey ? 'Hide' : 'Reveal'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type={showTermiiApiKey ? 'text' : 'password'}
+                    value={whatsappForm.termii.apiKey}
+                    onChange={e => setWhatsappForm(prev => ({
+                      ...prev,
+                      termii: { ...prev.termii, apiKey: e.target.value }
+                    }))}
+                    placeholder="TL..."
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                    WhatsApp Device ID <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={whatsappForm.termii.deviceId}
+                    onChange={e => setWhatsappForm(prev => ({
+                      ...prev,
+                      termii: { ...prev.termii, deviceId: e.target.value }
+                    }))}
+                    placeholder="e.g. f3f4f7b0-..."
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 3: Message Template & Dynamic Tags */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                3. WhatsApp Message Content &amp; Formatting
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Customize the default message dispatched with each payslip. Placeholders dynamically populate with employee remuneration data.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Message Body Template
+                </label>
+                <textarea
+                  rows={6}
+                  value={whatsappForm.defaultMessageTemplate}
+                  onChange={e => setWhatsappForm(prev => ({ ...prev, defaultMessageTemplate: e.target.value }))}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded p-3 text-xs font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-emerald-500 leading-relaxed"
+                />
+                <div className="flex flex-wrap gap-1 mt-2 text-[10px]">
+                  {['employeeName', 'employeeCode', 'department', 'month', 'year', 'netPay', 'grossPay', 'companyName'].map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setWhatsappForm(prev => ({
+                        ...prev,
+                        defaultMessageTemplate: `${prev.defaultMessageTemplate} {{${t}}}`
+                      }))}
+                      className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-mono transition cursor-pointer"
+                    >
+                      +&#123;&#123;{t}&#125;&#125;
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row gap-4 border-t border-zinc-100 dark:border-zinc-800">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={whatsappForm.includeNetPay}
+                    onChange={e => setWhatsappForm(prev => ({ ...prev, includeNetPay: e.target.checked }))}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-zinc-300 dark:border-zinc-700"
+                  />
+                  <span className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                    Highlight Net Take-Home Pay in message
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={whatsappForm.includePortalLink}
+                    onChange={e => setWhatsappForm(prev => ({ ...prev, includePortalLink: e.target.checked }))}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-zinc-300 dark:border-zinc-700"
+                  />
+                  <span className="text-xs text-zinc-700 dark:text-zinc-300 font-medium">
+                    Auto-download official A4 payslip voucher on dispatch
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Diagnostics & Handshake Test */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Connection Diagnostics &amp; Gateway Validation
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Verify API authorization and test communication with your selected WhatsApp provider.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTestWhatsAppConnection}
+                disabled={isTestingWhatsApp}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 rounded font-medium text-xs transition disabled:opacity-50 shrink-0 cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{isTestingWhatsApp ? 'Testing Gateway...' : 'Test WhatsApp Route'}</span>
+              </button>
+            </div>
+
+            {whatsAppTestResult && (
+              <div className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
+                whatsAppTestResult.success
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+              }`}>
+                {whatsAppTestResult.success ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" /> : <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />}
+                <div>
+                  <strong className="block font-semibold">
+                    {whatsAppTestResult.success ? 'WhatsApp Ready' : 'Validation Failed'}
+                  </strong>
+                  <span>{whatsAppTestResult.message}</span>
                 </div>
               </div>
             )}

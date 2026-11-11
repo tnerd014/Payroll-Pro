@@ -103,6 +103,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
   const [department, setDepartment] = useState(defaultDept);
   const [position, setPosition] = useState('Staff Specialist');
   const [employmentType, setEmploymentType] = useState('Full-Time');
+  const [workSchedule, setWorkSchedule] = useState<'5-day' | '6-day'>('5-day');
   const [monthlyGross, setMonthlyGross] = useState<number | ''>(350000);
   const [annualRent, setAnnualRent] = useState<number | ''>('');
   const [showHousingField, setShowHousingField] = useState(false);
@@ -115,9 +116,16 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   const yearsOptions = useMemo(() => {
-    const cy = currentYear || 2026;
-    return [cy - 2, cy - 1, cy, cy + 1, cy + 2];
-  }, [currentYear]);
+    const cy = currentYear || new Date().getFullYear();
+    const set = new Set<number>([cy - 4, cy - 3, cy - 2, cy - 1, cy, cy + 1, cy + 2]);
+    if (editingEmployee?.annualRents) {
+      Object.keys(editingEmployee.annualRents).forEach(yr => {
+        const y = Number(yr);
+        if (!isNaN(y) && y > 2000) set.add(y);
+      });
+    }
+    return Array.from(set).sort((a, b) => a - b);
+  }, [currentYear, editingEmployee?.annualRents]);
 
   // Statutory state
   const [hasPaye, setHasPaye] = useState(true);
@@ -166,6 +174,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       setDepartment(editingEmployee.department || defaultDept);
       setPosition(editingEmployee.position || 'Staff Specialist');
       setEmploymentType(editingEmployee.employmentType || 'Full-Time');
+      setWorkSchedule(editingEmployee.workSchedule || '5-day');
       setMonthlyGross(editingEmployee.monthlyGross ?? 350000);
       setAnnualRent(editingEmployee.annualRent ? editingEmployee.annualRent : '');
       setActiveYear(currentYear || 2026);
@@ -200,6 +209,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       setDepartment(defaultDept);
       setPosition('Staff Specialist');
       setEmploymentType(defaultRule?.name || 'Full-Time');
+      setWorkSchedule('5-day');
       setMonthlyGross(350000);
       setAnnualRent('');
       setActiveYear(currentYear || 2026);
@@ -340,6 +350,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       department: department.trim() || defaultDept,
       position: position.trim() || 'Staff Specialist',
       employmentType,
+      workSchedule,
       monthlyGross: Number(monthlyGross) || 0,
       annualRent: Number(annualRent) || 0,
       annualRents: cleanAnnualRents,
@@ -759,6 +770,27 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       }`}
                     >
                       {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Work Schedule (5-Day vs 6-Day) */}
+              <div className="flex items-center justify-between pt-1 text-xs">
+                <span className="text-zinc-600 dark:text-zinc-400 font-medium">Work Schedule</span>
+                <div className="flex items-center gap-1.5">
+                  {(['5-day', '6-day'] as const).map((ws) => (
+                    <button
+                      key={ws}
+                      type="button"
+                      onClick={() => setWorkSchedule(ws)}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                        workSchedule === ws
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                          : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-400 border-transparent'
+                      }`}
+                    >
+                      {ws === '5-day' ? '5-Day (Mon–Fri)' : '6-Day (Mon–Sat)'}
                     </button>
                   ))}
                 </div>

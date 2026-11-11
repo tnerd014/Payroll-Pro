@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, ArrowLeft, Palette, Mail, ChevronDown } from 'lucide-react';
+import { Printer, ArrowLeft, Palette, Mail, ChevronDown, MessageCircle } from 'lucide-react';
 import { 
   CalculatedPayrollItem, 
   CompanyProfile, 
@@ -10,12 +10,14 @@ import {
   PayrollVariables,
   PayeTaxVariables,
   PayslipCustomPreset,
-  EmailPayslipContext
+  EmailPayslipContext,
+  DEFAULT_WHATSAPP_SETTINGS
 } from '../../types';
 import { DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES } from '../../engine/payePensionEngine';
 import { CustomizablePayslipView } from '../payslip/CustomizablePayslipView';
 import { PayslipDesignerPage } from '../payslip/PayslipDesignerPage';
 import { PayslipThemeSelector } from '../payslip/payslipThemes';
+import { openWhatsAppPayslipChat } from '../../services/whatsappService';
 
 interface PayslipModalProps {
   isOpen: boolean;
@@ -196,10 +198,30 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
                     }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition text-left cursor-pointer"
                   >
-                    <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <Mail className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     <span className="font-medium">Email</span>
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsActionMenuOpen(false);
+                    const emp = employees?.find(e => e.id === item.employeeId);
+                    openWhatsAppPayslipChat({
+                      item,
+                      company,
+                      monthLabel,
+                      year,
+                      phone: emp?.phone,
+                      config,
+                    }, true);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition text-left cursor-pointer"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="font-medium text-emerald-700 dark:text-emerald-300">WhatsApp</span>
+                </button>
               </div>
             )}
           </div>

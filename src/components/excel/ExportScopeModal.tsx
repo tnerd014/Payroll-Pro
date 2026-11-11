@@ -75,8 +75,9 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
     }, 400);
   };
 
+  const startYear = Math.min(2022, (currentYear || new Date().getFullYear()) - 4, selectedYear || 2022);
   const baseYear = Math.max(new Date().getFullYear(), currentYear || 0, selectedYear || 0);
-  const years = Array.from({ length: baseYear + 2 - 2024 + 1 }, (_, i) => 2024 + i);
+  const years = Array.from({ length: baseYear + 2 - startYear + 1 }, (_, i) => startYear + i);
 
   const informationScopeOptions: { id: ExportInformationScope; label: string; desc: string }[] = [
     {

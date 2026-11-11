@@ -25,7 +25,7 @@ import {
   SupabaseCloudConfig 
 } from '../../services/supabaseClient';
 import { purgeAllLocalDataOnDisconnect, confirmDisconnectWithPendingSync } from '../../store/usePayrollStore';
-import { CompanyProfile, Employee, PayrollVariables, PayeTaxVariables, EmployeeLoan, PayrollSnapshot, PayslipDesignConfig, EmailSettings } from '../../types';
+import { CompanyProfile, Employee, PayrollVariables, PayeTaxVariables, EmployeeLoan, PayrollSnapshot, PayslipDesignConfig, EmailSettings, EmployeeContribution, ContributionPayout, EmployeeAbsenceRecord } from '../../types';
 
 interface CloudSyncSettingsProps {
   company: CompanyProfile;
@@ -37,6 +37,9 @@ interface CloudSyncSettingsProps {
   snapshots?: PayrollSnapshot[];
   payslipDesign?: PayslipDesignConfig;
   emailSettings?: EmailSettings;
+  contributions?: EmployeeContribution[];
+  payouts?: ContributionPayout[];
+  absences?: EmployeeAbsenceRecord[];
   onRefreshData?: () => void;
 }
 
@@ -50,6 +53,9 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
   snapshots = [],
   payslipDesign,
   emailSettings,
+  contributions = [],
+  payouts = [],
+  absences = [],
   onRefreshData,
 }) => {
   const [config, setConfig] = useState<SupabaseCloudConfig>(() => getSavedCloudConfig());
@@ -154,7 +160,12 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
         [],
         emailSettings,
         undefined,
-        { forceOverwrite: true }
+        {
+          forceOverwrite: true,
+          contributions,
+          payouts,
+          absences,
+        }
       );
       if (res.success) {
         setSyncFeedback({

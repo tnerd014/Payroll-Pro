@@ -2,6 +2,8 @@ import React from 'react';
 import { 
   BarChart3, 
   Palette, 
+  PiggyBank,
+  CalendarOff,
   ChevronRight
 } from 'lucide-react';
 import { AppView, TeamMember } from '../../types';
@@ -29,6 +31,22 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
   };
 
   const menuItems = [
+    {
+      id: 'absences' as AppView,
+      title: 'Absence & Attendance Log',
+      subtitle: 'Track unpaid days not worked & statutory proration',
+      icon: CalendarOff,
+      color: 'text-rose-600 dark:text-rose-400',
+      bg: 'bg-rose-50 dark:bg-rose-950/50',
+    },
+    {
+      id: 'contributions' as AppView,
+      title: 'Staff Contributions & Welfare',
+      subtitle: 'Savings ledgers, bulk welfare deductions & payouts',
+      icon: PiggyBank,
+      color: 'text-amber-600 dark:text-amber-400',
+      bg: 'bg-amber-50 dark:bg-amber-950/50',
+    },
     {
       id: 'analytics' as AppView,
       title: 'Account Reports & Tax',

@@ -30,7 +30,8 @@ import {
   EyeOff,
   Edit2,
   Send,
-  Paperclip
+  Paperclip,
+  MessageCircle
 } from 'lucide-react';
 import { 
   CompanyProfile, 
@@ -49,7 +50,10 @@ import {
   ExtraReliefCondition,
   SalaryCalculationMode,
   EmailSettings,
-  DEFAULT_EMAIL_SETTINGS
+  DEFAULT_EMAIL_SETTINGS,
+  WhatsAppSettings,
+  WhatsAppProviderType,
+  DEFAULT_WHATSAPP_SETTINGS
 } from '../../../types';
 import { DEFAULT_EMPLOYMENT_TYPE_RULES, DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES } from '../../../engine/payePensionEngine';
 import { 
@@ -62,8 +66,9 @@ import { ExportScopeModal } from '../../excel/ExportScopeModal';
 import { fetchAuditLogs } from '../../../services/supabaseClient';
 import { MONTHS } from '../../../store/usePayrollStore';
 import { SMTP_PRESETS, testEmailServiceConnection } from '../../../services/emailService';
+import { testWhatsAppConnection } from '../../../services/whatsappService';
 
-export type MobileSettingsTab = 'profile' | 'payroll' | 'excel' | 'email' | 'audit' | 'backup';
+export type MobileSettingsTab = 'profile' | 'payroll' | 'excel' | 'email' | 'whatsapp' | 'audit' | 'backup';
 
 interface MobileSettingsViewProps {
   initialTab?: MobileSettingsTab;
@@ -91,6 +96,8 @@ interface MobileSettingsViewProps {
   onNavigate: (view: AppView) => void;
   emailSettings?: EmailSettings;
   onUpdateEmailSettings?: (settings: Partial<EmailSettings>) => void;
+  whatsappSettings?: WhatsAppSettings;
+  onUpdateWhatsAppSettings?: (settings: Partial<WhatsAppSettings>) => void;
   isReadOnly?: boolean;
 }
 
@@ -120,6 +127,8 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   onNavigate,
   emailSettings,
   onUpdateEmailSettings,
+  whatsappSettings,
+  onUpdateWhatsAppSettings,
   isReadOnly = false,
 }) => {
   const isAdmin = !currentUser || currentUser.role === 'Admin';
@@ -139,10 +148,14 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   const [pvForm, setPvForm] = useState<PayrollVariables>(payrollVariables);
   const [tvForm, setTvForm] = useState<PayeTaxVariables>(payeTaxVariables);
   const [emailForm, setEmailForm] = useState<EmailSettings>(emailSettings || DEFAULT_EMAIL_SETTINGS);
+  const [whatsAppForm, setWhatsAppForm] = useState<WhatsAppSettings>(whatsappSettings || DEFAULT_WHATSAPP_SETTINGS);
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
   const [showResendApiKey, setShowResendApiKey] = useState(false);
+  const [showWhatsAppSecret, setShowWhatsAppSecret] = useState(false);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isTestingWhatsApp, setIsTestingWhatsApp] = useState(false);
+  const [whatsAppTestResult, setWhatsAppTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [savedToast, setSavedToast] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -386,7 +399,18 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
     }
   }, [emailSettings, isEmailDirty]);
 
-  const isAnyDirty = isProfileDirty || isPayrollDirty || isEmailDirty;
+  const isWhatsAppDirty = useMemo(() => {
+    if (!whatsappSettings) return false;
+    return JSON.stringify(whatsAppForm) !== JSON.stringify(whatsappSettings);
+  }, [whatsAppForm, whatsappSettings]);
+
+  useEffect(() => {
+    if (whatsappSettings && !isWhatsAppDirty) {
+      setWhatsAppForm(whatsappSettings);
+    }
+  }, [whatsappSettings, isWhatsAppDirty]);
+
+  const isAnyDirty = isProfileDirty || isPayrollDirty || isEmailDirty || isWhatsAppDirty;
 
   // Percentage sum of allowances
   const allowanceSum = pvForm.basic + pvForm.housing + pvForm.transport + pvForm.otherAllowances;
@@ -426,6 +450,23 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
     }
   };
 
+  // Handle Testing WhatsApp Connection
+  const handleTestWhatsAppConnection = async () => {
+    setIsTestingWhatsApp(true);
+    setWhatsAppTestResult(null);
+    try {
+      const res = await testWhatsAppConnection(whatsAppForm);
+      setWhatsAppTestResult(res);
+    } catch (err: any) {
+      setWhatsAppTestResult({
+        success: false,
+        message: err?.message || 'Error occurred during WhatsApp connection handshake.'
+      });
+    } finally {
+      setIsTestingWhatsApp(false);
+    }
+  };
+
   // Save all modifications
   const handleSaveAll = () => {
     if (isWriteDisabled) return;
@@ -445,6 +486,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
     if (isEmailDirty && onUpdateEmailSettings) {
       onUpdateEmailSettings(emailForm);
     }
+    if (isWhatsAppDirty && onUpdateWhatsAppSettings) {
+      onUpdateWhatsAppSettings(whatsAppForm);
+    }
 
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2200);
@@ -457,7 +501,11 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
     if (emailSettings) {
       setEmailForm(emailSettings);
     }
+    if (whatsappSettings) {
+      setWhatsAppForm(whatsappSettings);
+    }
     setTestResult(null);
+    setWhatsAppTestResult(null);
   };
 
   // Department Management handlers
@@ -786,6 +834,22 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             <Mail className="w-3.5 h-3.5 shrink-0 text-sky-600 dark:text-sky-400" />
             <span>Email</span>
             {isEmailDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />}
+          </button>
+        )}
+
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('whatsapp')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+              activeTab === 'whatsapp'
+                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+                : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            }`}
+          >
+            <MessageCircle className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span>WhatsApp</span>
+            {isWhatsAppDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />}
           </button>
         )}
 
@@ -2433,6 +2497,346 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             >
               <Save className="w-4 h-4" />
               <span>{isEmailDirty ? 'Save Email Settings' : 'Email Settings Saved'}</span>
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* ── TAB 4B: WhatsApp Dispatch Configuration ── */}
+      {activeTab === 'whatsapp' && isAdmin && (
+        <div className="space-y-3 animate-in fade-in duration-150">
+          
+          {/* Main Activation Card */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+            <div className="px-3.5 py-2.5 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <MessageCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">WhatsApp Dispatch</span>
+                  <span className="text-[10px] text-zinc-400">Direct or automated payslip messaging</span>
+                </div>
+              </div>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={whatsAppForm.enabled}
+                  onChange={(e) => setWhatsAppForm(prev => ({ ...prev, enabled: e.target.checked }))}
+                  className="rounded text-emerald-600 focus:ring-emerald-500"
+                />
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  {whatsAppForm.enabled ? 'Active' : 'Disabled'}
+                </span>
+              </label>
+            </div>
+
+            {/* Provider Grid */}
+            <div className="p-3 space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+                Dispatch Method / Provider
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {([
+                  { id: 'direct', label: 'Direct wa.me', desc: 'No API, opens app directly' },
+                  { id: 'cloud_api', label: 'Meta Cloud API', desc: 'Official WhatsApp Graph API' },
+                  { id: 'ultramsg', label: 'UltraMsg Gateway', desc: 'Instance & token gateway' },
+                  { id: 'termii', label: 'Termii Nigeria', desc: 'Local SMS/WhatsApp router' },
+                ] as const).map(p => {
+                  const isSelected = whatsAppForm.provider === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setWhatsAppForm(prev => ({ ...prev, provider: p.id }))}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                        isSelected
+                          ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 font-bold shadow-2xs'
+                          : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-xs font-bold leading-tight">{p.label}</span>
+                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                          isSelected ? 'border-emerald-600 bg-emerald-600' : 'border-zinc-400'
+                        }`}>
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-zinc-400 font-normal leading-tight">{p.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Provider Credentials Card */}
+          {whatsAppForm.provider === 'cloud_api' && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-3 shadow-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                Meta Cloud API Credentials
+              </span>
+              <div>
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  Phone Number ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 104829104820194"
+                  value={whatsAppForm.cloudApi?.phoneNumberId || ''}
+                  onChange={(e) => setWhatsAppForm(prev => ({
+                    ...prev,
+                    cloudApi: { ...(prev.cloudApi || { phoneNumberId: '', accessToken: '' }), phoneNumberId: e.target.value }
+                  }))}
+                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                    Permanent Access Token
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowWhatsAppSecret(prev => !prev)}
+                    className="text-[10px] text-zinc-400 hover:text-zinc-600 flex items-center gap-1"
+                  >
+                    {showWhatsAppSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    <span>{showWhatsAppSecret ? 'Hide' : 'Show'}</span>
+                  </button>
+                </div>
+                <input
+                  type={showWhatsAppSecret ? 'text' : 'password'}
+                  placeholder="EAAG... (System User Bearer Token)"
+                  value={whatsAppForm.cloudApi?.accessToken || ''}
+                  onChange={(e) => setWhatsAppForm(prev => ({
+                    ...prev,
+                    cloudApi: { ...(prev.cloudApi || { phoneNumberId: '', accessToken: '' }), accessToken: e.target.value }
+                  }))}
+                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {whatsAppForm.provider === 'ultramsg' && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-3 shadow-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                UltraMsg Gateway Configuration
+              </span>
+              <div>
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  Instance ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. instance12345"
+                  value={whatsAppForm.ultramsg?.instanceId || ''}
+                  onChange={(e) => setWhatsAppForm(prev => ({
+                    ...prev,
+                    ultramsg: { ...(prev.ultramsg || { instanceId: '', token: '' }), instanceId: e.target.value }
+                  }))}
+                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  Token
+                </label>
+                <input
+                  type={showWhatsAppSecret ? 'text' : 'password'}
+                  placeholder="UltraMsg Token"
+                  value={whatsAppForm.ultramsg?.token || ''}
+                  onChange={(e) => setWhatsAppForm(prev => ({
+                    ...prev,
+                    ultramsg: { ...(prev.ultramsg || { instanceId: '', token: '' }), token: e.target.value }
+                  }))}
+                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {whatsAppForm.provider === 'termii' && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-3 shadow-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                Termii Nigeria API Configuration
+              </span>
+              <div>
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  API Key
+                </label>
+                <input
+                  type={showWhatsAppSecret ? 'text' : 'password'}
+                  placeholder="Termii API Key"
+                  value={whatsAppForm.termii?.apiKey || ''}
+                  onChange={(e) => setWhatsAppForm(prev => ({
+                    ...prev,
+                    termii: { ...(prev.termii || { apiKey: '', deviceId: '' }), apiKey: e.target.value }
+                  }))}
+                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  Device ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="Termii WhatsApp Device ID"
+                  value={whatsAppForm.termii?.deviceId || ''}
+                  onChange={(e) => setWhatsAppForm(prev => ({
+                    ...prev,
+                    termii: { ...(prev.termii || { apiKey: '', deviceId: '' }), deviceId: e.target.value }
+                  }))}
+                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {whatsAppForm.provider === 'direct' && (
+            <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold block">Zero Configuration Needed</span>
+                <p className="text-[11px] opacity-85 mt-0.5 leading-relaxed">
+                  Direct <code className="bg-emerald-100 dark:bg-emerald-900/60 px-1 py-0.5 rounded font-mono">wa.me</code> links open WhatsApp on your phone or desktop with pre-composed payslip text and auto-downloads the PDF voucher.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Message Template Editor */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-2.5 shadow-xs">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                Message Template
+              </label>
+              <div className="flex items-center gap-1 overflow-x-auto text-[9px]">
+                {['employeeName', 'netPay', 'month', 'year', 'companyName'].map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      setWhatsAppForm(prev => ({
+                        ...prev,
+                        defaultMessageTemplate: `${prev.defaultMessageTemplate} {{${t}}}`
+                      }));
+                    }}
+                    className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-mono hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                  >
+                    +{t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <textarea
+              rows={4}
+              value={whatsAppForm.defaultMessageTemplate}
+              onChange={(e) => setWhatsAppForm(prev => ({ ...prev, defaultMessageTemplate: e.target.value }))}
+              className="w-full text-xs font-mono text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl p-2.5 border border-zinc-200/60 dark:border-zinc-700/60 outline-none leading-relaxed resize-y focus:ring-1 focus:ring-emerald-500"
+            />
+
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={whatsAppForm.includeNetPay}
+                  onChange={(e) => setWhatsAppForm(prev => ({ ...prev, includeNetPay: e.target.checked }))}
+                  className="rounded text-emerald-600 focus:ring-emerald-500"
+                />
+                <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
+                  Bold & Highlight Net Take-Home in message
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={whatsAppForm.downloadPdfOnDirect}
+                  onChange={(e) => setWhatsAppForm(prev => ({ ...prev, downloadPdfOnDirect: e.target.checked }))}
+                  className="rounded text-emerald-600 focus:ring-emerald-500"
+                />
+                <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
+                  Auto-download printable payslip file on dispatch
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Connection Test */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-2.5 shadow-xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+              Connection Diagnostics
+            </span>
+            <button
+              type="button"
+              onClick={handleTestWhatsAppConnection}
+              disabled={isTestingWhatsApp}
+              className="w-full h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98] cursor-pointer disabled:opacity-40"
+            >
+              {isTestingWhatsApp ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Testing WhatsApp Route...</span>
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="w-4 h-4 text-emerald-500" />
+                  <span>Test WhatsApp Connection</span>
+                </>
+              )}
+            </button>
+
+            {whatsAppTestResult && (
+              <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                whatsAppTestResult.success
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+              }`}>
+                {whatsAppTestResult.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <span className="font-bold block">
+                    {whatsAppTestResult.success ? 'Diagnostics Passed' : 'Configuration Notice'}
+                  </span>
+                  <span className="text-[11px] opacity-90 block mt-0.5 leading-relaxed break-words">
+                    {whatsAppTestResult.message}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Direct Save WhatsApp Settings Action */}
+          <div className="pt-1 pb-4">
+            <button
+              type="button"
+              disabled={isWriteDisabled || !isWhatsAppDirty}
+              onClick={() => {
+                if (isWriteDisabled) return;
+                if (onUpdateWhatsAppSettings) {
+                  onUpdateWhatsAppSettings(whatsAppForm);
+                  setSavedToast(true);
+                  setTimeout(() => setSavedToast(false), 2200);
+                }
+              }}
+              className={`w-full h-11 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer ${
+                isWhatsAppDirty
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-500/30'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
+              }`}
+            >
+              <Save className="w-4 h-4" />
+              <span>{isWhatsAppDirty ? 'Save WhatsApp Settings' : 'WhatsApp Settings Saved'}</span>
             </button>
           </div>
 

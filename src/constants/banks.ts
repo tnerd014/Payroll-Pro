@@ -85,7 +85,9 @@ export const NIGERIAN_PFAS = [
   'Tangerine APT Pensions Limited',
   'Trustfund Pensions Limited',
   'Veritas Glanvills Pensions Limited'
-];export const NIGERIAN_STATES = [
+];
+
+export const NIGERIAN_STATES = [
   'Lagos',
   'Federal Capital Territory (Abuja)',
   'Ogun',

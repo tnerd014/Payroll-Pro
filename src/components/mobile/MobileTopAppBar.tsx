@@ -71,7 +71,7 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
   const [isPeriodPickerOpen, setIsPeriodPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(selectedYear);
   const [privacyMask, setPrivacyMask] = useState<boolean>(() => getPrivacyMaskPreference());
-  const [appVersion, setAppVersion] = useState('v1.0.6');
+  const [appVersion, setAppVersion] = useState('v1.0.7');
   const [availableUpdate, setAvailableUpdate] = useState<{ latestVersion: string; downloadUrl: string; releaseUrl: string } | null>(null);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -80,7 +80,7 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
 
   useEffect(() => {
     let active = true;
-    getRuntimeAppVersion('1.0.6').then((ver) => {
+    getRuntimeAppVersion('1.0.7').then((ver) => {
       if (!active) return;
       setAppVersion(`v${ver}`);
       setTimeout(async () => {

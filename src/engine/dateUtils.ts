@@ -1,3 +1,5 @@
+import { WorkSchedule, WorkdayDivisorRule } from '../types';
+
 /**
  * Global Date Formatting Utilities for Payroll Pro
  * Ensures consistent DD/MM/YYYY formatting throughout the entire application.
@@ -163,5 +165,40 @@ export function getMidMonthProrationRatio(
 
   const activeDays = Math.max(0, effectiveEndDay - effectiveStartDay + 1);
   return Math.min(1, Math.max(0, activeDays / totalDaysInMonth));
+}
+
+/**
+ * Calculates the total working days for a specific month based on 5-day or 6-day schedule
+ * and the configured workday divisor rule.
+ */
+export function getScheduleWorkdays(
+  year: number,
+  monthKey: string,
+  schedule: WorkSchedule = '5-day',
+  divisorRule: WorkdayDivisorRule = 'actual_weekdays'
+): number {
+  const mKey = (monthKey || '').toLowerCase();
+  const monthIdx = MONTH_MAP[mKey] ?? 0;
+  const totalDays = new Date(year, monthIdx + 1, 0).getDate();
+
+  if (divisorRule === 'fixed_standard') {
+    return schedule === '6-day' ? 26 : 22;
+  }
+
+  if (divisorRule === 'calendar_days') {
+    return totalDays;
+  }
+
+  // 'actual_weekdays' (default)
+  let count = 0;
+  for (let day = 1; day <= totalDays; day++) {
+    const dayOfWeek = new Date(year, monthIdx, day).getDay(); // 0 = Sun, 6 = Sat
+    if (schedule === '6-day') {
+      if (dayOfWeek !== 0) count++; // Mon-Sat
+    } else {
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) count++; // Mon-Fri
+    }
+  }
+  return Math.max(1, count);
 }
 

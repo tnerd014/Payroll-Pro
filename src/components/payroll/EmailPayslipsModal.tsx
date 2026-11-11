@@ -26,7 +26,9 @@ import {
   MoreVertical,
   Lock,
   Unlock,
-  ArrowLeft
+  ArrowLeft,
+  MessageCircle,
+  Share2
 } from 'lucide-react';
 import { 
   CalculatedPayrollItem, 
@@ -42,8 +44,13 @@ import {
   PayrollSnapshot,
   EmailPayslipContext,
   PayrollVariables,
-  PayeTaxVariables
+  PayeTaxVariables,
+  DEFAULT_WHATSAPP_SETTINGS
 } from '../../types';
+import { 
+  openWhatsAppPayslipChat,
+  formatPhoneNumberForWhatsApp
+} from '../../services/whatsappService';
 import { 
   sendIndividualPayslipEmail, 
   getEmailTemplateData, 
@@ -68,6 +75,7 @@ interface EmailRecipientState {
   fullName: string;
   department: string;
   email: string;
+  phone?: string;
   netPay: number;
   item: CalculatedPayrollItem;
   selected: boolean;
@@ -235,6 +243,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
             fullName: `${e.firstName} ${e.lastName}`.trim(),
             department: e.department || 'General',
             email: (e.email || '').trim(),
+            phone: (e.phone || '').trim(),
             payeNumber: e.payeNumber,
             pensionNumber: e.pensionNumber,
             monthlyGross: e.monthlyGross,
@@ -246,6 +255,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
             fullName: i.fullName,
             department: i.department || 'General',
             email: '',
+            phone: '',
             payeNumber: i.payeNumber,
             pensionNumber: i.pensionNumber,
             monthlyGross: i.monthlyGross,
@@ -361,6 +371,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
         fullName: emp.fullName,
         department: emp.department,
         email,
+        phone: emp.phone || '',
         netPay: totalNetPay,
         item: primaryItem,
         selected: Boolean(email && isPreSelected),
@@ -1444,6 +1455,34 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                   }}
                                   className="fixed w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1 z-[9999] text-xs animate-in fade-in-50 zoom-in-95 text-left"
                                 >
+                                  {/* WhatsApp Payslip Direct Dispatch */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveActionMenuId(null);
+                                      setMenuCoords(null);
+                                      openWhatsAppPayslipChat({
+                                        item: r.item,
+                                        company,
+                                        monthLabel: r.periodLabel || effectivePeriodLabel,
+                                        year: effectiveYear,
+                                        phone: r.phone,
+                                        settings: emailSettings?.whatsapp || DEFAULT_WHATSAPP_SETTINGS,
+                                        config: payslipDesign,
+                                      }, true);
+                                    }}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 transition cursor-pointer"
+                                    title="Open WhatsApp with pre-filled payslip details and download voucher"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    <div className="truncate">
+                                      <div className="font-medium">Send via WhatsApp</div>
+                                      <div className="text-[9px] text-zinc-400">
+                                        {r.phone ? formatPhoneNumberForWhatsApp(r.phone) : 'No phone linked'}
+                                      </div>
+                                    </div>
+                                  </button>
+
                                   {/* Resend / Send Payslip */}
                                   {r.email && (
                                     <button
@@ -1697,6 +1736,34 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                   }}
                                   className="fixed w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1 z-[9999] text-xs animate-in fade-in-50 zoom-in-95 text-left"
                                 >
+                                  {/* WhatsApp Payslip Direct Dispatch (Mobile Card) */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveActionMenuId(null);
+                                      setMenuCoords(null);
+                                      openWhatsAppPayslipChat({
+                                        item: r.item,
+                                        company,
+                                        monthLabel: r.periodLabel || effectivePeriodLabel,
+                                        year: effectiveYear,
+                                        phone: r.phone,
+                                        settings: emailSettings?.whatsapp || DEFAULT_WHATSAPP_SETTINGS,
+                                        config: payslipDesign,
+                                      }, true);
+                                    }}
+                                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 transition cursor-pointer"
+                                    title="Open WhatsApp with pre-filled payslip details and download voucher"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    <div className="truncate">
+                                      <div className="font-medium">Send via WhatsApp</div>
+                                      <div className="text-[9px] text-zinc-400">
+                                        {r.phone ? formatPhoneNumberForWhatsApp(r.phone) : 'No phone linked'}
+                                      </div>
+                                    </div>
+                                  </button>
+
                                   {r.email && (
                                     <button
                                       type="button"

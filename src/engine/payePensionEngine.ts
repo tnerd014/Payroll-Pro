@@ -318,10 +318,13 @@ export function formatNaira(amount: number): string {
   if (typeof window !== 'undefined' && getPrivacyMaskPreference()) {
     return '₦••••••';
   }
-  return '₦' + value.toLocaleString('en-NG', {
+  const isNegative = value < 0;
+  const absValue = Math.abs(value);
+  const formatted = absValue.toLocaleString('en-NG', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  return isNegative ? `-₦${formatted}` : `₦${formatted}`;
 }
 
 export function formatCompactNaira(amount: number): string {
@@ -329,14 +332,20 @@ export function formatCompactNaira(amount: number): string {
   if (typeof window !== 'undefined' && getPrivacyMaskPreference()) {
     return '₦••••••';
   }
-  if (Math.abs(val) >= 1_000_000) {
-    return '₦' + (val / 1_000_000).toFixed(2) + 'M';
+  const isNeg = val < 0;
+  const abs = Math.abs(val);
+  const sign = isNeg ? '-' : '';
+  if (abs >= 1_000_000_000) {
+    return `${sign}₦${(abs / 1_000_000_000).toFixed(2)}B`;
   }
-  if (Math.abs(val) >= 1_000) {
-    return '₦' + (val / 1_000).toFixed(1) + 'k';
+  if (abs >= 1_000_000) {
+    return `${sign}₦${(abs / 1_000_000).toFixed(2)}M`;
+  }
+  if (abs >= 1_000) {
+    return `${sign}₦${(abs / 1_000).toFixed(1)}k`;
   }
   return formatNaira(val);
 }
 
-export { formatDate, formatDateTime, isEmployeeActiveForPeriod, getMidMonthProrationRatio } from './dateUtils';
+export { formatDate, formatDateTime, isEmployeeActiveForPeriod, getMidMonthProrationRatio, getScheduleWorkdays } from './dateUtils';
 

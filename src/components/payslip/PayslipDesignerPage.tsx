@@ -52,6 +52,7 @@ import {
   DEFAULT_PAYSLIP_DESIGN,
   PRESET_HEX_MAP,
   EmployeeLoan,
+  EmployeeContribution,
   NetPayFontSize,
   BreakdownFontSize
 } from '../../types';
@@ -76,6 +77,7 @@ interface PayslipDesignerPageProps {
   onSavePreset?: (name: string, config: PayslipDesignConfig, presetId?: string) => void;
   onDeletePreset?: (id: string) => void;
   loans?: EmployeeLoan[];
+  contributions?: EmployeeContribution[];
   isMobile?: boolean;
   isReadOnly?: boolean;
 }
@@ -96,6 +98,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
   onSavePreset,
   onDeletePreset,
   loans = [],
+  contributions = [],
   isMobile: isMobileProp,
   isReadOnly = false,
 }) => {
@@ -349,11 +352,33 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
         }
       });
 
+      // Staff Welfare / Voluntary Contributions
+      let totalContribution = 0;
+      const empContribs = (contributions || []).filter(
+        c => c && c.employeeId === found.id && c.periodKey === currentPeriodKey
+      );
+      if (empContribs.length > 0) {
+        totalContribution = empContribs.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+      }
+      const contributionDetails = empContribs.length > 0
+        ? empContribs.map(c => ({
+            schemeName: payslipDesign.welfareFundLabel || c.schemeName || 'Staff Welfare Fund',
+            amount: Number(c.amount) || 0
+          }))
+        : [{
+            schemeName: payslipDesign.welfareFundLabel || 'Staff Welfare Fund',
+            amount: 10000
+          }];
+
+      const effectiveContribution = totalContribution > 0 ? totalContribution : 10000;
+
       return {
         ...base,
         loanDeduction: totalLoanDeduction,
-        totalDeductions: base.totalDeductions + totalLoanDeduction,
-        netTakeHome: Math.max(0, base.netTakeHome - totalLoanDeduction),
+        contributionDeduction: effectiveContribution,
+        contributionDetails,
+        totalDeductions: base.totalDeductions + totalLoanDeduction + effectiveContribution,
+        netTakeHome: Math.max(0, base.netTakeHome - totalLoanDeduction - effectiveContribution),
       };
     }
 
@@ -389,13 +414,18 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
     );
 
     const sampleLoan = 45000;
+    const sampleContribution = 10000;
     return {
       ...sampleBase,
       loanDeduction: sampleLoan,
-      totalDeductions: sampleBase.totalDeductions + sampleLoan,
-      netTakeHome: Math.max(0, sampleBase.netTakeHome - sampleLoan),
+      contributionDeduction: sampleContribution,
+      contributionDetails: [
+        { schemeName: payslipDesign.welfareFundLabel || 'Staff Welfare Fund', amount: sampleContribution }
+      ],
+      totalDeductions: sampleBase.totalDeductions + sampleLoan + sampleContribution,
+      netTakeHome: Math.max(0, sampleBase.netTakeHome - sampleLoan - sampleContribution),
     };
-  }, [employees, selectedEmpId, payrollVariables, payeTaxVariables, company, year, selectedMonth, loans]);
+  }, [employees, selectedEmpId, payrollVariables, payeTaxVariables, company, year, selectedMonth, loans, contributions, payslipDesign.welfareFundLabel]);
 
   // Handle reordering sections
   const handleMoveSection = (id: PayslipSectionId, direction: 'up' | 'down') => {
@@ -1721,6 +1751,38 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
                       type="button"
                       onClick={() => onUpdatePayslipDesign({ totalDeductionsLabel: chip })}
                       className={`px-1.5 py-0.5 rounded text-[10px] border transition cursor-pointer ${(payslipDesign.totalDeductionsLabel || 'Total Deductions') === chip
+                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-medium'
+                          : 'bg-zinc-50 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
+                        }`}
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Staff Welfare / Cooperative Savings Custom Label */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-zinc-900 dark:text-zinc-100 block">
+                    Staff Welfare / Contribution Label
+                  </label>
+                  <span className="text-[10px] text-zinc-400">Editable directly on payslip preview</span>
+                </div>
+                <input
+                  type="text"
+                  value={payslipDesign.welfareFundLabel || 'Staff Welfare Fund'}
+                  onChange={(e) => onUpdatePayslipDesign({ welfareFundLabel: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none focus:border-zinc-500 text-xs"
+                  placeholder="e.g. Staff Welfare Fund"
+                />
+                <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                  {['Staff Welfare Fund', 'Cooperative Savings', 'Staff Welfare Dues', 'Welfare & Thrift', 'Cooperative Contribution'].map(chip => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => onUpdatePayslipDesign({ welfareFundLabel: chip })}
+                      className={`px-1.5 py-0.5 rounded text-[10px] border transition cursor-pointer ${(payslipDesign.welfareFundLabel || 'Staff Welfare Fund') === chip
                           ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-medium'
                           : 'bg-zinc-50 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
                         }`}

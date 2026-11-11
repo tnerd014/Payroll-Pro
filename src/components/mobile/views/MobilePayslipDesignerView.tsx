@@ -178,13 +178,19 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
       employmentType: 'Full-Time',
     };
     const sampleBase = calculatePayrollItem(sampleEmp, payrollVariables, payeTaxVariables, selectedMonth, year);
+    const sampleLoan = 45000;
+    const sampleWelfare = 10000;
     return [{
       ...sampleBase,
-      loanDeduction: 45000,
-      totalDeductions: sampleBase.totalDeductions + 45000,
-      netTakeHome: Math.max(0, sampleBase.netTakeHome - 45000),
+      loanDeduction: sampleLoan,
+      contributionDeduction: sampleWelfare,
+      contributionDetails: [
+        { schemeName: payslipDesign.welfareFundLabel || 'Staff Welfare Fund', amount: sampleWelfare }
+      ],
+      totalDeductions: sampleBase.totalDeductions + sampleLoan + sampleWelfare,
+      netTakeHome: Math.max(0, sampleBase.netTakeHome - sampleLoan - sampleWelfare),
     }];
-  }, [items, employees, payrollVariables, payeTaxVariables, selectedMonth, year, loans]);
+  }, [items, employees, payrollVariables, payeTaxVariables, selectedMonth, year, loans, payslipDesign.welfareFundLabel]);
 
   // Active preview item
   const previewItem = computedItems[selectedEmpIndex] || computedItems[0];
@@ -782,6 +788,20 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                         className="w-full h-9 px-3 bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-pink-500 transition-colors"
                       />
                     </div>
+                  </div>
+
+                  {/* Staff Welfare / Contribution Custom Label */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300">
+                      Staff Welfare / Contribution Label
+                    </label>
+                    <input
+                      type="text"
+                      value={payslipDesign.welfareFundLabel || ''}
+                      onChange={(e) => onUpdatePayslipDesign({ welfareFundLabel: e.target.value })}
+                      placeholder="Staff Welfare Fund"
+                      className="w-full h-9 px-3 bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-pink-500 transition-colors"
+                    />
                   </div>
 
                   {/* Net Pay Title & Employer Cost Label */}

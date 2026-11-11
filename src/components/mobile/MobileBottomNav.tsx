@@ -28,7 +28,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   const isMoreActive = 
     activeView === 'analytics' || 
-    activeView === 'payslip-designer';
+    activeView === 'payslip-designer' ||
+    activeView === 'contributions' ||
+    activeView === 'absences';
 
   const navItems = [
     {

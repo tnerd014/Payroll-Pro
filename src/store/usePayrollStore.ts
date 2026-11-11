@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Employee, 
   PayrollVariables, 
@@ -18,14 +18,21 @@ import {
   LoanType,
   EmailSettings,
   DEFAULT_EMAIL_SETTINGS,
-  EmailedPayslipRecord
+  WhatsAppSettings,
+  DEFAULT_WHATSAPP_SETTINGS,
+  EmailedPayslipRecord,
+  EmployeeContribution,
+  ContributionPayout,
+  ContributionScheme,
+  EmployeeAbsenceRecord
 } from '../types';
 import { 
   DEFAULT_PAYROLL_VARIABLES, 
   DEFAULT_PAYE_VARIABLES, 
   DEFAULT_EMPLOYMENT_TYPE_RULES,
   calculatePayrollItem,
-  isEmployeeActiveForPeriod
+  isEmployeeActiveForPeriod,
+  getScheduleWorkdays
 } from '../engine/payePensionEngine';
 import { 
   getSupabaseClient, 
@@ -41,11 +48,16 @@ import {
   logAuditEvent,
   getActiveTeamMember,
   saveEmailSettingsToCloud,
+  saveWhatsAppSettingsToCloud,
   saveEmailedPayslipsToCloud,
   saveSnapshotToCloud,
-  deleteSnapshotFromCloud
+  deleteSnapshotFromCloud,
+  deleteLoanFromCloud,
+  deletePayoutFromCloud,
+  deleteAbsenceFromCloud,
+  deleteContributionFromCloud
 } from '../services/supabaseClient';
-import { saveCompanyDataToDb, migrateFromLocalStorageIfNeeded } from './payrollDb';
+import { saveCompanyDataToDb, getCompanyDataFromDb, migrateFromLocalStorageIfNeeded } from './payrollDb';
 import { verifyCredential } from '../utils/cryptoAuth';
 
 export const STORAGE_KEY = 'PAYROLL_PRO_LOCAL_STORAGE_V5';
@@ -187,10 +199,12 @@ export function autoSyncLoansForPeriod(
       ? (loan.principalAmount || 0)
       : (Number(loan.monthlyDeduction) || loan.principalAmount || 0);
 
+    // Track repaid sum incrementally to avoid O(N^2) inner-loop reduce iterations
+    let currentRepaid = history.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+
     for (const period of elapsedPeriods) {
       const alreadyHas = history.some(h => h.periodKey === period.key);
       if (!alreadyHas) {
-        const currentRepaid = history.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
         const rem = Math.max(0, (loan.principalAmount || 0) - currentRepaid);
         if (rem <= 0) break;
 
@@ -204,11 +218,12 @@ export function autoSyncLoansForPeriod(
             paidAt: `${period.year}-${String(period.monthIdx + 1).padStart(2, '0')}-28T12:00:00.000Z`,
             notes: `Automated deduction (${mLabel} ${period.year})`,
           });
+          currentRepaid += deduction;
         }
       }
     }
 
-    const totalRepaid = history.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+    const totalRepaid = currentRepaid;
     const remainingBalance = Math.max(0, (loan.principalAmount || 0) - totalRepaid);
     const status: LoanStatus = remainingBalance <= 0 ? 'Paid' : loan.status;
 
@@ -256,7 +271,12 @@ export interface AppState {
   payslipDesign?: PayslipDesignConfig;
   savedPayslipPresets?: PayslipCustomPreset[];
   loans?: EmployeeLoan[];
+  employeeContributions?: EmployeeContribution[];
+  contributionPayouts?: ContributionPayout[];
+  employeeAbsences?: EmployeeAbsenceRecord[];
+  contributionSchemes?: ContributionScheme[];
   emailSettings?: EmailSettings;
+  whatsappSettings?: WhatsAppSettings;
   emailedPayslips?: Record<string, EmailedPayslipRecord>; // Key: `${periodKey}_${employeeId}`
 }
 
@@ -465,7 +485,12 @@ export async function syncAllPendingCompanies(): Promise<{ synced: string[]; fai
           data.savedPayslipPresets || [],
           data.emailSettings,
           data.emailedPayslips,
-          { dirtyEmployeeIds: dirtyEmpIds }
+          {
+            dirtyEmployeeIds: dirtyEmpIds,
+            contributions: data.employeeContributions || [],
+            payouts: data.contributionPayouts || [],
+            absences: data.employeeAbsences || [],
+          }
         );
         if (res.success) {
           localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + companyId);
@@ -631,6 +656,7 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
           // is called explicitly on period changes to avoid mutating data during reads.
           loans: (parsed.loans && Array.isArray(parsed.loans)) ? parsed.loans : [],
           emailSettings: parsed.emailSettings ? { ...DEFAULT_EMAIL_SETTINGS, ...parsed.emailSettings } : DEFAULT_EMAIL_SETTINGS,
+          whatsappSettings: parsed.whatsappSettings ? { ...DEFAULT_WHATSAPP_SETTINGS, ...parsed.whatsappSettings } : DEFAULT_WHATSAPP_SETTINGS,
           emailedPayslips: (parsed.emailedPayslips && typeof parsed.emailedPayslips === 'object') ? parsed.emailedPayslips : {},
         };
       }
@@ -671,7 +697,21 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
     payslipDesign: DEFAULT_PAYSLIP_DESIGN,
     savedPayslipPresets: [],
     loans: [],
+    employeeContributions: [],
+    contributionPayouts: [],
+    employeeAbsences: [],
+    contributionSchemes: [
+      {
+        id: 'scheme-welfare',
+        name: 'Staff Welfare Fund',
+        description: 'Monthly voluntary staff welfare and social support fund',
+        defaultAmount: 5000,
+        defaultMode: 'fixed',
+        isDefault: true,
+      }
+    ],
     emailSettings: DEFAULT_EMAIL_SETTINGS,
+    whatsappSettings: DEFAULT_WHATSAPP_SETTINGS,
     emailedPayslips: {},
   };
 }
@@ -720,6 +760,26 @@ export function usePayrollStore() {
     migrateFromLocalStorageIfNeeded().catch(err => {
       console.warn('LocalStorage to IndexedDB migration check error:', err);
     });
+
+    // Asynchronously hydrate initial company data from IndexedDB if localStorage was empty or exceeded quota
+    const initialList = loadCompaniesRegistry();
+    const firstComp = initialList[0] || null;
+    const initialCompId = firstComp?.id || 'comp-default';
+    getCompanyDataFromDb(initialCompId).then(dbState => {
+      if (!isMounted) return;
+      if (dbState && ((dbState.employees && dbState.employees.length > 0) || (dbState.snapshots && dbState.snapshots.length > 0))) {
+        setState(prev => {
+          if (!prev.employees || prev.employees.length === 0) {
+            return {
+              ...prev,
+              ...dbState,
+              company: { ...prev.company, ...dbState.company, id: initialCompId }
+            };
+          }
+          return prev;
+        });
+      }
+    }).catch(() => {});
 
     const refreshCompaniesList = () => {
       const cfg = getSavedCloudConfig();
@@ -822,6 +882,8 @@ export function usePayrollStore() {
   const activeCompanyIdRef = useRef<string | null>(activeCompanyId);
   useEffect(() => { activeCompanyIdRef.current = activeCompanyId; }, [activeCompanyId]);
 
+  const saveDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (!activeCompanyId) return;
 
@@ -830,17 +892,28 @@ export function usePayrollStore() {
       return;
     }
 
-    try {
-      localStorage.setItem(COMPANY_DATA_PREFIX + activeCompanyId, JSON.stringify(state));
-      // Also sync to legacy storage for backwards compatibility
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error('Error saving state to localStorage:', e);
+    if (saveDebounceTimeoutRef.current) {
+      clearTimeout(saveDebounceTimeoutRef.current);
     }
-    // Asynchronous mirror-save to IndexedDB (eliminates 5-10MB localStorage limit)
-    saveCompanyDataToDb(activeCompanyId, state).catch(e => {
-      console.warn('Could not mirror save to IndexedDB:', e);
-    });
+
+    saveDebounceTimeoutRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(COMPANY_DATA_PREFIX + activeCompanyId, JSON.stringify(state));
+      } catch (e) {
+        // Expected when payload exceeds browser 5MB limit - IndexedDB mirrors safely below
+        console.warn('LocalStorage quota reached, state safely mirrored in IndexedDB:', e);
+      }
+      // Asynchronous mirror-save to IndexedDB (eliminates 5-10MB localStorage limit)
+      saveCompanyDataToDb(activeCompanyId, state).catch(e => {
+        console.warn('Could not mirror save to IndexedDB:', e);
+      });
+    }, 250);
+
+    return () => {
+      if (saveDebounceTimeoutRef.current) {
+        clearTimeout(saveDebounceTimeoutRef.current);
+      }
+    };
   }, [state, activeCompanyId]);
 
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -952,7 +1025,13 @@ export function usePayrollStore() {
           state.savedPayslipPresets || [],
           state.emailSettings,
           state.emailedPayslips,
-          { dirtyEmployeeIds: dirtyEmpIds }
+          {
+            dirtyEmployeeIds: dirtyEmpIds,
+            contributions: state.employeeContributions || [],
+            payouts: state.contributionPayouts || [],
+            absences: state.employeeAbsences || [],
+            whatsappSettings: state.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS,
+          }
         ).then(res => {
           if (res.success) {
             localStorage.removeItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId);
@@ -1084,6 +1163,10 @@ export function usePayrollStore() {
               // Email settings & dispatched history per company
               ...(res.emailSettings ? { emailSettings: res.emailSettings } : {}),
               ...(res.emailedPayslips ? { emailedPayslips: res.emailedPayslips } : {}),
+              // Staff welfare contributions, payouts, and absences
+              ...(res.contributions ? { employeeContributions: res.contributions } : {}),
+              ...(res.payouts ? { contributionPayouts: res.payouts } : {}),
+              ...(res.absences ? { employeeAbsences: res.absences } : {}),
             };
           });
         });
@@ -1095,6 +1178,9 @@ export function usePayrollStore() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'employees', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_loans', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payroll_snapshots', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_contributions', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contribution_payouts', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_absences', filter: `company_id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
       // Company profile changes (logo, name, subtitle, address, etc.) — syncs across all team members instantly
       .on('postgres_changes', { event: '*', schema: 'public', table: 'companies', filter: `id=eq.${activeCompanyId}` }, debouncedSyncFromCloud)
       // Department list changes — syncs add/rename/delete across team members
@@ -1134,83 +1220,187 @@ export function usePayrollStore() {
 
 
 
-  const activeEmployees = (state.employees || []).filter(e => isEmployeeActiveForPeriod(e, state.selectedYear, state.selectedMonth));
-  const liveCalculatedItems: CalculatedPayrollItem[] = activeEmployees.map(emp => {
-    try {
-      const base = calculatePayrollItem(emp, state.payrollVariables, state.payeTaxVariables, state.selectedMonth, state.selectedYear);
+  const activeSnapshot = useMemo(() => {
+    return (state.snapshots || []).find(
+      s => s && normalizeMonthKey(s.monthKey) === normalizeMonthKey(state.selectedMonth) && s.year === state.selectedYear && s.isLocked
+    );
+  }, [state.snapshots, state.selectedMonth, state.selectedYear]);
 
-      // Calculate active loan / salary advance deductions for this period
-      const currentPeriodKey = `${state.selectedYear}-${state.selectedMonth}`;
-      let totalLoanDeduction = 0;
-      (state.loans || []).forEach(loan => {
-        if (!loan || loan.employeeId !== emp.id) return;
-        const periodRecord = (loan.history || []).find(h => h.periodKey === currentPeriodKey);
-        if (periodRecord) {
-          totalLoanDeduction += Math.max(0, Number(periodRecord.amount) || 0);
-        } else if (loan.status === 'Active' && (loan.remainingBalance || 0) > 0) {
-          const monthly = loan.type === 'Salary Advance'
-            ? (loan.remainingBalance || 0)
-            : Math.min(Number(loan.monthlyDeduction) || 0, Number(loan.remainingBalance) || 0);
-          totalLoanDeduction += Math.max(0, monthly);
-        }
-      });
+  const activeEmployees: Employee[] = useMemo(() => {
+    return (state.employees || []).filter(e => isEmployeeActiveForPeriod(e, state.selectedYear, state.selectedMonth));
+  }, [state.employees, state.selectedYear, state.selectedMonth]);
 
-      const netTakeHome = Math.max(0, base.netTakeHome - totalLoanDeduction);
-      const totalDeductions = base.totalDeductions + totalLoanDeduction;
-
-      return {
-        ...base,
-        loanDeduction: totalLoanDeduction,
-        totalDeductions,
-        netTakeHome,
-      };
-    } catch (err) {
-      console.error(`Failed to calculate payroll item for employee ${emp?.id}:`, err);
-      return {
-        employeeId: emp?.id || 'err-id',
-        employeeCode: emp?.code || 'ERR',
-        fullName: `${emp?.firstName || ''} ${emp?.lastName || ''}`.trim() || 'Employee',
-        department: emp?.department || 'General',
-        position: emp?.position || 'Staff',
-        employmentType: emp?.employmentType || 'Full-Time',
-        monthlyGross: Number(emp?.monthlyGross) || 0,
-        annualRent: Number(emp?.annualRent) || 0,
-        basic: 0,
-        housing: 0,
-        transport: 0,
-        otherAllowances: 0,
-        pensionableBHT: 0,
-        employeePension: 0,
-        employerPension: 0,
-        annualGross: 0,
-        rentRelief: 0,
-        pensionRelief: 0,
-        extraReliefs: 0,
-        totalCra: 0,
-        taxableIncome: 0,
-        annualTax: 0,
-        monthlyPaye: 0,
-        totalDeductions: 0,
-        netTakeHome: Number(emp?.monthlyGross) || 0,
-        employerTotalCost: Number(emp?.monthlyGross) || 0,
-        bankName: emp?.bankName || '',
-        accountNumber: emp?.accountNumber || '',
-        payeNumber: emp?.payeNumber || '',
-        pensionNumber: emp?.pensionNumber || '',
-        pfaName: emp?.pfaName || '',
-        hasPension: Boolean(emp?.hasPension),
-        hasPaye: Boolean(emp?.hasPaye),
-      };
+  const liveCalculatedItems: CalculatedPayrollItem[] = useMemo(() => {
+    // If the active snapshot is locked, return its frozen items immediately to avoid wasted CPU cycles
+    if (activeSnapshot?.isLocked && activeSnapshot?.items && Array.isArray(activeSnapshot.items) && activeSnapshot.items.length > 0) {
+      return activeSnapshot.items;
     }
-  });
 
-  const activeSnapshot = (state.snapshots || []).find(
-    s => s && normalizeMonthKey(s.monthKey) === normalizeMonthKey(state.selectedMonth) && s.year === state.selectedYear && s.isLocked
-  );
+    const currentPeriodKey = `${state.selectedYear}-${state.selectedMonth}`;
 
-  const currentPayrollItems = (activeSnapshot?.items && Array.isArray(activeSnapshot.items)) 
-    ? activeSnapshot.items 
-    : (Array.isArray(liveCalculatedItems) ? liveCalculatedItems : []);
+    // PRE-INDEXING: Build O(1) hash maps to eliminate O(E * C) linear array scans
+    const absenceMap = new Map<string, EmployeeAbsenceRecord>();
+    for (const a of (state.employeeAbsences || [])) {
+      if (a && a.periodKey === currentPeriodKey && a.employeeId) {
+        absenceMap.set(a.employeeId, a);
+      }
+    }
+
+    const loanMap = new Map<string, number>();
+    for (const loan of (state.loans || [])) {
+      if (!loan || !loan.employeeId) continue;
+      const periodRecord = (loan.history || []).find(h => h.periodKey === currentPeriodKey);
+      let deduction = 0;
+      if (periodRecord) {
+        deduction = Math.max(0, Number(periodRecord.amount) || 0);
+      } else if (loan.status === 'Active' && (loan.remainingBalance || 0) > 0) {
+        deduction = loan.type === 'Salary Advance'
+          ? Math.max(0, loan.remainingBalance || 0)
+          : Math.max(0, Math.min(Number(loan.monthlyDeduction) || 0, Number(loan.remainingBalance) || 0));
+      }
+      if (deduction > 0) {
+        loanMap.set(loan.employeeId, (loanMap.get(loan.employeeId) || 0) + deduction);
+      }
+    }
+
+    const contributionMap = new Map<string, { total: number; details: Array<{ schemeName: string; amount: number }> }>();
+    for (const c of (state.employeeContributions || [])) {
+      if (c && c.periodKey === currentPeriodKey && c.employeeId) {
+        const amt = Number(c.amount) || 0;
+        const entry = contributionMap.get(c.employeeId) || { total: 0, details: [] };
+        entry.total += amt;
+        entry.details.push({
+          schemeName: c.schemeName || 'Staff Welfare Fund',
+          amount: amt
+        });
+        contributionMap.set(c.employeeId, entry);
+      }
+    }
+
+    return activeEmployees.map((emp: Employee) => {
+      try {
+        const absenceRecord = absenceMap.get(emp.id);
+        let unpaidAbsenceDays = 0;
+        let unpaidAbsenceDeduction = 0;
+        let effectiveEmployee = emp;
+
+        if (absenceRecord && Number(absenceRecord.daysAbsent) > 0) {
+          unpaidAbsenceDays = Number(absenceRecord.daysAbsent);
+          const workdays = getScheduleWorkdays(
+            state.selectedYear,
+            state.selectedMonth,
+            emp.workSchedule || '5-day',
+            state.payrollVariables?.workdayDivisorRule || 'actual_weekdays'
+          );
+
+          if (absenceRecord.customOverride && absenceRecord.deductionAmount !== undefined) {
+            unpaidAbsenceDeduction = Math.max(0, Number(absenceRecord.deductionAmount) || 0);
+          } else {
+            const contractualGross = Number(emp.monthlyGross) || 0;
+            const dailyRate = workdays > 0 ? contractualGross / workdays : 0;
+            const impactMultiplier = absenceRecord.absenceType === 'suspension_half_pay' ? 0.5 : 1.0;
+            unpaidAbsenceDeduction = Math.round(dailyRate * unpaidAbsenceDays * impactMultiplier * 100) / 100;
+          }
+
+          const baseMonthly = Number(emp.monthlyGross) || 0;
+          const adjustedGross = Math.max(0, baseMonthly - unpaidAbsenceDeduction);
+          effectiveEmployee = {
+            ...emp,
+            monthlyGross: adjustedGross,
+          };
+        }
+
+        const base = calculatePayrollItem(
+          effectiveEmployee, 
+          state.payrollVariables, 
+          state.payeTaxVariables, 
+          state.selectedMonth, 
+          state.selectedYear
+        );
+
+        const totalLoanDeduction = loanMap.get(emp.id) || 0;
+        const contribEntry = contributionMap.get(emp.id) || { total: 0, details: [] };
+        const totalContributionDeduction = contribEntry.total;
+        const contributionDetails = contribEntry.details;
+
+        const totalDeductions = base.totalDeductions + totalLoanDeduction + totalContributionDeduction;
+        const netTakeHome = Math.max(0, base.netTakeHome - totalLoanDeduction - totalContributionDeduction);
+
+        const baselineGross = Number(emp.monthlyGross) || base.monthlyGross || 0;
+        const section5MaxAllowedDeductions = Math.round((baselineGross / 3) * 100) / 100;
+        const isSection5CapExceeded = totalDeductions > section5MaxAllowedDeductions;
+
+        return {
+          ...base,
+          contractualGross: Number(emp.monthlyGross) || base.monthlyGross,
+          workSchedule: emp.workSchedule || '5-day',
+          unpaidAbsenceDays,
+          unpaidAbsenceDeduction,
+          effectiveGross: base.monthlyGross,
+          loanDeduction: totalLoanDeduction,
+          contributionDeduction: totalContributionDeduction,
+          contributionDetails,
+          totalDeductions,
+          netTakeHome,
+          isSection5CapExceeded,
+          section5MaxAllowedDeductions,
+        };
+      } catch (err) {
+        console.error(`Failed to calculate payroll item for employee ${emp?.id}:`, err);
+        return {
+          employeeId: emp?.id || 'err-id',
+          employeeCode: emp?.code || 'ERR',
+          fullName: `${emp?.firstName || ''} ${emp?.lastName || ''}`.trim() || 'Employee',
+          department: emp?.department || 'General',
+          position: emp?.position || 'Staff',
+          employmentType: emp?.employmentType || 'Full-Time',
+          monthlyGross: Number(emp?.monthlyGross) || 0,
+          annualRent: Number(emp?.annualRent) || 0,
+          basic: 0,
+          housing: 0,
+          transport: 0,
+          otherAllowances: 0,
+          pensionableBHT: 0,
+          employeePension: 0,
+          employerPension: 0,
+          annualGross: 0,
+          rentRelief: 0,
+          pensionRelief: 0,
+          extraReliefs: 0,
+          totalCra: 0,
+          taxableIncome: 0,
+          annualTax: 0,
+          monthlyPaye: 0,
+          totalDeductions: 0,
+          netTakeHome: Number(emp?.monthlyGross) || 0,
+          employerTotalCost: Number(emp?.monthlyGross) || 0,
+          bankName: emp?.bankName || '',
+          accountNumber: emp?.accountNumber || '',
+          payeNumber: emp?.payeNumber || '',
+          pensionNumber: emp?.pensionNumber || '',
+          pfaName: emp?.pfaName || '',
+          hasPension: Boolean(emp?.hasPension),
+          hasPaye: Boolean(emp?.hasPaye),
+        };
+      }
+    });
+  }, [
+    activeSnapshot,
+    activeEmployees,
+    state.payrollVariables,
+    state.payeTaxVariables,
+    state.selectedMonth,
+    state.selectedYear,
+    state.loans,
+    state.employeeContributions,
+    state.employeeAbsences
+  ]);
+
+  const currentPayrollItems = useMemo(() => {
+    return (activeSnapshot?.items && Array.isArray(activeSnapshot.items)) 
+      ? activeSnapshot.items 
+      : (Array.isArray(liveCalculatedItems) ? liveCalculatedItems : []);
+  }, [activeSnapshot, liveCalculatedItems]);
 
   const monthLabel = MONTHS.find(m => m.key === state.selectedMonth)?.label || (MONTHS[new Date().getMonth()]?.label || 'October');
 
@@ -1243,11 +1433,28 @@ export function usePayrollStore() {
 
     cloudReadyRef.current = false;
 
-    const loadedData = loadCompanyData(companyId, targetComp);
-    const hasCachedRecords = Boolean(
+    let loadedData = loadCompanyData(companyId, targetComp);
+    let hasCachedRecords = Boolean(
       (loadedData.employees && loadedData.employees.length > 0) || 
       (loadedData.snapshots && loadedData.snapshots.length > 0)
     );
+
+    // If localStorage was empty or exceeded quota, check IndexedDB before falling back to empty
+    if (!hasCachedRecords) {
+      try {
+        const dbState = await getCompanyDataFromDb(companyId);
+        if (dbState && ((dbState.employees && dbState.employees.length > 0) || (dbState.snapshots && dbState.snapshots.length > 0))) {
+          loadedData = {
+            ...loadedData,
+            ...dbState,
+            company: { ...loadedData.company, ...dbState.company, id: companyId, name: targetComp.name }
+          };
+          hasCachedRecords = true;
+        }
+      } catch (err) {
+        console.warn('IndexedDB fallback hydration check error:', err);
+      }
+    }
 
     let finalData: AppState = {
       ...loadedData,
@@ -1267,7 +1474,7 @@ export function usePayrollStore() {
           const res = await Promise.race([
             downloadCompanyDataFromSupabase(companyId),
             new Promise<{ success: false; error: string }>((resolve) =>
-              setTimeout(() => resolve({ success: false, error: 'timeout' }), 4000)
+              setTimeout(() => resolve({ success: false, error: 'timeout' }), 15000)
             )
           ]);
           if (res.success) {
@@ -1286,7 +1493,11 @@ export function usePayrollStore() {
               payslipDesign: res.payslipDesign || finalData.payslipDesign,
               savedPayslipPresets: res.savedPayslipPresets || finalData.savedPayslipPresets,
               emailSettings: res.emailSettings || finalData.emailSettings || DEFAULT_EMAIL_SETTINGS,
+              whatsappSettings: res.whatsappSettings || finalData.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS,
               emailedPayslips: res.emailedPayslips || finalData.emailedPayslips || {},
+              employeeContributions: res.contributions || finalData.employeeContributions || [],
+              contributionPayouts: res.payouts || finalData.contributionPayouts || [],
+              employeeAbsences: res.absences || finalData.employeeAbsences || [],
             };
           }
         } catch {
@@ -1316,7 +1527,11 @@ export function usePayrollStore() {
               payslipDesign: res.payslipDesign || prev.payslipDesign,
               savedPayslipPresets: res.savedPayslipPresets || prev.savedPayslipPresets,
               emailSettings: res.emailSettings || prev.emailSettings || DEFAULT_EMAIL_SETTINGS,
+              whatsappSettings: res.whatsappSettings || prev.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS,
               emailedPayslips: res.emailedPayslips || prev.emailedPayslips || {},
+              employeeContributions: res.contributions || prev.employeeContributions || [],
+              contributionPayouts: res.payouts || prev.contributionPayouts || [],
+              employeeAbsences: res.absences || prev.employeeAbsences || [],
             };
           });
         }).catch(() => {});
@@ -1914,6 +2129,8 @@ export function usePayrollStore() {
       totalEmployerCost: liveCalculatedItems.reduce((acc, i) => acc + i.employerTotalCost, 0),
       staffCount: liveCalculatedItems.length,
       totalLoansDeducted: liveCalculatedItems.reduce((acc, i) => acc + (i.loanDeduction || 0), 0),
+      totalContributionsDeducted: liveCalculatedItems.reduce((acc, i) => acc + (i.contributionDeduction || 0), 0),
+      totalAbsenceDeducted: liveCalculatedItems.reduce((acc, i) => acc + (i.unpaidAbsenceDeduction || 0), 0),
     };
 
     // Capture the active team member name for the audit trail
@@ -2104,6 +2321,56 @@ export function usePayrollStore() {
         });
       } else {
         // Database not connected: Flag as pending offline sync so it automatically uploads once reconnected!
+        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+        window.dispatchEvent(new Event('payroll-sync-status-changed'));
+      }
+    }
+  };
+
+  const updateWhatsAppSettings = (settings: Partial<WhatsAppSettings>) => {
+    const current = state.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS;
+    const nextSettings = {
+      ...current,
+      ...settings,
+      cloudApi: {
+        ...current.cloudApi,
+        ...(settings.cloudApi || {}),
+      },
+      ultramsg: {
+        ...current.ultramsg,
+        ...(settings.ultramsg || {}),
+      },
+      termii: {
+        ...current.termii,
+        ...(settings.termii || {}),
+      },
+    };
+    setState(s => ({
+      ...s,
+      whatsappSettings: nextSettings
+    }));
+
+    if (activeCompanyId) {
+      const nextFullState = { ...state, whatsappSettings: nextSettings };
+      try {
+        localStorage.setItem(COMPANY_DATA_PREFIX + activeCompanyId, JSON.stringify(nextFullState));
+      } catch (e) {
+        console.warn('Failed to save WhatsApp settings to localStorage:', e);
+      }
+      saveCompanyDataToDb(activeCompanyId, nextFullState).catch(() => {});
+
+      const isCloudEnabled = getSavedCloudConfig().isEnabled;
+      if (isCloudEnabled) {
+        saveWhatsAppSettingsToCloud(nextSettings, activeCompanyId).then(res => {
+          if (!res.success) {
+            localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+            window.dispatchEvent(new Event('payroll-sync-status-changed'));
+          }
+        }).catch(() => {
+          localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
+          window.dispatchEvent(new Event('payroll-sync-status-changed'));
+        });
+      } else {
         localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
         window.dispatchEvent(new Event('payroll-sync-status-changed'));
       }
@@ -2336,6 +2603,11 @@ export function usePayrollStore() {
       ...s,
       loans: (s.loans || []).filter(l => l.id !== id),
     }));
+    if (activeCompanyId) {
+      deleteLoanFromCloud(id, activeCompanyId).catch(err => {
+        console.warn('Failed to delete loan from cloud:', err);
+      });
+    }
   };
 
   const pauseResumeLoan = (id: string) => {
@@ -2460,6 +2732,244 @@ export function usePayrollStore() {
     }));
   };
 
+  // ─────────────────────────────────────────────────────────────
+  // STAFF CONTRIBUTIONS & WELFARE ACTIONS
+  // ─────────────────────────────────────────────────────────────
+
+  const saveBatchContributions = (newContributions: EmployeeContribution[]) => {
+    setState(prev => {
+      const existing = prev.employeeContributions || [];
+      const updated = [...existing];
+
+      newContributions.forEach(item => {
+        const idx = updated.findIndex(
+          c => c.employeeId === item.employeeId && 
+               c.periodKey === item.periodKey && 
+               c.schemeName === item.schemeName
+        );
+        if (idx >= 0) {
+          updated[idx] = { ...updated[idx], ...item, updatedAt: new Date().toISOString() };
+        } else {
+          updated.push({
+            ...item,
+            id: item.id || `contrib_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            createdAt: item.createdAt || new Date().toISOString()
+          });
+        }
+      });
+
+      return {
+        ...prev,
+        employeeContributions: updated
+      };
+    });
+
+    if (newContributions.length > 0) {
+      const periodKey = newContributions[0]?.periodKey || '';
+      const scheme = newContributions[0]?.schemeName || 'Welfare Fund';
+      const totalAmount = newContributions.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+      logAuditEvent(
+        activeCompanyId || '',
+        activeCompany?.name || '',
+        'RECORDED_CONTRIBUTIONS',
+        `Logged ${scheme} bulk deductions for ${newContributions.length} staff in ${periodKey} (Total: ₦${totalAmount.toLocaleString()})`
+      );
+    }
+  };
+
+  const deleteContribution = (id: string) => {
+    const existing = (state.employeeContributions || []).find(c => c.id === id);
+    const emp = existing ? (state.employees || []).find(e => e.id === existing.employeeId) : null;
+    const empName = emp ? `${emp.firstName} ${emp.lastName}` : (existing?.employeeId || 'Staff');
+
+    setState(prev => ({
+      ...prev,
+      employeeContributions: (prev.employeeContributions || []).filter(c => c.id !== id)
+    }));
+
+    if (activeCompanyId) {
+      deleteContributionFromCloud(id, activeCompanyId).catch(err => {
+        console.warn('Failed to delete contribution from cloud:', err);
+      });
+    }
+
+    if (existing) {
+      logAuditEvent(
+        activeCompanyId || '',
+        activeCompany?.name || '',
+        'DELETED_CONTRIBUTION',
+        `Removed ${existing.schemeName} deduction of ₦${(Number(existing.amount) || 0).toLocaleString()} for ${empName} (${existing.periodKey})`
+      );
+    }
+  };
+
+  const addContributionPayout = (payoutData: Omit<ContributionPayout, 'id' | 'createdAt'>) => {
+    const newPayout: ContributionPayout = {
+      ...payoutData,
+      id: `payout_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      createdAt: new Date().toISOString()
+    };
+    const emp = (state.employees || []).find(e => e.id === payoutData.employeeId);
+    const empName = emp ? `${emp.firstName} ${emp.lastName}` : (payoutData.employeeId || 'Staff');
+
+    setState(prev => ({
+      ...prev,
+      contributionPayouts: [newPayout, ...(prev.contributionPayouts || [])]
+    }));
+
+    logAuditEvent(
+      activeCompanyId || '',
+      activeCompany?.name || '',
+      'DISBURSED_CONTRIBUTION_PAYOUT',
+      `Disbursed ₦${(Number(payoutData.amount) || 0).toLocaleString()} ${payoutData.schemeName} payout to ${empName} (Reason: ${payoutData.reason.replace(/_/g, ' ')})`
+    );
+  };
+
+  const deleteContributionPayout = (id: string) => {
+    const existing = (state.contributionPayouts || []).find(p => p.id === id);
+    const emp = existing ? (state.employees || []).find(e => e.id === existing.employeeId) : null;
+    const empName = emp ? `${emp.firstName} ${emp.lastName}` : (existing?.employeeId || 'Staff');
+
+    setState(prev => ({
+      ...prev,
+      contributionPayouts: (prev.contributionPayouts || []).filter(p => p.id !== id)
+    }));
+
+    if (activeCompanyId) {
+      deletePayoutFromCloud(id, activeCompanyId).catch(err => {
+        console.warn('Failed to delete payout from cloud:', err);
+      });
+    }
+
+    if (existing) {
+      logAuditEvent(
+        activeCompanyId || '',
+        activeCompany?.name || '',
+        'DELETED_CONTRIBUTION_PAYOUT',
+        `Deleted ${existing.schemeName} payout record of ₦${(Number(existing.amount) || 0).toLocaleString()} for ${empName}`
+      );
+    }
+  };
+
+  const saveContributionScheme = (scheme: ContributionScheme) => {
+    setState(prev => {
+      const existing = prev.contributionSchemes || [];
+      const idx = existing.findIndex(s => s.id === scheme.id);
+      let updated: ContributionScheme[];
+      if (idx >= 0) {
+        updated = [...existing];
+        updated[idx] = scheme;
+      } else {
+        updated = [...existing, scheme];
+      }
+      return {
+        ...prev,
+        contributionSchemes: updated
+      };
+    });
+
+    logAuditEvent(
+      activeCompanyId || '',
+      activeCompany?.name || '',
+      'CONFIGURED_CONTRIBUTION_SCHEME',
+      `Configured contribution scheme "${scheme.name}"`
+    );
+  };
+
+  const deleteContributionScheme = (id: string) => {
+    const existing = (state.contributionSchemes || []).find(s => s.id === id);
+    setState(prev => ({
+      ...prev,
+      contributionSchemes: (prev.contributionSchemes || []).filter(s => s.id !== id)
+    }));
+
+    if (existing) {
+      logAuditEvent(
+        activeCompanyId || '',
+        activeCompany?.name || '',
+        'DELETED_CONTRIBUTION_SCHEME',
+        `Deleted contribution scheme "${existing.name}"`
+      );
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // EMPLOYEE ABSENCE & DAYS NOT WORKED ACTIONS
+  // ─────────────────────────────────────────────────────────────
+
+  const saveEmployeeAbsence = (absenceData: Omit<EmployeeAbsenceRecord, 'id' | 'createdAt'> & { id?: string }) => {
+    const emp = (state.employees || []).find(e => e.id === absenceData.employeeId);
+    const empName = emp ? `${emp.firstName} ${emp.lastName}` : (absenceData.employeeId || 'Staff');
+
+    setState(prev => {
+      const existing = prev.employeeAbsences || [];
+      const idx = existing.findIndex(
+        a => (absenceData.id && a.id === absenceData.id) ||
+             (a.employeeId === absenceData.employeeId && a.periodKey === absenceData.periodKey)
+      );
+
+      const record: EmployeeAbsenceRecord = {
+        id: absenceData.id || `abs_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        employeeId: absenceData.employeeId,
+        periodKey: absenceData.periodKey,
+        daysAbsent: Number(absenceData.daysAbsent) || 0,
+        absenceType: absenceData.absenceType || 'unauthorized_absence',
+        deductionAmount: Number(absenceData.deductionAmount) || 0,
+        customOverride: Boolean(absenceData.customOverride),
+        notes: absenceData.notes || '',
+        dates: absenceData.dates || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      let updated: EmployeeAbsenceRecord[];
+      if (idx >= 0) {
+        updated = [...existing];
+        updated[idx] = record;
+      } else {
+        updated = [...existing, record];
+      }
+
+      return {
+        ...prev,
+        employeeAbsences: updated
+      };
+    });
+
+    logAuditEvent(
+      activeCompanyId || '',
+      activeCompany?.name || '',
+      'LOGGED_ABSENCE',
+      `Logged ${absenceData.daysAbsent} day(s) ${absenceData.absenceType.replace(/_/g, ' ')} for ${empName} in ${absenceData.periodKey} (Gross deduction: ₦${(Number(absenceData.deductionAmount) || 0).toLocaleString()})`
+    );
+  };
+
+  const deleteEmployeeAbsence = (id: string) => {
+    const existing = (state.employeeAbsences || []).find(a => a.id === id);
+    const emp = existing ? (state.employees || []).find(e => e.id === existing.employeeId) : null;
+    const empName = emp ? `${emp.firstName} ${emp.lastName}` : (existing?.employeeId || 'Staff');
+
+    setState(prev => ({
+      ...prev,
+      employeeAbsences: (prev.employeeAbsences || []).filter(a => a.id !== id)
+    }));
+
+    if (activeCompanyId) {
+      deleteAbsenceFromCloud(id, activeCompanyId).catch(err => {
+        console.warn('Failed to delete absence from cloud:', err);
+      });
+    }
+
+    if (existing) {
+      logAuditEvent(
+        activeCompanyId || '',
+        activeCompany?.name || '',
+        'DELETED_ABSENCE',
+        `Removed absence record (${existing.daysAbsent} days, ₦${(Number(existing.deductionAmount) || 0).toLocaleString()} deduction) for ${empName} in ${existing.periodKey}`
+      );
+    }
+  };
+
   return {
     state,
     companies,
@@ -2506,12 +3016,26 @@ export function usePayrollStore() {
     recordManualLoanRepayment,
     applyPeriodLoanDeduction,
     applyAllPeriodLoanDeductions,
+    employeeContributions: state.employeeContributions || [],
+    contributionPayouts: state.contributionPayouts || [],
+    employeeAbsences: state.employeeAbsences || [],
+    contributionSchemes: state.contributionSchemes || [],
+    saveBatchContributions,
+    deleteContribution,
+    addContributionPayout,
+    deleteContributionPayout,
+    saveContributionScheme,
+    deleteContributionScheme,
+    saveEmployeeAbsence,
+    deleteEmployeeAbsence,
     resetAllData,
     reloadFromStorage,
     isOnline,
     isCloudOffline,
     emailSettings: state.emailSettings || DEFAULT_EMAIL_SETTINGS,
     updateEmailSettings,
+    whatsappSettings: state.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS,
+    updateWhatsAppSettings,
     emailedPayslips: state.emailedPayslips || {},
     recordEmailedPayslips,
   };

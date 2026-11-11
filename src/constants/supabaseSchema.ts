@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.companies (
     security_answer TEXT DEFAULT '',
     email_settings JSONB DEFAULT '{}'::jsonb,
     emailed_payslips JSONB DEFAULT '{}'::jsonb,
+    whatsapp_settings JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -75,6 +76,7 @@ CREATE TABLE IF NOT EXISTS public.employees (
     status TEXT DEFAULT 'Active',
     employment_type TEXT DEFAULT 'Full-Time',
     state_of_residence TEXT DEFAULT 'Lagos',
+    work_schedule TEXT DEFAULT '5-day',
     start_date TEXT DEFAULT '',
     end_date TEXT DEFAULT '',
     original_hire_date TEXT DEFAULT '',
@@ -96,6 +98,8 @@ CREATE TABLE IF NOT EXISTS public.payroll_variables (
     salary_calculation_mode TEXT DEFAULT 'gross-to-net',
     employment_type_rules JSONB DEFAULT '[]'::jsonb,
     prorate_mid_month BOOLEAN DEFAULT FALSE,
+    workday_divisor_rule TEXT DEFAULT 'actual_weekdays',
+    section5_cap_enforcement TEXT DEFAULT 'advisory_warning',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -205,6 +209,52 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 1.11 EMPLOYEE CONTRIBUTIONS TABLE (Staff Welfare, Cooperative, Thrift/Esusu deductions)
+CREATE TABLE IF NOT EXISTS public.employee_contributions (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    employee_id TEXT NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
+    period_key TEXT NOT NULL DEFAULT '2026-jan',
+    scheme_name TEXT NOT NULL DEFAULT 'Staff Welfare Fund',
+    amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    is_percentage BOOLEAN DEFAULT FALSE,
+    rate NUMERIC(5, 2) DEFAULT 0,
+    notes TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 1.12 CONTRIBUTION PAYOUTS TABLE (Disbursements, annual thrift settlements, partial refunds)
+CREATE TABLE IF NOT EXISTS public.contribution_payouts (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    employee_id TEXT NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
+    scheme_name TEXT NOT NULL DEFAULT 'Staff Welfare Fund',
+    amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    payout_date TEXT NOT NULL DEFAULT '',
+    reason TEXT NOT NULL DEFAULT 'annual_payout', -- 'annual_payout', 'partial_withdrawal', 'exit_settlement', 'other'
+    payment_method TEXT NOT NULL DEFAULT 'bank_transfer', -- 'bank_transfer', 'cheque', 'cash'
+    reference_no TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 1.13 EMPLOYEE ABSENCES TABLE (Statutory unpaid absence & days not worked tracking)
+CREATE TABLE IF NOT EXISTS public.employee_absences (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    employee_id TEXT NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
+    period_key TEXT NOT NULL DEFAULT '2026-jan',
+    days_absent NUMERIC(5, 2) NOT NULL DEFAULT 0,
+    absence_type TEXT NOT NULL DEFAULT 'unauthorized_absence', -- 'unauthorized_absence', 'unpaid_leave', 'suspension_half_pay', 'suspension_unpaid'
+    deduction_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    custom_override BOOLEAN DEFAULT FALSE,
+    notes TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ==============================================================================
 -- 2. SCHEMA SELF-HEALING (Ensure all columns exist if tables pre-date updates)
 -- ==============================================================================
@@ -222,6 +272,7 @@ ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS security_question TEXT DEF
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS security_answer TEXT DEFAULT '';
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS email_settings JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS emailed_payslips JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS whatsapp_settings JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Employees columns
@@ -233,6 +284,7 @@ ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS paye_number TEXT DEFAULT '
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS pension_number TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS pfa_name TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS work_schedule TEXT DEFAULT '5-day';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS start_date TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS end_date TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS original_hire_date TEXT DEFAULT '';
@@ -243,6 +295,8 @@ ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEF
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS salary_calculation_mode TEXT DEFAULT 'gross-to-net';
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS employment_type_rules JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS prorate_mid_month BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS workday_divisor_rule TEXT DEFAULT 'actual_weekdays';
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS section5_cap_enforcement TEXT DEFAULT 'advisory_warning';
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
@@ -296,6 +350,28 @@ ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS company_id TEXT DEFAULT '
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS company_name TEXT DEFAULT '';
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS actor_id TEXT DEFAULT '';
 
+-- Employee Contributions columns
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS scheme_name TEXT DEFAULT 'Staff Welfare Fund';
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS is_percentage BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS rate NUMERIC(5, 2) DEFAULT 0;
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Contribution Payouts columns
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS scheme_name TEXT DEFAULT 'Staff Welfare Fund';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'bank_transfer';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Employee Absences columns
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS days_absent NUMERIC(5, 2) DEFAULT 0;
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS absence_type TEXT DEFAULT 'unauthorized_absence';
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS deduction_amount NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS custom_override BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- ==============================================================================
 -- 3. AUTOMATIC UPDATED_AT TRIGGER FUNCTION
 -- ==============================================================================
@@ -336,6 +412,18 @@ BEGIN
     DROP TRIGGER IF EXISTS trg_payslip_designs_updated_at ON public.payslip_designs;
     CREATE TRIGGER trg_payslip_designs_updated_at BEFORE UPDATE ON public.payslip_designs
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_employee_contributions_updated_at ON public.employee_contributions;
+    CREATE TRIGGER trg_employee_contributions_updated_at BEFORE UPDATE ON public.employee_contributions
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_contribution_payouts_updated_at ON public.contribution_payouts;
+    CREATE TRIGGER trg_contribution_payouts_updated_at BEFORE UPDATE ON public.contribution_payouts
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_employee_absences_updated_at ON public.employee_absences;
+    CREATE TRIGGER trg_employee_absences_updated_at BEFORE UPDATE ON public.employee_absences
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 END $$;
 
 -- ==============================================================================
@@ -346,6 +434,11 @@ CREATE INDEX IF NOT EXISTS idx_employees_status ON public.employees(company_id, 
 CREATE INDEX IF NOT EXISTS idx_employees_code ON public.employees(company_id, code);
 CREATE INDEX IF NOT EXISTS idx_departments_company ON public.departments(company_id);
 CREATE INDEX IF NOT EXISTS idx_loans_company_emp ON public.employee_loans(company_id, employee_id);
+CREATE INDEX IF NOT EXISTS idx_contributions_company_period ON public.employee_contributions(company_id, period_key);
+CREATE INDEX IF NOT EXISTS idx_contributions_emp ON public.employee_contributions(company_id, employee_id);
+CREATE INDEX IF NOT EXISTS idx_payouts_company_emp ON public.contribution_payouts(company_id, employee_id);
+CREATE INDEX IF NOT EXISTS idx_absences_company_period ON public.employee_absences(company_id, period_key);
+CREATE INDEX IF NOT EXISTS idx_absences_company_emp ON public.employee_absences(company_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_snapshots_company_period ON public.payroll_snapshots(company_id, year, month_key);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON public.audit_logs(company_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_team_members_active ON public.team_members(is_active);
@@ -373,6 +466,9 @@ ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payroll_variables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.paye_tax_variables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.employee_loans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.employee_contributions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contribution_payouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.employee_absences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payroll_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payslip_designs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payslip_presets ENABLE ROW LEVEL SECURITY;
@@ -398,6 +494,15 @@ BEGIN
 
     DROP POLICY IF EXISTS "Anon Access Employee Loans" ON public.employee_loans;
     CREATE POLICY "Anon Access Employee Loans" ON public.employee_loans FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Anon Access Employee Contributions" ON public.employee_contributions;
+    CREATE POLICY "Anon Access Employee Contributions" ON public.employee_contributions FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Anon Access Contribution Payouts" ON public.contribution_payouts;
+    CREATE POLICY "Anon Access Contribution Payouts" ON public.contribution_payouts FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Anon Access Employee Absences" ON public.employee_absences;
+    CREATE POLICY "Anon Access Employee Absences" ON public.employee_absences FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
     DROP POLICY IF EXISTS "Anon Access Payroll Snapshots" ON public.payroll_snapshots;
     CREATE POLICY "Anon Access Payroll Snapshots" ON public.payroll_snapshots FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
@@ -426,6 +531,9 @@ ALTER TABLE public.employees REPLICA IDENTITY FULL;
 ALTER TABLE public.payroll_variables REPLICA IDENTITY FULL;
 ALTER TABLE public.paye_tax_variables REPLICA IDENTITY FULL;
 ALTER TABLE public.employee_loans REPLICA IDENTITY FULL;
+ALTER TABLE public.employee_contributions REPLICA IDENTITY FULL;
+ALTER TABLE public.contribution_payouts REPLICA IDENTITY FULL;
+ALTER TABLE public.employee_absences REPLICA IDENTITY FULL;
 ALTER TABLE public.payroll_snapshots REPLICA IDENTITY FULL;
 ALTER TABLE public.payslip_designs REPLICA IDENTITY FULL;
 ALTER TABLE public.payslip_presets REPLICA IDENTITY FULL;
@@ -446,6 +554,9 @@ DECLARE
         'payroll_variables', 
         'paye_tax_variables', 
         'employee_loans', 
+        'employee_contributions',
+        'contribution_payouts',
+        'employee_absences',
         'payroll_snapshots',
         'payslip_designs',
         'payslip_presets',

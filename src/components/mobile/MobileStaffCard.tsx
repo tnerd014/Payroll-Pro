@@ -84,7 +84,7 @@ export const MobileStaffCard: React.FC<MobileStaffCardProps> = ({
             {employee.code || 'ID'}
           </span>
           <span className="text-[11px] text-zinc-400">
-            {employee.employmentType || 'Full-Time'}
+            {employee.employmentType || 'Full-Time'} &bull; {employee.workSchedule === '6-day' ? '6-Day' : '5-Day'}
           </span>
         </div>
 

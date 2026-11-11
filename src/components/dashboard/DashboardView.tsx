@@ -39,6 +39,7 @@ interface DashboardViewProps {
   selectedMonth?: string;
   year: number;
   activeSnapshot: PayrollSnapshot | undefined;
+  snapshots?: PayrollSnapshot[];
   onNavigate: (view: AppView) => void;
   departments?: string[];
   employees?: Employee[];
@@ -54,6 +55,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   selectedMonth: initialSelectedMonth = (MONTHS[new Date().getMonth()]?.key || 'oct'),
   year: initialYear = new Date().getFullYear(),
   activeSnapshot,
+  snapshots = [],
   onNavigate,
   departments = [],
   employees = [],
@@ -93,9 +95,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const years = useMemo(() => {
     const cy = Math.max(new Date().getFullYear(), filterYear || 0);
-    const set = new Set([cy - 2, cy - 1, cy, cy + 1, cy + 2]);
+    const set = new Set([cy - 5, cy - 4, cy - 3, cy - 2, cy - 1, cy, cy + 1, cy + 2]);
+    (snapshots || []).forEach(s => {
+      const yr = Number(s.year);
+      if (!isNaN(yr) && yr > 2000) set.add(yr);
+    });
     return Array.from(set).sort((a, b) => a - b);
-  }, [filterYear]);
+  }, [filterYear, snapshots]);
 
   const isAllMonths = filterMonth === 'ALL';
   const currentMonthObj = MONTHS.find(m => m.key === filterMonth);
@@ -134,8 +140,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return true;
   };
 
-  // Helper to calculate items for a specific month
+  // Helper to calculate items for a specific month (prioritizing sealed historical snapshots)
   const getComputedItemsForMonth = (mKey: string, y: number) => {
+    const existingSnap = (snapshots || []).find(s => s.monthKey === mKey && Number(s.year) === Number(y));
+    if (existingSnap && existingSnap.items?.length > 0) {
+      return existingSnap.items;
+    }
     if (employees.length === 0 || !payrollVariables || !payeTaxVariables) {
       return initialItems;
     }
@@ -167,7 +177,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         totalCost,
       };
     });
-  }, [employees, payrollVariables, payeTaxVariables, filterYear, filterDept, filterEmpType, initialItems]);
+  }, [employees, payrollVariables, payeTaxVariables, filterYear, filterDept, filterEmpType, initialItems, snapshots]);
 
   // Calculate items based on current month/year/filters
   const activeItems = useMemo(() => {

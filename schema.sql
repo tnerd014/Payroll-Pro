@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS public.companies (
     security_answer TEXT DEFAULT '',
     email_settings JSONB DEFAULT '{}'::jsonb,
     emailed_payslips JSONB DEFAULT '{}'::jsonb,
+    whatsapp_settings JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -65,6 +66,7 @@ CREATE TABLE IF NOT EXISTS public.employees (
     status TEXT DEFAULT 'Active',
     employment_type TEXT DEFAULT 'Full-Time',
     state_of_residence TEXT DEFAULT 'Lagos',
+    work_schedule TEXT DEFAULT '5-day',
     start_date TEXT DEFAULT '',
     end_date TEXT DEFAULT '',
     original_hire_date TEXT DEFAULT '',
@@ -86,6 +88,8 @@ CREATE TABLE IF NOT EXISTS public.payroll_variables (
     salary_calculation_mode TEXT DEFAULT 'gross-to-net',
     employment_type_rules JSONB DEFAULT '[]'::jsonb,
     prorate_mid_month BOOLEAN DEFAULT FALSE,
+    workday_divisor_rule TEXT DEFAULT 'actual_weekdays',
+    section5_cap_enforcement TEXT DEFAULT 'advisory_warning',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -162,7 +166,7 @@ CREATE TABLE IF NOT EXISTS public.team_members (
     email TEXT DEFAULT '',
     username TEXT DEFAULT '',
     role TEXT NOT NULL DEFAULT 'Payroll Officer', -- 'Admin', 'Payroll Officer', 'Auditor'
-    pin TEXT DEFAULT '1234',
+    pin TEXT DEFAULT '',
     password TEXT DEFAULT '',
     password_hint TEXT DEFAULT '',
     security_question TEXT DEFAULT '',
@@ -184,7 +188,7 @@ CREATE TABLE IF NOT EXISTS public.team_members (
 
 -- 1.10 AUDIT LOGS TABLE (Automated change tracking)
 CREATE TABLE IF NOT EXISTS public.audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     company_id TEXT DEFAULT '',
     company_name TEXT DEFAULT '',
     actor_id TEXT DEFAULT '',
@@ -195,15 +199,51 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 1.11 EMPLOYEE HISTORY TABLE (Immutable automatic row backup on every update/delete)
-CREATE TABLE IF NOT EXISTS public.employee_history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id TEXT NOT NULL,
-    company_id TEXT NOT NULL,
-    operation TEXT NOT NULL, -- 'UPDATE', 'DELETE', 'STALE_WRITE_BLOCKED'
-    old_data JSONB NOT NULL,
-    new_data JSONB DEFAULT NULL,
-    changed_at TIMESTAMPTZ DEFAULT NOW()
+-- 1.11 EMPLOYEE CONTRIBUTIONS TABLE (Staff Welfare, Cooperative, Thrift/Esusu deductions)
+CREATE TABLE IF NOT EXISTS public.employee_contributions (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    employee_id TEXT NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
+    period_key TEXT NOT NULL DEFAULT '2026-jan',
+    scheme_name TEXT NOT NULL DEFAULT 'Staff Welfare Fund',
+    amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    is_percentage BOOLEAN DEFAULT FALSE,
+    rate NUMERIC(5, 2) DEFAULT 0,
+    notes TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 1.12 CONTRIBUTION PAYOUTS TABLE (Disbursements, annual thrift settlements, partial refunds)
+CREATE TABLE IF NOT EXISTS public.contribution_payouts (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    employee_id TEXT NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
+    scheme_name TEXT NOT NULL DEFAULT 'Staff Welfare Fund',
+    amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    payout_date TEXT NOT NULL DEFAULT '',
+    reason TEXT NOT NULL DEFAULT 'annual_payout', -- 'annual_payout', 'partial_withdrawal', 'exit_settlement', 'other'
+    payment_method TEXT NOT NULL DEFAULT 'bank_transfer', -- 'bank_transfer', 'cheque', 'cash'
+    reference_no TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 1.13 EMPLOYEE ABSENCES TABLE (Statutory unpaid absence & days not worked tracking)
+CREATE TABLE IF NOT EXISTS public.employee_absences (
+    id TEXT PRIMARY KEY,
+    company_id TEXT NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+    employee_id TEXT NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
+    period_key TEXT NOT NULL DEFAULT '2026-jan',
+    days_absent NUMERIC(5, 2) NOT NULL DEFAULT 0,
+    absence_type TEXT NOT NULL DEFAULT 'unauthorized_absence', -- 'unauthorized_absence', 'unpaid_leave', 'suspension_half_pay', 'suspension_unpaid'
+    deduction_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    custom_override BOOLEAN DEFAULT FALSE,
+    notes TEXT DEFAULT '',
+    dates JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ==============================================================================
@@ -223,6 +263,7 @@ ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS security_question TEXT DEF
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS security_answer TEXT DEFAULT '';
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS email_settings JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS emailed_payslips JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS whatsapp_settings JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Employees columns
@@ -234,17 +275,21 @@ ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS paye_number TEXT DEFAULT '
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS pension_number TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS pfa_name TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Active';
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS work_schedule TEXT DEFAULT '5-day';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS start_date TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS end_date TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS original_hire_date TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS stints JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS client_updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS annual_rents JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
-ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS client_updated_at TIMESTAMPTZ DEFAULT NULL;
 
 -- Payroll Variables columns
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS salary_calculation_mode TEXT DEFAULT 'gross-to-net';
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS employment_type_rules JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS prorate_mid_month BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS workday_divisor_rule TEXT DEFAULT 'actual_weekdays';
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS section5_cap_enforcement TEXT DEFAULT 'advisory_warning';
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
@@ -274,7 +319,7 @@ ALTER TABLE public.payslip_designs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS username TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS email TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Payroll Officer';
-ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS pin TEXT DEFAULT '1234';
+ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS pin TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS password TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS password_hint TEXT DEFAULT '';
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS security_question TEXT DEFAULT '';
@@ -293,81 +338,43 @@ ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAU
 ALTER TABLE public.team_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Audit Logs columns
+ALTER TABLE public.audit_logs ALTER COLUMN id TYPE TEXT;
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS ip_or_device TEXT DEFAULT 'Desktop Workspace';
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS company_id TEXT DEFAULT '';
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS company_name TEXT DEFAULT '';
 ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS actor_id TEXT DEFAULT '';
 
+-- Employee Contributions columns
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS scheme_name TEXT DEFAULT 'Staff Welfare Fund';
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS is_percentage BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS rate NUMERIC(5, 2) DEFAULT 0;
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Contribution Payouts columns
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS scheme_name TEXT DEFAULT 'Staff Welfare Fund';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'bank_transfer';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Employee Absences columns
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS days_absent NUMERIC(5, 2) DEFAULT 0;
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS absence_type TEXT DEFAULT 'unauthorized_absence';
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS deduction_amount NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS custom_override BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS dates JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.employee_absences ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- ==============================================================================
--- 3. AUTOMATIC UPDATED_AT, STALE-WRITE GUARD & ROW-BACKUP TRIGGERS
+-- 3. AUTOMATIC UPDATED_AT TRIGGER FUNCTION
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Backend Safeguard 1: Prevents stale offline clients or un-updated legacy apps
--- from overwriting newer employee records (such as updated account numbers or salaries).
-CREATE OR REPLACE FUNCTION public.guard_employee_stale_writes()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- 1. If the incoming write is from an OLD un-updated app (client_updated_at IS NULL):
-    IF NEW.client_updated_at IS NULL THEN
-        -- 1a. If this employee was already saved/locked by v1.0.6+, block legacy apps from overwriting it
-        IF OLD.client_updated_at IS NOT NULL THEN
-            INSERT INTO public.employee_history (employee_id, company_id, operation, old_data, new_data)
-            VALUES (OLD.id, OLD.company_id, 'LEGACY_APP_WRITE_BLOCKED', to_jsonb(OLD), to_jsonb(NEW));
-            RETURN OLD;
-        END IF;
-
-        -- 1b. Never let an old app wipe out a populated account number or bank name with empty text
-        IF (OLD.account_number IS NOT NULL AND OLD.account_number <> '' AND (NEW.account_number IS NULL OR NEW.account_number = '')) THEN
-            NEW.account_number := OLD.account_number;
-            NEW.bank_name := OLD.bank_name;
-        END IF;
-    END IF;
-
-    -- 2. Timestamp conflict check: if the incoming edit was made BEFORE the cloud record's
-    --    last update (with a 5-second clock-skew tolerance), reject the stale overwrite!
-    IF NEW.client_updated_at IS NOT NULL AND OLD.updated_at IS NOT NULL THEN
-        IF NEW.client_updated_at < (OLD.updated_at - INTERVAL '5 seconds') THEN
-            INSERT INTO public.employee_history (employee_id, company_id, operation, old_data, new_data)
-            VALUES (OLD.id, OLD.company_id, 'STALE_WRITE_BLOCKED', to_jsonb(OLD), to_jsonb(NEW));
-            RETURN OLD;
-        END IF;
-    END IF;
-
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Backend Safeguard 2: Automatically archives a full JSON snapshot of every employee record
--- whenever key payroll fields (account number, bank, salary, status) are updated or deleted.
-CREATE OR REPLACE FUNCTION public.log_employee_history()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF (TG_OP = 'DELETE') THEN
-        INSERT INTO public.employee_history (employee_id, company_id, operation, old_data, new_data)
-        VALUES (OLD.id, OLD.company_id, 'DELETE', to_jsonb(OLD), NULL);
-        RETURN OLD;
-    ELSIF (TG_OP = 'UPDATE') THEN
-        IF (OLD.account_number IS DISTINCT FROM NEW.account_number) OR
-           (OLD.bank_name IS DISTINCT FROM NEW.bank_name) OR
-           (OLD.monthly_gross IS DISTINCT FROM NEW.monthly_gross) OR
-           (OLD.monthly_salaries IS DISTINCT FROM NEW.monthly_salaries) OR
-           (OLD.status IS DISTINCT FROM NEW.status) OR
-           (OLD.first_name IS DISTINCT FROM NEW.first_name) OR
-           (OLD.last_name IS DISTINCT FROM NEW.last_name) THEN
-            INSERT INTO public.employee_history (employee_id, company_id, operation, old_data, new_data)
-            VALUES (OLD.id, OLD.company_id, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
-        END IF;
-        RETURN NEW;
-    END IF;
-    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -379,11 +386,7 @@ BEGIN
 
     DROP TRIGGER IF EXISTS trg_employees_updated_at ON public.employees;
     CREATE TRIGGER trg_employees_updated_at BEFORE UPDATE ON public.employees
-    FOR EACH ROW EXECUTE FUNCTION public.guard_employee_stale_writes();
-
-    DROP TRIGGER IF EXISTS trg_employees_history_log ON public.employees;
-    CREATE TRIGGER trg_employees_history_log AFTER UPDATE OR DELETE ON public.employees
-    FOR EACH ROW EXECUTE FUNCTION public.log_employee_history();
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
     DROP TRIGGER IF EXISTS trg_payroll_variables_updated_at ON public.payroll_variables;
     CREATE TRIGGER trg_payroll_variables_updated_at BEFORE UPDATE ON public.payroll_variables
@@ -404,6 +407,18 @@ BEGIN
     DROP TRIGGER IF EXISTS trg_payslip_designs_updated_at ON public.payslip_designs;
     CREATE TRIGGER trg_payslip_designs_updated_at BEFORE UPDATE ON public.payslip_designs
     FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_employee_contributions_updated_at ON public.employee_contributions;
+    CREATE TRIGGER trg_employee_contributions_updated_at BEFORE UPDATE ON public.employee_contributions
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_contribution_payouts_updated_at ON public.contribution_payouts;
+    CREATE TRIGGER trg_contribution_payouts_updated_at BEFORE UPDATE ON public.contribution_payouts
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+    DROP TRIGGER IF EXISTS trg_employee_absences_updated_at ON public.employee_absences;
+    CREATE TRIGGER trg_employee_absences_updated_at BEFORE UPDATE ON public.employee_absences
+    FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 END $$;
 
 -- ==============================================================================
@@ -412,13 +427,15 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_employees_company ON public.employees(company_id);
 CREATE INDEX IF NOT EXISTS idx_employees_status ON public.employees(company_id, status);
 CREATE INDEX IF NOT EXISTS idx_employees_code ON public.employees(company_id, code);
-CREATE INDEX IF NOT EXISTS idx_employees_dates ON public.employees(start_date, end_date);
 CREATE INDEX IF NOT EXISTS idx_departments_company ON public.departments(company_id);
 CREATE INDEX IF NOT EXISTS idx_loans_company_emp ON public.employee_loans(company_id, employee_id);
+CREATE INDEX IF NOT EXISTS idx_contributions_company_period ON public.employee_contributions(company_id, period_key);
+CREATE INDEX IF NOT EXISTS idx_contributions_emp ON public.employee_contributions(company_id, employee_id);
+CREATE INDEX IF NOT EXISTS idx_payouts_company_emp ON public.contribution_payouts(company_id, employee_id);
+CREATE INDEX IF NOT EXISTS idx_absences_company_period ON public.employee_absences(company_id, period_key);
+CREATE INDEX IF NOT EXISTS idx_absences_company_emp ON public.employee_absences(company_id, employee_id);
 CREATE INDEX IF NOT EXISTS idx_snapshots_company_period ON public.payroll_snapshots(company_id, year, month_key);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON public.audit_logs(company_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_employee_history_company ON public.employee_history(company_id, changed_at DESC);
-CREATE INDEX IF NOT EXISTS idx_employee_history_emp ON public.employee_history(employee_id, changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_team_members_active ON public.team_members(is_active);
 CREATE INDEX IF NOT EXISTS idx_team_members_role ON public.team_members(role);
 CREATE INDEX IF NOT EXISTS idx_team_members_email ON public.team_members(email);
@@ -444,12 +461,14 @@ ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payroll_variables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.paye_tax_variables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.employee_loans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.employee_contributions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contribution_payouts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.employee_absences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payroll_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payslip_designs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payslip_presets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.employee_history ENABLE ROW LEVEL SECURITY;
 
 DO $$ 
 BEGIN
@@ -471,6 +490,15 @@ BEGIN
     DROP POLICY IF EXISTS "Anon Access Employee Loans" ON public.employee_loans;
     CREATE POLICY "Anon Access Employee Loans" ON public.employee_loans FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
+    DROP POLICY IF EXISTS "Anon Access Employee Contributions" ON public.employee_contributions;
+    CREATE POLICY "Anon Access Employee Contributions" ON public.employee_contributions FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Anon Access Contribution Payouts" ON public.contribution_payouts;
+    CREATE POLICY "Anon Access Contribution Payouts" ON public.contribution_payouts FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+    DROP POLICY IF EXISTS "Anon Access Employee Absences" ON public.employee_absences;
+    CREATE POLICY "Anon Access Employee Absences" ON public.employee_absences FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
     DROP POLICY IF EXISTS "Anon Access Payroll Snapshots" ON public.payroll_snapshots;
     CREATE POLICY "Anon Access Payroll Snapshots" ON public.payroll_snapshots FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
@@ -485,9 +513,6 @@ BEGIN
 
     DROP POLICY IF EXISTS "Anon Access Audit Logs" ON public.audit_logs;
     CREATE POLICY "Anon Access Audit Logs" ON public.audit_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-
-    DROP POLICY IF EXISTS "Anon Access Employee History" ON public.employee_history;
-    CREATE POLICY "Anon Access Employee History" ON public.employee_history FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 END $$;
 
 -- ==============================================================================
@@ -501,6 +526,9 @@ ALTER TABLE public.employees REPLICA IDENTITY FULL;
 ALTER TABLE public.payroll_variables REPLICA IDENTITY FULL;
 ALTER TABLE public.paye_tax_variables REPLICA IDENTITY FULL;
 ALTER TABLE public.employee_loans REPLICA IDENTITY FULL;
+ALTER TABLE public.employee_contributions REPLICA IDENTITY FULL;
+ALTER TABLE public.contribution_payouts REPLICA IDENTITY FULL;
+ALTER TABLE public.employee_absences REPLICA IDENTITY FULL;
 ALTER TABLE public.payroll_snapshots REPLICA IDENTITY FULL;
 ALTER TABLE public.payslip_designs REPLICA IDENTITY FULL;
 ALTER TABLE public.payslip_presets REPLICA IDENTITY FULL;
@@ -521,6 +549,9 @@ DECLARE
         'payroll_variables', 
         'paye_tax_variables', 
         'employee_loans', 
+        'employee_contributions',
+        'contribution_payouts',
+        'employee_absences',
         'payroll_snapshots',
         'payslip_designs',
         'payslip_presets',

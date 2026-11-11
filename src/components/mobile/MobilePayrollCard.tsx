@@ -47,6 +47,25 @@ export const MobilePayrollCard: React.FC<MobilePayrollCardProps> = ({
             <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium tracking-wide uppercase mt-0.5">
               {item.department || 'General'}
             </p>
+            {(item.isSection5CapExceeded || (item.unpaidAbsenceDays && item.unpaidAbsenceDays > 0) || (item.contributionDeduction && item.contributionDeduction > 0)) && (
+              <div className="flex items-center gap-1 flex-wrap mt-1">
+                {item.isSection5CapExceeded && (
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    ⚠️ &gt;1/3 Cap
+                  </span>
+                )}
+                {Boolean(item.unpaidAbsenceDays && item.unpaidAbsenceDays > 0) && (
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800">
+                    -{item.unpaidAbsenceDays}d
+                  </span>
+                )}
+                {Boolean(item.contributionDeduction && item.contributionDeduction > 0) && (
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40">
+                    Welfare: -{formatNaira(item.contributionDeduction || 0)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

@@ -11,7 +11,7 @@ export interface CompanyDataRecord {
 export interface OfflineQueueRecord {
   id: string; // e.g. `${entity}-${action}-${entityId}-${Date.now()}`
   companyId?: string;
-  entity: 'employees' | 'departments' | 'employee_loans' | 'payroll_snapshots' | 'payroll_variables' | 'paye_tax_variables' | 'payslip_designs';
+  entity: 'employees' | 'departments' | 'employee_loans' | 'employee_contributions' | 'contribution_payouts' | 'employee_absences' | 'payroll_snapshots' | 'payroll_variables' | 'paye_tax_variables' | 'payslip_designs';
   action: 'upsert' | 'delete';
   payload?: any;
   createdAt: string;

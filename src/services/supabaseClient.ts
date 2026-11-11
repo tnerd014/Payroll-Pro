@@ -11,7 +11,10 @@ import {
   PayslipDesignConfig, 
   PayslipCustomPreset,
   TeamMember,
-  AuditLogEntry
+  AuditLogEntry,
+  EmployeeContribution,
+  ContributionPayout,
+  EmployeeAbsenceRecord
 } from '../types';
 import { hashCredential, verifyCredential, isBcryptHash } from '../utils/cryptoAuth';
 
@@ -511,6 +514,25 @@ export function broadcastEmailSettingsUpdate(companyId: string, settings: any): 
   }
 }
 
+/**
+ * Broadcasts updated WhatsApp settings across the team presence channel to all connected
+ * devices and sessions immediately, without needing manual reloads or database polling.
+ */
+export function broadcastWhatsAppSettingsUpdate(companyId: string, settings: any): void {
+  try {
+    if (presenceChannel) {
+      presenceChannel.send({
+        type: 'broadcast',
+        event: 'whatsapp-settings-updated',
+        payload: { companyId, settings },
+      }).catch(() => {});
+    }
+    window.dispatchEvent(new CustomEvent('whatsapp-settings-updated', { detail: { companyId, settings } }));
+  } catch (e) {
+    console.warn('Failed to broadcast WhatsApp settings update:', e);
+  }
+}
+
 
 
 /**
@@ -528,7 +550,14 @@ export async function uploadCompanyDataToSupabase(
   savedPresets?: PayslipCustomPreset[],
   emailSettings?: any,
   emailedPayslips?: Record<string, any>,
-  options?: { dirtyEmployeeIds?: Set<string> | string[]; forceOverwrite?: boolean }
+  options?: {
+    dirtyEmployeeIds?: Set<string> | string[];
+    forceOverwrite?: boolean;
+    contributions?: EmployeeContribution[];
+    payouts?: ContributionPayout[];
+    absences?: EmployeeAbsenceRecord[];
+    whatsappSettings?: any;
+  }
 ): Promise<{ success: boolean; error?: string }> {
   const client = getSupabaseClient();
   if (!client) {
@@ -554,15 +583,17 @@ export async function uploadCompanyDataToSupabase(
       security_answer: company.securityAnswer ? hashCredential(company.securityAnswer) : '',
       email_settings: emailSettings || {},
       emailed_payslips: emailedPayslips || {},
+      whatsapp_settings: options?.whatsappSettings || {},
       updated_at: new Date().toISOString(),
     };
 
     let { error: compErr } = await client.from('companies').upsert(companyPayload);
-    // Graceful fallback: If email_settings or emailed_payslips column hasn't been added to companies table yet, retry without them
-    if (compErr && compErr.message && (compErr.message.includes('email_settings') || compErr.message.includes('emailed_payslips'))) {
+    // Graceful fallback: If email_settings, emailed_payslips or whatsapp_settings column hasn't been added to companies table yet, retry without them
+    if (compErr && compErr.message && (compErr.message.includes('email_settings') || compErr.message.includes('emailed_payslips') || compErr.message.includes('whatsapp_settings'))) {
       const fallbackPayload = { ...companyPayload };
       delete fallbackPayload.email_settings;
       delete fallbackPayload.emailed_payslips;
+      delete fallbackPayload.whatsapp_settings;
       const retryRes = await client.from('companies').upsert(fallbackPayload);
       compErr = retryRes.error;
     }
@@ -645,6 +676,7 @@ export async function uploadCompanyDataToSupabase(
           status: e.status || 'Active',
           employment_type: e.employmentType || 'Full-Time',
           state_of_residence: e.stateOfResidence || 'Lagos',
+          work_schedule: e.workSchedule || '5-day',
           start_date: e.startDate || '',
           end_date: e.endDate || '',
           original_hire_date: e.originalHireDate || '',
@@ -680,6 +712,8 @@ export async function uploadCompanyDataToSupabase(
       salary_calculation_mode: payrollVariables.salaryCalculationMode || 'gross-to-net',
       employment_type_rules: payrollVariables.employmentTypeRules || [],
       prorate_mid_month: Boolean(payrollVariables.prorateMidMonth),
+      workday_divisor_rule: payrollVariables.workdayDivisorRule || 'actual_weekdays',
+      section5_cap_enforcement: payrollVariables.section5CapEnforcement || 'advisory_warning',
       updated_at: new Date().toISOString(),
     });
 
@@ -771,11 +805,108 @@ export async function uploadCompanyDataToSupabase(
       }
     }
 
+    // 10. Upsert Employee Contributions
+    if (options?.contributions && options.contributions.length > 0) {
+      const contribRows = options.contributions.map(c => ({
+        id: c.id,
+        company_id: companyId,
+        employee_id: c.employeeId,
+        period_key: c.periodKey,
+        scheme_name: c.schemeName || 'Staff Welfare Fund',
+        amount: Number(c.amount) || 0,
+        is_percentage: Boolean(c.isPercentage),
+        rate: Number(c.rate) || 0,
+        notes: c.notes || '',
+        updated_at: new Date().toISOString(),
+      }));
+      await client.from('employee_contributions').upsert(contribRows);
+    }
+
+    // 11. Upsert Contribution Payouts
+    if (options?.payouts && options.payouts.length > 0) {
+      const payoutRows = options.payouts.map(p => ({
+        id: p.id,
+        company_id: companyId,
+        employee_id: p.employeeId,
+        scheme_name: p.schemeName || 'Staff Welfare Fund',
+        amount: Number(p.amount) || 0,
+        payout_date: p.payoutDate || '',
+        reason: p.reason || 'annual_payout',
+        payment_method: p.paymentMethod || 'bank_transfer',
+        reference_no: p.referenceNo || '',
+        notes: p.notes || '',
+        updated_at: new Date().toISOString(),
+      }));
+      await client.from('contribution_payouts').upsert(payoutRows);
+    }
+
+    // 12. Upsert Employee Absences
+    if (options?.absences && options.absences.length > 0) {
+      const absRows = options.absences.map(a => ({
+        id: a.id,
+        company_id: companyId,
+        employee_id: a.employeeId,
+        period_key: a.periodKey,
+        days_absent: Number(a.daysAbsent) || 0,
+        absence_type: a.absenceType || 'unauthorized_absence',
+        deduction_amount: Number(a.deductionAmount) || 0,
+        custom_override: Boolean(a.customOverride),
+        notes: a.notes || '',
+        dates: a.dates || [],
+        updated_at: new Date().toISOString(),
+      }));
+      await client.from('employee_absences').upsert(absRows);
+    }
+
     return { success: true };
   } catch (err: any) {
     console.error('Failed to upload data to Supabase:', err);
     return { success: false, error: err?.message || 'Upload failed' };
   }
+}
+
+/**
+ * Fetches all rows for a company across pagination boundaries (bypasses Supabase 1,000-row limit)
+ */
+async function fetchPaginatedCompanyRows<T = any>(
+  client: SupabaseClient,
+  table: string,
+  companyId: string,
+  orderCol?: string,
+  ascending = true
+): Promise<T[]> {
+  const CHUNK_SIZE = 1000;
+  let allRows: T[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = client
+      .from(table)
+      .select('*')
+      .eq('company_id', companyId)
+      .range(from, from + CHUNK_SIZE - 1);
+
+    if (orderCol) {
+      query = query.order(orderCol, { ascending });
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      console.warn(`Error fetching paginated ${table} from index ${from}:`, error);
+      break;
+    }
+    if (!data || data.length === 0) {
+      break;
+    }
+    allRows = allRows.concat(data as T[]);
+    if (data.length < CHUNK_SIZE) {
+      hasMore = false;
+    } else {
+      from += CHUNK_SIZE;
+    }
+  }
+  return allRows;
 }
 
 /**
@@ -794,6 +925,10 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
   savedPayslipPresets?: PayslipCustomPreset[];
   emailSettings?: any;
   emailedPayslips?: Record<string, any>;
+  whatsappSettings?: any;
+  contributions?: EmployeeContribution[];
+  payouts?: ContributionPayout[];
+  absences?: EmployeeAbsenceRecord[];
   error?: string;
 }> {
   const client = getSupabaseClient();
@@ -813,12 +948,8 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       throw new Error(`Failed to load company: ${compErr.message}`);
     }
 
-    // 2. Fetch Employees
-    const { data: empData } = await client
-      .from('employees')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('code');
+    // 2. Fetch Employees (paginated)
+    const empData = await fetchPaginatedCompanyRows(client, 'employees', companyId, 'code', true);
 
     // 3. Fetch Departments
     const { data: deptData } = await client
@@ -840,18 +971,11 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       .eq('company_id', companyId)
       .single();
 
-    // 6. Fetch Loans
-    const { data: loanData } = await client
-      .from('employee_loans')
-      .select('*')
-      .eq('company_id', companyId);
+    // 6. Fetch Loans (paginated)
+    const loanData = await fetchPaginatedCompanyRows(client, 'employee_loans', companyId);
 
-    // 7. Fetch Snapshots
-    const { data: snapData } = await client
-      .from('payroll_snapshots')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false });
+    // 7. Fetch Snapshots (paginated)
+    const snapData = await fetchPaginatedCompanyRows(client, 'payroll_snapshots', companyId, 'created_at', false);
 
     // 8. Fetch Payslip Design
     const { data: pdData } = await client
@@ -866,6 +990,15 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       .select('*')
       .eq('company_id', companyId)
       .order('created_at', { ascending: true });
+
+    // 10. Fetch Employee Contributions (paginated - crucial for 5-year data exceeding 1,000 rows)
+    const contribData = await fetchPaginatedCompanyRows(client, 'employee_contributions', companyId);
+
+    // 11. Fetch Contribution Payouts (paginated)
+    const payoutData = await fetchPaginatedCompanyRows(client, 'contribution_payouts', companyId);
+
+    // 12. Fetch Employee Absences (paginated)
+    const absData = await fetchPaginatedCompanyRows(client, 'employee_absences', companyId);
 
     const formattedCompany: CompanyProfile | undefined = compData ? {
       id: compData.id,
@@ -887,6 +1020,9 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       : undefined;
     const cloudEmailedPayslips = (compData && compData.emailed_payslips && Object.keys(compData.emailed_payslips).length > 0)
       ? compData.emailed_payslips
+      : undefined;
+    const cloudWhatsAppSettings = (compData && compData.whatsapp_settings && Object.keys(compData.whatsapp_settings).length > 0)
+      ? compData.whatsapp_settings
       : undefined;
 
     const formattedEmployees: Employee[] = (empData || []).map(e => ({
@@ -911,6 +1047,7 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       status: (e.status as any) || 'Active',
       employmentType: e.employment_type || 'Full-Time',
       stateOfResidence: e.state_of_residence || 'Lagos',
+      workSchedule: (e.work_schedule as any) || '5-day',
       startDate: e.start_date || '',
       endDate: e.end_date || '',
       originalHireDate: e.original_hire_date || '',
@@ -967,6 +1104,8 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
         salaryCalculationMode: pvData.salary_calculation_mode || 'gross-to-net',
         employmentTypeRules: pvData.employment_type_rules || [],
         prorateMidMonth: Boolean(pvData.prorate_mid_month),
+        workdayDivisorRule: pvData.workday_divisor_rule || 'actual_weekdays',
+        section5CapEnforcement: pvData.section5_cap_enforcement || 'advisory_warning',
       } : undefined,
       payeTaxVariables: ptvData ? {
         craBase: Number(ptvData.cra_base) || 800000,
@@ -986,6 +1125,45 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       })),
       emailSettings: cloudEmailSettings,
       emailedPayslips: cloudEmailedPayslips,
+      whatsappSettings: cloudWhatsAppSettings,
+      contributions: (contribData || []).map(c => ({
+        id: c.id,
+        employeeId: c.employee_id,
+        periodKey: c.period_key,
+        schemeName: c.scheme_name || 'Staff Welfare Fund',
+        amount: Number(c.amount) || 0,
+        isPercentage: Boolean(c.is_percentage),
+        rate: Number(c.rate) || 0,
+        notes: c.notes || '',
+        createdAt: c.created_at,
+        updatedAt: c.updated_at,
+      })),
+      payouts: (payoutData || []).map(p => ({
+        id: p.id,
+        employeeId: p.employee_id,
+        schemeName: p.scheme_name || 'Staff Welfare Fund',
+        amount: Number(p.amount) || 0,
+        payoutDate: p.payout_date || '',
+        reason: p.reason || 'annual_payout',
+        paymentMethod: p.payment_method || 'bank_transfer',
+        referenceNo: p.reference_no || '',
+        notes: p.notes || '',
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      })),
+      absences: (absData || []).map(a => ({
+        id: a.id,
+        employeeId: a.employee_id,
+        periodKey: a.period_key,
+        daysAbsent: Number(a.days_absent) || 0,
+        absenceType: a.absence_type || 'unauthorized_absence',
+        deductionAmount: Number(a.deduction_amount) || 0,
+        customOverride: Boolean(a.custom_override),
+        notes: a.notes || '',
+        dates: Array.isArray(a.dates) ? a.dates : [],
+        createdAt: a.created_at,
+        updatedAt: a.updated_at,
+      })),
     };
   } catch (err: any) {
     console.error('Failed to download company data from Supabase:', err);
@@ -1295,9 +1473,16 @@ export async function logAuditEvent(
   const actorId = activeMember?.id || 'admin';
   const nowIso = new Date().toISOString();
 
+  const logId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = (Math.random() * 16) | 0;
+        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+      });
+
   // 1. Record to local audit cache immediately
   const localEntry: AuditLogEntry = {
-    id: 'audit-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+    id: logId,
     companyId: companyId || '',
     companyName: companyName || '',
     actorId,
@@ -1316,6 +1501,7 @@ export async function logAuditEvent(
 
   try {
     await client.from('audit_logs').insert({
+      id: logId,
       company_id: companyId || '',
       company_name: companyName || '',
       actor_id: actorId,
@@ -1630,6 +1816,72 @@ export async function deleteSnapshotFromCloud(snapshotId: string, companyId?: st
 }
 
 /**
+ * Deletes an employee contribution record from the cloud database
+ */
+export async function deleteContributionFromCloud(contribId: string, companyId?: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    let query = client.from('employee_contributions').delete().eq('id', contribId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to delete contribution from cloud:', err);
+    return { success: false, error: err?.message || 'Failed to delete contribution' };
+  }
+}
+
+/**
+ * Deletes a contribution payout disbursement record from the cloud database
+ */
+export async function deletePayoutFromCloud(payoutId: string, companyId?: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    let query = client.from('contribution_payouts').delete().eq('id', payoutId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to delete payout from cloud:', err);
+    return { success: false, error: err?.message || 'Failed to delete payout' };
+  }
+}
+
+/**
+ * Deletes an employee absence record from the cloud database
+ */
+export async function deleteAbsenceFromCloud(absenceId: string, companyId?: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    let query = client.from('employee_absences').delete().eq('id', absenceId);
+    if (companyId) query = query.eq('company_id', companyId);
+    const { error } = await query;
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to delete absence from cloud:', err);
+    return { success: false, error: err?.message || 'Failed to delete absence' };
+  }
+}
+
+/**
  * Deletes a department record from the cloud database
  */
 export async function deleteDepartmentFromCloud(deptName: string, companyId: string): Promise<{
@@ -1934,6 +2186,50 @@ export async function saveEmailSettingsToCloud(settings: any, companyId: string)
   } catch (err: any) {
     console.error('Failed to save email settings to cloud:', err);
     return { success: false, error: err?.message || 'Failed to save email settings' };
+  }
+}
+
+/**
+ * Saves company-specific WhatsApp dispatch configuration to the connected cloud database
+ */
+export async function saveWhatsAppSettingsToCloud(settings: any, companyId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const client = getSupabaseClient();
+  if (!client) return { success: false, error: 'Cloud server not connected.' };
+
+  try {
+    const { data, error } = await client
+      .from('companies')
+      .update({
+        whatsapp_settings: settings,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', companyId)
+      .select('id');
+
+    if (error) {
+      if (error.message && error.message.includes('whatsapp_settings')) {
+        console.warn('Supabase companies table is missing whatsapp_settings column. Please run schema migration.');
+        return { success: false, error: 'Database missing whatsapp_settings column.' };
+      }
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      await client.from('companies').upsert({
+        id: companyId,
+        whatsapp_settings: settings,
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    broadcastWhatsAppSettingsUpdate(companyId, settings);
+    return { success: true };
+  } catch (err: any) {
+    console.error('Failed to save WhatsApp settings to cloud:', err);
+    return { success: false, error: err?.message || 'Failed to save WhatsApp settings' };
   }
 }
 

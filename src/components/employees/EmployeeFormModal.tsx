@@ -116,6 +116,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     endDate: editingEmployee?.endDate || '',
     originalHireDate: editingEmployee?.originalHireDate || '',
     stints: editingEmployee?.stints || [],
+    workSchedule: editingEmployee?.workSchedule || '5-day',
   });
 
   const [activeYear, setActiveYear] = useState<number>(currentYear || 2026);
@@ -218,6 +219,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         endDate: editingEmployee.endDate || '',
         originalHireDate: editingEmployee.originalHireDate || '',
         stints: editingEmployee.stints || [],
+        workSchedule: editingEmployee.workSchedule || '5-day',
       });
       setMonthlySalaries(editingEmployee.monthlySalaries || {});
       setAnnualRents(editingEmployee.annualRents || {});
@@ -252,6 +254,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         endDate: '',
         originalHireDate: '',
         stints: [],
+        workSchedule: '5-day',
       });
       setMonthlySalaries({});
       setAnnualRents({});
@@ -608,6 +611,19 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Work Schedule
+                  </label>
+                  <select
+                    value={formData.workSchedule || '5-day'}
+                    onChange={e => setFormData(prev => ({ ...prev, workSchedule: e.target.value as '5-day' | '6-day' }))}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
+                  >
+                    <option value="5-day">5-Day (Mon–Fri Office)</option>
+                    <option value="6-day">6-Day (Mon–Sat Operations)</option>
                   </select>
                 </div>
                 <div className="sm:col-span-2 grid grid-cols-2 gap-2">
