@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Building2, 
-  ChevronDown, 
-  Sun, 
-  Moon, 
-  Lock, 
-  Unlock, 
+import {
+  Building2,
+  ChevronDown,
+  Sun,
+  Moon,
+  Lock,
+  Unlock,
   Smartphone,
   LogOut,
   User,
@@ -229,115 +229,115 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
   return (
     <>
       <header className="shrink-0 sticky top-0 z-40 bg-white dark:bg-[#09090b] border-b border-zinc-200/90 dark:border-zinc-800/90 select-none shadow-xs">
-      
-      {/* ── Top App Bar Row: Organization & Quick Actions (Spacious & Clean) ── */}
-      <div className="flex items-center justify-between px-3.5 py-2 gap-2">
-        
-        {/* Left: Company Selector Pill (Expanded width, never crushed) */}
-        <button
-          type="button"
-          onClick={() => setIsCompanySheetOpen(true)}
-          className="flex-1 min-w-0 flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 transition-colors text-left border border-zinc-200/60 dark:border-zinc-700/50 cursor-pointer active:scale-[0.98]"
-        >
-          {company.logoUrl ? (
-            <img 
-              src={company.logoUrl} 
-              alt={company.name} 
-              className="w-7 h-7 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shrink-0 shadow-xs" 
-            />
-          ) : (
-            <div className="w-7 h-7 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-              {company.name?.charAt(0) || 'P'}
+
+        {/* ── Top App Bar Row: Organization & Quick Actions (Spacious & Clean) ── */}
+        <div className="flex items-center justify-between px-3.5 py-2 gap-2">
+
+          {/* Left: Company Selector Pill (Expanded width, never crushed) */}
+          <button
+            type="button"
+            onClick={() => setIsCompanySheetOpen(true)}
+            className="flex-1 min-w-0 flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 transition-colors text-left border border-zinc-200/60 dark:border-zinc-700/50 cursor-pointer active:scale-[0.98]"
+          >
+            {company.logoUrl ? (
+              <img
+                src={company.logoUrl}
+                alt={company.name}
+                className="w-7 h-7 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shrink-0 shadow-xs"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                {company.name?.charAt(0) || 'P'}
+              </div>
+            )}
+
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate leading-tight">
+                {company.name || 'Payroll Pro'}
+              </span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block truncate leading-none mt-0.5">
+                Tap to switch workspace
+              </span>
             </div>
-          )}
 
-          <div className="min-w-0 flex-1">
-            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate leading-tight">
-              {company.name || 'Payroll Pro'}
-            </span>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block truncate leading-none mt-0.5">
-              Tap to switch workspace
-            </span>
-          </div>
-
-          <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-        </button>
-
-        {/* Right Action Icons */}
-        <div className="flex items-center gap-1 shrink-0">
-          {availableUpdate && (
-            <button
-              type="button"
-              onClick={handleCheckForUpdates}
-              className="px-2 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
-              title={`Update v${availableUpdate.latestVersion} available`}
-            >
-              <Download className="w-3 h-3" />
-              <span>v{availableUpdate.latestVersion}</span>
-            </button>
-          )}
-
-          {/* Privacy Shield Toggle */}
-          <button
-            type="button"
-            onClick={handleTogglePrivacyMask}
-            className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-            title={privacyMask ? 'Disable Privacy Shield (Show Figures)' : 'Enable Privacy Shield (Mask Figures)'}
-            aria-label={privacyMask ? 'Disable Privacy Shield' : 'Enable Privacy Shield'}
-          >
-            {privacyMask ? <EyeOff className="w-3.5 h-3.5 text-teal-500" /> : <Eye className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-300" />}
+            <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
           </button>
 
-          {/* Light / Dark Mode Toggle */}
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-            title={isDarkTheme ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {isDarkTheme ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-zinc-600" />}
-          </button>
+          {/* Right Action Icons */}
+          <div className="flex items-center gap-1 shrink-0">
+            {availableUpdate && (
+              <button
+                type="button"
+                onClick={handleCheckForUpdates}
+                className="px-2 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                title={`Update v${availableUpdate.latestVersion} available`}
+              >
+                <Download className="w-3 h-3" />
+                <span>v{availableUpdate.latestVersion}</span>
+              </button>
+            )}
 
-          {/* User Profile Avatar Dropdown */}
-          <div className="relative" ref={userMenuRef}>
+            {/* Privacy Shield Toggle */}
             <button
               type="button"
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 text-white font-bold text-xs flex items-center justify-center border border-zinc-300 dark:border-zinc-700 shadow-xs cursor-pointer"
+              onClick={handleTogglePrivacyMask}
+              className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+              title={privacyMask ? 'Disable Privacy Shield (Show Figures)' : 'Enable Privacy Shield (Mask Figures)'}
+              aria-label={privacyMask ? 'Disable Privacy Shield' : 'Enable Privacy Shield'}
             >
-              {currentUser?.name?.charAt(0).toUpperCase() || 'A'}
+              {privacyMask ? <EyeOff className="w-3.5 h-3.5 text-teal-500" /> : <Eye className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-300" />}
             </button>
 
-            {isUserMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-3 z-50 space-y-2 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center gap-2.5 pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
-                    {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                      {currentUser?.name || 'Administrator'}
-                    </p>
-                    <p className="text-[10px] text-zinc-500 truncate">
-                      {currentUser?.email || 'admin@payrollpro.app'}
-                    </p>
-                  </div>
-                </div>
+            {/* Light / Dark Mode Toggle */}
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800/80 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+              title={isDarkTheme ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDarkTheme ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-zinc-600" />}
+            </button>
 
-                <div className="space-y-1">
-                  {!isLocalUser && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        onNavigate('profile');
-                      }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer font-medium"
-                    >
-                      <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>Profile</span>
-                    </button>
-                  )}
+            {/* User Profile Avatar Dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900 text-white font-bold text-xs flex items-center justify-center border border-zinc-300 dark:border-zinc-700 shadow-xs cursor-pointer"
+              >
+                {currentUser?.name?.charAt(0).toUpperCase() || 'A'}
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-3 z-50 space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center gap-2.5 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
+                      {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                        {currentUser?.name || 'Administrator'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 truncate">
+                        {currentUser?.email || 'admin@payrollpro.app'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    {!isLocalUser && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          onNavigate('profile');
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer font-medium"
+                      >
+                        <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Profile</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -375,183 +375,179 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
                 </div>
               )}
             </div>
-        </div>
-
-      </div>
-
-      {/* ── 3. Dedicated Material 3 Cycle Period Sub-Header (Only on cycle-driven views: Dashboard & Payroll) ── */}
-      {showPeriodSelector && (
-        <div className="px-3 py-1.5 border-t border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/70 dark:bg-zinc-900/40 flex items-center justify-between">
-          
-          {/* Left: Previous month button */}
-          <button
-            type="button"
-            onClick={handlePrevMonth}
-            className="w-7 h-7 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors shadow-2xs cursor-pointer active:scale-95"
-            title="Previous Month"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          {/* Center: Clickable Period Title → opens calendar picker */}
-          <div className="relative" ref={periodPickerRef}>
-            <button
-              type="button"
-              onClick={() => {
-                setPickerYear(selectedYear);
-                setIsPeriodPickerOpen(!isPeriodPickerOpen);
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl hover:bg-zinc-200/60 dark:hover:bg-zinc-700/60 active:scale-95 transition-all cursor-pointer"
-              title="Pick month & year"
-            >
-              <span className="text-xs font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
-                {currentMonthLabel} {selectedYear}
-              </span>
-              <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform duration-200 ${isPeriodPickerOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isLocked && (
-              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/10 border border-amber-500/20" title="Payroll Locked">
-                <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
-              </span>
-            )}
-
-            {/* ── Calendar Dropdown Picker ── */}
-            {isPeriodPickerOpen && (
-              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-1 duration-150">
-                {/* Year navigator */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
-                  <button
-                    type="button"
-                    onClick={() => setPickerYear(y => y - 1)}
-                    className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition cursor-pointer active:scale-90"
-                  >
-                    <ChevronLeft className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
-                  </button>
-                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono">{pickerYear}</span>
-                  <button
-                    type="button"
-                    onClick={() => setPickerYear(y => y + 1)}
-                    className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition cursor-pointer active:scale-90"
-                  >
-                    <ChevronRight className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
-                  </button>
-                </div>
-
-                {/* Month grid */}
-                <div className="grid grid-cols-4 gap-1.5 p-3">
-                  {MONTHS.map((m) => {
-                    const isSelected = m.key === selectedMonth && pickerYear === selectedYear;
-                    return (
-                      <button
-                        key={m.key}
-                        type="button"
-                        onClick={() => {
-                          onPeriodChange(m.key, pickerYear);
-                          setIsPeriodPickerOpen(false);
-                        }}
-                        className={`h-9 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 ${
-                          isSelected
-                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                        }`}
-                      >
-                        {m.label.slice(0, 3)}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Done button */}
-                <div className="px-3 pb-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsPeriodPickerOpen(false)}
-                    className="w-full h-9 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold hover:opacity-90 active:scale-[0.98] transition cursor-pointer"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Right: Next month button */}
-          <button
-            type="button"
-            onClick={handleNextMonth}
-            className="w-7 h-7 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors shadow-2xs cursor-pointer active:scale-95"
-            title="Next Month"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-
         </div>
-      )}
-    </header>
 
-    {/* ── 4. Android Bottom Sheet for Company / Organization Switching ── */}
-    <MobileBottomSheet
-      isOpen={isCompanySheetOpen}
-      onClose={() => setIsCompanySheetOpen(false)}
-      title="Switch Organization"
-    >
-      <div className="space-y-2">
-        {companies.map((c) => {
-          const isCurrent = c.id === activeCompanyId;
-          return (
+        {/* ── 3. Dedicated Material 3 Cycle Period Sub-Header (Only on cycle-driven views: Dashboard & Payroll) ── */}
+        {showPeriodSelector && (
+          <div className="px-3 py-1.5 border-t border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/70 dark:bg-zinc-900/40 flex items-center justify-between">
+
+            {/* Left: Previous month button */}
             <button
-              key={c.id}
+              type="button"
+              onClick={handlePrevMonth}
+              className="w-7 h-7 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors shadow-2xs cursor-pointer active:scale-95"
+              title="Previous Month"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Center: Clickable Period Title → opens calendar picker */}
+            <div className="relative" ref={periodPickerRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setPickerYear(selectedYear);
+                  setIsPeriodPickerOpen(!isPeriodPickerOpen);
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl hover:bg-zinc-200/60 dark:hover:bg-zinc-700/60 active:scale-95 transition-all cursor-pointer"
+                title="Pick month & year"
+              >
+                <span className="text-xs font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
+                  {currentMonthLabel} {selectedYear}
+                </span>
+                <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform duration-200 ${isPeriodPickerOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isLocked && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500/10 border border-amber-500/20" title="Payroll Locked">
+                  <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                </span>
+              )}
+
+              {/* ── Calendar Dropdown Picker ── */}
+              {isPeriodPickerOpen && (
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-1 duration-150">
+                  {/* Year navigator */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => setPickerYear(y => y - 1)}
+                      className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition cursor-pointer active:scale-90"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                    </button>
+                    <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 font-mono">{pickerYear}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPickerYear(y => y + 1)}
+                      className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition cursor-pointer active:scale-90"
+                    >
+                      <ChevronRight className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                    </button>
+                  </div>
+
+                  {/* Month grid */}
+                  <div className="grid grid-cols-4 gap-1.5 p-3">
+                    {MONTHS.map((m) => {
+                      const isSelected = m.key === selectedMonth && pickerYear === selectedYear;
+                      return (
+                        <button
+                          key={m.key}
+                          type="button"
+                          onClick={() => {
+                            onPeriodChange(m.key, pickerYear);
+                            setIsPeriodPickerOpen(false);
+                          }}
+                          className={`h-9 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 ${isSelected
+                              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                            }`}
+                        >
+                          {m.label.slice(0, 3)}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Done button */}
+                  <div className="px-3 pb-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsPeriodPickerOpen(false)}
+                      className="w-full h-9 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold hover:opacity-90 active:scale-[0.98] transition cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right: Next month button */}
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="w-7 h-7 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors shadow-2xs cursor-pointer active:scale-95"
+              title="Next Month"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+          </div>
+        )}
+      </header>
+
+      {/* ── 4. Android Bottom Sheet for Company / Organization Switching ── */}
+      <MobileBottomSheet
+        isOpen={isCompanySheetOpen}
+        onClose={() => setIsCompanySheetOpen(false)}
+        title="Switch Organization"
+      >
+        <div className="space-y-2">
+          {companies.map((c) => {
+            const isCurrent = c.id === activeCompanyId;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => {
+                  setIsCompanySheetOpen(false);
+                  onSelectCompany(c.id);
+                }}
+                className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left cursor-pointer active:scale-[0.99] ${isCurrent
+                    ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-500/40 shadow-xs'
+                    : 'bg-zinc-50 dark:bg-zinc-900/60 border-zinc-200/80 dark:border-zinc-800/80 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-xs shrink-0 ${isCurrent
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200'
+                    }`}>
+                    {c.name?.charAt(0) || 'C'}
+                  </div>
+
+                  <p className={`text-xs font-bold truncate ${isCurrent ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-900 dark:text-zinc-100'
+                    }`}>
+                    {c.name}
+                  </p>
+                </div>
+
+                {isCurrent && (
+                  <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
+
+          <div className="pt-2">
+            <button
               type="button"
               onClick={() => {
                 setIsCompanySheetOpen(false);
-                onSelectCompany(c.id);
+                onLockOrSwitchCompany?.();
               }}
-              className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left cursor-pointer active:scale-[0.99] ${
-                isCurrent
-                  ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-500/40 shadow-xs'
-                  : 'bg-zinc-50 dark:bg-zinc-900/60 border-zinc-200/80 dark:border-zinc-800/80 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-              }`}
+              className="w-full py-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-xs shrink-0 ${
-                  isCurrent 
-                    ? 'bg-emerald-600 text-white' 
-                    : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200'
-                }`}>
-                  {c.name?.charAt(0) || 'C'}
-                </div>
-
-                <p className={`text-xs font-bold truncate ${
-                  isCurrent ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-900 dark:text-zinc-100'
-                }`}>
-                  {c.name}
-                </p>
-              </div>
-
-              {isCurrent && (
-                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                  <Check className="w-3.5 h-3.5" />
-                </div>
-              )}
+              <Home className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+              <span>Home</span>
             </button>
-          );
-        })}
-
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              setIsCompanySheetOpen(false);
-              onLockOrSwitchCompany?.();
-            }}
-            className="w-full py-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
-          >
-            <Home className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
-            <span>Home</span>
-          </button>
+          </div>
         </div>
-      </div>
-    </MobileBottomSheet>
-  </>
-);
+      </MobileBottomSheet>
+    </>
+  );
 };
