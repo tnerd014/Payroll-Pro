@@ -4,4 +4,7 @@ dist
 *.log
 hs_err_pid*.log
 .DS_Store
-Thumbs.db
+Thumbs.db
+*.keystore
+*.jks
+keystore-base64.txt
