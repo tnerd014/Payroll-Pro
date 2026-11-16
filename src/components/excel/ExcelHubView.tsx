@@ -9,7 +9,9 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Employee, CalculatedPayrollItem, PayrollVariables, PayeTaxVariables, PayrollSnapshot, EmployeeLoan } from '../../types';
-import { exportPayrollProToExcel, parseEmployeesFromExcel } from '../../engine/excelEngine';
+import { exportPayrollProToExcel, parseEmployeesFromExcel, ExportOptions } from '../../engine/excelEngine';
+import { ExportScopeModal } from './ExportScopeModal';
+import { MONTHS } from '../../store/usePayrollStore';
 
 interface ExcelHubViewProps {
   employees: Employee[];
@@ -35,11 +37,40 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
   loans = []
 }) => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [parsedData, setParsedData] = useState<Partial<Employee>[] | null>(null);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [importMode, setImportMode] = useState<'merge' | 'overwrite'>('merge');
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const currentMonthKey = MONTHS.find(m => m.label.toLowerCase() === monthLabel.toLowerCase())?.key || 'jan';
+
+  const handleConfirmExport = (options: ExportOptions) => {
+    try {
+      const targetMonthLabel = options.selectedMonth
+        ? (MONTHS.find(m => m.key === options.selectedMonth)?.label || monthLabel)
+        : monthLabel;
+      const targetYear = options.selectedYear || year;
+
+      exportPayrollProToExcel(
+        employees,
+        payrollItems,
+        payrollVariables,
+        payeTaxVariables,
+        targetMonthLabel,
+        targetYear,
+        activeSnapshot,
+        undefined,
+        { ...options, loans },
+        loans
+      );
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
+    } catch (err) {
+      alert('Error exporting Excel workbook: ' + (err as Error).message);
+    }
+  };
 
   const handleDownloadWorkbook = () => {
     try {
@@ -124,13 +155,22 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={handleDownloadWorkbook}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>{downloadSuccess ? 'Downloaded!' : 'Download Payroll Workbook (.xlsx)'}</span>
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={handleDownloadWorkbook}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{downloadSuccess ? 'Downloaded!' : 'Quick Export (.xlsx)'}</span>
+            </button>
+            <button
+              onClick={() => setIsExportModalOpen(true)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Configure &amp; Export...</span>
+            </button>
+          </div>
         </div>
 
         {/* Import Card */}
@@ -277,6 +317,18 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Export Scope Modal */}
+      <ExportScopeModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onConfirm={handleConfirmExport}
+        currentMonthLabel={monthLabel}
+        currentMonthKey={currentMonthKey}
+        currentYear={year}
+        departments={Array.from(new Set(employees.map(e => e.department).filter(Boolean)))}
+        employmentTypeRules={payrollVariables.employmentTypeRules}
+      />
 
     </div>
   );

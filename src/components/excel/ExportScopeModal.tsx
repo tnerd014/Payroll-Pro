@@ -234,6 +234,8 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
               <option value="payroll-register">Master Payroll Register Only</option>
               <option value="bank-schedule">Bank Payment Schedule Only</option>
               <option value="statutory-remittance">Statutory Remittances (PAYE &amp; Pension)</option>
+              <option value="loans-schedule">Staff Loans &amp; Advances Schedule Only</option>
+              <option value="contributions-schedule">Staff Welfare &amp; Savings Schedule Only</option>
               <option value="staff-database">Staff Database Only</option>
             </select>
           </div>

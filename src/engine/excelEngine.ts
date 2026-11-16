@@ -20,6 +20,7 @@ export type ExportInformationScope =
   | 'bank-schedule' 
   | 'statutory-remittance' 
   | 'loans-schedule'
+  | 'contributions-schedule'
   | 'staff-database';
 
 export interface ExportOptions {
@@ -414,6 +415,16 @@ export function exportPayrollProToExcel(
     includeFormulas
   );
 
+  // 6B. STAFF WELFARE & CONTRIBUTIONS TAB
+  const wsWelfare = createWelfareContributionsSheet(
+    filteredItems,
+    filteredEmployees,
+    monthLabel,
+    year,
+    effectiveCompany,
+    includeFormulas
+  );
+
   // 7. ANNUAL 12-MONTH MATRIX
   const wsAnnual = createAnnualPayMatrixSheet(
     filteredEmployees,
@@ -433,6 +444,7 @@ export function exportPayrollProToExcel(
     XLSX.utils.book_append_sheet(wb, wsPaye, 'PAYE_Tax_Schedule');
     XLSX.utils.book_append_sheet(wb, wsPension, 'Pension_Remittance');
     XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
+    XLSX.utils.book_append_sheet(wb, wsWelfare, 'Welfare_Contributions');
     XLSX.utils.book_append_sheet(wb, wsAnnual, `Annual_Matrix_${year}`.slice(0, 31));
     XLSX.utils.book_append_sheet(wb, wsStaff, 'Staff_Database');
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
@@ -440,10 +452,15 @@ export function exportPayrollProToExcel(
     XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
     XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
     XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
+    XLSX.utils.book_append_sheet(wb, wsWelfare, 'Welfare_Contributions');
     XLSX.utils.book_append_sheet(wb, wsAnnual, `Annual_Matrix_${year}`.slice(0, 31));
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
   } else if (infoScope === 'loans-schedule') {
     XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
+    XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
+    XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
+  } else if (infoScope === 'contributions-schedule') {
+    XLSX.utils.book_append_sheet(wb, wsWelfare, 'Welfare_Contributions');
     XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
   } else if (infoScope === 'bank-schedule') {
@@ -765,6 +782,8 @@ function createMasterPayrollSheet(
       'Pensionable BHT (₦)',
       `Employee Pension (${(empPensionRate * 100).toFixed(0)}%)`,
       'Monthly PAYE Tax (₦)',
+      'Staff Loans / Advances (₦)',
+      'Welfare / Savings (₦)',
       'Total Deductions (₦)',
       'Net Take-Home Pay (₦)',
       `Employer Pension (${(compPensionRate * 100).toFixed(0)}%)`,
@@ -784,7 +803,7 @@ function createMasterPayrollSheet(
     const sn = index + 1;
     const enrolledPensionStr = item.hasPension ? 'YES' : 'NO';
     const loanDed = Math.round((item.loanDeduction || 0) * 100) / 100;
-    const dedFormula = loanDed > 0 ? `O${rowNum}+P${rowNum}+${loanDed}` : `O${rowNum}+P${rowNum}`;
+    const contribDed = Math.round((item.contributionDeduction || 0) * 100) / 100;
 
     let payeCell: any;
     if (includeFormulas) {
@@ -818,12 +837,14 @@ function createMasterPayrollSheet(
         { t: 'n', f: `ROUND(I${rowNum}*'Variables'!$C$8, 2)`, v: item.transport, z: CURRENCY_FORMAT },
         { t: 'n', f: `ROUND(I${rowNum}*'Variables'!$C$9, 2)`, v: item.otherAllowances, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUM(J${rowNum}:L${rowNum})`, v: item.pensionableBHT, z: CURRENCY_FORMAT },
-        { t: 'n', f: `IF(V${rowNum}="YES", ROUND(N${rowNum}*'Variables'!$C$12, 2), 0)`, v: item.employeePension, z: CURRENCY_FORMAT },
+        { t: 'n', f: `IF(X${rowNum}="YES", ROUND(N${rowNum}*'Variables'!$C$12, 2), 0)`, v: item.employeePension, z: CURRENCY_FORMAT },
         payeCell,
-        { t: 'n', f: dedFormula, v: item.totalDeductions, z: CURRENCY_FORMAT },
-        { t: 'n', f: `I${rowNum}-Q${rowNum}`, v: item.netTakeHome, z: CURRENCY_FORMAT },
-        { t: 'n', f: `IF(V${rowNum}="YES", ROUND(N${rowNum}*'Variables'!$C$13, 2), 0)`, v: item.employerPension, z: CURRENCY_FORMAT },
-        { t: 'n', f: `I${rowNum}+S${rowNum}`, v: item.employerTotalCost, z: CURRENCY_FORMAT },
+        { t: 'n', v: loanDed, z: CURRENCY_FORMAT },
+        { t: 'n', v: contribDed, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUM(O${rowNum}:R${rowNum})`, v: item.totalDeductions, z: CURRENCY_FORMAT },
+        { t: 'n', f: `I${rowNum}-S${rowNum}`, v: item.netTakeHome, z: CURRENCY_FORMAT },
+        { t: 'n', f: `IF(X${rowNum}="YES", ROUND(N${rowNum}*'Variables'!$C$13, 2), 0)`, v: item.employerPension, z: CURRENCY_FORMAT },
+        { t: 'n', f: `I${rowNum}+U${rowNum}`, v: item.employerTotalCost, z: CURRENCY_FORMAT },
         item.payeNumber || '',
         enrolledPensionStr,
         item.pensionNumber || '',
@@ -847,6 +868,8 @@ function createMasterPayrollSheet(
         { t: 'n', v: item.pensionableBHT, z: CURRENCY_FORMAT },
         { t: 'n', v: item.employeePension, z: CURRENCY_FORMAT },
         { t: 'n', v: item.monthlyPaye, z: CURRENCY_FORMAT },
+        { t: 'n', v: loanDed, z: CURRENCY_FORMAT },
+        { t: 'n', v: contribDed, z: CURRENCY_FORMAT },
         { t: 'n', v: item.totalDeductions, z: CURRENCY_FORMAT },
         { t: 'n', v: item.netTakeHome, z: CURRENCY_FORMAT },
         { t: 'n', v: item.employerPension, z: CURRENCY_FORMAT },
@@ -871,6 +894,8 @@ function createMasterPayrollSheet(
     const sumBht = items.reduce((s, i) => s + i.pensionableBHT, 0);
     const sumEmpPension = items.reduce((s, i) => s + i.employeePension, 0);
     const sumPaye = items.reduce((s, i) => s + i.monthlyPaye, 0);
+    const sumLoans = items.reduce((s, i) => s + (i.loanDeduction || 0), 0);
+    const sumContrib = items.reduce((s, i) => s + (i.contributionDeduction || 0), 0);
     const sumDed = items.reduce((s, i) => s + i.totalDeductions, 0);
     const sumNet = items.reduce((s, i) => s + i.netTakeHome, 0);
     const sumCompPension = items.reduce((s, i) => s + i.employerPension, 0);
@@ -894,10 +919,12 @@ function createMasterPayrollSheet(
         { t: 'n', f: `SUBTOTAL(109, N${startRow}:N${endRow})`, v: sumBht, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUBTOTAL(109, O${startRow}:O${endRow})`, v: sumEmpPension, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUBTOTAL(109, P${startRow}:P${endRow})`, v: sumPaye, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUBTOTAL(109, Q${startRow}:Q${endRow})`, v: sumDed, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUBTOTAL(109, R${startRow}:R${endRow})`, v: sumNet, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUBTOTAL(109, S${startRow}:S${endRow})`, v: sumCompPension, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUBTOTAL(109, T${startRow}:T${endRow})`, v: sumCost, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, Q${startRow}:Q${endRow})`, v: sumLoans, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, R${startRow}:R${endRow})`, v: sumContrib, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, S${startRow}:S${endRow})`, v: sumDed, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, T${startRow}:T${endRow})`, v: sumNet, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, U${startRow}:U${endRow})`, v: sumCompPension, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, V${startRow}:V${endRow})`, v: sumCost, z: CURRENCY_FORMAT },
         '',
         '',
         '',
@@ -921,6 +948,8 @@ function createMasterPayrollSheet(
         { t: 'n', v: sumBht, z: CURRENCY_FORMAT },
         { t: 'n', v: sumEmpPension, z: CURRENCY_FORMAT },
         { t: 'n', v: sumPaye, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumLoans, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumContrib, z: CURRENCY_FORMAT },
         { t: 'n', v: sumDed, z: CURRENCY_FORMAT },
         { t: 'n', v: sumNet, z: CURRENCY_FORMAT },
         { t: 'n', v: sumCompPension, z: CURRENCY_FORMAT },
@@ -956,6 +985,8 @@ function createMasterPayrollSheet(
     { wch: 18 }, // BHT
     { wch: 18 }, // Emp Pension
     { wch: 18 }, // PAYE
+    { wch: 18 }, // Staff Loans / Advances
+    { wch: 18 }, // Welfare / Savings
     { wch: 18 }, // Total Deductions
     { wch: 18 }, // Net Take-Home
     { wch: 18 }, // Employer Pension
@@ -1009,11 +1040,11 @@ function createExecutiveSummarySheet(
     aoa.push(
       ['Active Staff on Payroll', { t: 'n', f: `COUNTA('Payroll_Register'!$B$${masterStartRow}:$B$${masterEndRow})`, v: items.length, z: '#,##0' }, 'Total enrolled workforce headcount active for the period', '', ''],
       ['Total Gross Payroll Obligation', { t: 'n', f: `'Payroll_Register'!$I$${masterTotalRow}`, v: sumGross, z: CURRENCY_FORMAT }, 'Total gross contractual staff emoluments earned', '', ''],
-      ['Total Net Salary Disbursed', { t: 'n', f: `'Payroll_Register'!$R$${masterTotalRow}`, v: sumNet, z: CURRENCY_FORMAT }, 'Actual net cash transferred to employee bank accounts', '', ''],
+      ['Total Net Salary Disbursed', { t: 'n', f: `'Payroll_Register'!$T$${masterTotalRow}`, v: sumNet, z: CURRENCY_FORMAT }, 'Actual net cash transferred to employee bank accounts', '', ''],
       ['Total Statutory PAYE Tax Remittance', { t: 'n', f: `'Payroll_Register'!$P$${masterTotalRow}`, v: sumPaye, z: CURRENCY_FORMAT }, 'Monthly tax payable to State Internal Revenue Service (LIRS/FIRS)', '', ''],
-      ['Total Pension Remittance (18%)', { t: 'n', f: `'Payroll_Register'!$O$${masterTotalRow}+'Payroll_Register'!$S$${masterTotalRow}`, v: sumPensionTotal, z: CURRENCY_FORMAT }, 'Combined 8% employee + 10% employer matching pension to PFAs', '', ''],
-      ['Total Comprehensive Employer Cost', { t: 'n', f: `'Payroll_Register'!$T$${masterTotalRow}`, v: sumCost, z: CURRENCY_FORMAT }, 'Total corporate workforce financial liability (Gross + Employer Pension)', '', ''],
-      ['Effective Statutory Withholding Ratio', { t: 'n', f: `IF('Payroll_Register'!$I$${masterTotalRow}>0, 'Payroll_Register'!$Q$${masterTotalRow}/'Payroll_Register'!$I$${masterTotalRow}, 0)`, v: sumGross > 0 ? sumDed / sumGross : 0, z: '0.00%' }, 'Proportion of total gross salary withheld for statutory deductions', '', '']
+      ['Total Pension Remittance (18%)', { t: 'n', f: `'Payroll_Register'!$O$${masterTotalRow}+'Payroll_Register'!$U$${masterTotalRow}`, v: sumPensionTotal, z: CURRENCY_FORMAT }, 'Combined 8% employee + 10% employer matching pension to PFAs', '', ''],
+      ['Total Comprehensive Employer Cost', { t: 'n', f: `'Payroll_Register'!$V$${masterTotalRow}`, v: sumCost, z: CURRENCY_FORMAT }, 'Total corporate workforce financial liability (Gross + Employer Pension)', '', ''],
+      ['Effective Statutory Withholding Ratio', { t: 'n', f: `IF('Payroll_Register'!$I$${masterTotalRow}>0, 'Payroll_Register'!$S$${masterTotalRow}/'Payroll_Register'!$I$${masterTotalRow}, 0)`, v: sumGross > 0 ? sumDed / sumGross : 0, z: '0.00%' }, 'Proportion of total gross salary withheld for statutory deductions', '', '']
     );
   } else {
     aoa.push(
@@ -1058,11 +1089,11 @@ function createExecutiveSummarySheet(
         dept,
         { t: 'n', f: `COUNTIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}")`, v: deptItems.length, z: '#,##0' },
         { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$I$${masterStartRow}:$I$${masterEndRow})`, v: dGross, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$R$${masterStartRow}:$R$${masterEndRow})`, v: dNet, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$T$${masterStartRow}:$T$${masterEndRow})`, v: dNet, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$P$${masterStartRow}:$P$${masterEndRow})`, v: dPaye, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$O$${masterStartRow}:$O$${masterEndRow})+SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$S$${masterStartRow}:$S$${masterEndRow})`, v: dPension, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$T$${masterStartRow}:$T$${masterEndRow})`, v: dCost, z: CURRENCY_FORMAT },
-        { t: 'n', f: `IF('Payroll_Register'!$T$${masterTotalRow}>0, G${curRow}/'Payroll_Register'!$T$${masterTotalRow}, 0)`, v: sumCost > 0 ? dCost / sumCost : 0, z: '0.00%' }
+        { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$O$${masterStartRow}:$O$${masterEndRow})+SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$U$${masterStartRow}:$U$${masterEndRow})`, v: dPension, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$V$${masterStartRow}:$V$${masterEndRow})`, v: dCost, z: CURRENCY_FORMAT },
+        { t: 'n', f: `IF('Payroll_Register'!$V$${masterTotalRow}>0, G${curRow}/'Payroll_Register'!$V$${masterTotalRow}, 0)`, v: sumCost > 0 ? dCost / sumCost : 0, z: '0.00%' }
       ]);
     } else {
       aoa.push([
@@ -1132,8 +1163,8 @@ function createExecutiveSummarySheet(
         type,
         { t: 'n', f: `COUNTIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}")`, v: tItems.length, z: '#,##0' },
         { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$I$${masterStartRow}:$I$${masterEndRow})`, v: tGross, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$R$${masterStartRow}:$R$${masterEndRow})`, v: tNet, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$Q$${masterStartRow}:$Q$${masterEndRow})`, v: tDed, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$T$${masterStartRow}:$T$${masterEndRow})`, v: tNet, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$S$${masterStartRow}:$S$${masterEndRow})`, v: tDed, z: CURRENCY_FORMAT },
         policy
       ]);
     } else {
@@ -1204,7 +1235,7 @@ function createBankDisbursementSheet(
         item.accountNumber, // String preserving leading zeroes
         item.fullName,
         item.bankName,
-        { t: 'n', f: `'Payroll_Register'!R${masterRow}`, v: Math.round(item.netTakeHome * 100) / 100, z: CURRENCY_FORMAT },
+        { t: 'n', f: `'Payroll_Register'!T${masterRow}`, v: Math.round(item.netTakeHome * 100) / 100, z: CURRENCY_FORMAT },
         `SALARY ${monthLabel.toUpperCase()} ${year}`,
         item.employeeCode,
         item.department,
@@ -1449,7 +1480,7 @@ function createPensionRemittanceSheet(
         item.pensionNumber || 'NOT REGISTERED',
         { t: 'n', f: `'Payroll_Register'!N${masterRow}`, v: item.pensionableBHT, z: CURRENCY_FORMAT },
         { t: 'n', f: `'Payroll_Register'!O${masterRow}`, v: item.employeePension, z: CURRENCY_FORMAT },
-        { t: 'n', f: `'Payroll_Register'!S${masterRow}`, v: item.employerPension, z: CURRENCY_FORMAT },
+        { t: 'n', f: `'Payroll_Register'!U${masterRow}`, v: item.employerPension, z: CURRENCY_FORMAT },
         { t: 'n', f: `G${rowNum}+H${rowNum}`, v: item.employeePension + item.employerPension, z: CURRENCY_FORMAT },
         item.department,
       ]);
@@ -1687,6 +1718,140 @@ function createLoansScheduleSheet(
 }
 
 /**
+ * 6B. STAFF WELFARE & VOLUNTARY SAVINGS CONTRIBUTIONS SCHEDULE TAB
+ * Summary of voluntary staff welfare deductions, savings contributions, and cooperative schemes.
+ */
+function createWelfareContributionsSheet(
+  items: CalculatedPayrollItem[],
+  employees: Employee[],
+  monthLabel: string,
+  year: number,
+  company: CompanyProfile,
+  includeFormulas: boolean
+): XLSX.WorkSheet {
+  const aoa: any[][] = [
+    [company.name.toUpperCase()],
+    [`STAFF WELFARE & VOLUNTARY SAVINGS CONTRIBUTIONS SCHEDULE - ${monthLabel.toUpperCase()} ${year}`],
+    [`Employee Voluntary Savings, Welfare Deductions & Retained Ledger  |  Currency: NGN (₦)`],
+    [],
+    [
+      'S/N',
+      'Staff Code',
+      'Employee Full Name',
+      'Department',
+      'Employment Type',
+      'Monthly Gross (₦)',
+      'Schemes / Welfare Purposes',
+      'Monthly Deduction (₦)',
+      'Net Pay After Savings (₦)',
+      'Bank Name',
+      'Account Number',
+      'Remarks / Status'
+    ]
+  ];
+
+  const headerRowIdx = 5;
+  const contributingItems = items.filter(i => (i.contributionDeduction || 0) > 0);
+
+  if (contributingItems.length === 0) {
+    aoa.push([
+      1,
+      '-',
+      'No Active Welfare or Voluntary Savings Deductions',
+      '-',
+      '-',
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      'No contribution schemes logged for this period',
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      '-',
+      '-',
+      'Active'
+    ]);
+  } else {
+    contributingItems.forEach((item, index) => {
+      const schemeText = (item.contributionDetails && item.contributionDetails.length > 0)
+        ? item.contributionDetails.map(d => `${d.schemeName} (₦${Number(d.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })})`).join(', ')
+        : 'Staff Welfare Fund';
+      const contrib = Number(item.contributionDeduction) || 0;
+
+      aoa.push([
+        index + 1,
+        item.employeeCode,
+        item.fullName,
+        item.department,
+        item.employmentType || 'Full-Time',
+        { t: 'n', v: item.monthlyGross, z: CURRENCY_FORMAT },
+        schemeText,
+        { t: 'n', v: contrib, z: CURRENCY_FORMAT },
+        { t: 'n', v: item.netTakeHome, z: CURRENCY_FORMAT },
+        item.bankName,
+        item.accountNumber,
+        'Active Remittance'
+      ]);
+    });
+
+    // Subtotal Row
+    const startRow = headerRowIdx + 1;
+    const endRow = headerRowIdx + contributingItems.length;
+    const totalContrib = contributingItems.reduce((s, i) => s + (i.contributionDeduction || 0), 0);
+    const totalNet = contributingItems.reduce((s, i) => s + i.netTakeHome, 0);
+
+    if (includeFormulas) {
+      aoa.push([
+        '',
+        '',
+        'TOTAL SAVINGS & WELFARE DEDUCTED',
+        '',
+        '',
+        '',
+        '',
+        { t: 'n', f: `SUBTOTAL(109, H${startRow}:H${endRow})`, v: totalContrib, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, I${startRow}:I${endRow})`, v: totalNet, z: CURRENCY_FORMAT },
+        '',
+        '',
+        ''
+      ]);
+    } else {
+      aoa.push([
+        '',
+        '',
+        'TOTAL SAVINGS & WELFARE DEDUCTED',
+        '',
+        '',
+        '',
+        '',
+        { t: 'n', v: totalContrib, z: CURRENCY_FORMAT },
+        { t: 'n', v: totalNet, z: CURRENCY_FORMAT },
+        '',
+        '',
+        ''
+      ]);
+    }
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!views'] = [{ state: 'frozen', xSplit: 3, ySplit: 5 }];
+  (ws as any)['!freezePane'] = { xSplit: 3, ySplit: 5, topLeftCell: 'D6' };
+  ws['!cols'] = [
+    { wch: 6 },  // S/N
+    { wch: 14 }, // Staff Code
+    { wch: 28 }, // Full Name
+    { wch: 20 }, // Department
+    { wch: 16 }, // Employment Type
+    { wch: 18 }, // Monthly Gross
+    { wch: 38 }, // Schemes / Purposes
+    { wch: 22 }, // Monthly Deduction
+    { wch: 22 }, // Net Pay After Savings
+    { wch: 18 }, // Bank Name
+    { wch: 18 }, // Account Number
+    { wch: 18 }, // Remarks / Status
+  ];
+
+  return styleWorksheetCorporate(ws);
+}
+
+/**
  * 7. ANNUAL PAY MATRIX TAB
  * 12-month compensation ledger with live SUM and AVERAGE across calendar months.
  */
@@ -1840,6 +2005,9 @@ function createStaffDatabaseSheet(employees: Employee[]): XLSX.WorkSheet {
     'PAYE / Tax ID': e.payeNumber || '',
     'Pension RSA PIN': e.pensionNumber || '',
     'PFA Name': e.pfaName || '',
+    'State of Residence': e.stateOfResidence || 'Lagos',
+    'Work Schedule': e.workSchedule || '5-day',
+    'Start Date': e.startDate || '',
     'Email': e.email || '',
     'Phone': e.phone || '',
     'Status': e.status,
@@ -1862,6 +2030,9 @@ function createStaffDatabaseSheet(employees: Employee[]): XLSX.WorkSheet {
     { wch: 20 }, // Tax ID
     { wch: 20 }, // RSA PIN
     { wch: 26 }, // PFA
+    { wch: 20 }, // State of Residence
+    { wch: 16 }, // Work Schedule
+    { wch: 16 }, // Start Date
     { wch: 24 }, // Email
     { wch: 16 }, // Phone
     { wch: 12 }, // Status
@@ -1894,6 +2065,9 @@ export function downloadExcelImportTemplate() {
       'PAYE / Tax ID': 'PAYE-LAS-0019284',
       'Pension RSA PIN': 'PEN10082736452',
       'PFA Name': 'Stanbic IBTC Pension Managers',
+      'State of Residence': 'Lagos',
+      'Work Schedule': '5-day',
+      'Start Date': '2023-01-15',
       'Email': 'olawale@example.com',
       'Phone': '+234 803 123 4567',
       'Status': 'Active',
@@ -1914,6 +2088,9 @@ export function downloadExcelImportTemplate() {
       'PAYE / Tax ID': 'PAYE-LAS-0028471',
       'Pension RSA PIN': 'PEN10091827364',
       'PFA Name': 'ARM Pension Managers',
+      'State of Residence': 'Lagos',
+      'Work Schedule': '5-day',
+      'Start Date': '2023-06-01',
       'Email': 'chinwe@example.com',
       'Phone': '+234 805 234 5678',
       'Status': 'Active',
@@ -1934,6 +2111,9 @@ export function downloadExcelImportTemplate() {
       'PAYE / Tax ID': '',
       'Pension RSA PIN': '',
       'PFA Name': '',
+      'State of Residence': 'Ogun',
+      'Work Schedule': '6-day',
+      'Start Date': '2024-02-10',
       'Email': 'emmanuel@example.com',
       'Phone': '+234 807 345 6789',
       'Status': 'Active',
@@ -1954,6 +2134,9 @@ export function downloadExcelImportTemplate() {
       'PAYE / Tax ID': '',
       'Pension RSA PIN': '',
       'PFA Name': '',
+      'State of Residence': 'Lagos',
+      'Work Schedule': '5-day',
+      'Start Date': '2024-05-01',
       'Email': 'tolulope@example.com',
       'Phone': '+234 809 998 7766',
       'Status': 'Active',
@@ -1977,6 +2160,9 @@ export function downloadExcelImportTemplate() {
     { wch: 20 },
     { wch: 20 },
     { wch: 26 },
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 16 },
     { wch: 24 },
     { wch: 18 },
     { wch: 12 },
@@ -2001,6 +2187,9 @@ export function downloadExcelImportTemplate() {
     { 'Field / Column': 'PAYE / Tax ID', 'Required?': 'Optional', 'Format & Rules': 'State IRS Taxpayer Registration ID (e.g. PAYE-LAS-00123).' },
     { 'Field / Column': 'Pension RSA PIN', 'Required?': 'Optional', 'Format & Rules': 'Retirement Savings Account PIN (e.g. PEN1002938475).' },
     { 'Field / Column': 'PFA Name', 'Required?': 'Optional', 'Format & Rules': 'Pension Fund Administrator (e.g. Stanbic IBTC, Access Pensions, ARM).' },
+    { 'Field / Column': 'State of Residence', 'Required?': 'Recommended', 'Format & Rules': 'Nigerian state for PAYE tax remittance (e.g. Lagos, Ogun, Abuja FCT, Rivers).' },
+    { 'Field / Column': 'Work Schedule', 'Required?': 'Optional', 'Format & Rules': '"5-day" (Mon-Fri) or "6-day" (Mon-Sat). Used for absence and proration calculations.' },
+    { 'Field / Column': 'Start Date', 'Required?': 'Optional', 'Format & Rules': 'Date of employment in YYYY-MM-DD format (e.g. 2024-01-15).' },
     { 'Field / Column': 'Email', 'Required?': 'Optional', 'Format & Rules': 'Official or personal email address.' },
     { 'Field / Column': 'Phone', 'Required?': 'Optional', 'Format & Rules': 'Phone number with country code (e.g. +234 803 000 0000).' },
     { 'Field / Column': 'Status', 'Required?': 'Optional', 'Format & Rules': '"Active" or "Inactive". Defaults to Active.' },
@@ -2091,6 +2280,27 @@ export async function parseEmployeesFromExcel(file: File): Promise<{
           const cleanType = String(rawType).trim();
           const isContractOrPart = cleanType.toLowerCase() === 'contract' || cleanType.toLowerCase() === 'part-time';
 
+          const rawSchedule = String(row['Work Schedule'] || row['Schedule'] || row['workSchedule'] || '5-day').trim();
+          const cleanSchedule = rawSchedule.includes('6') ? '6-day' : '5-day';
+
+          let parsedStartDate = '';
+          const rawDate = row['Start Date'] || row['Hire Date'] || row['startDate'] || row['Date of Employment'] || '';
+          if (rawDate) {
+            if (typeof rawDate === 'number') {
+              const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
+              if (!isNaN(d.getTime())) {
+                parsedStartDate = d.toISOString().split('T')[0];
+              }
+            } else {
+              const d = new Date(rawDate);
+              if (!isNaN(d.getTime())) {
+                parsedStartDate = d.toISOString().split('T')[0];
+              } else {
+                parsedStartDate = String(rawDate).trim();
+              }
+            }
+          }
+
           employees.push({
             code: String(code).trim(),
             firstName: parsedFirst,
@@ -2111,6 +2321,9 @@ export async function parseEmployeesFromExcel(file: File): Promise<{
             payeNumber: String(row['PAYE / Tax ID'] || row['Tax ID'] || row['PAYE No'] || row['PAYE Number'] || row['payeNumber'] || '').trim(),
             pensionNumber: String(row['Pension RSA PIN'] || row['RSA PIN'] || row['Pension Number'] || row['pensionNumber'] || '').trim(),
             pfaName: String(row['PFA Name'] || row['PFA Administrator'] || row['PFA'] || row['pfaName'] || '').trim(),
+            stateOfResidence: String(row['State of Residence'] || row['State'] || row['stateOfResidence'] || 'Lagos').trim(),
+            workSchedule: cleanSchedule,
+            startDate: parsedStartDate || undefined,
             email: String(row['Email'] || '').trim(),
             phone: String(row['Phone'] || '').trim(),
             status: String(row['Status'] || '').toLowerCase() === 'inactive' ? 'Inactive' : 'Active',
