@@ -185,7 +185,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [confirmDeleteLogo, setConfirmDeleteLogo] = useState(false);
 
   // --- APP UPDATE STATE ---
-  const [appVersion, setAppVersion] = useState('1.0.8');
+  const [appVersion, setAppVersion] = useState('1.0.9');
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateFeedback, setUpdateFeedback] = useState<string | null>(null);
 

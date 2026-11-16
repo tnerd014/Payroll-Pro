@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const repo = process.env.GITHUB_REPOSITORY || 'tnerd014/Payroll-Pro';
-let pkgVersion = '1.0.8';
+let pkgVersion = '1.0.9';
 try {
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   if (pkg.version) pkgVersion = pkg.version;

@@ -156,7 +156,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   }, []);
 
   const [hasPendingSync, setHasPendingSync] = useState(false);
-  const [appVersion, setAppVersion] = useState('v1.0.8');
+  const [appVersion, setAppVersion] = useState('v1.0.9');
   const [updateState, setUpdateState] = useState<{ status: string; downloadPercent: number; latestVersion: string; message: string; restartRequired: boolean; downloadPath: string; downloadUrl: string; releaseUrl: string; }>({
     status: 'idle',
     downloadPercent: 0,
@@ -215,7 +215,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   };
 
   useEffect(() => {
-    let currentVer = '1.0.8';
+    let currentVer = '1.0.9';
     const runStartupUpdateCheck = async (ver: string) => {
       try {
         const electronAPI = (window as any).electronAPI;

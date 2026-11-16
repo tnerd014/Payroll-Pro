@@ -45,20 +45,20 @@ export const AppUpdateBanner: React.FC = () => {
       if (stage === 'available') {
         setUpdateState({
           status: 'available',
-          version: '1.0.7',
-          latestVersion: '1.0.8',
+          version: '1.0.8',
+          latestVersion: '1.0.9',
           releaseUrl: 'https://github.com/tnerd014/Payroll-Pro/releases',
-          downloadUrl: 'https://github.com/tnerd014/Payroll-Pro/releases/download/v1.0.8/Payroll-Pro-Setup-1.0.8.exe',
+          downloadUrl: 'https://github.com/tnerd014/Payroll-Pro/releases/download/v1.0.9/Payroll-Pro-Setup-1.0.9.exe',
           downloadPath: '',
           downloadPercent: 0,
-          message: 'Payroll Pro v1.0.8 is available',
+          message: 'Payroll Pro v1.0.9 is available',
           restartRequired: false,
         });
       } else if (stage === 'downloading') {
         setUpdateState({
           status: 'downloading',
-          version: '1.0.7',
-          latestVersion: '1.0.8',
+          version: '1.0.8',
+          latestVersion: '1.0.9',
           releaseUrl: '',
           downloadUrl: '',
           downloadPath: '',
@@ -69,8 +69,8 @@ export const AppUpdateBanner: React.FC = () => {
       } else if (stage === 'downloaded') {
         setUpdateState({
           status: 'downloaded',
-          version: '1.0.7',
-          latestVersion: '1.0.8',
+          version: '1.0.8',
+          latestVersion: '1.0.9',
           releaseUrl: '',
           downloadUrl: '',
           downloadPath: '',
