@@ -21,6 +21,7 @@ import {
   WhatsAppSettings,
   DEFAULT_WHATSAPP_SETTINGS,
   EmailedPayslipRecord,
+  WhatsAppedPayslipRecord,
   EmployeeContribution,
   ContributionPayout,
   ContributionScheme,
@@ -154,7 +155,22 @@ export function autoSyncLoansForPeriod(
   const targetMonthIdx = MONTH_KEY_INDEX[targetM] ?? 9;
 
   return loans.map(loan => {
-    if (!loan || loan.status === 'Paused' || (loan.principalAmount || 0) <= 0) {
+    if (!loan || (loan.principalAmount || 0) <= 0) {
+      return loan;
+    }
+
+    let isCurrentlyPaused = loan.status === 'Paused';
+    if (isCurrentlyPaused && loan.pausedUntilPeriodKey) {
+      const parsedResume = parseDateToYearMonth(loan.pausedUntilPeriodKey);
+      if (parsedResume) {
+        const targetVal = targetYear * 12 + targetMonthIdx;
+        const resumeVal = parsedResume.year * 12 + parsedResume.monthIdx;
+        if (targetVal >= resumeVal) {
+          isCurrentlyPaused = false;
+        }
+      }
+    }
+    if (isCurrentlyPaused) {
       return loan;
     }
 
@@ -177,7 +193,18 @@ export function autoSyncLoansForPeriod(
     let curM = startMonthIdx;
     let safety = 0;
 
-    while ((curY < targetYear || (curY === targetYear && curM <= targetMonthIdx)) && safety < 120) {
+    // Cap automated deduction advances so exploratory future month selections
+    // do not falsely auto-deduct months that haven't occurred in reality yet.
+    const now = new Date();
+    const currentActualYear = now.getFullYear();
+    const currentActualMonthIdx = now.getMonth();
+
+    const maxAllowedYear = Math.min(targetYear, currentActualYear);
+    const maxAllowedMonthIdx = targetYear > currentActualYear
+      ? currentActualMonthIdx
+      : (targetYear === currentActualYear ? Math.min(targetMonthIdx, currentActualMonthIdx) : targetMonthIdx);
+
+    while ((curY < maxAllowedYear || (curY === maxAllowedYear && curM <= maxAllowedMonthIdx)) && safety < 120) {
       const mKey = MONTHS[curM]?.key || 'jan';
       elapsedPeriods.push({
         key: `${curY}-${mKey}`,
@@ -278,6 +305,7 @@ export interface AppState {
   emailSettings?: EmailSettings;
   whatsappSettings?: WhatsAppSettings;
   emailedPayslips?: Record<string, EmailedPayslipRecord>; // Key: `${periodKey}_${employeeId}`
+  whatsappedPayslips?: Record<string, WhatsAppedPayslipRecord>; // Key: `${periodKey}_${employeeId}`
 }
 
 /**
@@ -655,9 +683,25 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
           // NOTE: loans are NOT auto-synced here intentionally — autoSyncLoansForPeriod
           // is called explicitly on period changes to avoid mutating data during reads.
           loans: (parsed.loans && Array.isArray(parsed.loans)) ? parsed.loans : [],
+          employeeContributions: (parsed.employeeContributions && Array.isArray(parsed.employeeContributions)) ? parsed.employeeContributions : [],
+          contributionPayouts: (parsed.contributionPayouts && Array.isArray(parsed.contributionPayouts)) ? parsed.contributionPayouts : [],
+          contributionSchemes: (parsed.contributionSchemes && Array.isArray(parsed.contributionSchemes) && parsed.contributionSchemes.length > 0)
+            ? parsed.contributionSchemes
+            : [
+                {
+                  id: 'scheme-welfare',
+                  name: 'Staff Welfare Fund',
+                  description: 'Monthly voluntary staff welfare and social support fund',
+                  defaultAmount: 5000,
+                  defaultMode: 'fixed',
+                  isDefault: true,
+                }
+              ],
+          employeeAbsences: (parsed.employeeAbsences && Array.isArray(parsed.employeeAbsences)) ? parsed.employeeAbsences : [],
           emailSettings: parsed.emailSettings ? { ...DEFAULT_EMAIL_SETTINGS, ...parsed.emailSettings } : DEFAULT_EMAIL_SETTINGS,
           whatsappSettings: parsed.whatsappSettings ? { ...DEFAULT_WHATSAPP_SETTINGS, ...parsed.whatsappSettings } : DEFAULT_WHATSAPP_SETTINGS,
           emailedPayslips: (parsed.emailedPayslips && typeof parsed.emailedPayslips === 'object') ? parsed.emailedPayslips : {},
+          whatsappedPayslips: (parsed.whatsappedPayslips && typeof parsed.whatsappedPayslips === 'object') ? parsed.whatsappedPayslips : {},
         };
       }
     }
@@ -713,6 +757,7 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
     emailSettings: DEFAULT_EMAIL_SETTINGS,
     whatsappSettings: DEFAULT_WHATSAPP_SETTINGS,
     emailedPayslips: {},
+    whatsappedPayslips: {},
   };
 }
 
@@ -767,9 +812,9 @@ export function usePayrollStore() {
     const initialCompId = firstComp?.id || 'comp-default';
     getCompanyDataFromDb(initialCompId).then(dbState => {
       if (!isMounted) return;
-      if (dbState && ((dbState.employees && dbState.employees.length > 0) || (dbState.snapshots && dbState.snapshots.length > 0))) {
+      if (dbState && ((dbState.employees && dbState.employees.length > 0) || (dbState.snapshots && dbState.snapshots.length > 0) || (dbState.employeeAbsences && dbState.employeeAbsences.length > 0))) {
         setState(prev => {
-          if (!prev.employees || prev.employees.length === 0) {
+          if (!prev.employees || prev.employees.length === 0 || !prev.employeeAbsences || prev.employeeAbsences.length === 0) {
             return {
               ...prev,
               ...dbState,
@@ -867,6 +912,64 @@ export function usePayrollStore() {
   const cloudCfg = getSavedCloudConfig();
   const isCloudOffline = Boolean(cloudCfg.isEnabled && !isOnline);
 
+  const guardCloudMutation = (actionName: string): boolean => {
+    if (isCloudOffline || (!isOnline && getSavedCloudConfig().isEnabled)) {
+      alert(`Action Blocked: You are currently offline. In Cloud-Only mode, an active internet connection is required to ${actionName}. Offline modifications are blocked to protect cloud data integrity.`);
+      return false;
+    }
+    return true;
+  };
+
+  // On reconnection: immediately pull fresh data from Supabase so any changes made by other users while offline are loaded
+  useEffect(() => {
+    if (!isOnline || !activeCompanyId) return;
+    const cfg = getSavedCloudConfig();
+    if (!cfg.isEnabled) return;
+
+    downloadCompanyDataFromSupabase(activeCompanyId).then(res => {
+      if (!res.success) return;
+      cloudReadyRef.current = true;
+      skipNextAutoSyncRef.current = true;
+      setState(prev => {
+        if (prev.company?.id && prev.company.id !== activeCompanyId) return prev;
+        if (prev.employees.length > 0 && (!res.employees || res.employees.length === 0)) return prev;
+
+        const dirtyIds = getDirtyEmployeeIds(activeCompanyId);
+        const deletedIds = getPendingDeletedEmployeeIds(activeCompanyId);
+        const mergedEmployees = res.employees
+          ? mergeEmployeesWithCloud(
+              prev.employees,
+              res.employees,
+              dirtyIds,
+              deletedIds,
+              pendingLocalEmployeesRef.current
+            )
+          : prev.employees;
+
+        return {
+          ...prev,
+          ...(res.company ? { company: { ...prev.company, ...res.company } } : {}),
+          ...(res.departments && res.departments.length > 0 ? { departments: res.departments } : {}),
+          employees: mergedEmployees,
+          ...(res.loans ? { loans: res.loans } : {}),
+          ...(res.snapshots ? { snapshots: res.snapshots } : {}),
+          ...(res.payrollVariables ? { payrollVariables: res.payrollVariables } : {}),
+          ...(res.payeTaxVariables ? { payeTaxVariables: res.payeTaxVariables } : {}),
+          ...(res.payslipDesign ? { payslipDesign: res.payslipDesign } : {}),
+          ...(res.emailSettings ? { emailSettings: res.emailSettings } : {}),
+          ...(res.emailedPayslips ? { emailedPayslips: res.emailedPayslips } : {}),
+          ...(res.whatsappedPayslips ? { whatsappedPayslips: res.whatsappedPayslips } : {}),
+          ...(res.whatsappSettings ? { whatsappSettings: res.whatsappSettings } : {}),
+          ...(res.contributions ? { employeeContributions: res.contributions } : {}),
+          ...(res.payouts ? { contributionPayouts: res.payouts } : {}),
+          ...(res.absences ? { employeeAbsences: res.absences } : {}),
+        };
+      });
+    }).catch(err => {
+      console.warn('Failed to refresh data on reconnect:', err);
+    });
+  }, [isOnline, activeCompanyId]);
+
   // On startup: Ensure all loans are synchronized up to the active period
   useEffect(() => {
     setState(s => {
@@ -947,6 +1050,7 @@ export function usePayrollStore() {
         savedPayslipPresets: s.savedPayslipPresets || [],
         emailSettings: s.emailSettings,
         emailedPayslips: s.emailedPayslips,
+        whatsappedPayslips: s.whatsappedPayslips,
       });
     } catch {
       return '';
@@ -1001,8 +1105,7 @@ export function usePayrollStore() {
       if (cleanedUp) return;
 
       if (!isReallyOnline) {
-        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-        window.dispatchEvent(new Event('payroll-sync-status-changed'));
+        // In cloud-only mode, offline writes are blocked, so no offline sync is queued
         return;
       }
 
@@ -1163,6 +1266,7 @@ export function usePayrollStore() {
               // Email settings & dispatched history per company
               ...(res.emailSettings ? { emailSettings: res.emailSettings } : {}),
               ...(res.emailedPayslips ? { emailedPayslips: res.emailedPayslips } : {}),
+              ...(res.whatsappedPayslips ? { whatsappedPayslips: res.whatsappedPayslips } : {}),
               // Staff welfare contributions, payouts, and absences
               ...(res.contributions ? { employeeContributions: res.contributions } : {}),
               ...(res.payouts ? { contributionPayouts: res.payouts } : {}),
@@ -1247,19 +1351,39 @@ export function usePayrollStore() {
     }
 
     const loanMap = new Map<string, number>();
+    const salaryAdvanceMap = new Map<string, number>();
+    const staffLoanMap = new Map<string, number>();
+
     for (const loan of (state.loans || [])) {
       if (!loan || !loan.employeeId) continue;
       const periodRecord = (loan.history || []).find(h => h.periodKey === currentPeriodKey);
+      let isPaused = loan.status === 'Paused';
+      if (isPaused && loan.pausedUntilPeriodKey) {
+        const parsedResume = parseDateToYearMonth(loan.pausedUntilPeriodKey);
+        if (parsedResume) {
+          const currentVal = Number(state.selectedYear) * 12 + (MONTH_KEY_INDEX[state.selectedMonth.toLowerCase()] ?? 0);
+          const resumeVal = parsedResume.year * 12 + parsedResume.monthIdx;
+          if (currentVal >= resumeVal) {
+            isPaused = false;
+          }
+        }
+      }
+
       let deduction = 0;
       if (periodRecord) {
         deduction = Math.max(0, Number(periodRecord.amount) || 0);
-      } else if (loan.status === 'Active' && (loan.remainingBalance || 0) > 0) {
+      } else if (!isPaused && loan.status !== 'Paid' && (loan.remainingBalance || 0) > 0) {
         deduction = loan.type === 'Salary Advance'
           ? Math.max(0, loan.remainingBalance || 0)
           : Math.max(0, Math.min(Number(loan.monthlyDeduction) || 0, Number(loan.remainingBalance) || 0));
       }
       if (deduction > 0) {
         loanMap.set(loan.employeeId, (loanMap.get(loan.employeeId) || 0) + deduction);
+        if (loan.type === 'Salary Advance') {
+          salaryAdvanceMap.set(loan.employeeId, (salaryAdvanceMap.get(loan.employeeId) || 0) + deduction);
+        } else {
+          staffLoanMap.set(loan.employeeId, (staffLoanMap.get(loan.employeeId) || 0) + deduction);
+        }
       }
     }
 
@@ -1319,6 +1443,8 @@ export function usePayrollStore() {
         );
 
         const totalLoanDeduction = loanMap.get(emp.id) || 0;
+        const salaryAdvanceDeduction = salaryAdvanceMap.get(emp.id) || 0;
+        const staffLoanDeduction = staffLoanMap.get(emp.id) || 0;
         const contribEntry = contributionMap.get(emp.id) || { total: 0, details: [] };
         const totalContributionDeduction = contribEntry.total;
         const contributionDetails = contribEntry.details;
@@ -1338,6 +1464,8 @@ export function usePayrollStore() {
           unpaidAbsenceDeduction,
           effectiveGross: base.monthlyGross,
           loanDeduction: totalLoanDeduction,
+          salaryAdvanceDeduction,
+          staffLoanDeduction,
           contributionDeduction: totalContributionDeduction,
           contributionDetails,
           totalDeductions,
@@ -1436,14 +1564,15 @@ export function usePayrollStore() {
     let loadedData = loadCompanyData(companyId, targetComp);
     let hasCachedRecords = Boolean(
       (loadedData.employees && loadedData.employees.length > 0) || 
-      (loadedData.snapshots && loadedData.snapshots.length > 0)
+      (loadedData.snapshots && loadedData.snapshots.length > 0) ||
+      (loadedData.employeeAbsences && loadedData.employeeAbsences.length > 0)
     );
 
     // If localStorage was empty or exceeded quota, check IndexedDB before falling back to empty
     if (!hasCachedRecords) {
       try {
         const dbState = await getCompanyDataFromDb(companyId);
-        if (dbState && ((dbState.employees && dbState.employees.length > 0) || (dbState.snapshots && dbState.snapshots.length > 0))) {
+        if (dbState && ((dbState.employees && dbState.employees.length > 0) || (dbState.snapshots && dbState.snapshots.length > 0) || (dbState.employeeAbsences && dbState.employeeAbsences.length > 0))) {
           loadedData = {
             ...loadedData,
             ...dbState,
@@ -1495,6 +1624,7 @@ export function usePayrollStore() {
               emailSettings: res.emailSettings || finalData.emailSettings || DEFAULT_EMAIL_SETTINGS,
               whatsappSettings: res.whatsappSettings || finalData.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS,
               emailedPayslips: res.emailedPayslips || finalData.emailedPayslips || {},
+              whatsappedPayslips: res.whatsappedPayslips || finalData.whatsappedPayslips || {},
               employeeContributions: res.contributions || finalData.employeeContributions || [],
               contributionPayouts: res.payouts || finalData.contributionPayouts || [],
               employeeAbsences: res.absences || finalData.employeeAbsences || [],
@@ -1529,6 +1659,7 @@ export function usePayrollStore() {
               emailSettings: res.emailSettings || prev.emailSettings || DEFAULT_EMAIL_SETTINGS,
               whatsappSettings: res.whatsappSettings || prev.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS,
               emailedPayslips: res.emailedPayslips || prev.emailedPayslips || {},
+              whatsappedPayslips: res.whatsappedPayslips || prev.whatsappedPayslips || {},
               employeeContributions: res.contributions || prev.employeeContributions || [],
               contributionPayouts: res.payouts || prev.contributionPayouts || [],
               employeeAbsences: res.absences || prev.employeeAbsences || [],
@@ -1574,6 +1705,9 @@ export function usePayrollStore() {
     accountData: Omit<CompanyAccount, 'id'>, 
     initialTemplate: 'default' | 'blank' = 'default'
   ): { success: boolean; companyId?: string; error?: string } => {
+    if (!guardCloudMutation('create company workspace')) {
+      return { success: false, error: 'Cannot create company while offline in Cloud-Only mode.' };
+    }
     if (!accountData.name || !accountData.name.trim()) {
       return { success: false, error: 'Company name is required.' };
     }
@@ -1664,6 +1798,7 @@ export function usePayrollStore() {
   };
 
   const updateCompanyAccount = (companyId: string, updates: Partial<CompanyAccount>) => {
+    if (!guardCloudMutation('update company account')) return;
     const existingComp = companies.find(c => c.id === companyId);
     const compName = updates.name || existingComp?.name || 'Workspace';
 
@@ -1731,6 +1866,9 @@ export function usePayrollStore() {
   };
 
   const deleteCompany = (companyId: string): { success: boolean; error?: string } => {
+    if (!guardCloudMutation('delete company workspace')) {
+      return { success: false, error: 'Cannot delete company while offline in Cloud-Only mode.' };
+    }
     if (companies.length <= 1) {
       return { success: false, error: 'Cannot delete the only company account in the system.' };
     }
@@ -1766,6 +1904,7 @@ export function usePayrollStore() {
   };
 
   const updateCompanyProfile = (profile: Partial<CompanyProfile>) => {
+    if (!guardCloudMutation('update company profile')) return;
     setState(s => {
       const updatedCompany = { ...s.company, ...profile };
       if (activeCompanyId) {
@@ -1815,6 +1954,7 @@ export function usePayrollStore() {
   };
 
   const addEmployee = (emp: Omit<Employee, 'id'>) => {
+    if (!guardCloudMutation('add an employee')) return;
     const sanitizedGross = Math.max(0, Number(emp.monthlyGross) || 0);
     const sanitizedRent = Math.max(0, Number(emp.annualRent) || 0);
     const nowIso = new Date().toISOString();
@@ -1866,6 +2006,7 @@ export function usePayrollStore() {
   };
 
   const addEmployees = (emps: Omit<Employee, 'id'>[]) => {
+    if (!guardCloudMutation('import employees')) return;
     if (!emps || emps.length === 0) return;
     const nowIso = new Date().toISOString();
     const newEmps: Employee[] = emps.map((emp) => ({
@@ -1895,6 +2036,7 @@ export function usePayrollStore() {
   };
 
   const updateEmployee = (id: string, updates: Partial<Employee>) => {
+    if (!guardCloudMutation('update employee details')) return;
     const existing = state.employees.find(e => e.id === id);
     const sanitizedUpdates: Partial<Employee> = { ...updates };
     if (sanitizedUpdates.monthlyGross !== undefined) {
@@ -1958,6 +2100,7 @@ export function usePayrollStore() {
   };
 
   const deleteEmployee = (id: string) => {
+    if (!guardCloudMutation('delete an employee')) return;
     const existing = state.employees.find(e => e.id === id);
     if (activeCompanyId) {
       markEmployeePendingDelete(activeCompanyId, id);
@@ -1999,6 +2142,7 @@ export function usePayrollStore() {
     mode: 'merge' | 'overwrite',
     importScope: 'all' | 'salary-only' | 'bank-only' = 'all'
   ) => {
+    if (!guardCloudMutation('import employees')) return;
     const nowIso = new Date().toISOString();
     if (mode === 'overwrite' && importScope === 'all') {
       const formatted: Employee[] = incoming.map((item, idx) => ({
@@ -2114,6 +2258,7 @@ export function usePayrollStore() {
   };
 
   const finalizeAndLockPayroll = (notes: string = '') => {
+    if (!guardCloudMutation('finalize and lock payroll')) return;
     const normCurMonth = normalizeMonthKey(state.selectedMonth);
     const existingSnapshotsForMonth = state.snapshots.filter(
       s => normalizeMonthKey(s.monthKey) === normCurMonth && s.year === state.selectedYear
@@ -2156,7 +2301,18 @@ export function usePayrollStore() {
     // manual records to prevent any double-deduction for the same period.
     const currentPeriodKey = `${state.selectedYear}-${normCurMonth}`;
     const updatedLoans = (state.loans || []).map(loan => {
-      if (loan.status !== 'Active' || (loan.remainingBalance || 0) <= 0) {
+      let isPaused = loan.status === 'Paused';
+      if (isPaused && loan.pausedUntilPeriodKey) {
+        const parsedResume = parseDateToYearMonth(loan.pausedUntilPeriodKey);
+        if (parsedResume) {
+          const currentVal = Number(state.selectedYear) * 12 + (MONTH_KEY_INDEX[normCurMonth.toLowerCase()] ?? 0);
+          const resumeVal = parsedResume.year * 12 + parsedResume.monthIdx;
+          if (currentVal >= resumeVal) {
+            isPaused = false;
+          }
+        }
+      }
+      if (isPaused || loan.status === 'Paid' || (loan.remainingBalance || 0) <= 0) {
         return loan;
       }
       // Avoid double deduction: skip if ANY history entry (auto or manual) exists for this period
@@ -2227,6 +2383,7 @@ export function usePayrollStore() {
   };
 
   const unlockPayroll = (reason: string = '') => {
+    if (!guardCloudMutation('unlock payroll')) return;
     const normCurMonth = normalizeMonthKey(state.selectedMonth);
     const updatedSnapshots = state.snapshots.map(snap => 
       (normalizeMonthKey(snap.monthKey) === normCurMonth && snap.year === state.selectedYear)
@@ -2260,6 +2417,7 @@ export function usePayrollStore() {
   };
 
   const deleteSnapshot = (snapshotId: string) => {
+    if (!guardCloudMutation('delete payroll snapshots')) return;
     setState(s => ({
       ...s,
       snapshots: s.snapshots.filter(snap => snap.id !== snapshotId),
@@ -2273,6 +2431,7 @@ export function usePayrollStore() {
   };
 
   const updatePayrollVariables = (vars: Partial<PayrollVariables>) => {
+    if (!guardCloudMutation('update payroll variables')) return;
     setState(s => ({
       ...s,
       payrollVariables: { ...s.payrollVariables, ...vars }
@@ -2280,6 +2439,7 @@ export function usePayrollStore() {
   };
 
   const updatePayeTaxVariables = (vars: Partial<PayeTaxVariables>) => {
+    if (!guardCloudMutation('update tax variables')) return;
     setState(s => ({
       ...s,
       payeTaxVariables: { ...s.payeTaxVariables, ...vars }
@@ -2287,6 +2447,7 @@ export function usePayrollStore() {
   };
 
   const updateEmailSettings = (settings: Partial<EmailSettings>) => {
+    if (!guardCloudMutation('update email settings')) return;
     const current = state.emailSettings || DEFAULT_EMAIL_SETTINGS;
     const nextSettings = {
       ...current,
@@ -2310,24 +2471,15 @@ export function usePayrollStore() {
       // 2. If cloud is connected, push to Supabase and broadcast to all devices
       const isCloudEnabled = getSavedCloudConfig().isEnabled;
       if (isCloudEnabled) {
-        saveEmailSettingsToCloud(nextSettings, activeCompanyId).then(res => {
-          if (!res.success) {
-            localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-            window.dispatchEvent(new Event('payroll-sync-status-changed'));
-          }
-        }).catch(() => {
-          localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-          window.dispatchEvent(new Event('payroll-sync-status-changed'));
+        saveEmailSettingsToCloud(nextSettings, activeCompanyId).catch(err => {
+          console.warn('Failed to save email settings to cloud:', err);
         });
-      } else {
-        // Database not connected: Flag as pending offline sync so it automatically uploads once reconnected!
-        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-        window.dispatchEvent(new Event('payroll-sync-status-changed'));
       }
     }
   };
 
   const updateWhatsAppSettings = (settings: Partial<WhatsAppSettings>) => {
+    if (!guardCloudMutation('update WhatsApp settings')) return;
     const current = state.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS;
     const nextSettings = {
       ...current,
@@ -2361,23 +2513,15 @@ export function usePayrollStore() {
 
       const isCloudEnabled = getSavedCloudConfig().isEnabled;
       if (isCloudEnabled) {
-        saveWhatsAppSettingsToCloud(nextSettings, activeCompanyId).then(res => {
-          if (!res.success) {
-            localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-            window.dispatchEvent(new Event('payroll-sync-status-changed'));
-          }
-        }).catch(() => {
-          localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-          window.dispatchEvent(new Event('payroll-sync-status-changed'));
+        saveWhatsAppSettingsToCloud(nextSettings, activeCompanyId).catch(err => {
+          console.warn('Failed to save WhatsApp settings to cloud:', err);
         });
-      } else {
-        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-        window.dispatchEvent(new Event('payroll-sync-status-changed'));
       }
     }
   };
 
   const recordEmailedPayslips = (records: EmailedPayslipRecord[]) => {
+    if (!guardCloudMutation('record emailed payslips')) return;
     const current = state.emailedPayslips || {};
     const next = { ...current };
     records.forEach(r => {
@@ -2401,23 +2545,40 @@ export function usePayrollStore() {
 
       const isCloudEnabled = getSavedCloudConfig().isEnabled;
       if (isCloudEnabled) {
-        saveEmailedPayslipsToCloud(next, activeCompanyId).then(res => {
-          if (!res.success) {
-            localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-            window.dispatchEvent(new Event('payroll-sync-status-changed'));
-          }
-        }).catch(() => {
-          localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-          window.dispatchEvent(new Event('payroll-sync-status-changed'));
+        saveEmailedPayslipsToCloud(next, activeCompanyId).catch(err => {
+          console.warn('Failed to save emailed payslips to cloud:', err);
         });
-      } else {
-        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
-        window.dispatchEvent(new Event('payroll-sync-status-changed'));
       }
     }
   };
 
+  const recordWhatsAppedPayslips = (records: WhatsAppedPayslipRecord[]) => {
+    if (!guardCloudMutation('record whatsapped payslips')) return;
+    const current = state.whatsappedPayslips || {};
+    const next = { ...current };
+    records.forEach(r => {
+      const key = `${r.periodKey}_${r.employeeId}`;
+      next[key] = r;
+    });
+
+    setState(s => ({
+      ...s,
+      whatsappedPayslips: next
+    }));
+
+    if (activeCompanyId) {
+      const nextFullState = { ...state, whatsappedPayslips: next };
+      try {
+        localStorage.setItem(COMPANY_DATA_PREFIX + activeCompanyId, JSON.stringify(nextFullState));
+      } catch (e) {
+        console.warn('Failed to save whatsapped payslips to localStorage:', e);
+      }
+      saveCompanyDataToDb(activeCompanyId, nextFullState).catch(() => {});
+    }
+  };
+
   const addDepartment = (deptName: string) => {
+    if (!guardCloudMutation('add department')) return;
     const trimmed = deptName.trim().toUpperCase();
     if (!trimmed) return;
     setState(s => {
@@ -2431,6 +2592,7 @@ export function usePayrollStore() {
   };
 
   const updateDepartment = (oldName: string, newName: string) => {
+    if (!guardCloudMutation('update department')) return;
     const trimmedOld = oldName.trim();
     const trimmedNew = newName.trim().toUpperCase();
     if (!trimmedNew || trimmedOld === trimmedNew) return;
@@ -2457,6 +2619,7 @@ export function usePayrollStore() {
   };
 
   const deleteDepartment = (deptName: string) => {
+    if (!guardCloudMutation('delete department')) return;
     setState(s => ({
       ...s,
       departments: (s.departments || DEFAULT_DEPARTMENTS).filter(d => d !== deptName)
@@ -2464,6 +2627,7 @@ export function usePayrollStore() {
   };
 
   const updatePayslipDesign = (updates: Partial<PayslipDesignConfig>) => {
+    if (!guardCloudMutation('update payslip design')) return;
     setState(s => ({
       ...s,
       payslipDesign: {
@@ -2474,6 +2638,7 @@ export function usePayrollStore() {
   };
 
   const resetPayslipDesign = () => {
+    if (!guardCloudMutation('reset payslip design')) return;
     setState(s => ({
       ...s,
       payslipDesign: DEFAULT_PAYSLIP_DESIGN,
@@ -2481,6 +2646,7 @@ export function usePayrollStore() {
   };
 
   const savePayslipPreset = (name: string, config: PayslipDesignConfig, presetId?: string) => {
+    if (!guardCloudMutation('save payslip preset')) return;
     if (!name.trim()) return;
     setState(s => {
       const presets = s.savedPayslipPresets || [];
@@ -2515,6 +2681,7 @@ export function usePayrollStore() {
   };
 
   const deletePayslipPreset = (presetId: string) => {
+    if (!guardCloudMutation('delete payslip preset')) return;
     setState(s => ({
       ...s,
       savedPayslipPresets: (s.savedPayslipPresets || []).filter(p => p.id !== presetId),
@@ -2522,6 +2689,7 @@ export function usePayrollStore() {
   };
 
   const resetAllData = (options?: ResetOptions) => {
+    if (!guardCloudMutation('reset workspace data')) return;
     setState(s => {
       const opts: ResetOptions = options || {
         resetEmployees: true,
@@ -2562,6 +2730,7 @@ export function usePayrollStore() {
   };
 
   const addLoan = (loanData: Omit<EmployeeLoan, 'id' | 'totalRepaid' | 'remainingBalance' | 'status' | 'createdAt' | 'history'>) => {
+    if (!guardCloudMutation('create loans or salary advances')) return;
     const principal = Math.max(0, Number(loanData.principalAmount) || 0);
     const monthly = Math.max(0, Number(loanData.monthlyDeduction) || 0);
     const newLoan: EmployeeLoan = {
@@ -2585,6 +2754,7 @@ export function usePayrollStore() {
   };
 
   const updateLoan = (id: string, updates: Partial<EmployeeLoan>) => {
+    if (!guardCloudMutation('update loans')) return;
     setState(s => ({
       ...s,
       loans: (s.loans || []).map(l => {
@@ -2599,6 +2769,7 @@ export function usePayrollStore() {
   };
 
   const deleteLoan = (id: string) => {
+    if (!guardCloudMutation('delete loans')) return;
     setState(s => ({
       ...s,
       loans: (s.loans || []).filter(l => l.id !== id),
@@ -2610,21 +2781,64 @@ export function usePayrollStore() {
     }
   };
 
-  const pauseResumeLoan = (id: string) => {
+  const pauseResumeLoan = (
+    id: string,
+    options?: {
+      reason?: string;
+      pausedUntilPeriodKey?: string;
+      performedBy?: string;
+    }
+  ) => {
+    if (!guardCloudMutation('pause or resume loans')) return;
     setState(s => ({
       ...s,
       loans: (s.loans || []).map(l => {
         if (l.id !== id) return l;
         if (l.status === 'Paid') return l;
-        return {
-          ...l,
-          status: l.status === 'Active' ? 'Paused' : 'Active',
-        };
+        const willPause = l.status === 'Active';
+        const nowIso = new Date().toISOString();
+        const pauseHistory = [...(l.pauseHistory || [])];
+
+        if (willPause) {
+          pauseHistory.push({
+            id: `pause-${Date.now()}`,
+            action: 'pause',
+            date: nowIso,
+            reason: options?.reason || 'Administrative pause',
+            pausedUntilPeriodKey: options?.pausedUntilPeriodKey,
+            performedBy: options?.performedBy,
+          });
+          return {
+            ...l,
+            status: 'Paused',
+            pausedReason: options?.reason || 'Administrative pause',
+            pausedUntilPeriodKey: options?.pausedUntilPeriodKey,
+            pausedAt: nowIso,
+            pauseHistory,
+          };
+        } else {
+          pauseHistory.push({
+            id: `resume-${Date.now()}`,
+            action: 'resume',
+            date: nowIso,
+            reason: options?.reason || 'Manually resumed',
+            performedBy: options?.performedBy,
+          });
+          return {
+            ...l,
+            status: 'Active',
+            pausedReason: undefined,
+            pausedUntilPeriodKey: undefined,
+            pausedAt: undefined,
+            pauseHistory,
+          };
+        }
       }),
     }));
   };
 
   const recordManualLoanRepayment = (loanId: string, amount: number, notes: string = 'Manual repayment') => {
+    if (!guardCloudMutation('record loan repayments')) return;
     const payAmount = Math.max(0, Number(amount) || 0);
     if (payAmount <= 0) return;
 
@@ -2657,6 +2871,7 @@ export function usePayrollStore() {
   };
 
   const applyPeriodLoanDeduction = (loanId: string, periodKey?: string) => {
+    if (!guardCloudMutation('apply period loan deductions')) return;
     const targetPeriod = periodKey || `${state.selectedYear}-${state.selectedMonth}`;
     const mObj = MONTHS.find(m => m.key === state.selectedMonth);
     const mLabel = mObj ? mObj.label : state.selectedMonth;
@@ -2696,6 +2911,7 @@ export function usePayrollStore() {
   };
 
   const applyAllPeriodLoanDeductions = (periodKey?: string) => {
+    if (!guardCloudMutation('apply loan deductions')) return;
     const targetPeriod = periodKey || `${state.selectedYear}-${state.selectedMonth}`;
     const mObj = MONTHS.find(m => m.key === state.selectedMonth);
     const mLabel = mObj ? mObj.label : state.selectedMonth;
@@ -2737,6 +2953,7 @@ export function usePayrollStore() {
   // ─────────────────────────────────────────────────────────────
 
   const saveBatchContributions = (newContributions: EmployeeContribution[]) => {
+    if (!guardCloudMutation('save staff contributions')) return;
     setState(prev => {
       const existing = prev.employeeContributions || [];
       const updated = [...existing];
@@ -2778,6 +2995,7 @@ export function usePayrollStore() {
   };
 
   const deleteContribution = (id: string) => {
+    if (!guardCloudMutation('delete staff contribution')) return;
     const existing = (state.employeeContributions || []).find(c => c.id === id);
     const emp = existing ? (state.employees || []).find(e => e.id === existing.employeeId) : null;
     const empName = emp ? `${emp.firstName} ${emp.lastName}` : (existing?.employeeId || 'Staff');
@@ -2804,6 +3022,7 @@ export function usePayrollStore() {
   };
 
   const addContributionPayout = (payoutData: Omit<ContributionPayout, 'id' | 'createdAt'>) => {
+    if (!guardCloudMutation('record contribution payout')) return;
     const newPayout: ContributionPayout = {
       ...payoutData,
       id: `payout_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
@@ -2826,6 +3045,7 @@ export function usePayrollStore() {
   };
 
   const deleteContributionPayout = (id: string) => {
+    if (!guardCloudMutation('delete contribution payout')) return;
     const existing = (state.contributionPayouts || []).find(p => p.id === id);
     const emp = existing ? (state.employees || []).find(e => e.id === existing.employeeId) : null;
     const empName = emp ? `${emp.firstName} ${emp.lastName}` : (existing?.employeeId || 'Staff');
@@ -2852,6 +3072,7 @@ export function usePayrollStore() {
   };
 
   const saveContributionScheme = (scheme: ContributionScheme) => {
+    if (!guardCloudMutation('configure contribution scheme')) return;
     setState(prev => {
       const existing = prev.contributionSchemes || [];
       const idx = existing.findIndex(s => s.id === scheme.id);
@@ -2877,6 +3098,7 @@ export function usePayrollStore() {
   };
 
   const deleteContributionScheme = (id: string) => {
+    if (!guardCloudMutation('delete contribution scheme')) return;
     const existing = (state.contributionSchemes || []).find(s => s.id === id);
     setState(prev => ({
       ...prev,
@@ -2898,6 +3120,7 @@ export function usePayrollStore() {
   // ─────────────────────────────────────────────────────────────
 
   const saveEmployeeAbsence = (absenceData: Omit<EmployeeAbsenceRecord, 'id' | 'createdAt'> & { id?: string }) => {
+    if (!guardCloudMutation('log employee absence')) return;
     const emp = (state.employees || []).find(e => e.id === absenceData.employeeId);
     const empName = emp ? `${emp.firstName} ${emp.lastName}` : (absenceData.employeeId || 'Staff');
 
@@ -2945,6 +3168,7 @@ export function usePayrollStore() {
   };
 
   const deleteEmployeeAbsence = (id: string) => {
+    if (!guardCloudMutation('delete employee absence')) return;
     const existing = (state.employeeAbsences || []).find(a => a.id === id);
     const emp = existing ? (state.employees || []).find(e => e.id === existing.employeeId) : null;
     const empName = emp ? `${emp.firstName} ${emp.lastName}` : (existing?.employeeId || 'Staff');
@@ -3038,5 +3262,7 @@ export function usePayrollStore() {
     updateWhatsAppSettings,
     emailedPayslips: state.emailedPayslips || {},
     recordEmailedPayslips,
+    whatsappedPayslips: state.whatsappedPayslips || {},
+    recordWhatsAppedPayslips,
   };
 }

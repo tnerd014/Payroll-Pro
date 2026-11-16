@@ -76,9 +76,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
           <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
             Payroll Variables & Statutory Configuration
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Configure Nigerian emoluments breakdown, pension contribution rates, and PITA tax brackets.
-          </p>
+          
         </div>
 
         <div className="flex items-center gap-2">
@@ -106,9 +104,6 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <h2 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
               1. Monthly Gross Emoluments Split
             </h2>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Standard Nigerian distribution of monthly gross remuneration (must sum to exactly 100%)
-            </p>
           </div>
           <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded border ${
             isPercentageValid 
@@ -178,7 +173,6 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               onChange={e => setPv({ ...pv, employeePensionRate: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
-            <span className="text-[10px] text-zinc-500 mt-0.5 block">Standard PRA rate: 8% on BHT</span>
           </div>
           <div>
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Employer Pension Rate (%)</label>
@@ -189,7 +183,6 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               onChange={e => setPv({ ...pv, employerPensionRate: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
-            <span className="text-[10px] text-zinc-500 mt-0.5 block">Mandatory company rate: 10% on BHT</span>
           </div>
         </div>
       </div>
@@ -210,9 +203,6 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
                 {pv.prorateMidMonth ? 'Enabled' : 'Disabled'}
               </span>
             </div>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Automatically calculate prorated salaries for employees who join or leave during the payroll month based on exact calendar days worked.
-            </p>
           </div>
 
           <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -242,7 +232,6 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               onChange={e => setTv({ ...tv, craBase: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
-            <span className="text-[10px] text-zinc-500 mt-0.5 block">Default: ₦800,000 statutory allowance</span>
           </div>
           <div>
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Rent Relief Rate (%)</label>
@@ -253,7 +242,6 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               onChange={e => setTv({ ...tv, rentReliefRate: Number(e.target.value) / 100 })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
-            <span className="text-[10px] text-zinc-500 mt-0.5 block">Standard percentage: 20% of rent paid</span>
           </div>
           <div>
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Rent Relief Statutory Cap (₦)</label>
@@ -264,7 +252,6 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               onChange={e => setTv({ ...tv, rentReliefCap: Number(e.target.value) })}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
-            <span className="text-[10px] text-zinc-500 mt-0.5 block">Ceiling limit: ₦500,000 maximum</span>
           </div>
         </div>
       </div>
@@ -276,9 +263,6 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
             <h2 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
               4. Progressive Graduated Tax Brackets
             </h2>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Nigerian Personal Income Tax Act (PITA) graduated marginal tax brackets
-            </p>
           </div>
           <button
             onClick={handleAddBracket}

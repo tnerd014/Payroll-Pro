@@ -14,11 +14,13 @@ import {
   ChevronDown,
   ChevronUp,
   Edit3,
-  Eye
+  Eye,
+  AlertTriangle
 } from 'lucide-react';
 import { Employee, EmployeeLoan, LoanType, LoanStatus, CalculatedPayrollItem, CompanyProfile, TeamMember } from '../../types';
 import { formatNaira, formatDate } from '../../engine/payePensionEngine';
 import { TablePagination } from '../common/TablePagination';
+import { PauseLoanModal } from './PauseLoanModal';
 
 interface LoansAdvancesViewProps {
   loans: EmployeeLoan[];
@@ -31,13 +33,56 @@ interface LoansAdvancesViewProps {
   onAddLoan: (loan: Omit<EmployeeLoan, 'id' | 'totalRepaid' | 'remainingBalance' | 'status' | 'createdAt' | 'history'>) => void;
   onUpdateLoan?: (id: string, updates: Partial<EmployeeLoan>) => void;
   onDeleteLoan: (id: string) => void;
-  onPauseResumeLoan: (id: string) => void;
+  onPauseResumeLoan: (id: string, options?: { reason?: string; pausedUntilPeriodKey?: string; performedBy?: string }) => void;
   onRecordManualPayment: (id: string, amount: number, notes?: string, reference?: string) => void;
   onApplyLoanDeduction?: (loanId: string, periodKey?: string) => void;
   onApplyAllLoanDeductions?: (periodKey?: string) => void;
   currentUser?: TeamMember | null;
   isReadOnly?: boolean;
 }
+
+// Helper to sort loans by most recent first
+const getLoanRecencyScore = (loan: EmployeeLoan): number => {
+  const parseDateToMs = (val?: string | null): number => {
+    if (!val) return 0;
+    const str = val.trim();
+    const dmy = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (dmy) {
+      const d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    const ymd = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (ymd) {
+      const d = new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    const t = new Date(str).getTime();
+    if (!isNaN(t)) return t;
+    return 0;
+  };
+
+  const parsePeriodKeyToMs = (key?: string | null): number => {
+    if (!key) return 0;
+    const parts = key.split('-');
+    if (parts.length === 2) {
+      const y = parseInt(parts[0], 10);
+      const monthIdxs: Record<string, number> = {
+        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+        jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+      };
+      const mIdx = monthIdxs[parts[1].toLowerCase()] ?? 0;
+      return new Date(y, mIdx, 1).getTime();
+    }
+    return 0;
+  };
+
+  const disb = parseDateToMs(loan.disbursementDate);
+  const due = parseDateToMs(loan.repaymentDate || loan.repaymentStartDate);
+  const period = parsePeriodKeyToMs(loan.startPeriodKey);
+  const created = parseDateToMs(loan.createdAt);
+
+  return Math.max(disb, due, period, created);
+};
 
 export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   loans = [],
@@ -112,6 +157,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   const [selectedLoanForLedger, setSelectedLoanForLedger] = useState<EmployeeLoan | null>(null);
   const [editingLoan, setEditingLoan] = useState<EmployeeLoan | null>(null);
   const [viewingLoan, setViewingLoan] = useState<EmployeeLoan | null>(null);
+  const [pauseModalLoan, setPauseModalLoan] = useState<EmployeeLoan | null>(null);
 
   // Edit Loan Form State
   const [editPrincipal, setEditPrincipal] = useState<number | ''>('');
@@ -192,6 +238,19 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   const [newNotes, setNewNotes] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string>('');
 
+  useEffect(() => {
+    if (!isAddModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsAddModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAddModalOpen]);
+
   const handleOpenAddModal = () => {
     const dates = getDefaultDatesForPeriod(selectedYear, selectedMonth);
     setNewDisbursementDate(dates.disbursed);
@@ -254,21 +313,23 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
     };
   }, [loans]);
 
-  // Filtered loans list
+  // Filtered loans list sorted with most recent at the top
   const filteredLoans = useMemo(() => {
-    return loans.filter(loan => {
-      const emp = employeeMap.get(loan.employeeId);
-      const empName = emp ? `${emp.firstName} ${emp.lastName}`.toLowerCase() : '';
-      const empCode = emp?.code?.toLowerCase() || '';
-      const notes = (loan.notes || '').toLowerCase();
-      const q = searchQuery.toLowerCase().trim();
+    return loans
+      .filter(loan => {
+        const emp = employeeMap.get(loan.employeeId);
+        const empName = emp ? `${emp.firstName} ${emp.lastName}`.toLowerCase() : '';
+        const empCode = emp?.code?.toLowerCase() || '';
+        const notes = (loan.notes || '').toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
 
-      const matchesSearch = !q || empName.includes(q) || empCode.includes(q) || notes.includes(q);
-      const matchesType = filterType === 'All' || loan.type === filterType;
-      const matchesStatus = filterStatus === 'All' || loan.status === filterStatus;
+        const matchesSearch = !q || empName.includes(q) || empCode.includes(q) || notes.includes(q);
+        const matchesType = filterType === 'All' || loan.type === filterType;
+        const matchesStatus = filterStatus === 'All' || loan.status === filterStatus;
 
-      return matchesSearch && matchesType && matchesStatus;
-    });
+        return matchesSearch && matchesType && matchesStatus;
+      })
+      .sort((a, b) => getLoanRecencyScore(b) - getLoanRecencyScore(a));
   }, [loans, employeeMap, searchQuery, filterType, filterStatus]);
 
   // Paginated loans
@@ -380,9 +441,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
             <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
               Staff Loans &amp; Salary Advances
             </h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Disbursements, automated monthly salary deductions, and balance tracking.
-            </p>
+            
           </div>
 
           <div className="flex items-center gap-2">
@@ -662,7 +721,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                             View
                           </button>
 
-                          <div className="relative inline-block text-left loan-actions-menu">
+                          <div className="relative inline-block text-left loan-actions-menu" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -695,6 +754,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
 
                             {activeMenuLoanId === loan.id && menuCoords && (
                               <div
+                                onClick={(e) => e.stopPropagation()}
                                 style={{ 
                                   top: menuCoords.top !== undefined ? `${menuCoords.top}px` : undefined,
                                   bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
@@ -705,7 +765,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                                 {/* 0. View Facility */}
                                 <button
                                   type="button"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setActiveMenuLoanId(null);
                                     setMenuCoords(null);
                                     setViewingLoan(loan);
@@ -720,7 +781,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                                 {!isWriteDisabled && (
                                   <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setActiveMenuLoanId(null);
                                       setMenuCoords(null);
                                       setEditingLoan(loan);
@@ -736,10 +798,11 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                                 {!isPaid && !isWriteDisabled && (
                                   <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setActiveMenuLoanId(null);
                                       setMenuCoords(null);
-                                      onPauseResumeLoan(loan.id);
+                                      setPauseModalLoan(loan);
                                     }}
                                     className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
                                   >
@@ -760,7 +823,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                                 {/* 3. Repayment Ledger */}
                                 <button
                                   type="button"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setActiveMenuLoanId(null);
                                     setMenuCoords(null);
                                     setViewingLoan(loan);
@@ -777,9 +841,12 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                                   <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
                                   <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
                                       setActiveMenuLoanId(null);
                                       setMenuCoords(null);
+                                      setViewingLoan(null);
                                       if (window.confirm(`Delete ${loan.type} record for ${empFullName}?`)) {
                                         onDeleteLoan(loan.id);
                                       }
@@ -817,40 +884,49 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
 
       {/* ================= ADD NEW LOAN MODAL ================= */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-5 shadow-2xl animate-in zoom-in-95 duration-100 space-y-4">
-            <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800">
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddModalOpen(false);
+            }
+          }}
+        >
+          <div className="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-100 flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 New Loan or Salary Advance
               </h2>
               <button 
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+                title="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateLoan} className="space-y-3.5">
-              <div>
-                <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                  Employee *
-                </label>
-                <select
-                  value={newEmployeeId}
-                  onChange={e => setNewEmployeeId(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 cursor-pointer"
-                  required
-                >
-                  <option value="">-- Select Employee --</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.firstName} {emp.lastName} ({emp.code || 'NO-ID'})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <form onSubmit={handleCreateLoan} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-5 space-y-3.5 overflow-y-auto flex-1">
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                    Employee *
+                  </label>
+                  <select
+                    value={newEmployeeId}
+                    onChange={e => setNewEmployeeId(e.target.value)}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 cursor-pointer"
+                    required
+                  >
+                    <option value="">-- Select Employee --</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.firstName} {emp.lastName} ({emp.code || 'NO-ID'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
@@ -960,23 +1036,24 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                   className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                 />
               </div>
+            </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-zinc-100 dark:border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-3 py-1.5 rounded text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-3.5 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
+            <div className="flex items-center justify-end gap-2 p-3.5 px-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="px-3 py-1.5 rounded text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-3.5 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
+              >
+                Save
+              </button>
+            </div>
+          </form>
           </div>
         </div>
       )}
@@ -984,8 +1061,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
       {/* ================= EDIT LOAN / ADVANCE MODAL ================= */}
       {editingLoan && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-5 shadow-2xl animate-in zoom-in-95 duration-100 space-y-4">
-            <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800">
+          <div className="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-100 flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <div>
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   Edit {editingLoan.type}
@@ -997,14 +1074,15 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
               <button 
                 type="button"
                 onClick={() => setEditingLoan(null)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditLoan} className="space-y-3.5">
-              <div className="grid grid-cols-2 gap-2.5">
+            <form onSubmit={handleSaveEditLoan} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-5 space-y-3.5 overflow-y-auto flex-1">
+                <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
                     Facility Type
@@ -1118,7 +1196,9 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-zinc-100 dark:border-zinc-800">
+              </div>
+
+              <div className="flex items-center justify-end gap-2 p-3.5 px-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditingLoan(null)}
@@ -1173,7 +1253,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                    {emp?.code || 'NO-ID'} &bull; {emp?.department || 'Operations'} {emp?.position ? `&bull; ${emp.position}` : ''}
+                    {emp?.code || 'NO-ID'} &bull; {emp?.department || 'Operations'} {emp?.position ? `• ${emp.position}` : ''}
                   </p>
                 </div>
                 <button 
@@ -1279,6 +1359,31 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                   </div>
                 )}
 
+                {/* Pause Info Banner (shown when loan is Paused) */}
+                {isPaused && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-300">
+                      <PauseCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Deductions Paused</span>
+                    </div>
+                    {viewingLoan.pausedReason && (
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Reason: <span className="font-medium">{viewingLoan.pausedReason}</span>
+                      </p>
+                    )}
+                    {viewingLoan.pausedUntilPeriodKey && (
+                      <p className="text-zinc-600 dark:text-zinc-400">
+                        Auto-resumes: <span className="font-semibold text-emerald-700 dark:text-emerald-400">{viewingLoan.pausedUntilPeriodKey}</span>
+                      </p>
+                    )}
+                    {!viewingLoan.pausedUntilPeriodKey && (
+                      <p className="text-zinc-500 dark:text-zinc-500 italic">
+                        Paused indefinitely — requires manual resume.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Repayment History Ledger */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300 px-0.5">
@@ -1315,6 +1420,38 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                       ))}
                     </div>
                   )}
+
+                  {/* Pause Event History */}
+                  {(viewingLoan.pauseHistory || []).length > 0 && (
+                    <div className="mt-1.5 space-y-1">
+                      <div className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider px-0.5">Pause / Resume Log</div>
+                      {(viewingLoan.pauseHistory || []).map((evt, idx) => (
+                        <div key={evt.id || idx} className={`p-2.5 rounded-lg border text-xs flex items-center justify-between gap-2 ${
+                          evt.action === 'pause'
+                            ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40'
+                            : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/60 dark:border-emerald-800/40'
+                        }`}>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {evt.action === 'pause'
+                              ? <PauseCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              : <PlayCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                            }
+                            <div className="min-w-0">
+                              <div className="font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                                {evt.action === 'pause' ? 'Paused' : 'Resumed'}{evt.reason ? `: ${evt.reason}` : ''}
+                              </div>
+                              {evt.performedBy && (
+                                <div className="text-[10px] text-zinc-400">By: {evt.performedBy}</div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-zinc-400 font-mono shrink-0">
+                            {formatDate(evt.date)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1339,13 +1476,34 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        onPauseResumeLoan(viewingLoan.id);
-                        setViewingLoan(prev => prev ? { ...prev, status: prev.status === 'Paused' ? 'Active' : 'Paused' } : null);
+                        const loanToEdit = viewingLoan;
+                        setViewingLoan(null);
+                        setPauseModalLoan(loanToEdit);
                       }}
-                      className="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700 transition flex items-center gap-1.5 cursor-pointer"
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                        isPaused
+                          ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/60'
+                          : 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/60'
+                      }`}
                     >
-                      {isPaused ? <PlayCircle className="w-3.5 h-3.5 text-emerald-500" /> : <PauseCircle className="w-3.5 h-3.5 text-amber-500" />}
+                      {isPaused ? <PlayCircle className="w-3.5 h-3.5" /> : <PauseCircle className="w-3.5 h-3.5" />}
                       <span>{isPaused ? 'Resume' : 'Pause'}</span>
+                    </button>
+                  )}
+                  {!isWriteDisabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const loanToDelete = viewingLoan;
+                        if (window.confirm(`Delete ${loanToDelete.type} record for ${empFullName}?`)) {
+                          setViewingLoan(null);
+                          onDeleteLoan(loanToDelete.id);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-medium hover:bg-rose-100 dark:hover:bg-rose-950/60 transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
                     </button>
                   )}
                 </div>
@@ -1454,6 +1612,25 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Pause / Resume Loan Modal */}
+      <PauseLoanModal
+        isOpen={pauseModalLoan !== null}
+        loan={pauseModalLoan}
+        employee={employees.find(e => e.id === pauseModalLoan?.employeeId)}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        currentUser={currentUser}
+        onClose={() => setPauseModalLoan(null)}
+        onConfirmPause={(loanId, options) => {
+          onPauseResumeLoan(loanId, options);
+          setPauseModalLoan(null);
+        }}
+        onConfirmResume={(loanId, options) => {
+          onPauseResumeLoan(loanId, options);
+          setPauseModalLoan(null);
+        }}
+      />
     </div>
   );
 };

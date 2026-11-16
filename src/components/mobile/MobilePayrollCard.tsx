@@ -23,61 +23,32 @@ export const MobilePayrollCard: React.FC<MobilePayrollCardProps> = ({
     <div 
       className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3 shadow-xs select-none"
     >
-      <div className="flex items-start justify-between gap-2.5">
-        {/* Left: Avatar with Initials & Personnel Details */}
-        <div className="flex items-start gap-2.5 min-w-0 flex-1">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shrink-0 mt-0.5">
+      <div className="flex items-center justify-between gap-2.5">
+        {/* Left: Avatar with Initials & Employee Name */}
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shrink-0">
             {initials}
           </div>
           
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h4 className="text-xs sm:text-[13px] font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-snug break-words">
-                {item.fullName}
-              </h4>
-              {isEmailed && (
-                <span 
-                  className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0" 
-                  title="Payslip emailed"
-                >
-                  <MailCheck className="w-3.5 h-3.5" />
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium tracking-wide uppercase mt-0.5">
-              {item.department || 'General'}
-            </p>
-            {(item.isSection5CapExceeded || (item.unpaidAbsenceDays && item.unpaidAbsenceDays > 0) || (item.contributionDeduction && item.contributionDeduction > 0)) && (
-              <div className="flex items-center gap-1 flex-wrap mt-1">
-                {item.isSection5CapExceeded && (
-                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                    ⚠️ &gt;1/3 Cap
-                  </span>
-                )}
-                {Boolean(item.unpaidAbsenceDays && item.unpaidAbsenceDays > 0) && (
-                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800">
-                    -{item.unpaidAbsenceDays}d
-                  </span>
-                )}
-                {Boolean(item.contributionDeduction && item.contributionDeduction > 0) && (
-                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40">
-                    Welfare: -{formatNaira(item.contributionDeduction || 0)}
-                  </span>
-                )}
-              </div>
+          <div className="min-w-0 flex-1 flex items-center gap-1.5">
+            <h4 className="text-xs sm:text-[13px] font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-snug truncate">
+              {item.fullName}
+            </h4>
+            {isEmailed && (
+              <span 
+                className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0" 
+                title="Payslip emailed"
+              >
+                <MailCheck className="w-3.5 h-3.5" />
+              </span>
             )}
           </div>
         </div>
 
-        {/* Right Financials & Minimalist Icon Button */}
+        {/* Right: Net Take Home & View Payslip Button */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="text-right">
-            <div className="text-xs sm:text-[13px] font-bold font-mono text-emerald-600 dark:text-emerald-400 leading-tight">
-              {formatNaira(item.netTakeHome)}
-            </div>
-            <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">
-              Gross: <span className="font-mono">{formatNaira(item.monthlyGross)}</span>
-            </div>
+          <div className="text-xs sm:text-[13px] font-bold font-mono text-emerald-600 dark:text-emerald-400 leading-tight">
+            {formatNaira(item.netTakeHome)}
           </div>
 
           <button

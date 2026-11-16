@@ -698,7 +698,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
               <div>
                 <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Personal Profile</h1>
-                <p className="text-xs text-zinc-400 mt-0.5">Your identity across audit logs and sessions</p>
               </div>
 
               {/* Identity card */}
@@ -791,7 +790,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
               <div>
                 <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Password & PIN</h1>
-                <p className="text-xs text-zinc-400 mt-0.5">Manage your login credentials and quick-access PIN</p>
               </div>
               <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
                 <SettingRow
@@ -828,7 +826,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
               <div>
                 <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Biometric Authentication</h1>
-                <p className="text-xs text-zinc-400 mt-0.5">Use Windows Hello, fingerprint, or face ID to unlock this terminal</p>
               </div>
 
               <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
@@ -892,7 +889,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
               <div>
                 <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Two-Factor Authentication</h1>
-                <p className="text-xs text-zinc-400 mt-0.5">Require a 6-digit code from an authenticator app on every sign-in</p>
               </div>
 
               <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
@@ -979,7 +975,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
               <div>
                 <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Session & Privacy</h1>
-                <p className="text-xs text-zinc-400 mt-0.5">Control how this device stores and manages your session</p>
               </div>
 
               <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">

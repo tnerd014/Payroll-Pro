@@ -164,6 +164,8 @@ export interface CalculatedPayrollItem {
   targetNetPay?: number;
   calculationMode?: SalaryCalculationMode;
   loanDeduction?: number;
+  salaryAdvanceDeduction?: number;
+  staffLoanDeduction?: number;
   workSchedule?: WorkSchedule;
   contractualGross?: number;
   unpaidAbsenceDays?: number;
@@ -186,6 +188,15 @@ export interface LoanRepaymentRecord {
   notes?: string;
 }
 
+export interface LoanPauseRecord {
+  id: string;
+  action: 'pause' | 'resume';
+  date: string;
+  reason?: string;
+  pausedUntilPeriodKey?: string;
+  performedBy?: string;
+}
+
 export interface EmployeeLoan {
   id: string;
   employeeId: string;
@@ -203,6 +214,10 @@ export interface EmployeeLoan {
   notes?: string;
   description?: string;
   history?: LoanRepaymentRecord[];
+  pausedReason?: string;
+  pausedUntilPeriodKey?: string;
+  pausedAt?: string;
+  pauseHistory?: LoanPauseRecord[];
 }
 
 export interface PayrollSnapshotTotals {
@@ -647,6 +662,7 @@ export interface WhatsAppTermiiConfig {
 
 export interface WhatsAppSettings {
   enabled: boolean;
+  isActive?: boolean;
   provider: WhatsAppProviderType; // 'direct' (wa.me instant links) | 'cloud_api' | 'ultramsg' | 'termii'
   cloudApi: WhatsAppCloudApiConfig;
   ultramsg: WhatsAppUltraMsgConfig;
@@ -775,6 +791,35 @@ export interface EmailedPayslipRecord {
 }
 
 export interface EmailPayslipContext {
+  selectedEmployeeIds?: string[];
+  selectedMonthKeys?: string[];
+  year?: number;
+}
+
+export interface WhatsAppSendHistoryItem {
+  sentAt: string; // ISO timestamp
+  recipientPhone: string;
+  messageId?: string;
+  version?: number; // Snapshot/revision version
+  netPay?: number; // Net pay snapshot at time of send
+  sentBy?: string; // Admin user who triggered send
+  status: 'sent' | 'failed';
+  error?: string;
+}
+
+export interface WhatsAppedPayslipRecord {
+  employeeId: string;
+  periodKey: string; // e.g. "2026-oct"
+  sentAt: string; // ISO timestamp of most recent dispatch
+  recipientPhone: string;
+  messageId?: string;
+  version?: number; // Payroll version at latest dispatch
+  sendCount?: number; // Total number of times sent for this period
+  netPayAtSend?: number; // Last sent net pay (to detect revisions)
+  history?: WhatsAppSendHistoryItem[]; // Full audit trail of all previous dispatches
+}
+
+export interface WhatsAppPayslipContext {
   selectedEmployeeIds?: string[];
   selectedMonthKeys?: string[];
   year?: number;

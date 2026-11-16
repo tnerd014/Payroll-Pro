@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, ArrowLeft, ZoomIn, ZoomOut, RotateCcw, ShieldCheck, Check } from 'lucide-react';
+import { Printer, ArrowLeft, ZoomIn, ZoomOut, RotateCcw, ShieldCheck, Check, X } from 'lucide-react';
 import { CalculatedPayrollItem, CompanyProfile, Employee } from '../../types';
 import { formatNaira, formatDate } from '../../engine/payePensionEngine';
 import { PinchZoomContainer } from '../mobile/PinchZoomContainer';
@@ -172,11 +172,6 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
                     {selectedType === 'paye' && 'Statutory PAYE Tax Remittance Schedule'}
                     {selectedType === 'pension' && 'Statutory Pension Contribution Remittance Schedule'}
                   </h2>
-                  <p className="text-[10px] text-zinc-500">
-                    {selectedType === 'bank' && 'Direct electronic fund transfer mandate for staff salary disbursement.'}
-                    {selectedType === 'paye' && 'State Internal Revenue Service monthly tax deduction & remittance register.'}
-                    {selectedType === 'pension' && 'Pension Reform Act 2014 statutory compliance schedule (Employee 8% + Employer 10%).'}
-                  </p>
                 </div>
 
                 <div className="text-right">
@@ -482,6 +477,15 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Print / Save PDF</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shrink-0 ml-1"
+            title="Close (Esc)"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>

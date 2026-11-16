@@ -36,7 +36,8 @@ import {
   EyeOff,
   Send,
   MessageCircle,
-  Smartphone
+  Smartphone,
+  RefreshCw
 } from 'lucide-react';
 import { 
   CompanyProfile, 
@@ -182,6 +183,44 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [companyForm, setCompanyForm] = useState<CompanyProfile>(company);
   const [brandingSaved, setBrandingSaved] = useState(false);
   const [confirmDeleteLogo, setConfirmDeleteLogo] = useState(false);
+
+  // --- APP UPDATE STATE ---
+  const [appVersion, setAppVersion] = useState('1.0.8');
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateFeedback, setUpdateFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : undefined;
+    if (electronAPI?.getVersion) {
+      electronAPI.getVersion().then((v: string) => {
+        if (v) setAppVersion(v.replace(/^v/i, ''));
+      }).catch(() => {});
+    }
+  }, []);
+
+  const handleManualCheckUpdates = async () => {
+    const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : undefined;
+    if (!electronAPI?.checkForUpdates) {
+      setUpdateFeedback('Automatic updates are active in the installed desktop application.');
+      return;
+    }
+    setIsCheckingUpdate(true);
+    setUpdateFeedback(null);
+    try {
+      const res = await electronAPI.checkForUpdates();
+      if (!res?.success) {
+        setUpdateFeedback(res?.error || 'Unable to check for updates right now.');
+      } else if (res.upToDate) {
+        setUpdateFeedback(`You are running the latest version (v${res.currentVersion}).`);
+      } else if (res.updateAvailable) {
+        setUpdateFeedback(`Version v${res.latestVersion} is ready to download.`);
+      }
+    } catch {
+      setUpdateFeedback('Unable to reach GitHub update server.');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Track dirty state for Tab 1 (Company & Branding)
@@ -476,75 +515,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isBrandingDirty, isTaxDirty, isEmailDirty]);
 
-  // Tab switching guard within SettingsView
-  const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
-  const [isTabModalOpen, setIsTabModalOpen] = useState(false);
-
   const handleTabChange = (targetTab: SettingsTab) => {
     if (targetTab === activeTab) return;
-
-    if (activeTab === 'branding' && isBrandingDirty) {
-      setPendingTab(targetTab);
-      setIsTabModalOpen(true);
-      return;
-    }
-
-    if (activeTab === 'tax' && isTaxDirty) {
-      setPendingTab(targetTab);
-      setIsTabModalOpen(true);
-      return;
-    }
-
-    if (activeTab === 'email' && isEmailDirty) {
-      setPendingTab(targetTab);
-      setIsTabModalOpen(true);
-      return;
-    }
-
-    if (activeTab === 'whatsapp' && isWhatsAppDirty) {
-      setPendingTab(targetTab);
-      setIsTabModalOpen(true);
-      return;
-    }
-
     setActiveTab(targetTab);
-  };
-
-  const handleSaveAndSwitchTab = () => {
-    let ok = true;
-    if (activeTab === 'branding') {
-      ok = saveBranding();
-    } else if (activeTab === 'tax') {
-      ok = saveTax();
-    } else if (activeTab === 'email') {
-      ok = saveEmail();
-    } else if (activeTab === 'whatsapp') {
-      ok = saveWhatsApp();
-    }
-
-    if (ok && pendingTab) {
-      setActiveTab(pendingTab);
-      setPendingTab(null);
-      setIsTabModalOpen(false);
-    }
-  };
-
-  const handleDiscardAndSwitchTab = () => {
-    if (activeTab === 'branding') {
-      discardBranding();
-    } else if (activeTab === 'tax') {
-      discardTax();
-    } else if (activeTab === 'email') {
-      discardEmail();
-    } else if (activeTab === 'whatsapp') {
-      discardWhatsApp();
-    }
-
-    if (pendingTab) {
-      setActiveTab(pendingTab);
-      setPendingTab(null);
-      setIsTabModalOpen(false);
-    }
   };
 
   const handleResetTaxDefaults = () => {
@@ -1236,6 +1209,37 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
 
+          {/* Software Updates & App Information */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Software Updates
+                </h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-1">
+                  Installed Release: <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">v{appVersion}</span>
+                </p>
+                {updateFeedback && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium animate-in fade-in">
+                    {updateFeedback}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleManualCheckUpdates}
+                  disabled={isCheckingUpdate}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
+                  <span>{isCheckingUpdate ? 'Checking GitHub…' : 'Check for Updates'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Action Bar */}
           <div className="flex items-center gap-3">
             <button
@@ -1269,9 +1273,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 Salary Calculation Mode
               </h2>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Choose how employee base salaries are interpreted.
-              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1369,9 +1370,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     {pv.prorateMidMonth ? 'Enabled' : 'Disabled'}
                   </span>
                 </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Automatically calculate prorated salaries for employees who join or leave during the payroll month based on exact calendar days active.
-                </p>
               </div>
 
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -1402,9 +1400,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     {departments.length} Departments
                   </span>
                 </div>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Manage company operational units. Add, edit, or remove departments used across employee records and payroll cost reporting.
-                </p>
               </div>
 
               {deptFeedback && (
@@ -1546,9 +1541,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     {activeEmploymentRules.length} Rules Active
                   </span>
                 </div>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Set default statutory tax and pension deductions per employment category. Full-Time pays PAYE &amp; Pension by default; Part-Time and Contract are exempt. Defaults apply when onboarding staff, and can also be overridden per employee.
-                </p>
               </div>
 
               {typeFeedback && (
@@ -1721,9 +1713,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                   Gross Remuneration Allowance Structure
                 </h2>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Standard Nigerian breakdown percentages. The 4 components must total exactly 100%.
-                </p>
               </div>
 
               <div className={`px-2.5 py-1 rounded text-xs font-mono font-medium ${
@@ -1792,9 +1781,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 Pension Reform Act 2014 Contribution Rates
               </h2>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Applied to Pensionable Emoluments (Basic + Housing + Transport).
-              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -1842,9 +1828,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 PITA Tax Relief Parameters
               </h2>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Consolidated Relief Allowance (CRA) calculation variables and annual Rent Relief caps.
-              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -1888,9 +1871,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                   Progressive PAYE Tax Brackets (Sixth Schedule)
                 </h2>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Sequential tax rates applied progressively to chargeable income.
-                </p>
               </div>
 
               <button
@@ -2276,9 +2256,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 Email Delivery &amp; Payslip Automation
               </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                Configure your company mail server or cloud email API to automatically dispatch official PDF payslips to employees.
-              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -2307,9 +2284,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 Delivery Provider Method
               </h3>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Choose how Payroll Pro connects to the internet to dispatch outgoing employee payslips.
-              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2317,26 +2291,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setEmailForm(prev => ({ ...prev, provider: 'smtp' }))}
-                className={`text-left p-4 rounded-lg border transition flex items-start justify-between gap-3 ${
+                className={`text-left p-3.5 rounded-lg border transition flex items-center justify-between gap-3 ${
                   emailForm.provider === 'smtp'
                     ? 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-500 dark:border-blue-400 ring-1 ring-blue-500/20 shadow-2xs'
                     : 'bg-white dark:bg-[#141418] border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
                 }`}
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                      Direct SMTP Server
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-medium">
-                      Desktop Native
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">
-                    Use your corporate mailbox (Gmail, Microsoft 365, Zoho, or cPanel). No subscription fees.
-                  </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    Direct SMTP Server
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-medium">
+                    Desktop Native
+                  </span>
                 </div>
-                <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
                   emailForm.provider === 'smtp'
                     ? 'border-blue-600 bg-blue-600'
                     : 'border-zinc-300 dark:border-zinc-700'
@@ -2349,26 +2318,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setEmailForm(prev => ({ ...prev, provider: 'resend' }))}
-                className={`text-left p-4 rounded-lg border transition flex items-start justify-between gap-3 ${
+                className={`text-left p-3.5 rounded-lg border transition flex items-center justify-between gap-3 ${
                   emailForm.provider === 'resend'
                     ? 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-500 dark:border-blue-400 ring-1 ring-blue-500/20 shadow-2xs'
                     : 'bg-white dark:bg-[#141418] border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
                 }`}
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                      Resend Cloud API
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-medium">
-                      Cloud REST API
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-snug">
-                    Modern email API with ultra-fast delivery. Ideal for cloud deployments and high volume.
-                  </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    Resend Cloud API
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-medium">
+                    Cloud REST API
+                  </span>
                 </div>
-                <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
                   emailForm.provider === 'resend'
                     ? 'border-purple-600 bg-purple-600'
                     : 'border-zinc-300 dark:border-zinc-700'
@@ -2722,9 +2686,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                       WhatsApp Payslip Dispatch Engine
                     </h2>
-                    <p className="text-xs text-zinc-500 mt-0.5">
-                      Configure automated delivery or direct WhatsApp chat integration to send official salary payslips directly to employee WhatsApp lines.
-                    </p>
+                    
                   </div>
                 </div>
               </div>
@@ -2751,9 +2713,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 1. Select WhatsApp Dispatch Method
               </h3>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Choose between zero-setup instant WhatsApp Web links or automated high-volume cloud gateways.
-              </p>
+              
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -2776,9 +2736,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="w-2 h-2 rounded-full bg-emerald-600" />
                   )}
                 </div>
-                <p className="text-[11px] text-zinc-500 leading-relaxed">
-                  Opens WhatsApp app or Web instantly with pre-filled message + auto-downloads official voucher. Zero setup or API keys needed.
-                </p>
+                
               </button>
 
               {/* Option B: Meta WhatsApp Cloud API */}
@@ -2800,9 +2758,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="w-2 h-2 rounded-full bg-emerald-600" />
                   )}
                 </div>
-                <p className="text-[11px] text-zinc-500 leading-relaxed">
-                  Official WhatsApp Business Cloud API by Meta. High throughput background dispatch using verified Business Manager credentials.
-                </p>
+                
               </button>
 
               {/* Option C: UltraMsg WhatsApp Gateway */}
@@ -2824,9 +2780,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="w-2 h-2 rounded-full bg-emerald-600" />
                   )}
                 </div>
-                <p className="text-[11px] text-zinc-500 leading-relaxed">
-                  Automated WhatsApp Web multi-device instance. Sends text and documents directly from your existing WhatsApp phone number.
-                </p>
+                
               </button>
 
               {/* Option D: Termii WhatsApp */}
@@ -2848,9 +2802,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <div className="w-2 h-2 rounded-full bg-emerald-600" />
                   )}
                 </div>
-                <p className="text-[11px] text-zinc-500 leading-relaxed">
-                  Nigerian &amp; African telecommunications gateway with WhatsApp business notifications and OTP routes.
-                </p>
+                
               </button>
             </div>
           </div>
@@ -2862,9 +2814,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                   2. Meta WhatsApp Cloud API Credentials
                 </h3>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Obtain these from your Meta for Developers dashboard under WhatsApp &gt; API Setup.
-                </p>
+                
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -3169,9 +3119,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <AlertOctagon className="w-4 h-4 text-rose-500" />
                 Selective System Reset
               </h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                Select which modules to wipe. Keep <span className="font-medium text-zinc-700 dark:text-zinc-300">Variables</span> unchecked to protect custom tax formulas and calculation brackets.
-              </p>
             </div>
 
             {/* Quick Presets */}
@@ -3578,60 +3525,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* ================= UNSAVED CHANGES TAB SWITCH MODAL ================= */}
-      {isTabModalOpen && (
-        <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-amber-300 dark:border-amber-900/60 rounded-lg max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in duration-150">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  Unsaved Changes
-                </h3>
-                <p className="text-xs text-zinc-500">
-                  You have unsaved changes in {activeTab === 'branding' ? 'Company & Branding' : 'Tax & Variables'}.
-                </p>
-              </div>
-            </div>
 
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Do you want to save your modifications before switching tabs, or discard them?
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsTabModalOpen(false);
-                  setPendingTab(null);
-                }}
-                className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-              >
-                Keep Editing
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDiscardAndSwitchTab}
-                className="px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition border border-rose-200 dark:border-rose-900/50"
-              >
-                Discard Changes
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSaveAndSwitchTab}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition shadow-xs"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>Save &amp; Switch</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ================= EXPORT SCOPE MODAL ================= */}
       <ExportScopeModal

@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const repo = process.env.GITHUB_REPOSITORY || 'tnerd014/Payroll-Pro';
-const tagName = process.env.GITHUB_REF_NAME || process.env.npm_package_version || 'v1.0.0';
+let pkgVersion = '1.0.8';
+try {
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  if (pkg.version) pkgVersion = pkg.version;
+} catch {}
+
+const rawTag = process.env.RELEASE_TAG || process.env.GITHUB_REF_NAME;
+const tagName = (rawTag && rawTag.startsWith('v')) ? rawTag : `v${pkgVersion}`;
 const version = String(tagName).replace(/^v/i, '');
 const releaseUrl = `https://github.com/${repo}/releases/tag/${tagName}`;
 const releaseDownloadBase = `https://github.com/${repo}/releases/download/${tagName}`;

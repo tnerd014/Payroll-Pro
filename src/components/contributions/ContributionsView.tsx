@@ -17,6 +17,7 @@ import {
   DollarSign, 
   FileText,
   SlidersHorizontal,
+  ChevronUp,
   ChevronDown,
   Info,
   MoreVertical,
@@ -122,6 +123,10 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'monthly' | 'ledger' | 'payouts'>('monthly');
+  const [showStats, setShowStats] = useState(true);
+
+  // Payouts Period Scope Filter ('all' = All Time, 'year' = Current Year, 'month' = Selected Month)
+  const [payoutPeriodScope, setPayoutPeriodScope] = useState<'all' | 'year' | 'month'>('all');
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,6 +135,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
   // Modals state
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
+  const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
   const [selectedLedgerEmpId, setSelectedLedgerEmpId] = useState<string | null>(null);
 
   // Single Edit Modal State
@@ -147,7 +153,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedScheme, activeTab, selectedMonth, selectedYear]);
+  }, [searchQuery, selectedScheme, activeTab, selectedMonth, selectedYear, payoutPeriodScope]);
 
   // Handle click outside & Escape for 3-dot dropdowns
   useEffect(() => {
@@ -162,6 +168,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       if (e.key === 'Escape') {
         setActiveMenuId(null);
         setMenuCoords(null);
+        setIsSpeedDialOpen(false);
       }
     };
     window.addEventListener('click', handleClickOutside);
@@ -253,11 +260,62 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
     return activeLedgers.slice(start, start + pageSize);
   }, [activeLedgers, currentPage, pageSize]);
 
+  const targetMonthNum = useMemo(() => {
+    const idx = MONTHS.findIndex(m => m.key.toLowerCase() === selectedMonth.toLowerCase());
+    return idx >= 0 ? idx + 1 : 11;
+  }, [selectedMonth]);
+
+  const parsePayoutDate = (dateStr: string) => {
+    if (!dateStr) return { year: 0, month: 0 };
+    const parts = dateStr.split('-');
+    if (parts.length >= 2) {
+      const y = parseInt(parts[0], 10) || 0;
+      const m = parseInt(parts[1], 10) || 0;
+      return { year: y, month: m };
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return { year: d.getFullYear(), month: d.getMonth() + 1 };
+    }
+    return { year: 0, month: 0 };
+  };
+
+  const payoutScopeCounts = useMemo(() => {
+    let yearCount = 0;
+    let monthCount = 0;
+    payouts.forEach(p => {
+      const { year: pYear, month: pMonth } = parsePayoutDate(p.payoutDate);
+      if (pYear === selectedYear) {
+        yearCount++;
+        if (pMonth === targetMonthNum) {
+          monthCount++;
+        }
+      }
+    });
+    return {
+      all: payouts.length,
+      year: yearCount,
+      month: monthCount,
+    };
+  }, [payouts, selectedYear, targetMonthNum]);
+
   // Filtered & Paginated Payouts
   const filteredPayouts = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return payouts;
     return payouts.filter(p => {
+      // 1. Period Scope Filter (All Time, Current Year, or Selected Month)
+      if (payoutPeriodScope !== 'all') {
+        const { year: pYear, month: pMonth } = parsePayoutDate(p.payoutDate);
+        if (payoutPeriodScope === 'year' && pYear !== selectedYear) {
+          return false;
+        }
+        if (payoutPeriodScope === 'month' && (pYear !== selectedYear || pMonth !== targetMonthNum)) {
+          return false;
+        }
+      }
+
+      // 2. Search Query Filter
+      if (!q) return true;
       const emp = employees.find(e => e.id === p.employeeId);
       const name = emp ? `${emp.firstName} ${emp.lastName}`.toLowerCase() : '';
       return (
@@ -266,7 +324,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
         (p.referenceNo || '').toLowerCase().includes(q)
       );
     });
-  }, [payouts, employees, searchQuery]);
+  }, [payouts, employees, searchQuery, payoutPeriodScope, selectedYear, targetMonthNum]);
 
   const paginatedPayouts = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -445,27 +503,39 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* ── Mobile View: Compact Sticky Top Bar (Playbook from Mobile Staff Directory) ── */}
-      <div className="sm:hidden sticky -top-3.5 z-30 pt-1 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3 shadow-xs space-y-2.5">
+    <div className="space-y-3 sm:space-y-4 pb-2 select-none">
+      {/* ── Mobile View: Compact Single-Row Sticky Top Bar (Minimalist Style) ── */}
+      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
+        <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-1.5 truncate">
-                <PiggyBank className="w-4 h-4 text-zinc-700 dark:text-zinc-300 shrink-0" />
-                <span>Staff Contributions</span>
-              </h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono mt-0.5 truncate">
-                {formatNaira(totalMonthCollection)} &bull; {activeContributorsCount} contributed
-              </p>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">
+                  Staff Contributions
+                </span>
+                {isPeriodLocked && (
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                    <Lock className="w-2.5 h-2.5" /> Locked
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                  {formatNaira(totalMonthCollection)}
+                </span>
+                <span className="text-[10px] text-zinc-400 font-medium truncate">
+                  &bull; {activeContributorsCount} contributed
+                </span>
+              </div>
             </div>
 
             {/* Month & Year Picker Pill */}
-            <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded-xl text-xs shrink-0">
+            <div className="flex items-center bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200/60 dark:border-zinc-700/60 px-2 py-1 rounded-xl text-xs transition-colors cursor-pointer shrink-0">
               <select
                 value={selectedMonth}
                 onChange={(e) => onPeriodChange(e.target.value, selectedYear)}
-                className="bg-transparent font-medium text-xs text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+                className="bg-transparent font-semibold text-xs text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+                aria-label="Filter Month"
               >
                 {MONTHS.map(m => (
                   <option key={m.key} value={m.key} className="dark:bg-zinc-900">
@@ -473,10 +543,12 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   </option>
                 ))}
               </select>
+              <span className="text-zinc-300 dark:text-zinc-600 mx-0.5">/</span>
               <select
                 value={selectedYear}
                 onChange={(e) => onPeriodChange(selectedMonth, parseInt(e.target.value, 10))}
-                className="bg-transparent font-medium text-xs text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+                className="bg-transparent font-semibold text-xs text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+                aria-label="Filter Year"
               >
                 {availableYears.map(y => (
                   <option key={y} value={y} className="dark:bg-zinc-900">{y}</option>
@@ -484,37 +556,6 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               </select>
             </div>
           </div>
-
-          {/* Mobile Quick Action Buttons */}
-          {isPeriodLocked ? (
-            <div className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              <Lock className="w-3.5 h-3.5 shrink-0" />
-              <span>Payroll Finalized (Locked)</span>
-            </div>
-          ) : !isWriteDisabled && (
-            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
-              <button
-                type="button"
-                onClick={openBulkModal}
-                className="h-8 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 font-medium text-xs flex items-center justify-center gap-1.5 shadow-2xs active:scale-98 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Bulk Log</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPayoutEmpId('');
-                  setPayoutAmount(0);
-                  setIsPayoutModalOpen(true);
-                }}
-                className="h-8 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-medium text-xs flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
-              >
-                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Log Payout</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -525,9 +566,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             <PiggyBank className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
             <span>Staff Contributions & Welfare</span>
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Voluntary staff welfare dues, cooperative savings, net deductions, and remittances.
-          </p>
+          
         </div>
 
         {/* Period & Top Actions */}
@@ -590,6 +629,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       </div>
 
       {/* Minimalist Stat Cards (Desktop Only - Hidden on Mobile to prevent clutter) */}
+      {showStats && (
       <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
           <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
@@ -631,6 +671,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           </div>
         </div>
       </div>
+      )}
 
       {/* Mobile Segmented Switcher (Thumb-Friendly 40px) */}
       <div className="sm:hidden grid grid-cols-3 gap-1 bg-zinc-200/70 dark:bg-zinc-800/80 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700/60 shadow-2xs">
@@ -714,16 +755,71 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Search by name, code, dept..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:border-zinc-400"
-          />
+        {/* Right Controls: Payout Scope (when in Payouts tab) & Search Bar */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+          {activeTab === 'payouts' && (
+            <div className="hidden sm:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-lg border border-zinc-200/80 dark:border-zinc-700/60 text-xs shrink-0">
+              <button
+                type="button"
+                onClick={() => setPayoutPeriodScope('all')}
+                className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
+                  payoutPeriodScope === 'all'
+                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 font-medium'
+                }`}
+                title="Show all historical disbursements"
+              >
+                All Time ({payoutScopeCounts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayoutPeriodScope('year')}
+                className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
+                  payoutPeriodScope === 'year'
+                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 font-medium'
+                }`}
+                title={`Show disbursements in ${selectedYear}`}
+              >
+                {selectedYear} ({payoutScopeCounts.year})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayoutPeriodScope('month')}
+                className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
+                  payoutPeriodScope === 'month'
+                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 font-medium'
+                }`}
+                title={`Show disbursements in ${monthLabel} ${selectedYear}`}
+              >
+                {monthLabel} ({payoutScopeCounts.month})
+              </button>
+            </div>
+          )}
+
+          {/* Search */}
+          <div className="relative w-full sm:w-60">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Search by name, code, dept..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:border-zinc-400"
+            />
+          </div>
+
+          {/* Toggle Stats for More Table Room */}
+          <button
+            type="button"
+            onClick={() => setShowStats(!showStats)}
+            className="hidden sm:flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+            title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
+          >
+            {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <span>{showStats ? "Hide Stats" : "Show Stats"}</span>
+          </button>
         </div>
       </div>
 
@@ -900,8 +996,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             </div>
           </div>
 
-          {/* Mobile Card Stack (Clean, Thumb-Friendly, No Horizontal Scroll) */}
-          <div className="sm:hidden space-y-2.5">
+          {/* Mobile Card Stack (Minimalist: Name and Monthly Contribution Amount) */}
+          <div className="sm:hidden space-y-1.5">
             {monthlyContributors.length === 0 ? (
               <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
                 <PiggyBank className="w-8 h-8 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
@@ -910,91 +1006,104 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               </div>
             ) : (
               paginatedMonthlyContributors.map(({ emp, contrib, amount }) => {
-                const initials = `${emp.firstName?.charAt(0) || ''}${emp.lastName?.charAt(0) || ''}`.toUpperCase() || 'E';
-                const summary = employeeSummaries.find(s => s.employeeId === emp.id);
+                const rowMenuId = `mobile-${emp.id}`;
 
                 return (
                   <div
                     key={emp.id}
-                    className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs"
+                    className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl px-3.5 py-2.5 flex items-center justify-between shadow-2xs hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition"
                   >
-                    {/* Top Identity Row */}
-                    <div className="flex items-start justify-between gap-2.5">
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shrink-0 mt-0.5">
-                          {initials}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-snug break-words">
-                            {emp.firstName} {emp.lastName}
-                          </h4>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 break-words">
-                            <span className="font-medium text-zinc-700 dark:text-zinc-300">{emp.department || 'General'}</span> &bull; {contrib?.schemeName || 'Staff Welfare'}
-                          </p>
-                        </div>
-                      </div>
+                    <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate pr-2">
+                      {emp.firstName} {emp.lastName}
+                    </span>
 
-                      {/* Active Status Badge */}
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        Active
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-mono font-bold text-xs text-zinc-900 dark:text-zinc-100">
+                        {formatNaira(amount)}
                       </span>
-                    </div>
 
-                    {/* Middle Financial Info Strip */}
-                    <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5 text-zinc-500">
-                        <span className="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800/80 px-1.5 py-0.5 rounded text-zinc-700 dark:text-zinc-300 font-semibold">
-                          {emp.code}
-                        </span>
-                        <span className="text-[11px] text-zinc-400">
-                          Gross: {formatNaira(emp.monthlyGross)}
-                        </span>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="text-[10px] text-zinc-400 uppercase font-medium mr-1.5">Contribution</span>
-                        <span className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100">
-                          {formatNaira(amount)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Action Bar (Thumb-Friendly Buttons) */}
-                    {!isWriteDisabled && (
-                      <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedLedgerEmpId(emp.id)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 flex items-center gap-1"
-                        >
-                          <FileText className="w-3 h-3 text-zinc-400" />
-                          <span>Statement</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditSingle(emp, contrib)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 flex items-center gap-1"
-                        >
-                          <Edit3 className="w-3 h-3 text-zinc-400" />
-                          <span>Edit</span>
-                        </button>
-                        {contrib && amount > 0 && (
+                      {!isWriteDisabled && (
+                        <div className="relative">
                           <button
                             type="button"
-                            onClick={() => {
-                              if (confirm(`Remove ${formatNaira(amount)} contribution deduction for ${emp.firstName} ${emp.lastName} in ${monthLabel}?`)) {
-                                onDeleteContribution(contrib.id);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (activeMenuId === rowMenuId) {
+                                setActiveMenuId(null);
+                                setMenuCoords(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const spaceBelow = window.innerHeight - rect.bottom;
+                                const spaceAbove = rect.top;
+                                const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+                                setMenuCoords({
+                                  top: openUp ? undefined : rect.bottom + 4,
+                                  bottom: openUp ? Math.max(10, window.innerHeight - rect.top + 4) : undefined,
+                                  right: Math.max(10, window.innerWidth - rect.right),
+                                });
+                                setActiveMenuId(rowMenuId);
                               }
                             }}
-                            className="px-2 py-1 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200/60 dark:border-rose-900/40 flex items-center gap-1"
+                            className="p-1 rounded text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                            title="Actions"
                           >
-                            <Trash2 className="w-3 h-3" />
-                            <span>Opt Out</span>
+                            <MoreVertical className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </div>
-                    )}
+
+                          {activeMenuId === rowMenuId && menuCoords && (
+                            <div
+                              style={{ 
+                                top: menuCoords.top !== undefined ? `${menuCoords.top}px` : undefined,
+                                bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
+                                right: `${menuCoords.right}px` 
+                              }}
+                              className="fixed w-44 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left contrib-action-dropdown"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  setMenuCoords(null);
+                                  handleOpenEditSingle(emp, contrib);
+                                }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                <span>Edit Amount</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  setMenuCoords(null);
+                                  setSelectedLedgerEmpId(emp.id);
+                                }}
+                                className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                                <span>Savings Statement</span>
+                              </button>
+                              {contrib && amount > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveMenuId(null);
+                                    setMenuCoords(null);
+                                    if (confirm(`Remove ${formatNaira(amount)} contribution deduction for ${emp.firstName} ${emp.lastName} in ${monthLabel}?`)) {
+                                      onDeleteContribution(contrib.id);
+                                    }
+                                  }}
+                                  className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer border-t border-zinc-100 dark:border-zinc-800 mt-0.5"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                  <span>Opt Out</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })
@@ -1279,7 +1388,31 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   {filteredPayouts.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-3 py-8 text-center text-zinc-400">
-                        No payouts recorded yet. Click "Log Payout" to record savings disbursements back to staff.
+                        {payoutPeriodScope === 'month' ? (
+                          <div className="space-y-1.5">
+                            <p>No payouts recorded for {monthLabel} {selectedYear}.</p>
+                            <button
+                              type="button"
+                              onClick={() => setPayoutPeriodScope('all')}
+                              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
+                            >
+                              Show all {payouts.length} historical disbursements &rarr;
+                            </button>
+                          </div>
+                        ) : payoutPeriodScope === 'year' ? (
+                          <div className="space-y-1.5">
+                            <p>No payouts recorded for {selectedYear}.</p>
+                            <button
+                              type="button"
+                              onClick={() => setPayoutPeriodScope('all')}
+                              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-medium"
+                            >
+                              Show all {payouts.length} historical disbursements &rarr;
+                            </button>
+                          </div>
+                        ) : (
+                          'No payouts recorded yet. Click "Log Payout" to record savings disbursements back to staff.'
+                        )}
                       </td>
                     </tr>
                   ) : (
@@ -1378,11 +1511,64 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
 
           {/* Mobile Card Stack */}
           <div className="sm:hidden space-y-2.5">
+            {/* Mobile Payout Scope Selector */}
+            <div className="flex items-center justify-between gap-1 bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60 text-xs">
+              <button
+                type="button"
+                onClick={() => setPayoutPeriodScope('all')}
+                className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition text-center cursor-pointer ${
+                  payoutPeriodScope === 'all'
+                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
+                }`}
+              >
+                All ({payoutScopeCounts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayoutPeriodScope('year')}
+                className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition text-center cursor-pointer ${
+                  payoutPeriodScope === 'year'
+                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
+                }`}
+              >
+                {selectedYear} ({payoutScopeCounts.year})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayoutPeriodScope('month')}
+                className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition text-center cursor-pointer ${
+                  payoutPeriodScope === 'month'
+                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
+                }`}
+              >
+                {monthLabel} ({payoutScopeCounts.month})
+              </button>
+            </div>
+
             {filteredPayouts.length === 0 ? (
               <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
                 <ArrowUpRight className="w-8 h-8 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
-                <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">No payouts recorded</p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">Tap "Log Payout" above to record savings remittances back to staff.</p>
+                <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  {payoutPeriodScope === 'month'
+                    ? `No payouts in ${monthLabel} ${selectedYear}`
+                    : payoutPeriodScope === 'year'
+                    ? `No payouts in ${selectedYear}`
+                    : 'No payouts recorded'}
+                </p>
+                {payoutPeriodScope !== 'all' ? (
+                  <button
+                    type="button"
+                    onClick={() => setPayoutPeriodScope('all')}
+                    className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline cursor-pointer"
+                  >
+                    Show all {payouts.length} historical disbursements
+                  </button>
+                ) : (
+                  <p className="text-[11px] text-zinc-400 mt-0.5">Tap "Log Payout" above to record savings remittances back to staff.</p>
+                )}
               </div>
             ) : (
               paginatedPayouts.map(payout => {
@@ -1458,6 +1644,76 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
         </div>
       )}
 
+      {/* ── Android Material 3 Floating Action Button (FAB) with Speed Dial ── */}
+      {!isWriteDisabled && !isPeriodLocked && (
+        <>
+          {/* Backdrop when Speed Dial is open */}
+          {isSpeedDialOpen && (
+            <div
+              className="sm:hidden fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
+              onClick={() => setIsSpeedDialOpen(false)}
+            />
+          )}
+
+          {/* Floating Action Button Container */}
+          <div className="sm:hidden fixed bottom-[80px] right-4 z-50 flex flex-col items-end gap-2.5 pointer-events-auto select-none">
+            {/* Speed Dial Menu Actions */}
+            {isSpeedDialOpen && (
+              <div className="flex flex-col items-end gap-2 mb-1 animate-in slide-in-from-bottom-2 fade-in duration-200">
+                {/* Action 1: Log Payout */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSpeedDialOpen(false);
+                    setPayoutEmpId('');
+                    setPayoutAmount(0);
+                    setIsPayoutModalOpen(true);
+                  }}
+                  className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
+                >
+                  <span className="px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+                    Log Payout
+                  </span>
+                  <div className="w-10 h-10 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-emerald-400 dark:text-emerald-600 border border-zinc-700/50 dark:border-zinc-200/50 shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                    <ArrowUpRight className="w-4 h-4" />
+                  </div>
+                </button>
+
+                {/* Action 2: Bulk Log Month */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSpeedDialOpen(false);
+                    openBulkModal();
+                  }}
+                  className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
+                >
+                  <span className="px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+                    Bulk Log Month
+                  </span>
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Main Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setIsSpeedDialOpen(!isSpeedDialOpen)}
+              className={`w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10 ${
+                isSpeedDialOpen ? 'rotate-45 !bg-zinc-900 dark:!bg-zinc-100 dark:!text-zinc-900 !ring-zinc-500/20' : ''
+              }`}
+              title="Add / Log Contribution"
+              aria-label="Add / Log Contribution"
+            >
+              <Plus className="w-7 h-7 transition-transform duration-200" />
+            </button>
+          </div>
+        </>
+      )}
+
       {/* SINGLE EMPLOYEE EDIT CONTRIBUTION MODAL */}
       {editingSingleEmp && (
         <div 
@@ -1502,9 +1758,10 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveSingle} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
+            <form onSubmit={handleSaveSingle} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
                   Scheme / Purpose
                 </label>
                 <select
@@ -1601,23 +1858,24 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   );
                 })()}
               </div>
+            </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800/80">
-                <button
-                  type="button"
-                  onClick={() => setEditingSingleEmp(null)}
-                  className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition shadow-sm cursor-pointer"
-                >
-                  Save Deduction
-                </button>
-              </div>
-            </form>
+            <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800/80 px-4 sm:px-5 py-3 flex items-center justify-end gap-2 z-10 select-none">
+              <button
+                type="button"
+                onClick={() => setEditingSingleEmp(null)}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition shadow-sm cursor-pointer"
+              >
+                Save Deduction
+              </button>
+            </div>
+          </form>
           </div>
         </div>
       )}
@@ -1646,9 +1904,6 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                       {monthLabel} {selectedYear}
                     </span>
                   </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
-                    Set global deduction rate or customize amounts deducted from take-home pay
-                  </p>
                 </div>
               </div>
               <button
@@ -1969,9 +2224,6 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                       Disbursement
                     </span>
                   </div>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
-                    Record welfare or voluntary savings payout to staff
-                  </p>
                 </div>
               </div>
               <button
@@ -1983,8 +2235,9 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSavePayout} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
-              {/* Employee Selection */}
+            <form onSubmit={handleSavePayout} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
+                {/* Employee Selection */}
               <div>
                 <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
                   Select Staff Member
@@ -2117,8 +2370,10 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 />
               </div>
 
-              {/* Footer Actions */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800/80">
+              </div>
+
+              {/* Fixed Footer Actions */}
+              <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800/80 px-4 sm:px-5 py-3 flex items-center justify-end gap-2 z-10 select-none">
                 <button
                   type="button"
                   onClick={() => setIsPayoutModalOpen(false)}

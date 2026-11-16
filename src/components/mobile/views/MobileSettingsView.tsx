@@ -1112,7 +1112,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                 Salary Calculation Mode
               </h3>
-              <p className="text-[10px] text-zinc-400 mt-0.5">Choose how employee salaries are interpreted</p>
+              
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -1137,7 +1137,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     )}
                   </span>
                 </div>
-                <p className="text-[9px] text-zinc-400 leading-tight">Standard: deductions subtracted from gross</p>
+                
               </button>
 
               <button
@@ -1161,7 +1161,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     )}
                   </span>
                 </div>
-                <p className="text-[9px] text-zinc-400 leading-tight">Take-home: gross is back-calculated</p>
+                
               </button>
             </div>
           </div>
@@ -1182,9 +1182,6 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     {pvForm.prorateMidMonth ? 'Active' : 'Off'}
                   </span>
                 </div>
-                <p className="text-[10px] text-zinc-400 leading-tight">
-                  Prorate salary for mid-month joiners/leavers based on calendar days worked.
-                </p>
               </div>
 
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -1309,7 +1306,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                   Pension Reform Act (PRA)
                 </h3>
-                <p className="text-[10px] text-zinc-400 mt-0.5">Statutory monthly remittances</p>
+                
               </div>
 
               <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/70">
@@ -1360,7 +1357,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                 PITA Tax Relief Parameters
               </h3>
-              <p className="text-[10px] text-zinc-400 mt-0.5">Nigeria Personal Income Tax Act (PITA) statutory reliefs &amp; caps</p>
+              
             </div>
 
             {/* CRA Base */}
@@ -1478,7 +1475,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                   PAYE Tax Brackets
                 </h3>
-                <p className="text-[10px] text-zinc-400 mt-0.5">Sixth Schedule sequential tax tiers</p>
+                
               </div>
 
               <button
@@ -1562,7 +1559,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                   Employment Demarcations
                 </h3>
-                <p className="text-[10px] text-zinc-400 mt-0.5">Statutory PAYE &amp; pension rules per category</p>
+                
               </div>
 
               <button
@@ -1834,7 +1831,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                     Audit Trail
                   </h3>
-                  <p className="text-[10px] text-zinc-400">Activity and change ledger</p>
+                  
                 </div>
               </div>
 
@@ -1969,7 +1966,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                   Data Vault &amp; Backup
                 </h3>
-                <p className="text-[10px] text-zinc-400 mt-0.5">Offline JSON backup &amp; cloud snapshot</p>
+                
               </div>
               <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -2013,7 +2010,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     <h4 className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
                       Selective System Reset
                     </h4>
-                    <p className="text-[10px] text-zinc-400 mt-0.5">Purge employee records or payroll history</p>
+                    
                   </div>
                 </div>
               </div>
@@ -2564,7 +2561,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                           {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                         </div>
                       </div>
-                      <p className="text-[10px] text-zinc-400 font-normal leading-tight">{p.desc}</p>
+                      
                     </button>
                   );
                 })}
@@ -2990,7 +2987,6 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                   <h3 className="text-xs font-bold text-rose-900 dark:text-rose-100">
                     System Reset Options
                   </h3>
-                  <p className="text-[10px] text-zinc-400">Select which data to clear</p>
                 </div>
               </div>
 

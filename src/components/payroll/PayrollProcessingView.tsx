@@ -18,15 +18,35 @@ import {
   ChevronUp,
   Mail,
   MailCheck,
-  CalendarOff
+  CalendarOff,
+  MessageCircle
 } from 'lucide-react';
-import { CalculatedPayrollItem, PayrollSnapshot, Employee, PayrollVariables, PayeTaxVariables, CompanyProfile, PayslipDesignConfig, PayslipCustomPreset, EmployeeLoan, TeamMember, EmailSettings, EmailedPayslipRecord, EmailPayslipContext, EmployeeAbsenceRecord } from '../../types';
+import { 
+  CalculatedPayrollItem, 
+  PayrollSnapshot, 
+  Employee, 
+  PayrollVariables, 
+  PayeTaxVariables, 
+  CompanyProfile, 
+  PayslipDesignConfig, 
+  PayslipCustomPreset, 
+  EmployeeLoan, 
+  TeamMember, 
+  EmailSettings, 
+  EmailedPayslipRecord, 
+  EmailPayslipContext, 
+  EmployeeAbsenceRecord,
+  WhatsAppSettings,
+  WhatsAppedPayslipRecord,
+  WhatsAppPayslipContext
+} from '../../types';
 import { formatNaira, formatCompactNaira, formatDateTime } from '../../engine/payePensionEngine';
 import { FinalizeLockModal } from './FinalizeLockModal';
 import { UnlockPayrollModal } from './UnlockPayrollModal';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { BulkPrintPayslipsModal } from './BulkPrintPayslipsModal';
 import { EmailPayslipsModal } from './EmailPayslipsModal';
+import { WhatsAppPayslipsModal } from './WhatsAppPayslipsModal';
 import { PayslipModal } from './PayslipModal';
 import { LogAbsenceModal } from '../absences/LogAbsenceModal';
 import { exportPayrollProToExcel, ExportOptions } from '../../engine/excelEngine';
@@ -70,6 +90,11 @@ interface PayrollProcessingViewProps {
   onOpenEmailSettings?: () => void;
   emailedPayslips?: Record<string, EmailedPayslipRecord>;
   onRecordEmailedPayslips?: (records: EmailedPayslipRecord[]) => void;
+  whatsappSettings?: WhatsAppSettings;
+  onUpdateEmployeePhone?: (employeeId: string, newPhone: string) => void;
+  onOpenWhatsAppSettings?: () => void;
+  whatsappedPayslips?: Record<string, WhatsAppedPayslipRecord>;
+  onRecordWhatsAppedPayslips?: (records: WhatsAppedPayslipRecord[]) => void;
   isAdmin?: boolean;
   isReadOnly?: boolean;
 }
@@ -108,6 +133,11 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   onOpenEmailSettings,
   emailedPayslips = {},
   onRecordEmailedPayslips,
+  whatsappSettings,
+  onUpdateEmployeePhone,
+  onOpenWhatsAppSettings,
+  whatsappedPayslips = {},
+  onRecordWhatsAppedPayslips,
   isAdmin = true,
   isReadOnly = false,
 }) => {
@@ -120,6 +150,8 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   const [isBulkPrintOpen, setIsBulkPrintOpen] = useState(false);
   const [isEmailPayslipsOpen, setIsEmailPayslipsOpen] = useState(false);
   const [emailModalContext, setEmailModalContext] = useState<EmailPayslipContext | null>(null);
+  const [isWhatsAppPayslipsOpen, setIsWhatsAppPayslipsOpen] = useState(false);
+  const [whatsAppModalContext, setWhatsAppModalContext] = useState<WhatsAppPayslipContext | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isAbsenceModalOpen, setIsAbsenceModalOpen] = useState(false);
   const [selectedAbsenceEmpId, setSelectedAbsenceEmpId] = useState<string | undefined>(undefined);
@@ -502,6 +534,19 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           >
             <Printer className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden sm:inline">Payslips</span>
+          </button>
+
+          {/* WhatsApp Payslips Studio Button */}
+          <button
+            onClick={() => {
+              setWhatsAppModalContext(null);
+              setIsWhatsAppPayslipsOpen(true);
+            }}
+            className="h-8 px-2.5 rounded-md border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/50 dark:bg-emerald-950/30 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/50 flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 transition whitespace-nowrap cursor-pointer"
+            title="Open WhatsApp Payslips Studio"
+          >
+            <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="hidden sm:inline">WhatsApp</span>
           </button>
 
           {/* Log Absence Shortcut Button */}
@@ -1138,6 +1183,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             setEmailModalContext(ctx || null);
             setIsEmailPayslipsOpen(true);
           } : undefined}
+          onWhatsAppPayslips={!isAuditor ? (ctx) => {
+            setWhatsAppModalContext(ctx || null);
+            setIsWhatsAppPayslipsOpen(true);
+          } : undefined}
         />
       )}
 
@@ -1172,6 +1221,37 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
         />
       )}
 
+      {/* WhatsApp Payslips Studio Modal */}
+      {isWhatsAppPayslipsOpen && (
+        <WhatsAppPayslipsModal
+          isOpen={isWhatsAppPayslipsOpen}
+          onClose={() => {
+            setIsWhatsAppPayslipsOpen(false);
+            setWhatsAppModalContext(null);
+          }}
+          items={filteredItems}
+          employees={employees}
+          company={company}
+          monthLabel={monthLabel}
+          selectedMonth={selectedMonth}
+          year={year}
+          whatsappSettings={whatsappSettings}
+          payslipDesign={payslipDesign}
+          whatsappedPayslips={whatsappedPayslips}
+          onRecordWhatsAppedPayslips={onRecordWhatsAppedPayslips}
+          onOpenSettings={onOpenWhatsAppSettings}
+          onUpdateEmployeePhone={onUpdateEmployeePhone}
+          isAdmin={isAdmin}
+          currentUser={currentUser}
+          activeSnapshot={activeSnapshot}
+          isLocked={isLocked}
+          initialContext={whatsAppModalContext}
+          snapshots={snapshots}
+          payrollVariables={payrollVariables}
+          payeTaxVariables={payeTaxVariables}
+        />
+      )}
+
       {/* Single Employee Payslip Modal */}
       {selectedSingleSlip && (
         <PayslipModal
@@ -1195,6 +1275,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           onEmailPayslips={!isAuditor ? (ctx) => {
             setEmailModalContext(ctx || null);
             setIsEmailPayslipsOpen(true);
+          } : undefined}
+          onWhatsAppPayslips={!isAuditor ? (ctx) => {
+            setWhatsAppModalContext(ctx || null);
+            setIsWhatsAppPayslipsOpen(true);
           } : undefined}
         />
       )}

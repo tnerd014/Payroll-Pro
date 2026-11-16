@@ -15,6 +15,7 @@ import { LoansAdvancesView } from './components/loans/LoansAdvancesView';
 import { ContributionsView } from './components/contributions/ContributionsView';
 import { AbsenceLogView } from './components/absences/AbsenceLogView';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { AppUpdateBanner } from './components/common/AppUpdateBanner';
 import { AppView, CompanyAccount, TeamMember } from './types';
 import { CloudStaffGate } from './components/auth/CloudStaffGate';
 import { MobileAppShell } from './components/mobile/MobileAppShell';
@@ -395,6 +396,8 @@ export const App: React.FC = () => {
     updateWhatsAppSettings,
     emailedPayslips,
     recordEmailedPayslips,
+    whatsappedPayslips,
+    recordWhatsAppedPayslips,
   } = usePayrollStore();
 
   // Keep the real authenticated member role — we NEVER demote it based on connectivity.
@@ -456,8 +459,6 @@ export const App: React.FC = () => {
 
   // --- UNSAVED SETTINGS LEAVE PROTECTION ---
   const [unsavedSettingsInfo, setUnsavedSettingsInfo] = useState<DirtyStateInfo | null>(null);
-  const [pendingNavView, setPendingNavView] = useState<AppView | null>(null);
-  const [isUnsavedLeaveModalOpen, setIsUnsavedLeaveModalOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('branding');
 
   const isLocalUser = 
@@ -489,12 +490,6 @@ export const App: React.FC = () => {
       state.activeView === 'variables' || 
       state.activeView === 'excel';
 
-    if (isSettingsActive && unsavedSettingsInfo?.isDirty) {
-      setPendingNavView(targetView);
-      setIsUnsavedLeaveModalOpen(true);
-      return;
-    }
-
     // Set settings tab (defaults to branding if not explicitly specified)
     if (targetView === 'settings') {
       setSettingsInitialTab(initialTab || 'branding');
@@ -505,6 +500,10 @@ export const App: React.FC = () => {
 
   const handleOpenEmailSettings = () => {
     handleRequestNavigate('settings', 'email');
+  };
+
+  const handleOpenWhatsAppSettings = () => {
+    handleRequestNavigate('settings', 'whatsapp');
   };
 
   // Sync dark class on document root and body for bulletproof dark/light mode switching
@@ -952,6 +951,11 @@ export const App: React.FC = () => {
                 onOpenEmailSettings={handleOpenEmailSettings}
                 emailedPayslips={emailedPayslips}
                 onRecordEmailedPayslips={recordEmailedPayslips}
+                whatsappSettings={whatsappSettings}
+                onUpdateEmployeePhone={(id, phone) => updateEmployee(id, { phone })}
+                onOpenWhatsAppSettings={handleOpenWhatsAppSettings}
+                whatsappedPayslips={whatsappedPayslips}
+                onRecordWhatsAppedPayslips={recordWhatsAppedPayslips}
                 isAdmin={isAdmin}
                 isReadOnly={isCloudOffline}
               />
@@ -1127,76 +1131,6 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* ================= UNSAVED CHANGES LEAVE SETTINGS MODAL ================= */}
-      {isUnsavedLeaveModalOpen && (
-        <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-amber-300 dark:border-amber-900/60 rounded-lg max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in duration-150">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  Unsaved Changes
-                </h3>
-                <p className="text-xs text-zinc-500">
-                  You have unsaved changes in {unsavedSettingsInfo?.tabName || 'Settings'}.
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              Do you want to save your modifications before leaving the Settings page, or discard them?
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsUnsavedLeaveModalOpen(false);
-                  setPendingNavView(null);
-                }}
-                className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-              >
-                Keep Editing
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  unsavedSettingsInfo?.discard();
-                  setIsUnsavedLeaveModalOpen(false);
-                  if (pendingNavView) {
-                    setActiveView(pendingNavView);
-                    setPendingNavView(null);
-                  }
-                }}
-                className="px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition border border-rose-200 dark:border-rose-900/50"
-              >
-                Discard Changes
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const saved = unsavedSettingsInfo ? unsavedSettingsInfo.save() : true;
-                  if (saved) {
-                    setIsUnsavedLeaveModalOpen(false);
-                    if (pendingNavView) {
-                      setActiveView(pendingNavView);
-                      setPendingNavView(null);
-                    }
-                  }
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition shadow-xs"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>Save &amp; Leave</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Quick Android Simulator Floating Trigger on Desktop (Browser only, NEVER in Electron or Native App) */}
       {!isElectron && !isNativeApp && (
@@ -1300,6 +1234,8 @@ export const App: React.FC = () => {
         </div>
       )}
 
+      {/* Floating In-App Update Notification Banner */}
+      <AppUpdateBanner />
 
     </div>
   );

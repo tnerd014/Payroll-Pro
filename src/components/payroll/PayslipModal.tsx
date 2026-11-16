@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, ArrowLeft, Palette, Mail, ChevronDown, MessageCircle } from 'lucide-react';
+import { Printer, ArrowLeft, Palette, Mail, ChevronDown, MessageCircle, X } from 'lucide-react';
 import { 
   CalculatedPayrollItem, 
   CompanyProfile, 
@@ -11,13 +11,15 @@ import {
   PayeTaxVariables,
   PayslipCustomPreset,
   EmailPayslipContext,
+  WhatsAppPayslipContext,
   DEFAULT_WHATSAPP_SETTINGS
 } from '../../types';
 import { DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES } from '../../engine/payePensionEngine';
 import { CustomizablePayslipView } from '../payslip/CustomizablePayslipView';
 import { PayslipDesignerPage } from '../payslip/PayslipDesignerPage';
 import { PayslipThemeSelector } from '../payslip/payslipThemes';
-import { openWhatsAppPayslipChat } from '../../services/whatsappService';
+import { sendWhatsAppPayslip } from '../../services/whatsappService';
+import { usePayrollStore } from '../../store/usePayrollStore';
 
 interface PayslipModalProps {
   isOpen: boolean;
@@ -38,6 +40,7 @@ interface PayslipModalProps {
   onSavePreset?: (name: string, config: PayslipDesignConfig) => void;
   onDeletePreset?: (id: string) => void;
   onEmailPayslips?: (context?: EmailPayslipContext) => void;
+  onWhatsAppPayslips?: (context?: WhatsAppPayslipContext) => void;
 }
 
 export const PayslipModal: React.FC<PayslipModalProps> = ({
@@ -59,10 +62,71 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   onSavePreset,
   onDeletePreset,
   onEmailPayslips,
+  onWhatsAppPayslips,
 }) => {
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement>(null);
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [whatsappToast, setWhatsappToast] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+
+  const { whatsappSettings } = usePayrollStore();
+  const currentWhatsAppSettings = whatsappSettings || DEFAULT_WHATSAPP_SETTINGS;
+
+  useEffect(() => {
+    if (!whatsappToast) return;
+    const t = setTimeout(() => setWhatsappToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [whatsappToast]);
+
+  const handleSendWhatsApp = async () => {
+    setIsActionMenuOpen(false);
+    const emp = employees?.find(e => e.id === item.employeeId);
+    const phone = emp?.phone;
+    if (!phone) {
+      setWhatsappToast({
+        type: 'error',
+        message: `No phone number configured for ${item.fullName}. Add phone number in Staff Profile.`
+      });
+      return;
+    }
+    const activeSettings = currentWhatsAppSettings;
+    setIsSendingWhatsApp(true);
+    setWhatsappToast({ type: 'info', message: `Dispatching WhatsApp payslip to ${phone}...` });
+    try {
+      const res = await sendWhatsAppPayslip({
+        item,
+        company,
+        monthLabel,
+        year,
+        phone,
+        config,
+        settings: activeSettings,
+      }, activeSettings.provider === 'direct');
+
+      if (res.success) {
+        if (activeSettings.provider === 'direct') {
+          setWhatsappToast({ type: 'success', message: `Opened WhatsApp chat for ${item.fullName}.` });
+        } else {
+          const providerName = activeSettings.provider === 'cloud_api'
+            ? 'Meta Cloud API'
+            : activeSettings.provider === 'ultramsg'
+              ? 'UltraMsg'
+              : 'Termii API';
+          setWhatsappToast({
+            type: 'success',
+            message: `✅ Payslip sent to ${item.fullName} (${phone}) via ${providerName}!`
+          });
+        }
+      } else {
+        setWhatsappToast({ type: 'error', message: res.error || 'Failed to dispatch WhatsApp payslip.' });
+      }
+    } catch (err: any) {
+      setWhatsappToast({ type: 'error', message: err?.message || 'Error sending WhatsApp payslip.' });
+    } finally {
+      setIsSendingWhatsApp(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -203,28 +267,47 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsActionMenuOpen(false);
-                    const emp = employees?.find(e => e.id === item.employeeId);
-                    openWhatsAppPayslipChat({
-                      item,
-                      company,
-                      monthLabel,
-                      year,
-                      phone: emp?.phone,
-                      config,
-                    }, true);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition text-left cursor-pointer"
-                >
-                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="font-medium text-emerald-700 dark:text-emerald-300">WhatsApp</span>
-                </button>
+                {onWhatsAppPayslips ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      onWhatsAppPayslips({
+                        selectedEmployeeIds: [item.employeeId],
+                        selectedMonthKeys: [selectedMonth || 'jan'],
+                        year: year,
+                      });
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition text-left cursor-pointer"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-medium text-emerald-700 dark:text-emerald-300">WhatsApp</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSendWhatsApp}
+                    disabled={isSendingWhatsApp}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition text-left cursor-pointer disabled:opacity-50"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-medium text-emerald-700 dark:text-emerald-300">
+                      {isSendingWhatsApp ? 'Sending…' : 'WhatsApp'}
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shrink-0 ml-1"
+            title="Close (Esc)"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -240,6 +323,27 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
           />
         </div>
       </div>
+
+      {/* WhatsApp Toast Notification */}
+      {whatsappToast && (
+        <div className={`fixed bottom-6 right-6 z-[100] max-w-sm px-4 py-3 rounded-xl shadow-2xl border text-xs flex items-center gap-2.5 animate-in slide-in-from-bottom duration-200 ${
+          whatsappToast.type === 'success' 
+            ? 'bg-emerald-900 text-white border-emerald-700' 
+            : whatsappToast.type === 'error'
+              ? 'bg-rose-900 text-white border-rose-700'
+              : 'bg-zinc-900 text-white border-zinc-700'
+        }`}>
+          <MessageCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+          <span className="flex-1 font-medium">{whatsappToast.message}</span>
+          <button 
+            type="button" 
+            onClick={() => setWhatsappToast(null)} 
+            className="p-1 text-zinc-400 hover:text-white rounded cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
     </div>,
     document.body

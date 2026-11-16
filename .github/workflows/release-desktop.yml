@@ -5,6 +5,11 @@ name: Release Desktop Build
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.0.8). Leave blank to use package.json version.'
+        required: false
+        default: ''
 
 jobs:
   desktop-release:
@@ -25,6 +30,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Determine Release Tag
+        id: release_info
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            TAG="${{ github.event.inputs.version }}"
+            if [[ ! $TAG =~ ^v ]]; then TAG="v$TAG"; fi
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            PKG_VER=$(node -p "require('./package.json').version")
+            TAG="v$PKG_VER"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Target tag is $TAG"
+
       - name: Build app
         run: npm run build
 
@@ -36,12 +57,13 @@ jobs:
       - name: Generate release manifest
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ steps.release_info.outputs.tag }}
         run: node scripts/generate-release-manifest.mjs
 
       - name: Upload manifest to GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
           draft: false
           prerelease: false
           files: |

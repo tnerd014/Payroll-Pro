@@ -3,7 +3,6 @@ import {
   X, 
   CalendarOff, 
   Clock, 
-  AlertTriangle, 
   Info, 
   Calendar, 
   DollarSign, 
@@ -74,24 +73,49 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
 
   // Reset when initialEmployeeId or existingAbsence changes
   useEffect(() => {
+    let initEmp = '';
+    let initDays = 0;
+    let initType: AbsenceType = 'unauthorized_absence';
+    let initOverride = false;
+    let initDeduction = 0;
+    let initNotes = '';
+    let initDates: string[] = [];
+
     if (existingAbsence) {
-      setEmployeeId(existingAbsence.employeeId);
-      setDaysAbsent(Number(existingAbsence.daysAbsent) || 0);
-      setAbsenceType(existingAbsence.absenceType || 'unauthorized_absence');
-      setCustomOverride(Boolean(existingAbsence.customOverride));
-      setCustomDeductionAmount(Number(existingAbsence.deductionAmount) || 0);
-      setNotes(existingAbsence.notes || '');
-      setSelectedDates(Array.isArray(existingAbsence.dates) ? existingAbsence.dates : []);
+      initEmp = existingAbsence.employeeId;
+      initDays = Number(existingAbsence.daysAbsent) || 0;
+      initType = existingAbsence.absenceType || 'unauthorized_absence';
+      initOverride = Boolean(existingAbsence.customOverride);
+      initDeduction = Number(existingAbsence.deductionAmount) || 0;
+      initNotes = existingAbsence.notes || '';
+      initDates = Array.isArray(existingAbsence.dates) ? existingAbsence.dates : [];
     } else if (initialEmployeeId) {
-      setEmployeeId(initialEmployeeId);
-      setDaysAbsent(0);
-      setAbsenceType('unauthorized_absence');
-      setCustomOverride(false);
-      setCustomDeductionAmount(0);
-      setNotes('');
-      setSelectedDates([]);
+      initEmp = initialEmployeeId;
+    } else if (employees[0]?.id) {
+      initEmp = employees[0].id;
     }
-  }, [existingAbsence, initialEmployeeId]);
+
+    setEmployeeId(initEmp);
+    setDaysAbsent(initDays);
+    setAbsenceType(initType);
+    setCustomOverride(initOverride);
+    setCustomDeductionAmount(initDeduction);
+    setNotes(initNotes);
+    setSelectedDates(initDates);
+  }, [existingAbsence, initialEmployeeId, employees]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const selectedEmployee = useMemo(() => {
     return employees.find(e => e.id === employeeId);
@@ -219,10 +243,14 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
   return (
     <div 
       className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
       <div 
-        className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+        className="relative bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
         {/* Mobile Pull Handle */}
@@ -245,22 +273,23 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
                   {monthLabel} {selectedYear}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
-                Prorate contractual salary for unpaid non-working days
-              </p>
+              
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition shrink-0 ml-2 cursor-pointer"
+            title="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
-          {/* Employee Selection */}
+        {/* Form Container */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
+            {/* Employee Selection */}
           <div>
             <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
               Select Employee
@@ -458,13 +487,11 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
               <span>Adjusted Earned Gross</span>
               <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{formatNaira(proratedGross)}</span>
             </div>
-            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 pt-1 leading-normal border-t border-zinc-100 dark:border-zinc-800">
-              Section 5 Compliance: Unpaid absence reduces taxable earned gross before PAYE & Pension calculations. Arbitrary fines are prohibited.
-            </p>
           </div>
+        </div>
 
-          {/* Modal Actions */}
-          <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800/80 gap-2">
+        {/* Sticky / Fixed Footer Action Buttons */}
+        <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800/80 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 z-10 select-none">
             {existingAbsence?.id && !isReadOnly ? (
               <button
                 type="button"

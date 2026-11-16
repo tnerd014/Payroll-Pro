@@ -85,7 +85,6 @@ export const CompanySettingsModal: React.FC<CompanySettingsModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Company Profile &amp; Payslip Branding</h3>
-              <p className="text-[11px] text-slate-500">Configure your company name, address, and logo for payslips</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white">

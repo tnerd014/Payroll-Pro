@@ -194,8 +194,12 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     lastInitIdRef.current = currentId;
     lastInitOpenRef.current = isOpen;
 
+    let initData: EmployeeFormData;
+    let initSalaries: Record<string, number | ''> = {};
+    let initRents: Record<string | number, number | ''> = {};
+
     if (editingEmployee) {
-      setFormData({
+      initData = {
         code: editingEmployee.code,
         firstName: editingEmployee.firstName,
         lastName: editingEmployee.lastName,
@@ -220,9 +224,9 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         originalHireDate: editingEmployee.originalHireDate || '',
         stints: editingEmployee.stints || [],
         workSchedule: editingEmployee.workSchedule || '5-day',
-      });
-      setMonthlySalaries(editingEmployee.monthlySalaries || {});
-      setAnnualRents(editingEmployee.annualRents || {});
+      };
+      initSalaries = editingEmployee.monthlySalaries || {};
+      initRents = editingEmployee.annualRents || {};
       const hasCustom = !!(
         (editingEmployee.monthlySalaries && Object.keys(editingEmployee.monthlySalaries).length > 0) ||
         (editingEmployee.annualRents && Object.keys(editingEmployee.annualRents).length > 0)
@@ -230,7 +234,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
       setShowMonthlyBreakdown(hasCustom);
     } else {
       const defaultRule = activeRules.find(r => r.name === 'Full-Time') || activeRules[0];
-      setFormData({
+      initData = {
         code: getNextEmployeeCode(existingEmployees),
         firstName: '',
         lastName: '',
@@ -255,11 +259,14 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         originalHireDate: '',
         stints: [],
         workSchedule: '5-day',
-      });
-      setMonthlySalaries({});
-      setAnnualRents({});
+      };
+      initSalaries = {};
+      initRents = {};
       setShowMonthlyBreakdown(false);
     }
+    setFormData(initData);
+    setMonthlySalaries(initSalaries);
+    setAnnualRents(initRents);
     setActiveYear(currentYear || 2026);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingEmployee?.id, isOpen, currentYear]);
@@ -344,6 +351,19 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
     return MONTHS_LIST.reduce((sum, m) => sum + getMonthGross(m.key), 0);
   }, [activeYear, monthlySalaries, formData.monthlyGross]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   // Early return AFTER all hooks
   if (!isOpen) return null;
 
@@ -406,8 +426,15 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   const yearsOptions = [baseYear - 2, baseYear - 1, baseYear, baseYear + 1, baseYear + 2];
 
   return (
-    <div className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden select-none">
-      <div className={`bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full ${
+    <div 
+      className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-hidden select-none"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className={`relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full ${
         activeTab === 'quick' && !editingEmployee ? 'max-w-4xl' : 'max-w-2xl'
       } overflow-hidden shadow-2xl flex flex-col max-h-[calc(100vh-4.5rem)] transition-all duration-150`}>
         
@@ -458,6 +485,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
             type="button"
             onClick={onClose} 
             className="p-1 rounded-md text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            title="Close"
           >
             <X className="w-4 h-4" />
           </button>

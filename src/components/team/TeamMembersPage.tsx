@@ -518,9 +518,6 @@ Password: ${createdCredentials.pass}`;
               <h1 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 tracking-tight truncate">
                 Authorized Team Members
               </h1>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 hidden sm:block">
-                Staff authorized to sign in and process payroll across all company workspaces.
-              </p>
             </div>
           </div>
 
@@ -1005,13 +1002,13 @@ Password: ${createdCredentials.pass}`;
           onClick={() => setEditingMember(null)}
         >
           <div 
-            className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-3.5 text-xs max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
+            className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Drag Indicator */}
-            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
+            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden mt-2 shrink-0" />
 
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
+            <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-7 h-7 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shrink-0 shadow-2xs">
                   <Edit3 className="w-3.5 h-3.5" />
@@ -1034,14 +1031,14 @@ Password: ${createdCredentials.pass}`;
               </button>
             </div>
 
-            {editError && (
-              <div className="flex items-center gap-1.5 text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 px-2.5 py-1.5 rounded-md">
-                <AlertTriangle className="w-3 h-3 shrink-0" />
-                <span>{editError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveEdit} className="space-y-3">
+            <form onSubmit={handleSaveEdit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-4 sm:p-5 space-y-3 overflow-y-auto flex-1 text-xs">
+                {editError && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 px-2.5 py-1.5 rounded-md">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    <span>{editError}</span>
+                  </div>
+                )}
               <div>
                 <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">Full Name *</label>
                 <input
@@ -1131,7 +1128,9 @@ Password: ${createdCredentials.pass}`;
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+              </div>
+
+              <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800 p-3 sm:p-4 px-4 sm:px-5 flex items-center justify-between gap-2 z-10 select-none">
                 {editingMember.id !== currentUser?.id ? (
                   <button
                     type="button"
@@ -1180,13 +1179,13 @@ Password: ${createdCredentials.pass}`;
           onClick={() => setIsAddModalOpen(false)}
         >
           <div 
-            className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-3.5 text-xs max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
+            className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Drag Indicator */}
-            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
+            <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden mt-2 shrink-0" />
 
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
+            <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-7 h-7 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shrink-0 shadow-2xs">
                   <Plus className="w-3.5 h-3.5" />
@@ -1195,9 +1194,6 @@ Password: ${createdCredentials.pass}`;
                   <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 truncate">
                     Add Team Member
                   </h3>
-                  <p className="text-[11px] text-zinc-400 truncate">
-                    Authorize staff to process company payroll
-                  </p>
                 </div>
               </div>
               <button
@@ -1209,14 +1205,14 @@ Password: ${createdCredentials.pass}`;
               </button>
             </div>
 
-            {formError && (
-              <div className="flex items-center gap-1.5 text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 px-2.5 py-1.5 rounded-md">
-                <AlertTriangle className="w-3 h-3 shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSaveMember} className="space-y-3">
+            <form onSubmit={handleSaveMember} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-4 sm:p-5 space-y-3 overflow-y-auto flex-1 text-xs">
+                {formError && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 px-2.5 py-1.5 rounded-md">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
               <div>
                 <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">Full Name *</label>
                 <input
@@ -1339,25 +1335,26 @@ Password: ${createdCredentials.pass}`;
                   <span>Require password change on first login</span>
                 </label>
               </div>
+            </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-3.5 py-2 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-xl font-semibold text-xs hover:opacity-90 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                >
-                  {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  <span>Save Member</span>
-                </button>
-              </div>
-            </form>
+            <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800 p-3 sm:p-4 px-4 sm:px-5 flex justify-end gap-2 z-10 select-none">
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="px-3.5 py-2 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 text-xs font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-xl font-semibold text-xs hover:opacity-90 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              >
+                {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>Save Member</span>
+              </button>
+            </div>
+          </form>
           </div>
         </div>,
         document.body

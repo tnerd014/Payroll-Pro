@@ -233,3 +233,11 @@ code, .font-mono {
     display: none !important;
   }
 }
+
+/* ── Payslip Force-Light Mode ── */
+/* Payslips are printed documents and must ALWAYS render in light mode,
+   regardless of the app theme. */
+[data-force-light="true"],
+[data-force-light="true"] * {
+  color-scheme: light !important;
+}

@@ -925,6 +925,7 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
   savedPayslipPresets?: PayslipCustomPreset[];
   emailSettings?: any;
   emailedPayslips?: Record<string, any>;
+  whatsappedPayslips?: Record<string, any>;
   whatsappSettings?: any;
   contributions?: EmployeeContribution[];
   payouts?: ContributionPayout[];
@@ -1023,6 +1024,9 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       : undefined;
     const cloudWhatsAppSettings = (compData && compData.whatsapp_settings && Object.keys(compData.whatsapp_settings).length > 0)
       ? compData.whatsapp_settings
+      : undefined;
+    const cloudWhatsAppedPayslips = (compData && compData.whatsapped_payslips && Object.keys(compData.whatsapped_payslips).length > 0)
+      ? compData.whatsapped_payslips
       : undefined;
 
     const formattedEmployees: Employee[] = (empData || []).map(e => ({
@@ -1125,6 +1129,7 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       })),
       emailSettings: cloudEmailSettings,
       emailedPayslips: cloudEmailedPayslips,
+      whatsappedPayslips: cloudWhatsAppedPayslips,
       whatsappSettings: cloudWhatsAppSettings,
       contributions: (contribData || []).map(c => ({
         id: c.id,

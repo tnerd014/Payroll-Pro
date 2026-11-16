@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => ipcRenderer.invoke('get-version'),
+  getUpdateState: () => ipcRenderer.invoke('get-update-state'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   downloadUpdate: (payload) => ipcRenderer.invoke('download-update', payload),
   installPendingUpdate: () => ipcRenderer.invoke('install-pending-update'),

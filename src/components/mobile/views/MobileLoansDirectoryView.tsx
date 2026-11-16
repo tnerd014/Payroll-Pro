@@ -17,9 +17,13 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle2,
-  User
+  User,
+  Filter,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { EmployeeLoan, Employee, CalculatedPayrollItem, CompanyProfile, LoanType, LoanStatus, TeamMember } from '../../../types';
+import { PauseLoanModal } from '../../loans/PauseLoanModal';
 import { formatNaira, formatCompactNaira, formatDate } from '../../../engine/payePensionEngine';
 import { MobileLoanCard } from '../MobileLoanCard';
 import { MobileBottomSheet } from '../MobileBottomSheet';
@@ -35,11 +39,54 @@ interface MobileLoansDirectoryViewProps {
   onAddLoan: (loan: Omit<EmployeeLoan, 'id' | 'totalRepaid' | 'remainingBalance' | 'status' | 'createdAt' | 'history'>) => void;
   onUpdateLoan?: (id: string, updates: Partial<EmployeeLoan>) => void;
   onDeleteLoan?: (id: string) => void;
-  onPauseResumeLoan: (id: string) => void;
+  onPauseResumeLoan: (id: string, options?: { reason?: string; pausedUntilPeriodKey?: string; performedBy?: string }) => void;
   onRecordManualPayment: (id: string, amount: number, notes?: string, reference?: string) => void;
   currentUser?: TeamMember | null;
   isReadOnly?: boolean;
 }
+
+// Helper to sort loans by most recent first
+const getLoanRecencyScore = (loan: EmployeeLoan): number => {
+  const parseDateToMs = (val?: string | null): number => {
+    if (!val) return 0;
+    const str = val.trim();
+    const dmy = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (dmy) {
+      const d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    const ymd = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (ymd) {
+      const d = new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    const t = new Date(str).getTime();
+    if (!isNaN(t)) return t;
+    return 0;
+  };
+
+  const parsePeriodKeyToMs = (key?: string | null): number => {
+    if (!key) return 0;
+    const parts = key.split('-');
+    if (parts.length === 2) {
+      const y = parseInt(parts[0], 10);
+      const monthIdxs: Record<string, number> = {
+        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+        jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+      };
+      const mIdx = monthIdxs[parts[1].toLowerCase()] ?? 0;
+      return new Date(y, mIdx, 1).getTime();
+    }
+    return 0;
+  };
+
+  const disb = parseDateToMs(loan.disbursementDate);
+  const due = parseDateToMs(loan.repaymentDate || loan.repaymentStartDate);
+  const period = parsePeriodKeyToMs(loan.startPeriodKey);
+  const created = parseDateToMs(loan.createdAt);
+
+  return Math.max(disb, due, period, created);
+};
 
 export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> = ({
   loans = [],
@@ -59,12 +106,17 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
   const isWriteDisabled = isAuditor || isReadOnly;
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'All' | LoanStatus>('All');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isStatusPickerOpen, setIsStatusPickerOpen] = useState(false);
+  const statusPickerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Modal / Sheet States
   const [selectedLoanForDetails, setSelectedLoanForDetails] = useState<EmployeeLoan | null>(null);
   const [selectedLoanForLedger, setSelectedLoanForLedger] = useState<EmployeeLoan | null>(null);
   const [editingLoan, setEditingLoan] = useState<EmployeeLoan | null>(null);
   const [deleteConfirmLoan, setDeleteConfirmLoan] = useState<EmployeeLoan | null>(null);
+  const [pauseModalLoan, setPauseModalLoan] = useState<EmployeeLoan | null>(null);
 
   // Manual payment state
   const [payingLoan, setPayingLoan] = useState<EmployeeLoan | null>(null);
@@ -126,14 +178,16 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
     return loans.find(l => l.id === selectedLoanForLedger.id) || selectedLoanForLedger;
   }, [loans, selectedLoanForLedger]);
 
-  // Filtered loans
+  // Filtered loans sorted with most recent at top
   const filteredLoans = useMemo(() => {
-    return loans.filter(l => {
-      const empName = empMap.get(l.employeeId) || '';
-      const matchesSearch = empName.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = filterStatus === 'All' || l.status === filterStatus;
-      return matchesSearch && matchesStatus;
-    });
+    return loans
+      .filter(l => {
+        const empName = empMap.get(l.employeeId) || '';
+        const matchesSearch = empName.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = filterStatus === 'All' || l.status === filterStatus;
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => getLoanRecencyScore(b) - getLoanRecencyScore(a));
   }, [loans, empMap, searchQuery, filterStatus]);
 
   // Close details 3-dot menu on outside click
@@ -149,6 +203,29 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
       document.removeEventListener('mousedown', handleGlobalClick);
     };
   }, [isDetailsMenuOpen]);
+
+  // Close status filter picker on outside tap
+  useEffect(() => {
+    if (!isStatusPickerOpen) return;
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      if (statusPickerRef.current && !statusPickerRef.current.contains(e.target as Node)) {
+        setIsStatusPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [isStatusPickerOpen]);
+
+  // Auto-focus search input when opened
+  useEffect(() => {
+    if (isSearchOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [isSearchOpen]);
 
   // Open Edit form
   const handleStartEdit = (loan: EmployeeLoan) => {
@@ -254,57 +331,121 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
         </div>
       </div>
 
-      {/* ── Filter & Search Header ── */}
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Loans &amp; Advances Roster
-          </h3>
-          <span className="text-[11px] text-zinc-500 font-medium">
-            {filteredLoans.length} active records
-          </span>
-        </div>
+      {/* ── Filter & Search Header (Compressed Single Row) ── */}
+      <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
+        {!isSearchOpen ? (
+          <div className="flex items-center justify-between gap-2">
+            {/* Left: Title & Count */}
+            <div className="min-w-0 flex-1">
+              <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight truncate">
+                Loans &amp; Advances Roster
+              </h3>
+              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium truncate">
+                {filteredLoans.length} active record{filteredLoans.length === 1 ? '' : 's'}
+              </p>
+            </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search employee loan..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
-          />
-          {searchQuery && (
+            {/* Right: Status Filter Picker Button + Search Toggle Button */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Status Filter Dropdown Button */}
+              <div className="relative" ref={statusPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsStatusPickerOpen(prev => !prev)}
+                  className={`h-8 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    filterStatus !== 'All'
+                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
+                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+                  }`}
+                  title={`Filter by status (${filterStatus})`}
+                  aria-label="Filter by status"
+                >
+                  <Filter className="w-3 h-3" />
+                  <span>{filterStatus}</span>
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </button>
+
+                {isStatusPickerOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 z-50 text-xs space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-2 py-1 text-[9px] uppercase tracking-wider font-bold text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 mb-1">
+                      Filter Status
+                    </div>
+                    {(['All', 'Active', 'Paid', 'Paused'] as const).map((st) => {
+                      const isSelected = filterStatus === st;
+                      return (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => {
+                            setFilterStatus(st);
+                            setIsStatusPickerOpen(false);
+                          }}
+                          className={`w-full px-2.5 py-1.5 rounded-xl text-left flex items-center justify-between text-xs transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-800'
+                              : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                          }`}
+                        >
+                          <span>{st}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Search Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(true)}
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer relative ${
+                  searchQuery
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
+                    : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+                }`}
+                title="Search employee loan"
+                aria-label="Search employee loan"
+              >
+                <Search className="w-3.5 h-3.5" />
+                {searchQuery && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Full-Width Search Bar with Internal Dismiss (X) Button */
+          <div className="relative w-full animate-in fade-in duration-150">
+            <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search employee loan..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setSearchQuery('');
+                  setIsSearchOpen(false);
+                }
+              }}
+              className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+            />
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
+              onClick={() => {
+                setSearchQuery('');
+                setIsSearchOpen(false);
+              }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              title="Clear search"
-              aria-label="Clear search"
+              title="Close search"
+              aria-label="Close search"
             >
               <X className="w-3.5 h-3.5" />
             </button>
-          )}
-        </div>
-
-        {/* Status Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {(['All', 'Active', 'Paid', 'Paused'] as const).map((st) => (
-            <button
-              key={st}
-              type="button"
-              onClick={() => setFilterStatus(st)}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors shrink-0 ${
-                filterStatus === st
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
-              }`}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ── Loans List ── */}
@@ -438,7 +579,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                             type="button"
                             onClick={() => {
                               setIsDetailsMenuOpen(false);
-                              onPauseResumeLoan(activeDetailsLoan.id);
+                              setPauseModalLoan(activeDetailsLoan);
                             }}
                             className="w-full px-3 py-2 flex items-center gap-2.5 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
                           >
@@ -603,8 +744,26 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
           onClose={() => setEditingLoan(null)}
           title="Edit Loan Facility"
           subtitle={`For ${empMap.get(editingLoan.employeeId) || 'Employee'}`}
+          footer={
+            <div className="flex items-center gap-2 w-full">
+              <button
+                type="button"
+                onClick={() => setEditingLoan(null)}
+                className="flex-1 py-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="mobile-edit-loan-form"
+                className="flex-1 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs shadow-md transition-all cursor-pointer"
+              >
+                Save Changes
+              </button>
+            </div>
+          }
         >
-          <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs pb-2">
+          <form id="mobile-edit-loan-form" onSubmit={handleSaveEdit} className="space-y-3.5 text-xs pb-2">
             <div>
               <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
                 Facility Type
@@ -724,22 +883,6 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                 className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
               />
             </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setEditingLoan(null)}
-                className="flex-1 py-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs shadow-md transition-all cursor-pointer"
-              >
-                Save Changes
-              </button>
-            </div>
           </form>
         </MobileBottomSheet>
       )}
@@ -835,6 +978,24 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
         onClose={() => setPayingLoan(null)}
         title="Record Loan Repayment"
         subtitle={payingLoan ? `For ${empMap.get(payingLoan.employeeId)}` : ''}
+        footer={
+          <div className="flex items-center gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setPayingLoan(null)}
+              className="flex-1 py-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmPayment}
+              className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer"
+            >
+              Confirm Repayment
+            </button>
+          </div>
+        }
       >
         <div className="space-y-4 text-xs pb-2">
           <div>
@@ -862,14 +1023,6 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
             />
           </div>
-
-          <button
-            type="button"
-            onClick={handleConfirmPayment}
-            className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer"
-          >
-            Confirm Repayment
-          </button>
         </div>
       </MobileBottomSheet>
 
@@ -878,7 +1031,24 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         title="Issue New Loan or Advance"
-        subtitle="Deductions will be automatically applied each payroll cycle"
+        footer={
+          <div className="flex items-center gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => setIsAddOpen(false)}
+              className="flex-1 py-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateLoan}
+              className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer"
+            >
+              Create Loan Record
+            </button>
+          </div>
+        }
       >
         <div className="space-y-3.5 text-xs pb-2">
           <div>
@@ -946,14 +1116,6 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
             />
           </div>
-
-          <button
-            type="button"
-            onClick={handleCreateLoan}
-            className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-colors mt-2 cursor-pointer"
-          >
-            Create Loan Record
-          </button>
         </div>
       </MobileBottomSheet>
 
@@ -1003,6 +1165,24 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
         </div>,
         document.body
       )}
+
+      <PauseLoanModal
+        isOpen={pauseModalLoan !== null}
+        loan={pauseModalLoan}
+        employee={employees.find(e => e.id === pauseModalLoan?.employeeId)}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        currentUser={currentUser}
+        onClose={() => setPauseModalLoan(null)}
+        onConfirmPause={(loanId, options) => {
+          onPauseResumeLoan(loanId, options);
+          setPauseModalLoan(null);
+        }}
+        onConfirmResume={(loanId, options) => {
+          onPauseResumeLoan(loanId, options);
+          setPauseModalLoan(null);
+        }}
+      />
 
     </div>
   );

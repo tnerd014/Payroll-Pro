@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   CalendarOff, 
   Plus, 
@@ -11,6 +11,8 @@ import {
   Users,
   Lock,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   X
 } from 'lucide-react';
 import { 
@@ -124,10 +126,19 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
   }, [selectedYear]);
 
   // State
+  const [showStats, setShowStats] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAbsence, setEditingAbsence] = useState<EmployeeAbsenceRecord | null>(null);
   const [viewingAbsence, setViewingAbsence] = useState<EmployeeAbsenceRecord | null>(null);
+
+  useEffect(() => {
+    if (isMobileSearchOpen) {
+      mobileSearchInputRef.current?.focus();
+    }
+  }, [isMobileSearchOpen]);
 
   // Sorting state - Defaults to Date descending (most recent at the top)
   const [sortField, setSortField] = useState<string>('date');
@@ -320,105 +331,140 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Mobile Sticky Compact Top Bar (Playbook from MobileAppShell / MobileStaffDirectoryView) */}
-      <div className="sm:hidden -mx-4 -mt-2 px-4 py-2.5 bg-[#fbfbfb] dark:bg-[#09090b] border-b border-zinc-200/80 dark:border-zinc-800/80 sticky -top-3 z-20 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
-              <CalendarOff className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                Absentee Log
-              </h1>
-              <p className="text-[11px] text-zinc-500 font-mono">
-                {activePeriodLabel}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Period Picker Pill */}
-            <div className="flex items-center bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded-xl text-xs shadow-2xs">
-              <select
-                value={filterMonth}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setFilterMonth(val);
-                  setCurrentPage(1);
-                  if (val !== 'ALL') {
-                    const yNum = filterYear === 'ALL' ? selectedYear : parseInt(filterYear, 10);
-                    onPeriodChange(val, yNum);
-                  }
-                }}
-                className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 text-xs focus:outline-hidden cursor-pointer"
-              >
-                <option value="ALL" className="dark:bg-zinc-900 font-semibold">
-                  All Year
-                </option>
-                {MONTHS.map(m => (
-                  <option key={m.key} value={m.key} className="dark:bg-zinc-900">
-                    {m.label.slice(0, 3)}
-                  </option>
-                ))}
-              </select>
-              <span className="text-zinc-300 dark:text-zinc-700 mx-0.5">/</span>
-              <select
-                value={filterYear}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setFilterYear(val);
-                  setCurrentPage(1);
-                  if (val !== 'ALL' && filterMonth !== 'ALL') {
-                    onPeriodChange(filterMonth, parseInt(val, 10));
-                  }
-                }}
-                className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 text-xs focus:outline-hidden cursor-pointer"
-              >
-                <option value="ALL" className="dark:bg-zinc-900 font-semibold">
-                  All Years
-                </option>
-                {availableYears.map(y => (
-                  <option key={y} value={String(y)} className="dark:bg-zinc-900">
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {isPeriodLocked ? (
-              <div className="flex items-center gap-1 h-7 px-2 rounded-xl text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
-                <Lock className="w-3 h-3" />
-                <span>Locked</span>
+    <div className="space-y-3 sm:space-y-4 pb-2 select-none">
+      {/* Mobile Sticky Compact Top Bar (Single-Row Succinct Minimalist Header) */}
+      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
+        <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
+          {!isMobileSearchOpen ? (
+            <div className="flex items-center justify-between gap-2">
+              {/* Left: Total Docked Summary */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">
+                    Total Docked
+                  </span>
+                  {isPeriodLocked && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                      <Lock className="w-2.5 h-2.5" /> Locked
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="font-mono text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400 truncate">
+                    {totalDeductions > 0 ? `-${formatNaira(totalDeductions)}` : '₦0.00'}
+                  </span>
+                  <span className="text-[10px] text-zinc-400 font-medium truncate">
+                    &bull; {affectedStaffCount} staff ({totalDaysDocked}d)
+                  </span>
+                </div>
               </div>
-            ) : !isWriteDisabled && (
+
+              {/* Right: Period Dropdown Pill + Search Toggle + Log Action */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Period Selector Pill */}
+                <div className="flex items-center bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200/60 dark:border-zinc-700/60 px-2 py-1 rounded-xl text-xs transition-colors cursor-pointer">
+                  <select
+                    value={filterMonth}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFilterMonth(val);
+                      setCurrentPage(1);
+                      if (val !== 'ALL') {
+                        const yNum = filterYear === 'ALL' ? selectedYear : parseInt(filterYear, 10);
+                        onPeriodChange(val, yNum);
+                      }
+                    }}
+                    className="bg-transparent font-semibold text-zinc-800 dark:text-zinc-200 text-xs focus:outline-hidden cursor-pointer"
+                    aria-label="Filter Month"
+                  >
+                    <option value="ALL" className="dark:bg-zinc-900 font-semibold">
+                      All
+                    </option>
+                    {MONTHS.map(m => (
+                      <option key={m.key} value={m.key} className="dark:bg-zinc-900">
+                        {m.label.slice(0, 3)}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-zinc-300 dark:text-zinc-600 mx-0.5">/</span>
+                  <select
+                    value={filterYear}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFilterYear(val);
+                      setCurrentPage(1);
+                      if (val !== 'ALL' && filterMonth !== 'ALL') {
+                        onPeriodChange(filterMonth, parseInt(val, 10));
+                      }
+                    }}
+                    className="bg-transparent font-semibold text-zinc-800 dark:text-zinc-200 text-xs focus:outline-hidden cursor-pointer"
+                    aria-label="Filter Year"
+                  >
+                    <option value="ALL" className="dark:bg-zinc-900 font-semibold">
+                      All
+                    </option>
+                    {availableYears.map(y => (
+                      <option key={y} value={String(y)} className="dark:bg-zinc-900">
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Search Toggle Icon Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileSearchOpen(true)}
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer relative ${
+                    searchQuery
+                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
+                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+                  }`}
+                  title="Search Absences"
+                  aria-label="Search Absences"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  {searchQuery && (
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Full-Width Search Input with Internal Dismiss (X) Button */
+            <div className="relative w-full animate-in fade-in duration-150">
+              <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                ref={mobileSearchInputRef}
+                type="text"
+                placeholder="Search by name, code, dept, notes..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('');
+                    setIsMobileSearchOpen(false);
+                  }
+                }}
+                className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+              />
               <button
                 type="button"
                 onClick={() => {
-                  setEditingAbsence(null);
-                  setIsModalOpen(true);
+                  setSearchQuery('');
+                  setIsMobileSearchOpen(false);
                 }}
-                className="h-7 px-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 font-medium text-xs flex items-center gap-1 shadow-2xs active:scale-98 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                title="Close search"
+                aria-label="Close search"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Log</span>
+                <X className="w-3.5 h-3.5" />
               </button>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile Brief Total Headline (Succinct - Replaces Cluttered Stat Cards) */}
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 shadow-2xs text-xs">
-          <span className="text-zinc-500 dark:text-zinc-400">Total Docked</span>
-          <span className="font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-            <span className="font-bold text-rose-600 dark:text-rose-400">
-              {totalDeductions > 0 ? `-${formatNaira(totalDeductions)}` : '₦0.00'}
-            </span>
-            <span className="text-zinc-400 font-normal ml-1.5 font-sans">
-              &bull; {affectedStaffCount} {affectedStaffCount === 1 ? 'staff' : 'staff'} ({totalDaysDocked}d)
-            </span>
-          </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -429,9 +475,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
             <CalendarOff className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
             <span>Employee Absence & Attendance Log</span>
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Log unpaid days not worked with automatic workweek proration (Nigerian Labour Act Section 5).
-          </p>
+          
         </div>
 
         {/* Period Selector & Log Button */}
@@ -504,6 +548,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
       </div>
 
       {/* Minimalist Stat Cards (Desktop Only - Hidden on Mobile) */}
+      {showStats && (
       <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
           <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
@@ -535,9 +580,10 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
           </div>
         </div>
       </div>
+      )}
 
-      {/* Search Bar */}
-      <div className="flex items-center justify-between gap-3">
+      {/* Desktop Search Bar & Controls (Hidden on Mobile, where it is integrated in the top bar) */}
+      <div className="hidden sm:flex items-center justify-between gap-3">
         <div className="relative w-full sm:w-72">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
@@ -551,6 +597,17 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
             className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:border-zinc-400"
           />
         </div>
+
+        {/* Toggle Stats for More Table Room */}
+        <button
+          type="button"
+          onClick={() => setShowStats(!showStats)}
+          className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs shrink-0"
+          title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
+        >
+          {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          <span>{showStats ? "Hide Stats" : "Show Stats"}</span>
+        </button>
       </div>
 
       {/* Desktop Absences Table View - Simplified Succinct Layout */}
@@ -660,7 +717,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
       </div>
 
       {/* Mobile Absence Cards Stack - Succinct & Clickable */}
-      <div className="sm:hidden space-y-2">
+      <div className="sm:hidden space-y-2.5">
         {filteredAbsences.length === 0 ? (
           <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
             <CalendarOff className="w-8 h-8 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
@@ -673,29 +730,43 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
             if (!emp) return null;
             const recPeriod = getRecordPeriodLabel(rec);
             const dateDisplay = formatAbsenceDateDisplay(rec.dates, recPeriod.monthLabel, recPeriod.year);
+            const initials = `${emp.firstName?.charAt(0) || ''}${emp.lastName?.charAt(0) || ''}`.toUpperCase() || 'E';
 
             return (
               <div
                 key={rec.id}
                 onClick={() => setViewingAbsence(rec)}
-                className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-xl p-3.5 shadow-2xs active:bg-zinc-50 dark:active:bg-zinc-800/50 transition cursor-pointer"
+                className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3 shadow-xs active:scale-[0.99] transition cursor-pointer select-none"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                      {emp.firstName} {emp.lastName}
-                    </p>
-                    <p className="text-[11px] text-zinc-400 font-mono mt-0.5 flex items-center gap-1.5">
-                      <span>{emp.code}</span>
-                      <span>&bull;</span>
-                      <span className="truncate">{dateDisplay}</span>
-                    </p>
+                <div className="flex items-center justify-between gap-2.5">
+                  {/* Left: Avatar with Initials & Name / Code */}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shrink-0">
+                      {initials}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs sm:text-[13px] font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-snug truncate">
+                        {emp.firstName} {emp.lastName}
+                      </h4>
+                      <p className="text-[10px] text-zinc-400 font-mono mt-0.5 truncate">
+                        {emp.code} &bull; {dateDisplay}
+                      </p>
+                    </div>
                   </div>
+
+                  {/* Right: Days Docked / Deduction & Minimal Chevron */}
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
-                      {rec.daysAbsent}d
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-zinc-400" />
+                    <div className="text-right">
+                      <div className="text-xs sm:text-[13px] font-bold font-mono text-rose-600 dark:text-rose-400 leading-tight">
+                        {Number(rec.deductionAmount) > 0 ? `-${formatNaira(rec.deductionAmount)}` : `${rec.daysAbsent}d docked`}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-medium mt-0.5">
+                        {rec.daysAbsent} {rec.daysAbsent === 1 ? 'day' : 'days'} docked
+                      </div>
+                    </div>
+                    <div className="w-7 h-7 rounded-xl bg-zinc-100 dark:bg-zinc-800/70 text-zinc-400 dark:text-zinc-500 flex items-center justify-center shrink-0">
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -703,6 +774,24 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
           })
         )}
       </div>
+
+      {/* ── Android Material 3 Floating Action Button (FAB) ── */}
+      {!isWriteDisabled && !isPeriodLocked && (
+        <div className="sm:hidden fixed bottom-[80px] right-4 z-50 pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingAbsence(null);
+              setIsModalOpen(true);
+            }}
+            className="w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10"
+            title="Log Absence"
+            aria-label="Log Absence"
+          >
+            <Plus className="w-7 h-7" />
+          </button>
+        </div>
+      )}
 
       {/* Succinct Details Modal (No elaborate UI, just simplicity, neat and succinct) */}
       {viewingAbsence && (() => {
@@ -725,109 +814,118 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
           : [];
 
         return (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
-              {/* Header */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                    {emp.firstName} {emp.lastName}
-                  </h3>
-                  <p className="text-xs text-zinc-500 font-mono">
-                    {emp.code} &bull; {emp.department || 'General'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setViewingAbsence(null)}
-                  className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+          <div 
+            className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setViewingAbsence(null);
+              }
+            }}
+          >
+            <div 
+              className="relative bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Mobile Pull Handle */}
+              <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
+                <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
               </div>
 
-              {/* Specific Dates Pill Grid */}
-              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800/70 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                    Dates of Absence
-                  </span>
-                  <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200 text-xs">
-                    {viewingAbsence.daysAbsent} {viewingAbsence.daysAbsent === 1 ? 'day' : 'days'}
-                  </span>
-                </div>
+              {/* Header (No X button at top right) */}
+              <div className="px-4 sm:px-5 py-3.5 border-b border-zinc-100 dark:border-zinc-800/80 shrink-0">
+                <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100">
+                  {emp.firstName} {emp.lastName}
+                </h3>
+                <p className="text-xs text-zinc-500 font-mono mt-0.5">
+                  {emp.code} &bull; {emp.department || 'General'}
+                </p>
+              </div>
 
-                {datesList.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {datesList.map(dStr => {
-                      const [y, m, d] = dStr.split('-').map(Number);
-                      const formatted = new Date(y, m - 1, d).toLocaleDateString('en-GB', {
-                        weekday: 'short',
-                        day: 'numeric',
-                        month: 'short'
-                      });
-                      return (
-                        <span
-                          key={dStr}
-                          className="px-2 py-0.5 rounded-md text-[11px] font-mono bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 shadow-2xs"
-                        >
-                          {formatted}
-                        </span>
-                      );
-                    })}
+              {/* Scrollable Content Body */}
+              <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
+                {/* Specific Dates Pill Grid */}
+                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800/70 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                      Dates of Absence
+                    </span>
+                    <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200 text-xs">
+                      {viewingAbsence.daysAbsent} {viewingAbsence.daysAbsent === 1 ? 'day' : 'days'}
+                    </span>
                   </div>
-                ) : (
-                  <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                    {absPeriod.monthLabel} {absPeriod.year}
-                  </p>
+
+                  {datesList.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {datesList.map(dStr => {
+                        const [y, m, d] = dStr.split('-').map(Number);
+                        const formatted = new Date(y, m - 1, d).toLocaleDateString('en-GB', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short'
+                        });
+                        return (
+                          <span
+                            key={dStr}
+                            className="px-2 py-0.5 rounded-md text-[11px] font-mono bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 shadow-2xs"
+                          >
+                            {formatted}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                      {absPeriod.monthLabel} {absPeriod.year}
+                    </p>
+                  )}
+
+                  <div className="pt-2 border-t border-zinc-200/50 dark:border-zinc-800/50 flex items-center justify-between">
+                    <span className="text-[11px] text-zinc-400">Absence Type</span>
+                    <div>{getAbsenceTypeBadge(viewingAbsence.absenceType)}</div>
+                  </div>
+                </div>
+
+                {/* Financial Computation Breakdown */}
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-zinc-500">
+                    <span>Work Schedule</span>
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                      {sched === '6-day' ? '6-Day (Mon–Sat)' : '5-Day (Mon–Fri)'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-zinc-500">
+                    <span>Daily Rate</span>
+                    <span className="font-mono text-zinc-700 dark:text-zinc-300">{formatNaira(dailyRate)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-zinc-500">
+                    <span>Contractual Gross</span>
+                    <span className="font-mono text-zinc-700 dark:text-zinc-300">{formatNaira(contractualGross)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-rose-600 dark:text-rose-400 font-semibold pt-1.5 border-t border-zinc-100 dark:border-zinc-800">
+                    <span>Salary Deduction</span>
+                    <span className="font-mono">-{formatNaira(viewingAbsence.deductionAmount)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span>Adjusted Gross</span>
+                    <span className="font-mono">{formatNaira(proratedGross)}</span>
+                  </div>
+                </div>
+
+                {/* Notes if any */}
+                {viewingAbsence.notes && (
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60">
+                    <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-0.5">
+                      Notes
+                    </span>
+                    <p className="text-xs text-zinc-700 dark:text-zinc-300 italic">
+                      "{viewingAbsence.notes}"
+                    </p>
+                  </div>
                 )}
-
-                <div className="pt-1.5 border-t border-zinc-200/50 dark:border-zinc-800/50 flex items-center justify-between">
-                  <span className="text-[11px] text-zinc-400">Absence Type</span>
-                  <div>{getAbsenceTypeBadge(viewingAbsence.absenceType)}</div>
-                </div>
               </div>
 
-              {/* Financial Computation Breakdown */}
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between items-center text-zinc-500">
-                  <span>Work Schedule</span>
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                    {sched === '6-day' ? '6-Day (Mon–Sat)' : '5-Day (Mon–Fri)'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-zinc-500">
-                  <span>Daily Rate</span>
-                  <span className="font-mono text-zinc-700 dark:text-zinc-300">{formatNaira(dailyRate)}</span>
-                </div>
-                <div className="flex justify-between items-center text-zinc-500">
-                  <span>Contractual Gross</span>
-                  <span className="font-mono text-zinc-700 dark:text-zinc-300">{formatNaira(contractualGross)}</span>
-                </div>
-                <div className="flex justify-between items-center text-rose-600 dark:text-rose-400 font-semibold pt-1 border-t border-zinc-100 dark:border-zinc-800">
-                  <span>Salary Deduction</span>
-                  <span className="font-mono">-{formatNaira(viewingAbsence.deductionAmount)}</span>
-                </div>
-                <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
-                  <span>Adjusted Gross</span>
-                  <span className="font-mono">{formatNaira(proratedGross)}</span>
-                </div>
-              </div>
-
-              {/* Notes if any */}
-              {viewingAbsence.notes && (
-                <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60">
-                  <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-0.5">
-                    Notes
-                  </span>
-                  <p className="text-xs text-zinc-700 dark:text-zinc-300 italic">
-                    "{viewingAbsence.notes}"
-                  </p>
-                </div>
-              )}
-
-              {/* Modal Actions */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-2">
+              {/* Modal Actions Footer - Pinned to bottom */}
+              <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 z-10 select-none">
                 {canEdit ? (
                   <div className="flex items-center gap-1.5">
                     <button
@@ -838,7 +936,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                         setEditingAbsence(recToEdit);
                         setIsModalOpen(true);
                       }}
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition flex items-center gap-1 cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition flex items-center gap-1.5 cursor-pointer active:scale-95"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-zinc-400" />
                       <span>Edit</span>
@@ -851,7 +949,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                           setViewingAbsence(null);
                         }
                       }}
-                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition flex items-center gap-1 cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition flex items-center gap-1.5 cursor-pointer active:scale-95"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Delete</span>

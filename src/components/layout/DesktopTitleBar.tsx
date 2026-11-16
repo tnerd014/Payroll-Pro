@@ -156,7 +156,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   }, []);
 
   const [hasPendingSync, setHasPendingSync] = useState(false);
-  const [appVersion, setAppVersion] = useState('v1.0.7');
+  const [appVersion, setAppVersion] = useState('v1.0.8');
   const [updateState, setUpdateState] = useState<{ status: string; downloadPercent: number; latestVersion: string; message: string; restartRequired: boolean; downloadPath: string; downloadUrl: string; releaseUrl: string; }>({
     status: 'idle',
     downloadPercent: 0,
@@ -215,7 +215,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   };
 
   useEffect(() => {
-    let currentVer = '1.0.7';
+    let currentVer = '1.0.8';
     const runStartupUpdateCheck = async (ver: string) => {
       try {
         const electronAPI = (window as any).electronAPI;
@@ -391,8 +391,13 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           releaseUrl: result.releaseUrl,
           downloadUrl: result.assetUrl || result.assetUrls?.windowsInstaller,
         });
-        if (dlRes?.success && electronAPI?.installPendingUpdate) {
-          await electronAPI.installPendingUpdate();
+        if (dlRes?.success) {
+          const restartNow = window.confirm(
+            `Payroll Pro v${result.latestVersion} has finished downloading.\n\nWould you like to restart the app now to apply the update?`
+          );
+          if (restartNow && electronAPI?.installPendingUpdate) {
+            await electronAPI.installPendingUpdate();
+          }
         }
         return;
       }
@@ -510,6 +515,18 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
       if (e.key === 'F11') {
         e.preventDefault();
         handleToggleFullScreen();
+        return;
+      }
+
+      // Priority 4: Search focus shortcut (Ctrl+F / Cmd+F)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('payroll-focus-search'));
+        const searchInput = document.querySelector('input[type="text"][placeholder*="Search"], input[placeholder*="search"], input[type="search"]') as HTMLInputElement | null;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select?.();
+        }
         return;
       }
 
@@ -1095,37 +1112,37 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         {!getSavedCloudConfig().isEnabled ? (
           <div 
             title="Local Database — records are stored privately on this device"
-            className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400 select-none"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 select-none px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-700/60"
           >
-            <span className="w-2 h-2 rounded-full bg-zinc-400 dark:bg-zinc-500 shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 shrink-0" />
             <span>Local Database</span>
           </div>
         ) : !isOnline ? (
           <div 
             title="Offline — changes saved locally and will sync when reconnected"
-            className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 select-none px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/20 shadow-xs"
           >
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
-            <span>{hasPendingSync ? 'Offline (pending)' : 'Offline'}</span>
+            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+            <span>{hasPendingSync ? 'Offline (pending sync)' : 'Offline'}</span>
           </div>
         ) : hasPendingSync ? (
           <div 
             title="Syncing changes to cloud server..."
-            className="flex items-center gap-1.5 text-[11px] font-medium text-sky-600 dark:text-sky-400"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-sky-700 dark:text-sky-300 select-none px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-500/10 border border-sky-200/80 dark:border-sky-500/20 shadow-xs"
           >
             <RefreshCw className="w-2.5 h-2.5 text-sky-500 shrink-0 animate-spin" />
-            <span>Syncing</span>
+            <span>Syncing to Cloud</span>
           </div>
         ) : (
           <div 
             title="Online — workspace synced with cloud server"
-            className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 select-none px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/80 dark:border-emerald-500/20"
           >
-            <span className="relative flex w-2.5 h-2.5 shrink-0">
+            <span className="relative flex w-2 h-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>
-              <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-emerald-500"></span>
+              <span className="relative inline-flex rounded-full w-2 h-2 bg-emerald-500"></span>
             </span>
-            <span>Synced</span>
+            <span>Cloud Synced</span>
           </div>
         )}
 

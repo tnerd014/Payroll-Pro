@@ -874,6 +874,16 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                 <span className="hidden sm:inline">Settings</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSending}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shrink-0 ml-1 disabled:opacity-40"
+              title="Close (Esc)"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -2043,9 +2053,6 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                     Customize Email Template &amp; PDF
                   </h3>
-                  <p className="text-[11px] text-zinc-500">
-                    Configure subject line, personalized body tokens, and PDF attachment.
-                  </p>
                 </div>
               </div>
               <button

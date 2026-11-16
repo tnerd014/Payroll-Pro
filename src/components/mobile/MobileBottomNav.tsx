@@ -60,10 +60,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   ];
 
   return (
-    <nav className="shrink-0 sticky bottom-0 z-40 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-t border-zinc-200 dark:border-zinc-800 px-2 pt-1 pb-3 select-none">
+    <nav className="shrink-0 sticky bottom-0 z-40 bg-white/90 dark:bg-[#09090b]/90 backdrop-blur-xl border-t border-zinc-200/70 dark:border-zinc-800/70 px-3 pt-1.5 pb-2 select-none">
       
-      {/* 5-Item Thumb Zone Dock */}
-      <div className="flex items-center justify-around max-w-lg mx-auto">
+      {/* 5-Item Minimalist Dock */}
+      <div className="flex items-center justify-around max-w-md mx-auto">
         {navItems.map((item) => {
           const isActive = activeView === item.id;
           const Icon = item.icon;
@@ -73,74 +73,83 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               key={item.id}
               type="button"
               onClick={() => onViewChange(item.id)}
-              className="flex-1 flex flex-col items-center justify-center py-1 relative group transition-transform active:scale-95 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 select-none"
+              className="flex-1 flex flex-col items-center justify-center py-0.5 relative group transition-transform active:scale-95 outline-none select-none cursor-pointer"
             >
-              {/* Material 3 Active Pill Indicator */}
-              <div
-                className={`relative px-4 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
-                  isActive
-                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
-                    : 'text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200'
-                }`}
-              >
-                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-105' : ''}`} />
+              <div className="relative flex items-center justify-center p-1">
+                <Icon 
+                  className={`w-5 h-5 transition-colors duration-150 ${
+                    isActive 
+                      ? 'text-zinc-950 dark:text-white stroke-[2.25]' 
+                      : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 stroke-[1.75]'
+                  }`} 
+                />
 
                 {/* Badge Indicator */}
                 {item.badge !== undefined && (
-                  <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-[10px] font-bold font-mono shadow-xs">
+                  <span className="absolute -top-0.5 -right-2 px-1 min-w-[15px] h-3.5 flex items-center justify-center rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 text-[9px] font-bold font-mono shadow-2xs">
                     {item.badge}
                   </span>
                 )}
 
                 {/* Locked indicator */}
                 {item.isLockedIndicator && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-900" />
+                  <span className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-[#09090b]" />
                 )}
               </div>
 
-              {/* Label */}
+              {/* Minimal Label */}
               <span
-                className={`text-[11px] font-medium tracking-tight mt-1 transition-colors ${
+                className={`text-[10px] tracking-tight mt-0.5 transition-colors ${
                   isActive
-                    ? 'font-semibold text-emerald-800 dark:text-emerald-300'
-                    : 'text-zinc-500 dark:text-zinc-400'
+                    ? 'font-semibold text-zinc-950 dark:text-white'
+                    : 'font-medium text-zinc-400 dark:text-zinc-500'
                 }`}
               >
                 {item.label}
               </span>
+
+              {/* Minimal Active Indicator Dot */}
+              {isActive && (
+                <span className="w-1 h-1 rounded-full bg-zinc-950 dark:bg-white mt-0.5" />
+              )}
             </button>
           );
         })}
 
-        {/* 5th Tab: More / Services Drawer Trigger */}
+        {/* 5th Tab: More Drawer */}
         <button
           type="button"
           onClick={onOpenMoreSheet}
-          className="flex-1 flex flex-col items-center justify-center py-1 relative group transition-transform active:scale-95 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 select-none"
+          className="flex-1 flex flex-col items-center justify-center py-0.5 relative group transition-transform active:scale-95 outline-none select-none cursor-pointer"
         >
-          <div
-            className={`relative px-4 py-1 rounded-full transition-all duration-200 flex items-center justify-center ${
-              isMoreActive
-                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
-                : 'text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200'
-            }`}
-          >
-            <Grid2X2 className="w-5 h-5" />
+          <div className="relative flex items-center justify-center p-1">
+            <Grid2X2 
+              className={`w-5 h-5 transition-colors duration-150 ${
+                isMoreActive 
+                  ? 'text-zinc-950 dark:text-white stroke-[2.25]' 
+                  : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 stroke-[1.75]'
+              }`} 
+            />
           </div>
           <span
-            className={`text-[11px] font-medium tracking-tight mt-1 transition-colors ${
+            className={`text-[10px] tracking-tight mt-0.5 transition-colors ${
               isMoreActive
-                ? 'font-semibold text-emerald-800 dark:text-emerald-300'
-                : 'text-zinc-500 dark:text-zinc-400'
+                ? 'font-semibold text-zinc-950 dark:text-white'
+                : 'font-medium text-zinc-400 dark:text-zinc-500'
             }`}
           >
             More
           </span>
+
+          {/* Minimal Active Indicator Dot */}
+          {isMoreActive && (
+            <span className="w-1 h-1 rounded-full bg-zinc-950 dark:bg-white mt-0.5" />
+          )}
         </button>
       </div>
 
       {/* Android System Gesture Pill Indicator */}
-      <div className="w-32 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto mt-2" />
+      <div className="w-28 h-1 bg-zinc-300/80 dark:bg-zinc-700/80 rounded-full mx-auto mt-2" />
     </nav>
   );
 };

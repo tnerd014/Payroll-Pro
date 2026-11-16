@@ -99,9 +99,7 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
           <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
             Excel Data Hub
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Export complete multi-tab payroll workbooks and import staff directories with smart conflict resolution.
-          </p>
+          
         </div>
       </div>
 
@@ -115,19 +113,15 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
               <Download className="w-4 h-4" />
             </div>
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              Export Complete Payroll Workbook
+              Export Payroll Workbook
             </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Generates a multi-tab Microsoft Excel file formatted with summary headers:
-            </p>
-            <ul className="text-xs text-zinc-600 dark:text-zinc-300 space-y-1 pl-4 list-disc">
-              <li><strong className="text-zinc-900 dark:text-zinc-100">Summary:</strong> Executive C-Suite KPI dashboard and departmental cost matrix</li>
-              <li><strong className="text-zinc-900 dark:text-zinc-100">Payroll_Register:</strong> Master register with live Excel formulas and filter subtotals</li>
-              <li><strong className="text-zinc-900 dark:text-zinc-100">Bank_Schedule:</strong> Corporate NUBAN batch payment disbursement schedule</li>
-              <li><strong className="text-zinc-900 dark:text-zinc-100">Statutory Schedules:</strong> State PAYE tax and PenCom pension remittance</li>
-              <li><strong className="text-zinc-900 dark:text-zinc-100">Annual_Matrix & Staff_Database:</strong> 12-month pay matrix and staff directory</li>
-              <li><strong className="text-zinc-900 dark:text-zinc-100">Variables:</strong> Centralized statutory parameters driving workbook calculations</li>
-            </ul>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {['Summary KPI', 'Payroll Register', 'Bank Schedule', 'PAYE & Pension', 'Annual Matrix', 'Staff Directory'].map(item => (
+                <span key={item} className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium">
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
 
           <button
@@ -148,14 +142,16 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
               Import & Sync from Excel
             </h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Upload a spreadsheet to refresh staff compensation or add new team members.
-            </p>
-            <div className="p-3 bg-zinc-50 dark:bg-zinc-950 rounded border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-300 space-y-1">
-              <span className="font-medium text-zinc-900 dark:text-zinc-100 block">Dual-Mode Support:</span>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Choose between <strong>Smart Merge</strong> (updates matching staff by code and appends new rows) or <strong>Complete Overwrite</strong>.
-              </p>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium">
+                Smart Merge
+              </span>
+              <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium">
+                Complete Overwrite
+              </span>
+              <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-mono">
+                .xlsx, .csv
+              </span>
             </div>
           </div>
 

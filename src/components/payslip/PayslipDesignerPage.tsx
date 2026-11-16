@@ -2175,7 +2175,6 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Save As Theme</h3>
-                <p className="text-xs text-zinc-500">Save this styling & layout as a reusable preset.</p>
               </div>
             </div>
 

@@ -6,7 +6,8 @@ import {
   Check, 
   Lock, 
   ZoomIn,
-  Minimize2
+  Minimize2,
+  X
 } from 'lucide-react';
 import { 
   CalculatedPayrollItem, 
@@ -187,6 +188,15 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
               <span>Fit</span>
             </>
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shrink-0 ml-1.5"
+          title="Close"
+        >
+          <X className="w-4 h-4" />
         </button>
       </header>
 

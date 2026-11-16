@@ -14,9 +14,10 @@ import {
   ArrowLeft,
   ChevronDown,
   Calendar,
-  Mail
+  Mail,
+  MessageCircle
 } from 'lucide-react';
-import { MONTHS } from '../../store/usePayrollStore';
+import { MONTHS, usePayrollStore } from '../../store/usePayrollStore';
 import { 
   CalculatedPayrollItem, 
   CompanyProfile, 
@@ -33,12 +34,15 @@ import {
   DEFAULT_COLUMNS,
   PayslipColumnDef,
   PayrollSnapshot,
-  EmailPayslipContext
+  EmailPayslipContext,
+  WhatsAppPayslipContext,
+  DEFAULT_WHATSAPP_SETTINGS
 } from '../../types';
 import { formatNaira, DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES, calculatePayrollItem, isEmployeeActiveForPeriod } from '../../engine/payePensionEngine';
 import { PayslipDesignerPage } from '../payslip/PayslipDesignerPage';
 import { PayslipThemeSelector } from '../payslip/payslipThemes';
 import { CustomizablePayslipView } from '../payslip/CustomizablePayslipView';
+import { sendWhatsAppPayslip } from '../../services/whatsappService';
 
 interface BulkPrintPayslipsModalProps {
   isOpen: boolean;
@@ -60,6 +64,7 @@ interface BulkPrintPayslipsModalProps {
   onSavePreset?: (name: string, config: PayslipDesignConfig) => void;
   onDeletePreset?: (id: string) => void;
   onEmailPayslips?: (context?: EmailPayslipContext) => void;
+  onWhatsAppPayslips?: (context?: WhatsAppPayslipContext) => void;
 }
 
 export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
@@ -82,6 +87,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
   onSavePreset,
   onDeletePreset,
   onEmailPayslips,
+  onWhatsAppPayslips,
 }) => {
   const [activeTab, setActiveTab] = useState<'employees' | 'sections'>('employees');
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
@@ -164,6 +170,8 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
   
   // Filters for staff directory
   const [searchQuery, setSearchQuery] = useState('');
+  const { whatsappSettings } = usePayrollStore();
+  const currentWhatsAppSettings = whatsappSettings || DEFAULT_WHATSAPP_SETTINGS;
   const [deptFilter, setDeptFilter] = useState('ALL');
 
   const safeItems = useMemo(() => (Array.isArray(items) ? items.filter(Boolean) : []), [items]);
@@ -424,6 +432,15 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
     setPreviewEmployeeId('');
   };
 
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [whatsappToast, setWhatsappToast] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (!whatsappToast) return;
+    const t = setTimeout(() => setWhatsappToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [whatsappToast]);
+
   const handlePrint = () => {
     if (selectedEmployees.length === 0) return;
     const beforePrint = () => document.body.classList.add('print-portal-active');
@@ -432,6 +449,56 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
     window.addEventListener('afterprint', afterPrint, { once: true });
     document.body.classList.add('print-portal-active');
     window.print();
+  };
+
+  const handleSendWhatsApp = async () => {
+    setIsActionMenuOpen(false);
+    if (!currentPreviewItem) return;
+    const emp = employees.find(e => e.id === currentPreviewItem.employeeId);
+    const phone = emp?.phone;
+    if (!phone) {
+      setWhatsappToast({ 
+        type: 'error', 
+        message: `No phone number configured for ${currentPreviewItem.fullName}. Add phone number in Staff Profile.` 
+      });
+      return;
+    }
+    const activeSettings = currentWhatsAppSettings;
+    setIsSendingWhatsApp(true);
+    setWhatsappToast({ type: 'info', message: `Dispatching WhatsApp payslip to ${phone}...` });
+    try {
+      const res = await sendWhatsAppPayslip({
+        item: currentPreviewItem,
+        company,
+        monthLabel: printPeriodLabel,
+        year: printYear,
+        phone,
+        config,
+        settings: activeSettings,
+      }, activeSettings.provider === 'direct');
+
+      if (res.success) {
+        if (activeSettings.provider === 'direct') {
+          setWhatsappToast({ type: 'success', message: `Opened WhatsApp chat for ${currentPreviewItem.fullName}.` });
+        } else {
+          const providerName = activeSettings.provider === 'cloud_api' 
+            ? 'Meta Cloud API' 
+            : activeSettings.provider === 'ultramsg' 
+              ? 'UltraMsg' 
+              : 'Termii API';
+          setWhatsappToast({ 
+            type: 'success', 
+            message: `✅ Payslip sent to ${currentPreviewItem.fullName} (${phone}) via ${providerName}!` 
+          });
+        }
+      } else {
+        setWhatsappToast({ type: 'error', message: res.error || 'Failed to dispatch WhatsApp payslip.' });
+      }
+    } catch (err: any) {
+      setWhatsappToast({ type: 'error', message: err?.message || 'Error dispatching WhatsApp payslip.' });
+    } finally {
+      setIsSendingWhatsApp(false);
+    }
   };
 
   const scrollToVoucher = (empId: string) => {
@@ -686,13 +753,52 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                     }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition text-left cursor-pointer"
                   >
-                    <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <Mail className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     <span className="font-medium">Email</span>
+                  </button>
+                )}
+
+                {onWhatsAppPayslips ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionMenuOpen(false);
+                      onWhatsAppPayslips({
+                        selectedEmployeeIds: selectedEmployees,
+                        selectedMonthKeys: selectedMonthKeys,
+                        year: printYear,
+                      });
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition text-left cursor-pointer"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-medium text-emerald-700 dark:text-emerald-300">WhatsApp Studio</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSendWhatsApp}
+                    disabled={isSendingWhatsApp || !currentPreviewItem}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition text-left cursor-pointer disabled:opacity-50"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-medium text-emerald-700 dark:text-emerald-300">
+                      {isSendingWhatsApp ? 'Sending…' : 'WhatsApp'}
+                    </span>
                   </button>
                 )}
               </div>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shrink-0 ml-1"
+            title="Close (Esc)"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
       </div>
@@ -756,35 +862,38 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5">
-                    <span className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 shrink-0">
-                      {selectedEmployees.length}/{safeItems.length}
-                    </span>
-                    <select
-                      value={deptFilter}
-                      onChange={e => setDeptFilter(e.target.value)}
-                      className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-zinc-700 dark:text-zinc-300 text-xs focus:outline-none"
-                    >
-                      {departments.map(dept => (
-                        <option key={dept} value={dept}>
-                          {dept === 'ALL' ? 'All Departments' : dept}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Department Filter */}
+                <select
+                  value={deptFilter}
+                  onChange={e => setDeptFilter(e.target.value)}
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2.5 py-1.5 text-zinc-700 dark:text-zinc-300 text-xs focus:outline-none focus:border-zinc-400 cursor-pointer"
+                >
+                  {departments.map(dept => (
+                    <option key={dept} value={dept}>
+                      {dept === 'ALL' ? 'All Departments' : dept}
+                    </option>
+                  ))}
+                </select>
 
-                  <div className="flex gap-2">
+                {/* Selection Counter & Batch Selection Actions */}
+                <div className="flex items-center justify-between text-xs pt-0.5">
+                  <span className="px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                    {selectedEmployees.length}/{safeItems.length} selected
+                  </span>
+
+                  <div className="flex items-center gap-1.5 text-[11px]">
                     <button
+                      type="button"
                       onClick={handleSelectAllEmployees}
-                      className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:underline"
+                      className="px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer font-medium"
                     >
                       All
                     </button>
                     <span className="text-zinc-300 dark:text-zinc-700">|</span>
                     <button
+                      type="button"
                       onClick={handleDeselectAllEmployees}
-                      className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:underline"
+                      className="px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer font-medium"
                     >
                       None
                     </button>
@@ -1214,6 +1323,27 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
           ))
         )}
       </div>
+
+      {/* WhatsApp Toast Notification */}
+      {whatsappToast && (
+        <div className={`no-print fixed bottom-6 right-6 z-[100] max-w-sm px-4 py-3 rounded-xl shadow-2xl border text-xs flex items-center gap-2.5 animate-in slide-in-from-bottom duration-200 ${
+          whatsappToast.type === 'success' 
+            ? 'bg-emerald-900 text-white border-emerald-700' 
+            : whatsappToast.type === 'error'
+              ? 'bg-rose-900 text-white border-rose-700'
+              : 'bg-zinc-900 text-white border-zinc-700'
+        }`}>
+          <MessageCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+          <span className="flex-1 font-medium">{whatsappToast.message}</span>
+          <button 
+            type="button" 
+            onClick={() => setWhatsappToast(null)} 
+            className="p-1 text-zinc-400 hover:text-white rounded cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
     </div>,
     document.body

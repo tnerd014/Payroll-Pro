@@ -1668,7 +1668,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             <div className="p-4 overflow-y-auto space-y-4 print:p-0">
               <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
                 <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">{company.name}</h2>
-                <p className="text-xs text-zinc-500 font-mono">{company.subtitle || company.address || 'Corporate Office'} • Nigerian Labour Act Sec. 5 Prorated Deductions</p>
+                <p className="text-xs text-zinc-500 font-mono">{company.subtitle || company.address || 'Corporate Office'}</p>
                 <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mt-1">
                   Timeframe: {absenceTimeframe === 'month' ? `${MONTHS.find(m => m.key === absenceMonthKey)?.label || absenceMonthKey} ${absenceYear}` : absenceTimeframe === 'year' ? `Year ${absenceYear}` : 'All Records'}
                 </p>

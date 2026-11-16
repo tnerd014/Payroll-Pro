@@ -97,7 +97,7 @@ interface MobileAppShellProps {
     onAddLoan: (loan: any) => void;
     onUpdateLoan?: (id: string, updates: Partial<EmployeeLoan>) => void;
     onDeleteLoan?: (id: string) => void;
-    onPauseResumeLoan: (id: string) => void;
+    onPauseResumeLoan: (id: string, options?: { reason?: string; pausedUntilPeriodKey?: string; performedBy?: string }) => void;
     onRecordManualPayment: (id: string, amt: number, notes?: string) => void;
     onSaveBatchContributions?: (contributions: EmployeeContribution[]) => void;
     onDeleteContribution?: (id: string) => void;
@@ -377,7 +377,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <main
                 ref={mainScrollRef}
                 key={activeView}
-                className={`flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain ${(activeView === 'payslip-designer' || activeView === 'payslips' || activeView === 'profile') ? 'p-0' : activeView === 'analytics' ? 'px-4 pt-3.5 pb-0' : 'px-4 pt-3.5 pb-3'}`}
+                className={`flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain ${(activeView === 'payslip-designer' || activeView === 'payslips' || activeView === 'profile') ? 'p-0' : activeView === 'analytics' ? 'px-3.5 pt-3 pb-0' : 'px-3.5 pt-3 pb-3'}`}
                 style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             >
                 {activeView === 'dashboard' ? (
@@ -445,46 +445,42 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                         isReadOnly={isCloudOffline}
                     />
                 ) : activeView === 'absences' ? (
-                    <div className="p-3">
-                        <AbsenceLogView
-                            employees={employees}
-                            absences={absences || []}
-                            payrollVariables={payrollVariables}
-                            payrollItems={payrollItems}
-                            company={company}
-                            monthLabel={monthLabel}
-                            selectedMonth={selectedMonth}
-                            selectedYear={selectedYear}
-                            snapshots={snapshots}
-                            onPeriodChange={onPeriodChange}
-                            onSaveAbsence={onSaveAbsence || (() => { })}
-                            onDeleteAbsence={onDeleteAbsence || (() => { })}
-                            currentUser={currentUser}
-                            isReadOnly={isCloudOffline}
-                        />
-                    </div>
+                    <AbsenceLogView
+                        employees={employees}
+                        absences={absences || []}
+                        payrollVariables={payrollVariables}
+                        payrollItems={payrollItems}
+                        company={company}
+                        monthLabel={monthLabel}
+                        selectedMonth={selectedMonth}
+                        selectedYear={selectedYear}
+                        snapshots={snapshots}
+                        onPeriodChange={onPeriodChange}
+                        onSaveAbsence={onSaveAbsence || (() => { })}
+                        onDeleteAbsence={onDeleteAbsence || (() => { })}
+                        currentUser={currentUser}
+                        isReadOnly={isCloudOffline}
+                    />
                 ) : activeView === 'contributions' ? (
-                    <div className="p-3">
-                        <ContributionsView
-                            employees={employees}
-                            payrollItems={payrollItems}
-                            contributions={contributions}
-                            payouts={contributionPayouts}
-                            schemes={contributionSchemes}
-                            company={company}
-                            monthLabel={monthLabel}
-                            selectedMonth={selectedMonth}
-                            selectedYear={selectedYear}
-                            snapshots={snapshots}
-                            onPeriodChange={onPeriodChange}
-                            onSaveBatchContributions={onSaveBatchContributions || (() => { })}
-                            onDeleteContribution={onDeleteContribution || (() => { })}
-                            onAddPayout={onAddPayout || (() => { })}
-                            onDeletePayout={onDeletePayout || (() => { })}
-                            currentUser={currentUser}
-                            isReadOnly={isCloudOffline}
-                        />
-                    </div>
+                    <ContributionsView
+                        employees={employees}
+                        payrollItems={payrollItems}
+                        contributions={contributions}
+                        payouts={contributionPayouts}
+                        schemes={contributionSchemes}
+                        company={company}
+                        monthLabel={monthLabel}
+                        selectedMonth={selectedMonth}
+                        selectedYear={selectedYear}
+                        snapshots={snapshots}
+                        onPeriodChange={onPeriodChange}
+                        onSaveBatchContributions={onSaveBatchContributions || (() => { })}
+                        onDeleteContribution={onDeleteContribution || (() => { })}
+                        onAddPayout={onAddPayout || (() => { })}
+                        onDeletePayout={onDeletePayout || (() => { })}
+                        currentUser={currentUser}
+                        isReadOnly={isCloudOffline}
+                    />
                 ) : activeView === 'analytics' ? (
                     <MobileAnalyticsView
                         items={payrollItems}

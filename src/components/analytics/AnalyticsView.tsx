@@ -3249,9 +3249,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     Timeframe: {absenceTimeframe === 'month' ? `${MONTHS.find(m => m.key === absenceMonthKey)?.label} ${absenceYear}` : absenceTimeframe === 'year' ? `FY ${absenceYear}` : 'All Historical Records'}
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 mt-1">
-                  Compliance: Calculated strictly in accordance with Nigerian Labour Act Section 5 daily rate proration rules.
-                </p>
+                
               </div>
 
               {/* KPI Strip */}
