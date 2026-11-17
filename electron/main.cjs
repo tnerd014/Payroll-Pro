@@ -460,6 +460,37 @@ ipcMain.handle('download-update', async (_, options = {}) => {
   }
 });
 
+function launchDetachedProcess(command, args) {
+  return new Promise((resolve) => {
+    try {
+      const { spawn } = require('child_process');
+      const child = spawn(command, args, {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+      let settled = false;
+      child.once('error', (err) => {
+        if (!settled) {
+          settled = true;
+          resolve({ success: false, error: err && err.message ? err.message : 'Spawn failed' });
+        }
+      });
+      child.once('spawn', () => {
+        if (!settled) {
+          settled = true;
+          try {
+            child.unref();
+          } catch {}
+          resolve({ success: true });
+        }
+      });
+    } catch (err) {
+      resolve({ success: false, error: err && err.message ? err.message : 'Spawn failed' });
+    }
+  });
+}
+
 ipcMain.handle('install-pending-update', async () => {
   try {
     const installerPath = updateState.downloadPath;
@@ -467,21 +498,29 @@ ipcMain.handle('install-pending-update', async () => {
       return { success: false, error: 'No downloaded installer was found.' };
     }
 
-    try {
-      const { spawn } = require('child_process');
-      const child = spawn(installerPath, ['--updated'], {
-        detached: true,
-        stdio: 'ignore',
-      });
-      child.unref();
-    } catch {
-      await shell.openPath(installerPath);
+    if (process.platform === 'win32') {
+      // shell.openPath uses ShellExecuteExW so Windows UAC (perMachine requireAdministrator) elevates cleanly
+      const openErr = await shell.openPath(installerPath);
+      if (openErr) {
+        const fallback = await launchDetachedProcess('cmd.exe', ['/c', 'start', '""', installerPath]);
+        if (!fallback.success) {
+          return { success: false, error: openErr || fallback.error || 'Unable to launch installer.' };
+        }
+      }
+    } else {
+      const spawned = await launchDetachedProcess(installerPath, ['--updated']);
+      if (!spawned.success) {
+        const openErr = await shell.openPath(installerPath);
+        if (openErr) {
+          return { success: false, error: openErr || spawned.error || 'Unable to launch installer.' };
+        }
+      }
     }
 
     setTimeout(() => {
       app.isQuitting = true;
       app.quit();
-    }, 500);
+    }, 800);
     return { success: true, installerPath };
   } catch (error) {
     return {
