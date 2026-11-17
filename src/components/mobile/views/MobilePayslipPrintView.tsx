@@ -370,8 +370,10 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
   };
 
   return (
-    <div className="no-print space-y-3 pb-24 select-none">
+    <div className="no-print h-full flex flex-col overflow-hidden select-none">
       
+      {/* ── Pinned Top Controls (Header + Staff Navigator) ── */}
+      <div className="shrink-0 z-40 bg-[#f4f4f5] dark:bg-[#09090b] px-2.5 pt-2 pb-2 space-y-2 border-b border-zinc-200/70 dark:border-zinc-800/70">
       {/* ── 1. Minimalist Top Header Bar (Zero Clutter, Proper Dropdowns) ── */}
       <header className="relative bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2 shadow-xs flex items-center justify-between gap-1.5 z-40">
         
@@ -649,8 +651,10 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
+      </div>
 
-      {/* ── 3. Document Canvas Container with Silky Smooth GPU Zoom ── */}
+      {/* ── 3. Scrollable Document Canvas Container with Silky Smooth GPU Zoom ── */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-2.5 pt-2.5 pb-24" style={{ WebkitOverflowScrolling: 'touch' }}>
       <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-3xl p-3 shadow-xs space-y-2.5">
         <div className="flex items-center justify-between px-1 text-xs">
           <div className="flex items-center gap-1.5">
@@ -682,6 +686,7 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
             />
           </PinchZoomContainer>
         </div>
+      </div>
       </div>
 
       {/* ── 4. Floating Action Button & Speed Dial (Print, Email, WhatsApp) ── */}

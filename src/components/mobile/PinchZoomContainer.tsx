@@ -64,24 +64,28 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
     if (!contentMeasureRef.current) return;
     const measure = () => {
       if (contentMeasureRef.current) {
-        const h = contentMeasureRef.current.scrollHeight || contentMeasureRef.current.offsetHeight;
+        const h = Math.ceil(contentMeasureRef.current.scrollHeight || contentMeasureRef.current.offsetHeight);
         if (h > 150) {
-          setContentHeight(prev => (Math.abs(prev - h) > 4 ? h : prev));
+          setContentHeight(prev => (Math.abs(prev - h) > 2 ? h : prev));
         }
       }
     };
     measure();
+    const raf = requestAnimationFrame(measure);
 
     const ro = new ResizeObserver(entries => {
       for (const entry of entries) {
-        const h = Math.round(entry.contentRect.height);
+        const h = Math.ceil(entry.contentRect.height);
         if (h > 150) {
-          setContentHeight(prev => (Math.abs(prev - h) > 4 ? h : prev));
+          setContentHeight(prev => (Math.abs(prev - h) > 2 ? h : prev));
         }
       }
     });
     ro.observe(contentMeasureRef.current);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, [children]);
 
   // Determine whether the container is height-constrained (e.g. h-[340px] mini canvas)
@@ -164,7 +168,7 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
   const currentPercent = Math.round(zoomFactor * 100);
 
   const scaledWidth = Math.round(contentWidth * baseFitScale);
-  const scaledHeight = Math.round(contentHeight * baseFitScale);
+  const scaledHeight = Math.ceil(contentHeight * (isConstrainedHeight ? baseFitScale : currentScale));
 
   // Max pan calculation
   const getMaxPan = useCallback((scale: number) => {
@@ -390,7 +394,7 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
 
       {/* ── GPU-Accelerated Scaled Viewport Container (Snug fit, zero blank space, zero glitching) ── */}
       <div 
-        className="w-full flex items-center justify-center overflow-hidden py-0.5"
+        className={`w-full flex justify-center py-0.5 ${isConstrainedHeight ? 'items-center overflow-hidden' : 'items-start overflow-x-hidden overflow-y-visible'}`}
         style={{
           height: isConstrainedHeight ? '100%' : `${scaledHeight}px`,
           position: 'relative',
@@ -406,16 +410,18 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
             overflow: 'visible',
           }}
         >
-          {/* Centered GPU Transformation Stage */}
+          {/* GPU Transformation Stage */}
           <div
             style={{
               position: 'absolute',
-              top: '50%',
+              top: isConstrainedHeight ? '50%' : 0,
               left: '50%',
               width: `${contentWidth}px`,
-              height: `${contentHeight}px`,
-              transform: `translate(-50%, -50%) translate3d(${pan.x}px, ${pan.y}px, 0) scale(${currentScale})`,
-              transformOrigin: 'center center',
+              height: 'auto',
+              transform: isConstrainedHeight
+                ? `translate(-50%, -50%) translate3d(${pan.x}px, ${pan.y}px, 0) scale(${currentScale})`
+                : `translateX(-50%) translate3d(${pan.x}px, ${pan.y}px, 0) scale(${currentScale})`,
+              transformOrigin: isConstrainedHeight ? 'center center' : 'top center',
               transition: isInteracting ? 'none' : 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
               willChange: 'transform',
             }}
@@ -426,7 +432,6 @@ export const PinchZoomContainer: React.FC<PinchZoomContainerProps> = ({
               style={{
                 width: `${contentWidth}px`,
                 height: 'max-content',
-                minHeight: '100%',
                 boxSizing: 'border-box',
               }}
             >
