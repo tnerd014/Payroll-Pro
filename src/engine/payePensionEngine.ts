@@ -313,6 +313,29 @@ export function calculatePayrollItem(
   };
 }
 
+/** Evaluate Labour Act Section 5(7) 1/3 limit against true gross and non-statutory deductions. */
+export function evaluateSection5Cap(
+  calculatedGross: number,
+  fallbackGross: number,
+  loanDeduction: number,
+  contributionDeduction: number,
+  unpaidAbsenceDeduction: number
+): { section5MaxAllowedDeductions: number; isSection5CapExceeded: boolean } {
+  const baselineGross =
+    Math.max(0, (Number(calculatedGross) || 0) + (Number(unpaidAbsenceDeduction) || 0)) ||
+    Number(fallbackGross) ||
+    0;
+  const section5MaxAllowedDeductions = Math.round((baselineGross / 3) * 100) / 100;
+  const nonStatutoryDeductions =
+    (Number(loanDeduction) || 0) +
+    (Number(contributionDeduction) || 0) +
+    (Number(unpaidAbsenceDeduction) || 0);
+  return {
+    section5MaxAllowedDeductions,
+    isSection5CapExceeded: baselineGross > 0 && nonStatutoryDeductions > section5MaxAllowedDeductions,
+  };
+}
+
 export function formatNaira(amount: number): string {
   const value = Number(amount) || 0;
   if (typeof window !== 'undefined' && getPrivacyMaskPreference()) {

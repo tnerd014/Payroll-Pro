@@ -986,7 +986,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                       {item.isSection5CapExceeded && (
                         <span
                           className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                          title={`Labour Act Section 5(7) Notice: Total deductions exceed 1/3 (33.3%) of monthly salary (Max: ${formatNaira(item.section5MaxAllowedDeductions || 0)}).`}
+                          title={`Labour Act Section 5(7) Notice: Non-statutory deductions (loans, contributions & absences) exceed 1/3 (33.3%) of monthly gross (Max: ${formatNaira(item.section5MaxAllowedDeductions || 0)}).`}
                         >
                           ⚠️ &gt;1/3 Cap
                         </span>

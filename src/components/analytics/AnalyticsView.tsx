@@ -47,6 +47,7 @@ import {
   formatNaira, 
   formatCompactNaira, 
   calculatePayrollItem,
+  evaluateSection5Cap,
   formatDate,
   getScheduleWorkdays,
   isEmployeeActiveForPeriod
@@ -891,9 +892,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         const totalDeductions = base.totalDeductions + totalLoanDeduction + totalContributionDeduction;
         const netTakeHome = Math.max(0, base.netTakeHome - totalLoanDeduction - totalContributionDeduction);
 
-        const baselineGross = Number(emp.monthlyGross) || base.monthlyGross || 0;
-        const section5MaxAllowedDeductions = Math.round((baselineGross / 3) * 100) / 100;
-        const isSection5CapExceeded = totalDeductions > section5MaxAllowedDeductions;
+        const { section5MaxAllowedDeductions, isSection5CapExceeded } = evaluateSection5Cap(
+          base.monthlyGross,
+          emp.monthlyGross,
+          totalLoanDeduction,
+          totalContributionDeduction,
+          unpaidAbsenceDeduction
+        );
 
         return {
           ...base,

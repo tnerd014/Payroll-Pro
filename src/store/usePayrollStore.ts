@@ -32,6 +32,7 @@ import {
   DEFAULT_PAYE_VARIABLES, 
   DEFAULT_EMPLOYMENT_TYPE_RULES,
   calculatePayrollItem,
+  evaluateSection5Cap,
   isEmployeeActiveForPeriod,
   getScheduleWorkdays
 } from '../engine/payePensionEngine';
@@ -1459,9 +1460,13 @@ export function usePayrollStore() {
         const totalDeductions = base.totalDeductions + totalLoanDeduction + totalContributionDeduction;
         const netTakeHome = Math.max(0, base.netTakeHome - totalLoanDeduction - totalContributionDeduction);
 
-        const baselineGross = Number(emp.monthlyGross) || base.monthlyGross || 0;
-        const section5MaxAllowedDeductions = Math.round((baselineGross / 3) * 100) / 100;
-        const isSection5CapExceeded = totalDeductions > section5MaxAllowedDeductions;
+        const { section5MaxAllowedDeductions, isSection5CapExceeded } = evaluateSection5Cap(
+          base.monthlyGross,
+          emp.monthlyGross,
+          totalLoanDeduction,
+          totalContributionDeduction,
+          unpaidAbsenceDeduction
+        );
 
         return {
           ...base,
