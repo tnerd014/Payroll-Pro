@@ -16,7 +16,7 @@ export interface GitHubReleaseCheckResult {
 }
 
 export const GITHUB_REPO = 'tnerd014/Payroll-Pro';
-export const DEFAULT_APP_VERSION = '1.0.11';
+export const DEFAULT_APP_VERSION = '1.0.12';
 
 export function normalizeReleaseVersion(value: string): string {
   return String(value || '').trim().replace(/^v/i, '');
@@ -86,10 +86,34 @@ export async function checkForGithubReleaseUpdate(currentVersion: string): Promi
         }
       }
       if (!payload) {
+        // Secondary rate-limit-immune fallback via raw.githubusercontent.com (CORS-enabled)
+        try {
+          const rawRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_REPO}/main/package.json`, {
+            cache: 'no-store',
+          });
+          if (rawRes.ok) {
+            const pkg = await rawRes.json();
+            const rawVer = normalizeReleaseVersion(pkg?.version || '');
+            if (rawVer) {
+              payload = {
+                tag_name: `v${rawVer}`,
+                html_url: `https://github.com/${GITHUB_REPO}/releases/tag/v${rawVer}`,
+                assets: [],
+              };
+            }
+          }
+        } catch {
+          // Ignore and return original error below
+        }
+      }
+
+      if (!payload) {
         return {
           success: false,
           currentVersion: resolvedCurrent,
-          error: `GitHub release check failed (HTTP ${response.status}).`,
+          error: response.status === 403
+            ? 'GitHub rate limit reached (HTTP 403). Please try again shortly or open GitHub Releases directly.'
+            : `GitHub release check failed (HTTP ${response.status}).`,
         };
       }
     }
