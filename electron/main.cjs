@@ -279,7 +279,7 @@ async function performUpdateCheck() {
   }
 
   const result = compareVersions(currentVersion, latestVersion);
-  const updateAvailable = result < 0;
+  const updateAvailable = result > 0;
 
   if (updateAvailable && updateState.status === 'idle') {
     emitUpdateState({
@@ -298,7 +298,7 @@ async function performUpdateCheck() {
     latestVersion,
     releaseUrl,
     assetUrl,
-    upToDate: result >= 0,
+    upToDate: result <= 0,
     updateAvailable,
   };
 }

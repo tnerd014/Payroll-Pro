@@ -25,7 +25,7 @@ import { MONTHS } from '../../store/usePayrollStore';
 import { MobileBottomSheet } from './MobileBottomSheet';
 import { isStandaloneOfflineMode, getSavedCloudConfig, getPrivacyMaskPreference, setPrivacyMaskPreference } from '../../services/supabaseClient';
 import { registerBackHandler } from '../../utils/mobileBackHandler';
-import { checkForGithubReleaseUpdate, openExternalReleaseLink, getRuntimeAppVersion } from '../../utils/releaseUpdate';
+import { checkForGithubReleaseUpdate, openExternalReleaseLink, getRuntimeAppVersion, DEFAULT_APP_VERSION } from '../../utils/releaseUpdate';
 
 interface MobileTopAppBarProps {
   activeView?: AppView;
@@ -80,7 +80,7 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
 
   useEffect(() => {
     let active = true;
-    getRuntimeAppVersion('1.0.9').then((ver) => {
+    getRuntimeAppVersion(DEFAULT_APP_VERSION).then((ver) => {
       if (!active) return;
       setAppVersion(`v${ver}`);
       setTimeout(async () => {
