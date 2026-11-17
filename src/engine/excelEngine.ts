@@ -7,10 +7,21 @@ import {
   PayeTaxVariables,
   PayrollSnapshot,
   CompanyProfile,
-  EmployeeLoan
+  EmployeeLoan,
+  EmployeeAbsenceRecord,
+  EmployeeContribution,
+  ContributionPayout,
+  AbsenceType
 } from '../types';
-import { calculatePayrollItem, formatNaira, getEmployeeGrossForPeriod, DEFAULT_PAYE_VARIABLES, isEmployeeActiveForPeriod } from './payePensionEngine';
-import { MONTHS } from '../store/usePayrollStore';
+import { 
+  calculatePayrollItem, 
+  formatNaira, 
+  getEmployeeGrossForPeriod, 
+  DEFAULT_PAYE_VARIABLES, 
+  isEmployeeActiveForPeriod,
+  getScheduleWorkdays 
+} from './payePensionEngine';
+import { MONTHS, normalizeMonthKey } from '../store/usePayrollStore';
 
 export type ExportScope = 'current-month' | 'full-year' | 'all-history';
 
@@ -21,6 +32,7 @@ export type ExportInformationScope =
   | 'statutory-remittance' 
   | 'loans-schedule'
   | 'contributions-schedule'
+  | 'absences-log'
   | 'staff-database';
 
 export interface ExportOptions {
@@ -33,6 +45,10 @@ export interface ExportOptions {
   departmentFilter?: string; // 'ALL' | specific department name
   informationScope?: ExportInformationScope;
   loans?: EmployeeLoan[];
+  contributions?: EmployeeContribution[];
+  payouts?: ContributionPayout[];
+  absences?: EmployeeAbsenceRecord[];
+  snapshots?: PayrollSnapshot[];
 }
 
 const DEFAULT_COMPANY_FALLBACK: CompanyProfile = {
@@ -333,6 +349,89 @@ export function exportPayrollProToExcel(
   const effectiveCompany = company || DEFAULT_COMPANY_FALLBACK;
   const infoScope = options.informationScope || 'all';
   const effectiveLoans = options.loans || loans || [];
+  const effectiveContributions = options.contributions || [];
+  const effectivePayouts = options.payouts || [];
+  const effectiveAbsences = options.absences || [];
+  const effectiveSnapshots = options.snapshots || [];
+
+  const targetMonthKey = options.selectedMonth ? normalizeMonthKey(options.selectedMonth) : normalizeMonthKey(monthLabel);
+  const targetYear = options.selectedYear || year;
+
+  // 1) Find snapshot for target period if available
+  const matchingSnapshot = effectiveSnapshots.find(
+    s => s && normalizeMonthKey(s.monthKey) === targetMonthKey && Number(s.year) === Number(targetYear)
+  ) || (snapshot && normalizeMonthKey(snapshot.monthKey) === targetMonthKey && Number(snapshot.year) === Number(targetYear) ? snapshot : null);
+
+  let periodBaseItems: CalculatedPayrollItem[] = [];
+  if (matchingSnapshot && matchingSnapshot.items && matchingSnapshot.items.length > 0) {
+    periodBaseItems = matchingSnapshot.items;
+  } else if (payrollItems && payrollItems.length > 0) {
+    periodBaseItems = payrollItems;
+  } else {
+    periodBaseItems = employees
+      .filter(e => isEmployeeActiveForPeriod(e, targetYear, targetMonthKey))
+      .map(emp => calculatePayrollItem(emp, payrollVars, payeVars, targetMonthKey, targetYear));
+  }
+
+  // Pre-index contributions for target period (supports normalized month comparison)
+  const contribMap = new Map<string, { total: number; details: Array<{ schemeName: string; amount: number; notes?: string }> }>();
+  for (const c of effectiveContributions) {
+    if (!c || !c.employeeId) continue;
+    const parts = (c.periodKey || '').split('-');
+    const cYear = parts[0];
+    const cMonth = normalizeMonthKey(parts[1]);
+    const isMatch = (cYear === String(targetYear)) && (
+      scope === 'full-year' ? true : cMonth === targetMonthKey
+    );
+    if (isMatch) {
+      const amt = Number(c.amount) || 0;
+      if (amt > 0) {
+        const entry = contribMap.get(c.employeeId) || { total: 0, details: [] };
+        entry.total += amt;
+        entry.details.push({
+          schemeName: c.schemeName || 'Staff Welfare Fund',
+          amount: amt,
+          notes: c.notes,
+        });
+        contribMap.set(c.employeeId, entry);
+      }
+    }
+  }
+
+  // Pre-index absences for target period (supports normalized month comparison)
+  const absenceMap = new Map<string, EmployeeAbsenceRecord>();
+  for (const a of effectiveAbsences) {
+    if (!a || !a.employeeId) continue;
+    const parts = (a.periodKey || '').split('-');
+    const aYear = parts[0];
+    const aMonth = normalizeMonthKey(parts[1]);
+    const isMatch = (aYear === String(targetYear)) && (
+      scope === 'full-year' ? true : aMonth === targetMonthKey
+    );
+    if (isMatch) {
+      absenceMap.set(a.employeeId, a);
+    }
+  }
+
+  // Reconcile and hydrate items so contributionDeduction and unpaidAbsence are never missing
+  const reconciledItems = periodBaseItems.map(item => {
+    let updated = { ...item };
+    const empContrib = contribMap.get(item.employeeId);
+    if (empContrib && empContrib.total > 0) {
+      if (!updated.contributionDeduction || updated.contributionDeduction <= 0) {
+        updated.contributionDeduction = empContrib.total;
+        updated.contributionDetails = empContrib.details;
+      }
+    }
+    const empAbsence = absenceMap.get(item.employeeId);
+    if (empAbsence && Number(empAbsence.daysAbsent) > 0) {
+      if (!updated.unpaidAbsenceDays || updated.unpaidAbsenceDays <= 0) {
+        updated.unpaidAbsenceDays = Number(empAbsence.daysAbsent);
+        updated.unpaidAbsenceDeduction = Number(empAbsence.deductionAmount) || 0;
+      }
+    }
+    return updated;
+  });
 
   // Apply employment type & department filters
   let filteredEmployees = employees;
@@ -349,8 +448,11 @@ export function exportPayrollProToExcel(
 
   const allowedCodes = new Set(filteredEmployees.map(e => e.code.toLowerCase()));
   const allowedEmpIds = new Set(filteredEmployees.map(e => e.id));
-  const filteredItems = payrollItems.filter(i => allowedCodes.has(i.employeeCode.toLowerCase()));
+  const filteredItems = reconciledItems.filter(i => allowedCodes.has(i.employeeCode.toLowerCase()));
   const filteredLoans = effectiveLoans.filter(l => allowedEmpIds.has(l.employeeId));
+  const filteredContributions = effectiveContributions.filter(c => allowedEmpIds.has(c.employeeId));
+  const filteredPayouts = effectivePayouts.filter(p => allowedEmpIds.has(p.employeeId));
+  const filteredAbsences = effectiveAbsences.filter(a => allowedEmpIds.has(a.employeeId));
 
   // 1. VARIABLES TAB (Central Statutory Configuration Reference)
   // Must be created first or present so formula references ('Variables'!$C$6, etc.) are valid
@@ -362,7 +464,7 @@ export function exportPayrollProToExcel(
     filteredItems,
     payrollVars,
     monthLabel,
-    year,
+    targetYear,
     effectiveCompany,
     includeFormulas,
     payeVars
@@ -373,16 +475,20 @@ export function exportPayrollProToExcel(
     filteredItems,
     filteredEmployees,
     monthLabel,
-    year,
+    targetYear,
     effectiveCompany,
-    includeFormulas
+    includeFormulas,
+    filteredLoans,
+    filteredContributions,
+    filteredPayouts,
+    scope
   );
 
   // 4. COMMERCIAL BANK DISBURSEMENT SCHEDULE
   const wsBank = createBankDisbursementSheet(
     filteredItems,
     monthLabel,
-    year,
+    targetYear,
     effectiveCompany,
     includeFormulas
   );
@@ -391,7 +497,7 @@ export function exportPayrollProToExcel(
   const wsPaye = createPayeTaxScheduleSheet(
     filteredItems,
     monthLabel,
-    year,
+    targetYear,
     effectiveCompany,
     includeFormulas,
     payeVars
@@ -400,7 +506,7 @@ export function exportPayrollProToExcel(
   const wsPension = createPensionRemittanceSheet(
     filteredItems,
     monthLabel,
-    year,
+    targetYear,
     effectiveCompany,
     includeFormulas
   );
@@ -410,7 +516,7 @@ export function exportPayrollProToExcel(
     filteredLoans,
     filteredEmployees,
     monthLabel,
-    year,
+    targetYear,
     effectiveCompany,
     includeFormulas
   );
@@ -420,15 +526,35 @@ export function exportPayrollProToExcel(
     filteredItems,
     filteredEmployees,
     monthLabel,
-    year,
+    targetYear,
     effectiveCompany,
-    includeFormulas
+    includeFormulas,
+    filteredContributions,
+    targetMonthKey,
+    targetYear,
+    scope,
+    filteredPayouts
+  );
+
+  // 6C. STAFF ABSENCE & ATTENDANCE LOG TAB
+  const wsAbsences = createAbsenceLogSheet(
+    filteredAbsences,
+    filteredItems,
+    filteredEmployees,
+    monthLabel,
+    targetYear,
+    effectiveCompany,
+    includeFormulas,
+    payrollVars,
+    targetMonthKey,
+    targetYear,
+    scope
   );
 
   // 7. ANNUAL 12-MONTH MATRIX
   const wsAnnual = createAnnualPayMatrixSheet(
     filteredEmployees,
-    year,
+    targetYear,
     effectiveCompany,
     includeFormulas
   );
@@ -445,7 +571,8 @@ export function exportPayrollProToExcel(
     XLSX.utils.book_append_sheet(wb, wsPension, 'Pension_Remittance');
     XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
     XLSX.utils.book_append_sheet(wb, wsWelfare, 'Welfare_Contributions');
-    XLSX.utils.book_append_sheet(wb, wsAnnual, `Annual_Matrix_${year}`.slice(0, 31));
+    XLSX.utils.book_append_sheet(wb, wsAbsences, 'Absence_Log');
+    XLSX.utils.book_append_sheet(wb, wsAnnual, `Annual_Matrix_${targetYear}`.slice(0, 31));
     XLSX.utils.book_append_sheet(wb, wsStaff, 'Staff_Database');
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
   } else if (infoScope === 'payroll-register') {
@@ -453,14 +580,19 @@ export function exportPayrollProToExcel(
     XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
     XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
     XLSX.utils.book_append_sheet(wb, wsWelfare, 'Welfare_Contributions');
-    XLSX.utils.book_append_sheet(wb, wsAnnual, `Annual_Matrix_${year}`.slice(0, 31));
+    XLSX.utils.book_append_sheet(wb, wsAbsences, 'Absence_Log');
+    XLSX.utils.book_append_sheet(wb, wsAnnual, `Annual_Matrix_${targetYear}`.slice(0, 31));
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
-  } else if (infoScope === 'loans-schedule') {
-    XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
+  } else if (infoScope === 'absences-log') {
+    XLSX.utils.book_append_sheet(wb, wsAbsences, 'Absence_Log');
     XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
   } else if (infoScope === 'contributions-schedule') {
     XLSX.utils.book_append_sheet(wb, wsWelfare, 'Welfare_Contributions');
+    XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
+    XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
+  } else if (infoScope === 'loans-schedule') {
+    XLSX.utils.book_append_sheet(wb, wsLoans, 'Loans_Schedule');
     XLSX.utils.book_append_sheet(wb, wsMaster, 'Payroll_Register');
     XLSX.utils.book_append_sheet(wb, wsVariables, 'Variables');
   } else if (infoScope === 'bank-schedule') {
@@ -499,11 +631,32 @@ export function exportPayrollProToExcel(
               totalLoanDeduction += Math.max(0, monthly);
             }
           });
-          const netTakeHome = Math.max(0, base.netTakeHome - totalLoanDeduction);
-          const totalDeductions = base.totalDeductions + totalLoanDeduction;
+
+          let totalContrib = 0;
+          effectiveContributions.forEach(c => {
+            if (!c || c.employeeId !== emp.id) return;
+            const parts = (c.periodKey || '').split('-');
+            if (parts[0] === String(year) && normalizeMonthKey(parts[1]) === m.key.toLowerCase()) {
+              totalContrib += Number(c.amount) || 0;
+            }
+          });
+
+          const absenceRec = effectiveAbsences.find(a => {
+            if (!a || a.employeeId !== emp.id) return false;
+            const parts = (a.periodKey || '').split('-');
+            return parts[0] === String(year) && normalizeMonthKey(parts[1]) === m.key.toLowerCase();
+          });
+          const unpaidAbsenceDeduction = Number(absenceRec?.deductionAmount) || 0;
+          const unpaidAbsenceDays = Number(absenceRec?.daysAbsent) || 0;
+
+          const totalDeductions = base.totalDeductions + totalLoanDeduction + totalContrib + unpaidAbsenceDeduction;
+          const netTakeHome = Math.max(0, base.monthlyGross - totalDeductions);
           return {
             ...base,
             loanDeduction: totalLoanDeduction,
+            contributionDeduction: totalContrib,
+            unpaidAbsenceDeduction,
+            unpaidAbsenceDays,
             totalDeductions,
             netTakeHome,
           };
@@ -1003,7 +1156,8 @@ function createMasterPayrollSheet(
 /**
  * 3. EXECUTIVE SUMMARY TAB (C-Suite Dashboard)
  * Modeled after executive KPI summary registers with high-level scorecards,
- * Departmental Cost Allocation matrix (=COUNTIF, =SUMIF), and Employment Type demarcation.
+ * Departmental Cost Allocation matrix (=COUNTIF, =SUMIF), dedicated Staff Loans
+ * & Welfare portfolio ledger status, and Employment Type demarcation.
  */
 function createExecutiveSummarySheet(
   items: CalculatedPayrollItem[],
@@ -1011,7 +1165,11 @@ function createExecutiveSummarySheet(
   monthLabel: string,
   year: number,
   company: CompanyProfile,
-  includeFormulas: boolean
+  includeFormulas: boolean,
+  loans: EmployeeLoan[] = [],
+  contributions: EmployeeContribution[] = [],
+  payouts: ContributionPayout[] = [],
+  scope: ExportScope = 'current-month'
 ): XLSX.WorkSheet {
   const masterHeaderRow = 5;
   const masterStartRow = 6;
@@ -1024,6 +1182,8 @@ function createExecutiveSummarySheet(
   const sumEmpPension = items.reduce((s, i) => s + i.employeePension, 0);
   const sumCompPension = items.reduce((s, i) => s + i.employerPension, 0);
   const sumPensionTotal = sumEmpPension + sumCompPension;
+  const sumLoans = items.reduce((s, i) => s + (Number(i.loanDeduction) || 0), 0);
+  const sumWelfare = items.reduce((s, i) => s + (Number(i.contributionDeduction) || 0), 0);
   const sumCost = items.reduce((s, i) => s + i.employerTotalCost, 0);
   const sumDed = items.reduce((s, i) => s + i.totalDeductions, 0);
 
@@ -1032,35 +1192,41 @@ function createExecutiveSummarySheet(
     [`EXECUTIVE PAYROLL SUMMARY & REMITTANCE DASHBOARD - ${monthLabel.toUpperCase()} ${year}`],
     [`Consolidated Financial Metrics, Department Allocation & Statutory Compliance  |  Currency: NGN (₦)`],
     [],
-    ['KEY FINANCIAL PERFORMANCE INDICATORS (C-SUITE SCORECARD)', '', '', '', ''],
-    ['Metric Description', 'Consolidated Amount (₦)', 'Operational Context / Legal Mandate', '', ''],
+    ['KEY FINANCIAL PERFORMANCE INDICATORS (C-SUITE SCORECARD)', '', '', '', '', '', '', '', '', ''],
+    ['Metric Description', 'Consolidated Amount (₦)', 'Operational Context / Legal Mandate', '', '', '', '', '', '', ''],
   ];
 
   if (includeFormulas && items.length > 0) {
     aoa.push(
-      ['Active Staff on Payroll', { t: 'n', f: `COUNTA('Payroll_Register'!$B$${masterStartRow}:$B$${masterEndRow})`, v: items.length, z: '#,##0' }, 'Total enrolled workforce headcount active for the period', '', ''],
-      ['Total Gross Payroll Obligation', { t: 'n', f: `'Payroll_Register'!$I$${masterTotalRow}`, v: sumGross, z: CURRENCY_FORMAT }, 'Total gross contractual staff emoluments earned', '', ''],
-      ['Total Net Salary Disbursed', { t: 'n', f: `'Payroll_Register'!$T$${masterTotalRow}`, v: sumNet, z: CURRENCY_FORMAT }, 'Actual net cash transferred to employee bank accounts', '', ''],
-      ['Total Statutory PAYE Tax Remittance', { t: 'n', f: `'Payroll_Register'!$P$${masterTotalRow}`, v: sumPaye, z: CURRENCY_FORMAT }, 'Monthly tax payable to State Internal Revenue Service (LIRS/FIRS)', '', ''],
-      ['Total Pension Remittance (18%)', { t: 'n', f: `'Payroll_Register'!$O$${masterTotalRow}+'Payroll_Register'!$U$${masterTotalRow}`, v: sumPensionTotal, z: CURRENCY_FORMAT }, 'Combined 8% employee + 10% employer matching pension to PFAs', '', ''],
-      ['Total Comprehensive Employer Cost', { t: 'n', f: `'Payroll_Register'!$V$${masterTotalRow}`, v: sumCost, z: CURRENCY_FORMAT }, 'Total corporate workforce financial liability (Gross + Employer Pension)', '', ''],
-      ['Effective Statutory Withholding Ratio', { t: 'n', f: `IF('Payroll_Register'!$I$${masterTotalRow}>0, 'Payroll_Register'!$S$${masterTotalRow}/'Payroll_Register'!$I$${masterTotalRow}, 0)`, v: sumGross > 0 ? sumDed / sumGross : 0, z: '0.00%' }, 'Proportion of total gross salary withheld for statutory deductions', '', '']
+      ['Active Staff on Payroll', { t: 'n', f: `COUNTA('Payroll_Register'!$B$${masterStartRow}:$B$${masterEndRow})`, v: items.length, z: '#,##0' }, 'Total enrolled workforce headcount active for the period', '', '', '', '', '', '', ''],
+      ['Total Gross Payroll Obligation', { t: 'n', f: `'Payroll_Register'!$I$${masterTotalRow}`, v: sumGross, z: CURRENCY_FORMAT }, 'Total gross contractual staff emoluments earned', '', '', '', '', '', '', ''],
+      ['Total Net Salary Disbursed', { t: 'n', f: `'Payroll_Register'!$T$${masterTotalRow}`, v: sumNet, z: CURRENCY_FORMAT }, 'Actual net cash transferred to employee bank accounts', '', '', '', '', '', '', ''],
+      ['Total Statutory PAYE Tax Remittance', { t: 'n', f: `'Payroll_Register'!$P$${masterTotalRow}`, v: sumPaye, z: CURRENCY_FORMAT }, 'Monthly tax payable to State Internal Revenue Service (LIRS/FIRS)', '', '', '', '', '', '', ''],
+      ['Total Pension Remittance (18%)', { t: 'n', f: `'Payroll_Register'!$O$${masterTotalRow}+'Payroll_Register'!$U$${masterTotalRow}`, v: sumPensionTotal, z: CURRENCY_FORMAT }, 'Combined 8% employee + 10% employer matching pension to PFAs', '', '', '', '', '', '', ''],
+      ['Total Staff Loan Repayments', { t: 'n', f: `'Payroll_Register'!$Q$${masterTotalRow}`, v: sumLoans, z: CURRENCY_FORMAT }, 'Monthly staff loan and salary advance amortizations deducted at source', '', '', '', '', '', '', ''],
+      ['Total Staff Welfare & Voluntary Savings', { t: 'n', f: `'Payroll_Register'!$R$${masterTotalRow}`, v: sumWelfare, z: CURRENCY_FORMAT }, 'Voluntary employee welfare fund, cooperative and thrift deductions', '', '', '', '', '', '', ''],
+      ['Total Consolidated Payroll Deductions', { t: 'n', f: `'Payroll_Register'!$S$${masterTotalRow}`, v: sumDed, z: CURRENCY_FORMAT }, 'Comprehensive deductions withheld from gross salary (PAYE, Pension, Loans & Welfare)', '', '', '', '', '', '', ''],
+      ['Total Comprehensive Employer Cost', { t: 'n', f: `'Payroll_Register'!$V$${masterTotalRow}`, v: sumCost, z: CURRENCY_FORMAT }, 'Total corporate workforce financial liability (Gross + Employer Pension)', '', '', '', '', '', '', ''],
+      ['Effective Overall Withholding Ratio', { t: 'n', f: `IF('Payroll_Register'!$I$${masterTotalRow}>0, 'Payroll_Register'!$S$${masterTotalRow}/'Payroll_Register'!$I$${masterTotalRow}, 0)`, v: sumGross > 0 ? sumDed / sumGross : 0, z: '0.00%' }, 'Proportion of total gross salary withheld for statutory & internal deductions', '', '', '', '', '', '', '']
     );
   } else {
     aoa.push(
-      ['Active Staff on Payroll', { t: 'n', v: items.length, z: '#,##0' }, 'Total enrolled workforce headcount active for the period', '', ''],
-      ['Total Gross Payroll Obligation', { t: 'n', v: sumGross, z: CURRENCY_FORMAT }, 'Total gross contractual staff emoluments earned', '', ''],
-      ['Total Net Salary Disbursed', { t: 'n', v: sumNet, z: CURRENCY_FORMAT }, 'Actual net cash transferred to employee bank accounts', '', ''],
-      ['Total Statutory PAYE Tax Remittance', { t: 'n', v: sumPaye, z: CURRENCY_FORMAT }, 'Monthly tax payable to State Internal Revenue Service (LIRS/FIRS)', '', ''],
-      ['Total Pension Remittance (18%)', { t: 'n', v: sumPensionTotal, z: CURRENCY_FORMAT }, 'Combined 8% employee + 10% employer matching pension to PFAs', '', ''],
-      ['Total Comprehensive Employer Cost', { t: 'n', v: sumCost, z: CURRENCY_FORMAT }, 'Total corporate workforce financial liability (Gross + Employer Pension)', '', ''],
-      ['Effective Statutory Withholding Ratio', { t: 'n', v: sumGross > 0 ? sumDed / sumGross : 0, z: '0.00%' }, 'Proportion of total gross salary withheld for statutory deductions', '', '']
+      ['Active Staff on Payroll', { t: 'n', v: items.length, z: '#,##0' }, 'Total enrolled workforce headcount active for the period', '', '', '', '', '', '', ''],
+      ['Total Gross Payroll Obligation', { t: 'n', v: sumGross, z: CURRENCY_FORMAT }, 'Total gross contractual staff emoluments earned', '', '', '', '', '', '', ''],
+      ['Total Net Salary Disbursed', { t: 'n', v: sumNet, z: CURRENCY_FORMAT }, 'Actual net cash transferred to employee bank accounts', '', '', '', '', '', '', ''],
+      ['Total Statutory PAYE Tax Remittance', { t: 'n', v: sumPaye, z: CURRENCY_FORMAT }, 'Monthly tax payable to State Internal Revenue Service (LIRS/FIRS)', '', '', '', '', '', '', ''],
+      ['Total Pension Remittance (18%)', { t: 'n', v: sumPensionTotal, z: CURRENCY_FORMAT }, 'Combined 8% employee + 10% employer matching pension to PFAs', '', '', '', '', '', '', ''],
+      ['Total Staff Loan Repayments', { t: 'n', v: sumLoans, z: CURRENCY_FORMAT }, 'Monthly staff loan and salary advance amortizations deducted at source', '', '', '', '', '', '', ''],
+      ['Total Staff Welfare & Voluntary Savings', { t: 'n', v: sumWelfare, z: CURRENCY_FORMAT }, 'Voluntary employee welfare fund, cooperative and thrift deductions', '', '', '', '', '', '', ''],
+      ['Total Consolidated Payroll Deductions', { t: 'n', v: sumDed, z: CURRENCY_FORMAT }, 'Comprehensive deductions withheld from gross salary (PAYE, Pension, Loans & Welfare)', '', '', '', '', '', '', ''],
+      ['Total Comprehensive Employer Cost', { t: 'n', v: sumCost, z: CURRENCY_FORMAT }, 'Total corporate workforce financial liability (Gross + Employer Pension)', '', '', '', '', '', '', ''],
+      ['Effective Overall Withholding Ratio', { t: 'n', v: sumGross > 0 ? sumDed / sumGross : 0, z: '0.00%' }, 'Proportion of total gross salary withheld for statutory & internal deductions', '', '', '', '', '', '', '']
     );
   }
 
   // Section 2: Department Cost Allocation Table
   aoa.push([]);
-  aoa.push(['DEPARTMENTAL COST ALLOCATION & HEADCOUNT MATRIX', '', '', '', '', '', '', '']);
+  aoa.push(['DEPARTMENTAL COST ALLOCATION & HEADCOUNT MATRIX', '', '', '', '', '', '', '', '', '']);
   aoa.push([
     'Department Name',
     'Headcount',
@@ -1068,6 +1234,8 @@ function createExecutiveSummarySheet(
     'Net Disbursed (₦)',
     'PAYE Tax (₦)',
     'Pension Remittance (₦)',
+    'Staff Loan Deductions (₦)',
+    'Welfare Deductions (₦)',
     'Total Dept Cost (₦)',
     '% Share of Total Cost'
   ]);
@@ -1082,6 +1250,8 @@ function createExecutiveSummarySheet(
     const dNet = deptItems.reduce((s, i) => s + i.netTakeHome, 0);
     const dPaye = deptItems.reduce((s, i) => s + i.monthlyPaye, 0);
     const dPension = deptItems.reduce((s, i) => s + i.employeePension + i.employerPension, 0);
+    const dLoans = deptItems.reduce((s, i) => s + (Number(i.loanDeduction) || 0), 0);
+    const dWelfare = deptItems.reduce((s, i) => s + (Number(i.contributionDeduction) || 0), 0);
     const dCost = deptItems.reduce((s, i) => s + i.employerTotalCost, 0);
 
     if (includeFormulas && items.length > 0) {
@@ -1092,8 +1262,10 @@ function createExecutiveSummarySheet(
         { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$T$${masterStartRow}:$T$${masterEndRow})`, v: dNet, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$P$${masterStartRow}:$P$${masterEndRow})`, v: dPaye, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$O$${masterStartRow}:$O$${masterEndRow})+SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$U$${masterStartRow}:$U$${masterEndRow})`, v: dPension, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$Q$${masterStartRow}:$Q$${masterEndRow})`, v: dLoans, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$R$${masterStartRow}:$R$${masterEndRow})`, v: dWelfare, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUMIF('Payroll_Register'!$D$${masterStartRow}:$D$${masterEndRow}, "${dept}", 'Payroll_Register'!$V$${masterStartRow}:$V$${masterEndRow})`, v: dCost, z: CURRENCY_FORMAT },
-        { t: 'n', f: `IF('Payroll_Register'!$V$${masterTotalRow}>0, G${curRow}/'Payroll_Register'!$V$${masterTotalRow}, 0)`, v: sumCost > 0 ? dCost / sumCost : 0, z: '0.00%' }
+        { t: 'n', f: `IF('Payroll_Register'!$V$${masterTotalRow}>0, I${curRow}/'Payroll_Register'!$V$${masterTotalRow}, 0)`, v: sumCost > 0 ? dCost / sumCost : 0, z: '0.00%' }
       ]);
     } else {
       aoa.push([
@@ -1103,6 +1275,8 @@ function createExecutiveSummarySheet(
         { t: 'n', v: dNet, z: CURRENCY_FORMAT },
         { t: 'n', v: dPaye, z: CURRENCY_FORMAT },
         { t: 'n', v: dPension, z: CURRENCY_FORMAT },
+        { t: 'n', v: dLoans, z: CURRENCY_FORMAT },
+        { t: 'n', v: dWelfare, z: CURRENCY_FORMAT },
         { t: 'n', v: dCost, z: CURRENCY_FORMAT },
         { t: 'n', v: sumCost > 0 ? dCost / sumCost : 0, z: '0.00%' }
       ]);
@@ -1119,8 +1293,10 @@ function createExecutiveSummarySheet(
         { t: 'n', f: `SUM(D${deptStartRow}:D${deptEndRow})`, v: sumNet, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUM(E${deptStartRow}:E${deptEndRow})`, v: sumPaye, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUM(F${deptStartRow}:F${deptEndRow})`, v: sumPensionTotal, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUM(G${deptStartRow}:G${deptEndRow})`, v: sumCost, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUM(H${deptStartRow}:H${deptEndRow})`, v: 1.0, z: '0.00%' }
+        { t: 'n', f: `SUM(G${deptStartRow}:G${deptEndRow})`, v: sumLoans, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUM(H${deptStartRow}:H${deptEndRow})`, v: sumWelfare, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUM(I${deptStartRow}:I${deptEndRow})`, v: sumCost, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUM(J${deptStartRow}:J${deptEndRow})`, v: 1.0, z: '0.00%' }
       ]);
     } else {
       aoa.push([
@@ -1130,22 +1306,81 @@ function createExecutiveSummarySheet(
         { t: 'n', v: sumNet, z: CURRENCY_FORMAT },
         { t: 'n', v: sumPaye, z: CURRENCY_FORMAT },
         { t: 'n', v: sumPensionTotal, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumLoans, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumWelfare, z: CURRENCY_FORMAT },
         { t: 'n', v: sumCost, z: CURRENCY_FORMAT },
         { t: 'n', v: 1.0, z: '0.00%' }
       ]);
     }
   }
 
-  // Section 3: Employment Classification Demarcation Table
+  // Section 3: Staff Loans & Welfare Portfolio Summary
   aoa.push([]);
-  aoa.push(['EMPLOYMENT CLASSIFICATION BREAKDOWN', '', '', '', '', '']);
+  aoa.push(['STAFF LOANS, ADVANCES & WELFARE PORTFOLIO SUMMARY', '', '', '', '', '', '', '', '', '']);
+  aoa.push([
+    'Scheme / Facility Classification',
+    'Active Borrowers / Enrolled',
+    'Period Deduction Realized (₦)',
+    'Cumulative Disbursed / Repaid (₦)',
+    'Current Outstanding / Retained Fund Balance (₦)',
+    'Governance & Policy Mandate',
+    '', '', '', ''
+  ]);
+
+  const activeLoanBorrowers = new Set(
+    loans.filter(l => (Number(l.remainingBalance) || 0) > 0 || (Number(l.monthlyDeduction) || 0) > 0).map(l => l.employeeId)
+  ).size;
+  const totalLoanPrincipal = loans.reduce((s, l) => s + (Number(l.principalAmount) || 0), 0);
+  const totalLoanRepaid = loans.reduce((s, l) => s + (Number(l.totalRepaid) || 0), 0);
+  const totalLoanBalance = loans.reduce((s, l) => s + Math.max(0, Number(l.remainingBalance) || 0), 0);
+
+  const activeWelfareParticipants = new Set(contributions.map(c => c.employeeId)).size;
+  const totalWelfareContribAllTime = contributions.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  const totalWelfarePayoutsAllTime = payouts.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const welfareNetBalance = Math.max(0, totalWelfareContribAllTime - totalWelfarePayoutsAllTime);
+
+  aoa.push([
+    'Staff Loans & Salary Advances',
+    { t: 'n', v: activeLoanBorrowers, z: '#,##0' },
+    { t: 'n', v: sumLoans, z: CURRENCY_FORMAT },
+    { t: 'n', v: totalLoanRepaid > 0 ? totalLoanRepaid : totalLoanPrincipal, z: CURRENCY_FORMAT },
+    { t: 'n', v: totalLoanBalance, z: CURRENCY_FORMAT },
+    'Direct payroll amortization schedule with principal & balance tracking',
+    '', '', '', ''
+  ]);
+
+  aoa.push([
+    'Staff Welfare & Voluntary Savings',
+    { t: 'n', v: activeWelfareParticipants, z: '#,##0' },
+    { t: 'n', v: sumWelfare, z: CURRENCY_FORMAT },
+    { t: 'n', v: totalWelfarePayoutsAllTime, z: CURRENCY_FORMAT },
+    { t: 'n', v: welfareNetBalance, z: CURRENCY_FORMAT },
+    'Voluntary employee savings & mutual aid with disbursement payout ledger',
+    '', '', '', ''
+  ]);
+
+  aoa.push([
+    'TOTAL INTERNAL FACILITIES & WELFARE',
+    { t: 'n', v: activeLoanBorrowers + activeWelfareParticipants, z: '#,##0' },
+    { t: 'n', v: sumLoans + sumWelfare, z: CURRENCY_FORMAT },
+    { t: 'n', v: (totalLoanRepaid > 0 ? totalLoanRepaid : totalLoanPrincipal) + totalWelfarePayoutsAllTime, z: CURRENCY_FORMAT },
+    { t: 'n', v: totalLoanBalance + welfareNetBalance, z: CURRENCY_FORMAT },
+    'Consolidated internal non-statutory staff facility & savings funds',
+    '', '', '', ''
+  ]);
+
+  // Section 4: Employment Classification Demarcation Table
+  aoa.push([]);
+  aoa.push(['EMPLOYMENT CLASSIFICATION BREAKDOWN', '', '', '', '', '', '', '', '', '']);
   aoa.push([
     'Classification',
     'Headcount',
     'Gross Outflow (₦)',
     'Net Disbursed (₦)',
     'Statutory Deductions (₦)',
-    'Compliance Policy'
+    'Internal Deductions (Loans & Welfare) (₦)',
+    'Compliance Policy',
+    '', '', ''
   ]);
 
   const classifications = ['Full-Time', 'Part-Time', 'Contract', 'Intern / NYSC'];
@@ -1153,9 +1388,12 @@ function createExecutiveSummarySheet(
     const tItems = items.filter(i => (i.employmentType || 'Full-Time').toLowerCase() === type.toLowerCase());
     const tGross = tItems.reduce((s, i) => s + i.monthlyGross, 0);
     const tNet = tItems.reduce((s, i) => s + i.netTakeHome, 0);
-    const tDed = tItems.reduce((s, i) => s + i.totalDeductions, 0);
+    const tPaye = tItems.reduce((s, i) => s + i.monthlyPaye, 0);
+    const tPension = tItems.reduce((s, i) => s + i.employeePension, 0);
+    const tStat = tPaye + tPension;
+    const tInternal = tItems.reduce((s, i) => s + (Number(i.loanDeduction) || 0) + (Number(i.contributionDeduction) || 0), 0);
     const policy = type === 'Full-Time' 
-      ? 'Standard Statutory Withholding (PAYE + 8% Pension)' 
+      ? 'Standard Statutory Withholding (PAYE + 8% Pension) & Internal Schemes' 
       : 'Contractual Gross Remittance / Exempt from Payroll Deductions';
 
     if (includeFormulas && items.length > 0) {
@@ -1164,8 +1402,10 @@ function createExecutiveSummarySheet(
         { t: 'n', f: `COUNTIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}")`, v: tItems.length, z: '#,##0' },
         { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$I$${masterStartRow}:$I$${masterEndRow})`, v: tGross, z: CURRENCY_FORMAT },
         { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$T$${masterStartRow}:$T$${masterEndRow})`, v: tNet, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$S$${masterStartRow}:$S$${masterEndRow})`, v: tDed, z: CURRENCY_FORMAT },
-        policy
+        { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$P$${masterStartRow}:$P$${masterEndRow})+SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$O$${masterStartRow}:$O$${masterEndRow})`, v: tStat, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$Q$${masterStartRow}:$Q$${masterEndRow})+SUMIF('Payroll_Register'!$F$${masterStartRow}:$F$${masterEndRow}, "${type}", 'Payroll_Register'!$R$${masterStartRow}:$R$${masterEndRow})`, v: tInternal, z: CURRENCY_FORMAT },
+        policy,
+        '', '', '', ''
       ]);
     } else {
       aoa.push([
@@ -1173,22 +1413,26 @@ function createExecutiveSummarySheet(
         { t: 'n', v: tItems.length, z: '#,##0' },
         { t: 'n', v: tGross, z: CURRENCY_FORMAT },
         { t: 'n', v: tNet, z: CURRENCY_FORMAT },
-        { t: 'n', v: tDed, z: CURRENCY_FORMAT },
-        policy
+        { t: 'n', v: tStat, z: CURRENCY_FORMAT },
+        { t: 'n', v: tInternal, z: CURRENCY_FORMAT },
+        policy,
+        '', '', '', ''
       ]);
     }
   });
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = [
-    { wch: 32 }, // Description / Name / Dept
-    { wch: 22 }, // Value / Gross
-    { wch: 22 }, // Net Disbursed
-    { wch: 22 }, // PAYE / Deductions
-    { wch: 22 }, // Pension
-    { wch: 24 }, // Total Cost / Context
-    { wch: 18 }, // % Share
-    { wch: 32 }, // Extra Notes
+    { wch: 34 }, // Col A: Description / Name / Dept
+    { wch: 14 }, // Col B: Headcount
+    { wch: 22 }, // Col C: Gross Payroll
+    { wch: 22 }, // Col D: Net Disbursed
+    { wch: 20 }, // Col E: PAYE Tax
+    { wch: 22 }, // Col F: Pension Remittance
+    { wch: 22 }, // Col G: Staff Loan Deductions
+    { wch: 22 }, // Col H: Welfare Deductions
+    { wch: 24 }, // Col I: Total Dept Cost
+    { wch: 18 }, // Col J: % Share
   ];
 
   return styleWorksheetCorporate(ws);
@@ -1720,6 +1964,12 @@ function createLoansScheduleSheet(
 /**
  * 6B. STAFF WELFARE & VOLUNTARY SAVINGS CONTRIBUTIONS SCHEDULE TAB
  * Summary of voluntary staff welfare deductions, savings contributions, and cooperative schemes.
+ * Supports:
+ * - 'full-year' / 'all-history': Complete 12-month ledger with monthly contributions (Jan-Dec),
+ *   monthly payouts/disbursements (Jan-Dec), annual total contributed, annual total payouts,
+ *   and remaining retained savings balance per employee.
+ * - 'current-month': Monthly payroll deduction schedule showing this month's deduction,
+ *   this month's payouts, net pay after savings, YTD contributed, YTD payouts, and current balance left.
  */
 function createWelfareContributionsSheet(
   items: CalculatedPayrollItem[],
@@ -1727,33 +1977,455 @@ function createWelfareContributionsSheet(
   monthLabel: string,
   year: number,
   company: CompanyProfile,
-  includeFormulas: boolean
+  includeFormulas: boolean,
+  contributions: EmployeeContribution[] = [],
+  targetMonthKey: string = 'oct',
+  targetYear: number = 2026,
+  scope: ExportScope = 'current-month',
+  payouts: ContributionPayout[] = []
 ): XLSX.WorkSheet {
-  const aoa: any[][] = [
-    [company.name.toUpperCase()],
-    [`STAFF WELFARE & VOLUNTARY SAVINGS CONTRIBUTIONS SCHEDULE - ${monthLabel.toUpperCase()} ${year}`],
-    [`Employee Voluntary Savings, Welfare Deductions & Retained Ledger  |  Currency: NGN (₦)`],
-    [],
-    [
+  const isAnnualScope = scope === 'full-year' || scope === 'all-history';
+  const normTargetMonth = normalizeMonthKey(targetMonthKey);
+  const targetMonthIdx = MONTHS.findIndex(m => m.key.toLowerCase() === normTargetMonth.toLowerCase());
+  const effectiveTargetMonthIdx = targetMonthIdx >= 0 ? targetMonthIdx : 9; // fallback oct
+
+  // Helpers to parse periods
+  const parseContribPeriod = (periodKey?: string): { year: number; monthKey: string; monthIdx: number } => {
+    if (!periodKey) return { year: 0, monthKey: '', monthIdx: -1 };
+    const parts = String(periodKey).trim().split('-');
+    const y = parseInt(parts[0], 10) || 0;
+    const mKey = normalizeMonthKey(parts[1] || '');
+    const mIdx = MONTHS.findIndex(mo => mo.key.toLowerCase() === mKey.toLowerCase());
+    return { year: y, monthKey: mKey, monthIdx: mIdx };
+  };
+
+  const parsePayoutPeriod = (dateStr?: string): { year: number; monthKey: string; monthIdx: number } => {
+    if (!dateStr) return { year: 0, monthKey: '', monthIdx: -1 };
+    const str = String(dateStr).trim();
+    const parts = str.split(/[-/]/);
+    if (parts.length >= 2) {
+      const y = parseInt(parts[0], 10);
+      const mNum = parseInt(parts[1], 10);
+      if (!isNaN(y) && !isNaN(mNum) && mNum >= 1 && mNum <= 12) {
+        const mIdx = mNum - 1;
+        const mKey = MONTHS[mIdx]?.key || '';
+        return { year: y, monthKey: mKey, monthIdx: mIdx };
+      }
+    }
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const mIdx = d.getMonth();
+      const mKey = MONTHS[mIdx]?.key || '';
+      return { year: y, monthKey: mKey, monthIdx: mIdx };
+    }
+    return { year: 0, monthKey: '', monthIdx: -1 };
+  };
+
+  const empMap = new Map(employees.map(e => [e.id, e]));
+  const itemMap = new Map(items.map(i => [i.employeeId, i]));
+
+  // Index all contributions per employee
+  // employeeId -> { yearMonthly: number[12], yearTotal: number, allTimeTotal: number, schemes: Set<string>, notes: string[], currentMonthTotal: number }
+  const contribStore = new Map<string, {
+    yearMonthly: number[];
+    yearTotal: number;
+    allTimeTotal: number;
+    schemes: Set<string>;
+    notes: string[];
+    currentMonthTotal: number;
+  }>();
+
+  for (const c of (contributions || [])) {
+    if (!c || !c.employeeId) continue;
+    const amt = Number(c.amount) || 0;
+    if (amt <= 0) continue;
+
+    let entry = contribStore.get(c.employeeId);
+    if (!entry) {
+      entry = {
+        yearMonthly: new Array(12).fill(0),
+        yearTotal: 0,
+        allTimeTotal: 0,
+        schemes: new Set(),
+        notes: [],
+        currentMonthTotal: 0
+      };
+      contribStore.set(c.employeeId, entry);
+    }
+
+    entry.allTimeTotal += amt;
+    if (c.schemeName) entry.schemes.add(c.schemeName);
+    if (c.notes) entry.notes.push(c.notes);
+
+    const { year: cYear, monthKey: cMonthKey, monthIdx: cMonthIdx } = parseContribPeriod(c.periodKey);
+    if (cYear === targetYear && cMonthIdx >= 0 && cMonthIdx < 12) {
+      entry.yearMonthly[cMonthIdx] += amt;
+      entry.yearTotal += amt;
+    }
+    if (cYear === targetYear && cMonthKey === normTargetMonth) {
+      entry.currentMonthTotal += amt;
+    }
+  }
+
+  // Also sync current payroll items that have contributionDeduction
+  for (const item of items) {
+    if ((item.contributionDeduction || 0) > 0) {
+      let entry = contribStore.get(item.employeeId);
+      if (!entry) {
+        entry = {
+          yearMonthly: new Array(12).fill(0),
+          yearTotal: 0,
+          allTimeTotal: 0,
+          schemes: new Set(),
+          notes: [],
+          currentMonthTotal: 0
+        };
+        contribStore.set(item.employeeId, entry);
+      }
+      const cDed = Number(item.contributionDeduction) || 0;
+      if (entry.currentMonthTotal <= 0 && cDed > 0) {
+        entry.currentMonthTotal = cDed;
+        if (effectiveTargetMonthIdx >= 0 && effectiveTargetMonthIdx < 12 && entry.yearMonthly[effectiveTargetMonthIdx] <= 0) {
+          entry.yearMonthly[effectiveTargetMonthIdx] = cDed;
+          entry.yearTotal += cDed;
+          entry.allTimeTotal += cDed;
+        }
+      }
+      if (item.contributionDetails && Array.isArray(item.contributionDetails)) {
+        item.contributionDetails.forEach(d => { if (d.schemeName) entry!.schemes.add(d.schemeName); });
+      }
+    }
+  }
+
+  // Index all payouts per employee
+  const payoutStore = new Map<string, {
+    yearMonthly: number[];
+    yearTotal: number;
+    allTimeTotal: number;
+    currentMonthTotal: number;
+  }>();
+
+  for (const p of (payouts || [])) {
+    if (!p || !p.employeeId) continue;
+    const amt = Number(p.amount) || 0;
+    if (amt <= 0) continue;
+
+    let entry = payoutStore.get(p.employeeId);
+    if (!entry) {
+      entry = {
+        yearMonthly: new Array(12).fill(0),
+        yearTotal: 0,
+        allTimeTotal: 0,
+        currentMonthTotal: 0
+      };
+      payoutStore.set(p.employeeId, entry);
+    }
+
+    entry.allTimeTotal += amt;
+    const { year: pYear, monthKey: pMonthKey, monthIdx: pMonthIdx } = parsePayoutPeriod(p.payoutDate);
+    if (pYear === targetYear && pMonthIdx >= 0 && pMonthIdx < 12) {
+      entry.yearMonthly[pMonthIdx] += amt;
+      entry.yearTotal += amt;
+    }
+    if (pYear === targetYear && pMonthKey === normTargetMonth) {
+      entry.currentMonthTotal += amt;
+    }
+  }
+
+  // Identify all participating staff IDs
+  const activeParticipantIds = new Set<string>();
+  contribStore.forEach((data, empId) => {
+    if (isAnnualScope) {
+      if (data.yearTotal > 0 || data.allTimeTotal > 0) activeParticipantIds.add(empId);
+    } else {
+      if (data.currentMonthTotal > 0 || data.yearTotal > 0 || data.allTimeTotal > 0) activeParticipantIds.add(empId);
+    }
+  });
+  payoutStore.forEach((data, empId) => {
+    if (isAnnualScope) {
+      if (data.yearTotal > 0 || data.allTimeTotal > 0) activeParticipantIds.add(empId);
+    } else {
+      if (data.currentMonthTotal > 0 || data.yearTotal > 0 || data.allTimeTotal > 0) activeParticipantIds.add(empId);
+    }
+  });
+
+  // Convert to sorted array of employees
+  const participantList = Array.from(activeParticipantIds)
+    .map(empId => {
+      const emp = empMap.get(empId);
+      const item = itemMap.get(empId);
+      const cData = contribStore.get(empId);
+      const pData = payoutStore.get(empId);
+
+      const code = emp?.code || item?.employeeCode || 'STAFF';
+      const fullName = emp ? `${emp.firstName} ${emp.lastName}` : (item?.fullName || 'Staff Member');
+      const department = emp?.department || item?.department || 'General';
+      const employmentType = emp?.employmentType || item?.employmentType || 'Full-Time';
+      const monthlyGross = item?.monthlyGross || Number(emp?.monthlyGross) || 0;
+      const netTakeHome = item?.netTakeHome || Math.max(0, monthlyGross - (cData?.currentMonthTotal || 0));
+
+      const schemesText = cData && cData.schemes.size > 0
+        ? Array.from(cData.schemes).join(', ')
+        : 'Staff Welfare Fund';
+
+      return {
+        employeeId: empId,
+        code,
+        fullName,
+        department,
+        employmentType,
+        monthlyGross,
+        netTakeHome,
+        schemesText,
+        bankName: item?.bankName || emp?.bankName || '-',
+        accountNumber: item?.accountNumber || emp?.accountNumber || '-',
+        cData,
+        pData
+      };
+    })
+    .sort((a, b) => a.code.localeCompare(b.code));
+
+  const aoa: any[][] = [];
+
+  // =========================================================================
+  // CASE A: ANNUAL SCOPE (Full-Year or All-History)
+  // =========================================================================
+  if (isAnnualScope) {
+    aoa.push([company.name.toUpperCase()]);
+    aoa.push([`STAFF WELFARE & VOLUNTARY SAVINGS ANNUAL LEDGER - FULL YEAR ${targetYear}`]);
+    aoa.push([`Annual Contributions, Disbursed Payouts & Retained Savings Ledger (Jan - Dec)  |  Currency: NGN (₦)`]);
+    aoa.push([]);
+
+    // Header Row 5
+    aoa.push([
       'S/N',
       'Staff Code',
       'Employee Full Name',
       'Department',
-      'Employment Type',
-      'Monthly Gross (₦)',
       'Schemes / Welfare Purposes',
-      'Monthly Deduction (₦)',
-      'Net Pay After Savings (₦)',
-      'Bank Name',
-      'Account Number',
-      'Remarks / Status'
-    ]
-  ];
+      'Total Contributed (₦)',
+      'Total Payouts (₦)',
+      'Net Balance Left (₦)',
+      // 12 Months Contributions
+      'Jan Contrib (₦)',
+      'Feb Contrib (₦)',
+      'Mar Contrib (₦)',
+      'Apr Contrib (₦)',
+      'May Contrib (₦)',
+      'Jun Contrib (₦)',
+      'Jul Contrib (₦)',
+      'Aug Contrib (₦)',
+      'Sep Contrib (₦)',
+      'Oct Contrib (₦)',
+      'Nov Contrib (₦)',
+      'Dec Contrib (₦)',
+      // 12 Months Payouts
+      'Jan Payout (₦)',
+      'Feb Payout (₦)',
+      'Mar Payout (₦)',
+      'Apr Payout (₦)',
+      'May Payout (₦)',
+      'Jun Payout (₦)',
+      'Jul Payout (₦)',
+      'Aug Payout (₦)',
+      'Sep Payout (₦)',
+      'Oct Payout (₦)',
+      'Nov Payout (₦)',
+      'Dec Payout (₦)',
+      'Ledger Status'
+    ]);
+
+    const headerRowIdx = 5;
+
+    if (participantList.length === 0) {
+      aoa.push([
+        1,
+        '-',
+        'No Active Welfare or Voluntary Savings Deductions',
+        '-',
+        'No contribution schemes logged for this year',
+        { t: 'n', v: 0, z: CURRENCY_FORMAT },
+        { t: 'n', v: 0, z: CURRENCY_FORMAT },
+        { t: 'n', v: 0, z: CURRENCY_FORMAT },
+        ...new Array(24).fill({ t: 'n', v: 0, z: CURRENCY_FORMAT }),
+        'Active'
+      ]);
+    } else {
+      participantList.forEach((p, idx) => {
+        const r = headerRowIdx + 1 + idx; // 1-based Excel row number
+        const contribMonths = p.cData ? p.cData.yearMonthly : new Array(12).fill(0);
+        const payoutMonths = p.pData ? p.pData.yearMonthly : new Array(12).fill(0);
+
+        const yearContribTotal = contribMonths.reduce((a, b) => a + b, 0);
+        const yearPayoutTotal = payoutMonths.reduce((a, b) => a + b, 0);
+        const netBalance = yearContribTotal - yearPayoutTotal;
+
+        const status = netBalance > 0
+          ? 'Active Saver'
+          : (yearPayoutTotal > 0 ? 'Payout Disbursed' : 'Enrolled');
+
+        const rowData: any[] = [
+          idx + 1,
+          p.code,
+          p.fullName,
+          p.department,
+          p.schemesText,
+        ];
+
+        // Summary Columns: Total Contributed, Total Payouts, Net Balance Left
+        if (includeFormulas) {
+          rowData.push({ t: 'n', f: `SUM(I${r}:T${r})`, v: yearContribTotal, z: CURRENCY_FORMAT });
+          rowData.push({ t: 'n', f: `SUM(U${r}:AF${r})`, v: yearPayoutTotal, z: CURRENCY_FORMAT });
+          rowData.push({ t: 'n', f: `F${r}-G${r}`, v: netBalance, z: CURRENCY_FORMAT });
+        } else {
+          rowData.push({ t: 'n', v: yearContribTotal, z: CURRENCY_FORMAT });
+          rowData.push({ t: 'n', v: yearPayoutTotal, z: CURRENCY_FORMAT });
+          rowData.push({ t: 'n', v: netBalance, z: CURRENCY_FORMAT });
+        }
+
+        // 12 Months Contributions (Cols I to T)
+        for (let m = 0; m < 12; m++) {
+          rowData.push({ t: 'n', v: contribMonths[m] || 0, z: CURRENCY_FORMAT });
+        }
+
+        // 12 Months Payouts (Cols U to AF)
+        for (let m = 0; m < 12; m++) {
+          rowData.push({ t: 'n', v: payoutMonths[m] || 0, z: CURRENCY_FORMAT });
+        }
+
+        rowData.push(status);
+        aoa.push(rowData);
+      });
+
+      // Subtotal Row
+      const startRow = headerRowIdx + 1;
+      const endRow = headerRowIdx + participantList.length;
+
+      const subtotalRow: any[] = [
+        '',
+        '',
+        'TOTAL ANNUAL SAVINGS & PAYOUTS',
+        '',
+        '',
+      ];
+
+      // Precompute totals for cached display values in Excel
+      const sumContrib = participantList.reduce((acc, p) => acc + (p.cData ? p.cData.yearTotal : 0), 0);
+      const sumPayout = participantList.reduce((acc, p) => acc + (p.pData ? p.pData.yearTotal : 0), 0);
+      const sumNet = sumContrib - sumPayout;
+
+      const monthSumsContrib: number[] = new Array(12).fill(0);
+      const monthSumsPayout: number[] = new Array(12).fill(0);
+      for (let m = 0; m < 12; m++) {
+        monthSumsContrib[m] = participantList.reduce((acc, p) => acc + (p.cData ? p.cData.yearMonthly[m] || 0 : 0), 0);
+        monthSumsPayout[m] = participantList.reduce((acc, p) => acc + (p.pData ? p.pData.yearMonthly[m] || 0 : 0), 0);
+      }
+
+      // Col F: Total Contributed
+      // Col G: Total Payouts
+      // Col H: Net Balance Left
+      if (includeFormulas) {
+        subtotalRow.push({ t: 'n', f: `SUBTOTAL(109, F${startRow}:F${endRow})`, v: sumContrib, z: CURRENCY_FORMAT });
+        subtotalRow.push({ t: 'n', f: `SUBTOTAL(109, G${startRow}:G${endRow})`, v: sumPayout, z: CURRENCY_FORMAT });
+        subtotalRow.push({ t: 'n', f: `SUBTOTAL(109, H${startRow}:H${endRow})`, v: sumNet, z: CURRENCY_FORMAT });
+
+        // Month Columns I to T (Contributions Jan to Dec)
+        const contribColLetters = ['I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
+        contribColLetters.forEach((col, m) => {
+          subtotalRow.push({ t: 'n', f: `SUBTOTAL(109, ${col}${startRow}:${col}${endRow})`, v: monthSumsContrib[m], z: CURRENCY_FORMAT });
+        });
+
+        // Month Columns U to AF (Payouts Jan to Dec)
+        const payoutColLetters = ['U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF'];
+        payoutColLetters.forEach((col, m) => {
+          subtotalRow.push({ t: 'n', f: `SUBTOTAL(109, ${col}${startRow}:${col}${endRow})`, v: monthSumsPayout[m], z: CURRENCY_FORMAT });
+        });
+      } else {
+        subtotalRow.push({ t: 'n', v: sumContrib, z: CURRENCY_FORMAT });
+        subtotalRow.push({ t: 'n', v: sumPayout, z: CURRENCY_FORMAT });
+        subtotalRow.push({ t: 'n', v: sumNet, z: CURRENCY_FORMAT });
+
+        for (let m = 0; m < 12; m++) {
+          subtotalRow.push({ t: 'n', v: monthSumsContrib[m], z: CURRENCY_FORMAT });
+        }
+        for (let m = 0; m < 12; m++) {
+          subtotalRow.push({ t: 'n', v: monthSumsPayout[m], z: CURRENCY_FORMAT });
+        }
+      }
+
+      subtotalRow.push('');
+      aoa.push(subtotalRow);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!views'] = [{ state: 'frozen', xSplit: 3, ySplit: 5 }];
+    (ws as any)['!freezePane'] = { xSplit: 3, ySplit: 5, topLeftCell: 'D6' };
+
+    ws['!cols'] = [
+      { wch: 6 },  // S/N
+      { wch: 14 }, // Staff Code
+      { wch: 28 }, // Full Name
+      { wch: 20 }, // Department
+      { wch: 30 }, // Schemes
+      { wch: 22 }, // Total Contributed
+      { wch: 20 }, // Total Payouts
+      { wch: 22 }, // Net Balance Left
+      // 12 month contrib columns:
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      // 12 month payout columns:
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 18 }  // Status
+    ];
+
+    return styleWorksheetCorporate(ws);
+  }
+
+  // =========================================================================
+  // CASE B: SINGLE-MONTH SCOPE ('current-month')
+  // =========================================================================
+  aoa.push([company.name.toUpperCase()]);
+  aoa.push([`STAFF WELFARE & VOLUNTARY SAVINGS CONTRIBUTIONS SCHEDULE - ${monthLabel.toUpperCase()} ${targetYear}`]);
+  aoa.push([`Employee Voluntary Savings, Welfare Deductions & Retained Ledger  |  Currency: NGN (₦)`]);
+  aoa.push([]);
+
+  // Header Row 5
+  aoa.push([
+    'S/N',
+    'Staff Code',
+    'Employee Full Name',
+    'Department',
+    'Employment Type',
+    'Monthly Gross (₦)',
+    'Schemes / Welfare Purposes',
+    'This Month Deduction (₦)',
+    'This Month Payouts (₦)',
+    'Net Pay After Savings (₦)',
+    'YTD Contributed (₦)',
+    'YTD Payouts (₦)',
+    'Current Balance Left (₦)',
+    'Bank Name',
+    'Account Number',
+    'Remarks / Status'
+  ]);
 
   const headerRowIdx = 5;
-  const contributingItems = items.filter(i => (i.contributionDeduction || 0) > 0);
 
-  if (contributingItems.length === 0) {
+  // Filter participants relevant to this month (active deduction or prior savings)
+  const singleMonthList = participantList.filter(p => {
+    const curDed = p.cData ? p.cData.currentMonthTotal : 0;
+    const curPay = p.pData ? p.pData.currentMonthTotal : 0;
+    const ytdC = p.cData
+      ? p.cData.yearMonthly.slice(0, effectiveTargetMonthIdx + 1).reduce((a, b) => a + b, 0)
+      : 0;
+    return curDed > 0 || curPay > 0 || ytdC > 0;
+  });
+
+  if (singleMonthList.length === 0) {
     aoa.push([
       1,
       '-',
@@ -1764,38 +2436,71 @@ function createWelfareContributionsSheet(
       'No contribution schemes logged for this period',
       { t: 'n', v: 0, z: CURRENCY_FORMAT },
       { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
       '-',
       '-',
       'Active'
     ]);
   } else {
-    contributingItems.forEach((item, index) => {
-      const schemeText = (item.contributionDetails && item.contributionDetails.length > 0)
-        ? item.contributionDetails.map(d => `${d.schemeName} (₦${Number(d.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })})`).join(', ')
-        : 'Staff Welfare Fund';
-      const contrib = Number(item.contributionDeduction) || 0;
+    singleMonthList.forEach((p, idx) => {
+      const r = headerRowIdx + 1 + idx; // 1-based Excel row number
+      const monthDeduction = p.cData ? p.cData.currentMonthTotal : 0;
+      const monthPayout = p.pData ? p.pData.currentMonthTotal : 0;
 
-      aoa.push([
-        index + 1,
-        item.employeeCode,
-        item.fullName,
-        item.department,
-        item.employmentType || 'Full-Time',
-        { t: 'n', v: item.monthlyGross, z: CURRENCY_FORMAT },
-        schemeText,
-        { t: 'n', v: contrib, z: CURRENCY_FORMAT },
-        { t: 'n', v: item.netTakeHome, z: CURRENCY_FORMAT },
-        item.bankName,
-        item.accountNumber,
-        'Active Remittance'
-      ]);
+      // YTD calculations up to and including target month
+      const ytdContrib = p.cData
+        ? p.cData.yearMonthly.slice(0, effectiveTargetMonthIdx + 1).reduce((a, b) => a + b, 0)
+        : 0;
+      const ytdPayout = p.pData
+        ? p.pData.yearMonthly.slice(0, effectiveTargetMonthIdx + 1).reduce((a, b) => a + b, 0)
+        : 0;
+      const balanceLeft = Math.max(0, ytdContrib - ytdPayout);
+
+      const remarks = p.cData?.notes && p.cData.notes.length > 0
+        ? p.cData.notes[0]
+        : (monthDeduction > 0 ? 'Active Remittance' : 'No Deduction This Month');
+
+      const rowData: any[] = [
+        idx + 1,
+        p.code,
+        p.fullName,
+        p.department,
+        p.employmentType,
+        { t: 'n', v: p.monthlyGross, z: CURRENCY_FORMAT },
+        p.schemesText,
+        { t: 'n', v: monthDeduction, z: CURRENCY_FORMAT },
+        { t: 'n', v: monthPayout, z: CURRENCY_FORMAT },
+        { t: 'n', v: p.netTakeHome, z: CURRENCY_FORMAT },
+        { t: 'n', v: ytdContrib, z: CURRENCY_FORMAT },
+        { t: 'n', v: ytdPayout, z: CURRENCY_FORMAT }
+      ];
+
+      if (includeFormulas) {
+        rowData.push({ t: 'n', f: `K${r}-L${r}`, v: balanceLeft, z: CURRENCY_FORMAT });
+      } else {
+        rowData.push({ t: 'n', v: balanceLeft, z: CURRENCY_FORMAT });
+      }
+
+      rowData.push(p.bankName);
+      rowData.push(p.accountNumber);
+      rowData.push(remarks);
+
+      aoa.push(rowData);
     });
 
     // Subtotal Row
     const startRow = headerRowIdx + 1;
-    const endRow = headerRowIdx + contributingItems.length;
-    const totalContrib = contributingItems.reduce((s, i) => s + (i.contributionDeduction || 0), 0);
-    const totalNet = contributingItems.reduce((s, i) => s + i.netTakeHome, 0);
+    const endRow = headerRowIdx + singleMonthList.length;
+
+    const sumMonthDed = singleMonthList.reduce((s, p) => s + (p.cData ? p.cData.currentMonthTotal : 0), 0);
+    const sumMonthPay = singleMonthList.reduce((s, p) => s + (p.pData ? p.pData.currentMonthTotal : 0), 0);
+    const sumNet = singleMonthList.reduce((s, p) => s + p.netTakeHome, 0);
+    const sumYtdC = singleMonthList.reduce((s, p) => s + (p.cData ? p.cData.yearMonthly.slice(0, effectiveTargetMonthIdx + 1).reduce((a, b) => a + b, 0) : 0), 0);
+    const sumYtdP = singleMonthList.reduce((s, p) => s + (p.pData ? p.pData.yearMonthly.slice(0, effectiveTargetMonthIdx + 1).reduce((a, b) => a + b, 0) : 0), 0);
+    const sumBal = sumYtdC - sumYtdP;
 
     if (includeFormulas) {
       aoa.push([
@@ -1806,8 +2511,12 @@ function createWelfareContributionsSheet(
         '',
         '',
         '',
-        { t: 'n', f: `SUBTOTAL(109, H${startRow}:H${endRow})`, v: totalContrib, z: CURRENCY_FORMAT },
-        { t: 'n', f: `SUBTOTAL(109, I${startRow}:I${endRow})`, v: totalNet, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, H${startRow}:H${endRow})`, v: sumMonthDed, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, I${startRow}:I${endRow})`, v: sumMonthPay, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, J${startRow}:J${endRow})`, v: sumNet, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, K${startRow}:K${endRow})`, v: sumYtdC, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, L${startRow}:L${endRow})`, v: sumYtdP, z: CURRENCY_FORMAT },
+        { t: 'n', f: `SUBTOTAL(109, M${startRow}:M${endRow})`, v: sumBal, z: CURRENCY_FORMAT },
         '',
         '',
         ''
@@ -1821,9 +2530,237 @@ function createWelfareContributionsSheet(
         '',
         '',
         '',
-        { t: 'n', v: totalContrib, z: CURRENCY_FORMAT },
-        { t: 'n', v: totalNet, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumMonthDed, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumMonthPay, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumNet, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumYtdC, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumYtdP, z: CURRENCY_FORMAT },
+        { t: 'n', v: sumBal, z: CURRENCY_FORMAT },
         '',
+        '',
+        ''
+      ]);
+    }
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!views'] = [{ state: 'frozen', xSplit: 3, ySplit: 5 }];
+  (ws as any)['!freezePane'] = { xSplit: 3, ySplit: 5, topLeftCell: 'D6' };
+
+  ws['!cols'] = [
+    { wch: 6 },  // S/N
+    { wch: 14 }, // Staff Code
+    { wch: 28 }, // Full Name
+    { wch: 20 }, // Department
+    { wch: 16 }, // Employment Type
+    { wch: 18 }, // Monthly Gross
+    { wch: 32 }, // Schemes
+    { wch: 22 }, // This Month Deduction
+    { wch: 20 }, // This Month Payouts
+    { wch: 22 }, // Net Pay After Savings
+    { wch: 20 }, // YTD Contributed
+    { wch: 18 }, // YTD Payouts
+    { wch: 22 }, // Current Balance Left
+    { wch: 18 }, // Bank Name
+    { wch: 18 }, // Account Number
+    { wch: 20 }  // Remarks / Status
+  ];
+
+  return styleWorksheetCorporate(ws);
+}
+
+/**
+ * 6C. STAFF ABSENCE & ATTENDANCE LOG TAB
+ * Itemized schedule of employee days absent, daily rates, absence types, and gross pay deductions.
+ */
+function createAbsenceLogSheet(
+  absences: EmployeeAbsenceRecord[],
+  items: CalculatedPayrollItem[],
+  employees: Employee[],
+  monthLabel: string,
+  year: number,
+  company: CompanyProfile,
+  includeFormulas: boolean,
+  payrollVars: PayrollVariables,
+  targetMonthKey: string = 'oct',
+  targetYear: number = 2026,
+  scope: ExportScope = 'current-month'
+): XLSX.WorkSheet {
+  const aoa: any[][] = [
+    [company.name.toUpperCase()],
+    [`STAFF ABSENCE & ATTENDANCE DEDUCTIONS LOG - ${monthLabel.toUpperCase()} ${year}`],
+    [`Monthly Unpaid Absence, Leave Deductions & Disciplinary Ledger  |  Currency: NGN (₦)`],
+    [],
+    [
+      'S/N',
+      'Staff Code',
+      'Employee Full Name',
+      'Department',
+      'Employment Type',
+      'Work Schedule',
+      'Contractual Gross (₦)',
+      'Absence Type / Reason',
+      'Days Absent',
+      'Daily Rate (₦)',
+      'Impact Rule',
+      'Gross Deduction (₦)',
+      'Net Pay After Absence (₦)',
+      'Audit Notes / Period'
+    ]
+  ];
+
+  const headerRowIdx = 5;
+  const empMap = new Map(employees.map(e => [e.id, e]));
+  const itemMap = new Map(items.map(i => [i.employeeId, i]));
+
+  // Filter absences for target period
+  const matchingAbsences = (absences || []).filter(a => {
+    if (!a || !a.employeeId || !a.daysAbsent || Number(a.daysAbsent) <= 0) return false;
+    const parts = (a.periodKey || '').split('-');
+    const aYear = parts[0];
+    const aMonth = normalizeMonthKey(parts[1]);
+    if (scope === 'full-year') {
+      return aYear === String(targetYear);
+    } else if (scope === 'all-history') {
+      return true;
+    } else {
+      return aYear === String(targetYear) && aMonth === targetMonthKey;
+    }
+  });
+
+  // Also check items for any unpaid absence not already logged in records
+  const loggedEmpIds = new Set(matchingAbsences.map(a => a.employeeId));
+  const fallbackAbsences: EmployeeAbsenceRecord[] = [];
+  items.forEach(item => {
+    if ((item.unpaidAbsenceDays || 0) > 0 && !loggedEmpIds.has(item.employeeId)) {
+      fallbackAbsences.push({
+        id: `abs-synth-${item.employeeId}`,
+        employeeId: item.employeeId,
+        periodKey: `${targetYear}-${targetMonthKey}`,
+        daysAbsent: item.unpaidAbsenceDays || 0,
+        absenceType: 'unauthorized_absence',
+        deductionAmount: item.unpaidAbsenceDeduction || 0,
+        createdAt: new Date().toISOString(),
+        notes: 'Absence deduction from payroll calculation'
+      });
+    }
+  });
+
+  const allAbsenceRecords = [...matchingAbsences, ...fallbackAbsences];
+
+  if (allAbsenceRecords.length === 0) {
+    aoa.push([
+      1,
+      '-',
+      'No Employee Absences Logged for this Period',
+      '-',
+      '-',
+      '-',
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      '100% Attendance Recorded',
+      { t: 'n', v: 0, z: '#,##0.0' },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      'Full Pay Maintained',
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      { t: 'n', v: 0, z: CURRENCY_FORMAT },
+      `Perfect attendance record for ${monthLabel} ${year}`
+    ]);
+  } else {
+    allAbsenceRecords.forEach((rec, index) => {
+      const emp = empMap.get(rec.employeeId);
+      const item = itemMap.get(rec.employeeId);
+
+      const code = emp?.code || item?.employeeCode || 'STAFF';
+      const fullName = emp ? `${emp.firstName} ${emp.lastName}` : (item?.fullName || 'Staff Member');
+      const dept = emp?.department || item?.department || 'General';
+      const empType = emp?.employmentType || item?.employmentType || 'Full-Time';
+      const sched = emp?.workSchedule || item?.workSchedule || '5-day';
+      const gross = item?.contractualGross || Number(emp?.monthlyGross) || item?.monthlyGross || 0;
+      
+      const workdays = getScheduleWorkdays(
+        targetYear,
+        targetMonthKey,
+        sched,
+        payrollVars?.workdayDivisorRule || 'actual_weekdays'
+      );
+      const dailyRate = workdays > 0 ? Math.round((gross / workdays) * 100) / 100 : 0;
+      const days = Number(rec.daysAbsent) || 0;
+      const deduction = Number(rec.deductionAmount) || (rec.absenceType === 'suspension_half_pay' ? Math.round(dailyRate * days * 0.5 * 100) / 100 : Math.round(dailyRate * days * 100) / 100);
+      const netPay = item?.netTakeHome || Math.max(0, gross - deduction);
+
+      const ruleText = rec.customOverride
+        ? 'Manual Override Deduction'
+        : rec.absenceType === 'suspension_half_pay'
+          ? '50% Half Pay Deduction'
+          : '100% Daily Gross Proration';
+
+      const typeLabel = rec.absenceType === 'unauthorized_absence'
+        ? 'Unauthorized Absence'
+        : rec.absenceType === 'unpaid_leave'
+          ? 'Unpaid Leave'
+          : rec.absenceType === 'suspension_half_pay'
+            ? 'Suspension (Half Pay)'
+            : rec.absenceType === 'suspension_unpaid'
+              ? 'Suspension (Unpaid)'
+              : String(rec.absenceType || 'Absence').replace(/_/g, ' ');
+
+      const notes = rec.notes || `${days} day(s) logged in ${rec.periodKey || `${targetYear}-${targetMonthKey}`}`;
+
+      aoa.push([
+        index + 1,
+        code,
+        fullName,
+        dept,
+        empType,
+        sched === '6-day' ? '6-day (Mon-Sat)' : '5-day (Mon-Fri)',
+        { t: 'n', v: gross, z: CURRENCY_FORMAT },
+        typeLabel,
+        { t: 'n', v: days, z: '#,##0.0' },
+        { t: 'n', v: dailyRate, z: CURRENCY_FORMAT },
+        ruleText,
+        { t: 'n', v: deduction, z: CURRENCY_FORMAT },
+        { t: 'n', v: netPay, z: CURRENCY_FORMAT },
+        notes
+      ]);
+    });
+
+    // Subtotal Row
+    const startRow = headerRowIdx + 1;
+    const endRow = headerRowIdx + allAbsenceRecords.length;
+    const totalDays = allAbsenceRecords.reduce((s, r) => s + (Number(r.daysAbsent) || 0), 0);
+    const totalDeductions = allAbsenceRecords.reduce((s, r) => s + (Number(r.deductionAmount) || 0), 0);
+
+    if (includeFormulas) {
+      aoa.push([
+        '',
+        '',
+        'TOTAL ABSENCES & DEDUCTIONS',
+        '',
+        '',
+        '',
+        '',
+        '',
+        { t: 'n', f: `SUBTOTAL(109, I${startRow}:I${endRow})`, v: totalDays, z: '#,##0.0' },
+        '',
+        '',
+        { t: 'n', f: `SUBTOTAL(109, L${startRow}:L${endRow})`, v: totalDeductions, z: CURRENCY_FORMAT },
+        '',
+        ''
+      ]);
+    } else {
+      aoa.push([
+        '',
+        '',
+        'TOTAL ABSENCES & DEDUCTIONS',
+        '',
+        '',
+        '',
+        '',
+        '',
+        { t: 'n', v: totalDays, z: '#,##0.0' },
+        '',
+        '',
+        { t: 'n', v: totalDeductions, z: CURRENCY_FORMAT },
         '',
         ''
       ]);
@@ -1839,13 +2776,15 @@ function createWelfareContributionsSheet(
     { wch: 28 }, // Full Name
     { wch: 20 }, // Department
     { wch: 16 }, // Employment Type
-    { wch: 18 }, // Monthly Gross
-    { wch: 38 }, // Schemes / Purposes
-    { wch: 22 }, // Monthly Deduction
-    { wch: 22 }, // Net Pay After Savings
-    { wch: 18 }, // Bank Name
-    { wch: 18 }, // Account Number
-    { wch: 18 }, // Remarks / Status
+    { wch: 18 }, // Work Schedule
+    { wch: 20 }, // Contractual Gross
+    { wch: 24 }, // Absence Type
+    { wch: 14 }, // Days Absent
+    { wch: 18 }, // Daily Rate
+    { wch: 24 }, // Impact Rule
+    { wch: 22 }, // Gross Deduction
+    { wch: 22 }, // Net Pay After Absence
+    { wch: 35 }, // Audit Notes / Period
   ];
 
   return styleWorksheetCorporate(ws);

@@ -22,7 +22,9 @@ import {
     ContributionPayout,
     ContributionScheme,
     EmployeeAbsenceRecord,
-    WhatsAppSettings
+    WhatsAppSettings,
+    WhatsAppedPayslipRecord,
+    WhatsAppPayslipContext
 } from '../../types';
 import { MobileTopAppBar } from './MobileTopAppBar';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -45,6 +47,7 @@ import { ContributionsView } from '../contributions/ContributionsView';
 import { AbsenceLogView } from '../absences/AbsenceLogView';
 import { isStandaloneOfflineMode, getSavedCloudConfig } from '../../services/supabaseClient';
 import { EmailPayslipsModal } from '../payroll/EmailPayslipsModal';
+import { WhatsAppPayslipsModal } from '../payroll/WhatsAppPayslipsModal';
 
 interface MobileAppShellProps {
     activeView: AppView;
@@ -118,9 +121,13 @@ interface MobileAppShellProps {
     onUpdateEmailSettings?: (settings: Partial<EmailSettings>) => void;
     whatsappSettings?: WhatsAppSettings;
     onUpdateWhatsAppSettings?: (settings: Partial<WhatsAppSettings>) => void;
+    whatsappedPayslips?: Record<string, WhatsAppedPayslipRecord>;
+    onRecordWhatsAppedPayslips?: (records: WhatsAppedPayslipRecord[]) => void;
+    onOpenWhatsAppSettings?: () => void;
     emailedPayslips?: Record<string, EmailedPayslipRecord>;
     onRecordEmailedPayslips?: (records: EmailedPayslipRecord[]) => void;
     onUpdateEmployeeEmail?: (id: string, email: string) => void;
+    onUpdateEmployeePhone?: (id: string, phone: string) => void;
     isAdmin?: boolean;
     isCloudOffline?: boolean;
 
@@ -195,9 +202,13 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     onUpdateEmailSettings,
     whatsappSettings,
     onUpdateWhatsAppSettings,
+    whatsappedPayslips,
+    onRecordWhatsAppedPayslips,
+    onOpenWhatsAppSettings,
     emailedPayslips,
     onRecordEmailedPayslips,
     onUpdateEmployeeEmail,
+    onUpdateEmployeePhone,
     isAdmin = true,
     isCloudOffline = false,
     isPhoneFramePreview,
@@ -206,6 +217,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
     const [isEmailPayslipsOpen, setIsEmailPayslipsOpen] = useState(false);
     const [emailModalContext, setEmailModalContext] = useState<EmailPayslipContext | null>(null);
+    const [isWhatsAppPayslipsOpen, setIsWhatsAppPayslipsOpen] = useState(false);
+    const [whatsAppModalContext, setWhatsAppModalContext] = useState<WhatsAppPayslipContext | null>(null);
     const [previousView, setPreviousView] = useState<AppView>('payroll');
     const [, setPrivacyRenderTick] = useState(0);
 
@@ -289,6 +302,16 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         });
     }, [isEmailPayslipsOpen]);
 
+    // Intercept WhatsApp payslips modal on Android hardware back button
+    useEffect(() => {
+        if (!isWhatsAppPayslipsOpen) return;
+        return registerBackHandler(() => {
+            setIsWhatsAppPayslipsOpen(false);
+            setWhatsAppModalContext(null);
+            return true;
+        });
+    }, [isWhatsAppPayslipsOpen]);
+
     // Initialize Android hardware back button and browser popstate listener
     useEffect(() => {
         const cleanup = initializeMobileBackHandler(
@@ -341,6 +364,15 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         setMobileSettingsTab('email');
         if (onOpenEmailSettings) {
             onOpenEmailSettings();
+        } else {
+            handleNavigate('settings');
+        }
+    };
+
+    const handleOpenWhatsAppSettingsFlow = () => {
+        setMobileSettingsTab('whatsapp');
+        if (onOpenWhatsAppSettings) {
+            onOpenWhatsAppSettings();
         } else {
             handleNavigate('settings');
         }
@@ -522,6 +554,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                             setEmailModalContext(ctx || null);
                             setIsEmailPayslipsOpen(true);
                         } : undefined}
+                        onWhatsAppPayslips={!isAuditor ? (ctx) => {
+                            setWhatsAppModalContext(ctx || null);
+                            setIsWhatsAppPayslipsOpen(true);
+                        } : undefined}
                     />
                 ) : activeView === 'payslip-designer' ? (
                     <MobilePayslipDesignerView
@@ -586,6 +622,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                             activeSnapshot={activeSnapshot}
                             snapshots={snapshots}
                             loans={loans}
+                            contributions={contributions}
+                            payouts={contributionPayouts}
+                            absences={absences}
                             currentUser={currentUser}
                             onImportEmployees={onImportEmployees}
                             onResetAllData={onResetAllData}
@@ -666,6 +705,38 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                     activeSnapshot={activeSnapshot}
                     isLocked={isLocked}
                     initialContext={emailModalContext}
+                    snapshots={snapshots}
+                    payrollVariables={payrollVariables}
+                    payeTaxVariables={payeTaxVariables}
+                />
+            )}
+
+            {/* ── WhatsApp Payslips Studio Modal ── */}
+            {isWhatsAppPayslipsOpen && (
+                <WhatsAppPayslipsModal
+                    isOpen={isWhatsAppPayslipsOpen}
+                    onClose={() => {
+                        setIsWhatsAppPayslipsOpen(false);
+                        setWhatsAppModalContext(null);
+                    }}
+                    items={payrollItems}
+                    employees={employees}
+                    company={company}
+                    monthLabel={monthLabel}
+                    selectedMonth={selectedMonth}
+                    year={selectedYear}
+                    whatsappSettings={whatsappSettings}
+                    payslipDesign={payslipDesign}
+                    whatsappedPayslips={whatsappedPayslips}
+                    onRecordWhatsAppedPayslips={onRecordWhatsAppedPayslips}
+                    onOpenSettings={handleOpenWhatsAppSettingsFlow}
+                    onUpdateWhatsAppSettings={onUpdateWhatsAppSettings}
+                    onUpdateEmployeePhone={onUpdateEmployeePhone || ((id, phone) => onUpdateEmployee?.(id, { phone }))}
+                    isAdmin={isAdmin}
+                    currentUser={currentUser}
+                    activeSnapshot={activeSnapshot}
+                    isLocked={isLocked}
+                    initialContext={whatsAppModalContext}
                     snapshots={snapshots}
                     payrollVariables={payrollVariables}
                     payeTaxVariables={payeTaxVariables}

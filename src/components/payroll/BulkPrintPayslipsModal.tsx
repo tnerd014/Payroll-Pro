@@ -443,8 +443,24 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
   const handlePrint = () => {
     if (selectedEmployees.length === 0) return;
+
+    // Strict 1-Page A4 Auto-Fit: scale down any payslip whose content exceeds single A4 printable bounds
+    const printPages = document.querySelectorAll<HTMLElement>('.print-page');
+    printPages.forEach(page => {
+      const maxA4Height = 1060; // Standard A4 printable height at 96 DPI with margins
+      const h = page.scrollHeight;
+      if (h > maxA4Height) {
+        page.style.zoom = String(Math.max(0.65, (maxA4Height / h) * 0.98));
+      }
+    });
+
     const beforePrint = () => document.body.classList.add('print-portal-active');
-    const afterPrint = () => document.body.classList.remove('print-portal-active');
+    const afterPrint = () => {
+      document.body.classList.remove('print-portal-active');
+      printPages.forEach(page => {
+        page.style.zoom = '';
+      });
+    };
     window.addEventListener('beforeprint', beforePrint, { once: true });
     window.addEventListener('afterprint', afterPrint, { once: true });
     document.body.classList.add('print-portal-active');

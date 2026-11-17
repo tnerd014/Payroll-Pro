@@ -287,6 +287,11 @@ export function renderPayslipToHtml(
       max-width: 800px;
       margin: 0 auto;
       background: #ffffff !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      max-height: 281mm;
+      overflow: hidden;
+      box-sizing: border-box;
     }
   </style>
 </head>
@@ -294,6 +299,26 @@ export function renderPayslipToHtml(
   <div class="pdf-payslip-canvas">
     ${renderedPayslipMarkup}
   </div>
+  <script>
+    (function() {
+      function autoFitA4() {
+        var MAX_HEIGHT = 1060;
+        var canvas = document.querySelector('.pdf-payslip-canvas');
+        if (canvas) {
+          var h = canvas.scrollHeight;
+          if (h > MAX_HEIGHT) {
+            canvas.style.zoom = String(Math.max(0.65, (MAX_HEIGHT / h) * 0.98));
+          }
+        }
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', autoFitA4);
+      } else {
+        autoFitA4();
+      }
+      window.addEventListener('load', autoFitA4);
+    })();
+  </script>
 </body>
 </html>`;
 }
@@ -425,7 +450,10 @@ export function renderConsolidatedPayslipsToHtml(
       break-after: page !important;
       page-break-inside: avoid !important;
       break-inside: avoid !important;
-      margin-bottom: 24px;
+      max-height: 281mm;
+      overflow: hidden;
+      margin-bottom: 0 !important;
+      box-sizing: border-box;
     }
     .pdf-payslip-page.last-page,
     .pdf-payslip-page:last-child {
@@ -437,6 +465,26 @@ export function renderConsolidatedPayslipsToHtml(
 </head>
 <body class="bg-white text-zinc-900 font-sans antialiased">
   ${pagesHtml}
+  <script>
+    (function() {
+      function autoFitPages() {
+        var MAX_HEIGHT = 1060;
+        var pages = document.querySelectorAll('.pdf-payslip-page');
+        pages.forEach(function(page) {
+          var h = page.scrollHeight;
+          if (h > MAX_HEIGHT) {
+            page.style.zoom = String(Math.max(0.65, (MAX_HEIGHT / h) * 0.98));
+          }
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', autoFitPages);
+      } else {
+        autoFitPages();
+      }
+      window.addEventListener('load', autoFitPages);
+    })();
+  </script>
 </body>
 </html>`;
 }

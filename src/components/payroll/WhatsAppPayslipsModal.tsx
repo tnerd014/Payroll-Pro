@@ -92,6 +92,7 @@ interface WhatsAppPayslipsModalProps {
   whatsappedPayslips?: Record<string, WhatsAppedPayslipRecord>;
   onRecordWhatsAppedPayslips?: (records: WhatsAppedPayslipRecord[]) => void;
   onOpenSettings?: () => void;
+  onUpdateWhatsAppSettings?: (settings: Partial<WhatsAppSettings>) => void;
   onUpdateEmployeePhone?: (employeeId: string, newPhone: string) => void;
   isAdmin?: boolean;
   currentUser?: TeamMember | null;
@@ -117,6 +118,7 @@ export const WhatsAppPayslipsModal: React.FC<WhatsAppPayslipsModalProps> = ({
   whatsappedPayslips = {},
   onRecordWhatsAppedPayslips,
   onOpenSettings,
+  onUpdateWhatsAppSettings,
   onUpdateEmployeePhone,
   isAdmin = true,
   currentUser,
@@ -227,7 +229,8 @@ export const WhatsAppPayslipsModal: React.FC<WhatsAppPayslipsModalProps> = ({
     return true; // direct wa.me is always technically ready
   }, [provider, whatsappSettings]);
 
-  const isConfigured = whatsappSettings.isActive && isApiConfigured;
+  const isWhatsAppActive = Boolean(whatsappSettings?.isActive ?? whatsappSettings?.enabled ?? true);
+  const isConfigured = isWhatsAppActive && isApiConfigured;
 
   // Build recipient state
   const buildRecipientList = (): WhatsAppRecipientState[] => {
@@ -831,7 +834,7 @@ export const WhatsAppPayslipsModal: React.FC<WhatsAppPayslipsModalProps> = ({
         )}
 
         {/* Not Active Warning Banner */}
-        {!whatsappSettings.isActive && (
+        {!isWhatsAppActive && (
           <div className="px-3.5 sm:px-5 py-2.5 bg-amber-50/90 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-2.5 text-xs text-amber-800 dark:text-amber-200">
             <div className="flex items-center gap-2 min-w-0">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -839,17 +842,32 @@ export const WhatsAppPayslipsModal: React.FC<WhatsAppPayslipsModalProps> = ({
                 WhatsApp Dispatch Engine is Currently Disabled in Settings
               </strong>
             </div>
-            {onOpenSettings && isActualAdmin && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenSettings();
-                }}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg font-medium text-[11px] shrink-0 transition shadow-2xs cursor-pointer"
-              >
-                Enable WhatsApp
-              </button>
+            {isActualAdmin && (
+              <div className="flex items-center gap-2 shrink-0">
+                {onUpdateWhatsAppSettings && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onUpdateWhatsAppSettings({ enabled: true, isActive: true });
+                    }}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg font-medium text-[11px] shrink-0 transition shadow-2xs cursor-pointer"
+                  >
+                    Enable WhatsApp
+                  </button>
+                )}
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenSettings();
+                    }}
+                    className="px-2.5 py-1.5 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg font-medium text-[11px] shrink-0 transition cursor-pointer"
+                  >
+                    Open Settings
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -1008,6 +1026,127 @@ export const WhatsAppPayslipsModal: React.FC<WhatsAppPayslipsModalProps> = ({
                 </>
               )}
             </div>
+          </div>
+
+          {/* ── MOBILE Filter Bar (below md) ── */}
+          <div className="flex md:hidden flex-col gap-2 pt-1 text-xs">
+            {/* Row 1: Select-All checkbox + counters */}
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isAllFilteredSelected}
+                  onChange={handleToggleSelectAll}
+                  disabled={isSending}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-zinc-300 dark:border-zinc-700 cursor-pointer disabled:opacity-30"
+                />
+                <span className="text-zinc-600 dark:text-zinc-400 font-medium">Select All</span>
+              </label>
+              <div className="flex items-center gap-2 text-zinc-500">
+                <span>Selected: <strong className="text-zinc-900 dark:text-zinc-100">{selectedCount}</strong></span>
+                <span>&bull;</span>
+                <span>Sent: <strong className="text-emerald-600">{sentCount}</strong></span>
+              </div>
+            </div>
+
+            {/* Row 2: Tab filters + Search icon trigger */}
+            {!isMobileSearchOpen ? (
+              <div className="flex items-center gap-1">
+                {/* Tab filter pills */}
+                <div className="flex items-center gap-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 flex-1 min-w-0 overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => setTabFilter('all')}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap cursor-pointer ${
+                      tabFilter === 'all'
+                        ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    All ({totalCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTabFilter('pending')}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap cursor-pointer ${
+                      tabFilter === 'pending'
+                        ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    Pending ({pendingCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTabFilter('sent')}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap cursor-pointer ${
+                      tabFilter === 'sent'
+                        ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    Sent ({sentCount})
+                  </button>
+                  {revisedCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setTabFilter('revised')}
+                      className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap cursor-pointer ${
+                        tabFilter === 'revised'
+                          ? 'bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-2xs font-semibold'
+                          : 'text-amber-600/80 dark:text-amber-400/80 hover:text-amber-700 dark:hover:text-amber-300'
+                      }`}
+                    >
+                      Revised ({revisedCount})
+                    </button>
+                  )}
+                </div>
+
+                {/* Search icon button */}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileSearchOpen(true)}
+                  className="relative shrink-0 p-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+                  title="Search"
+                >
+                  <Search className="w-4 h-4" />
+                  {searchQuery && (
+                    <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-emerald-500" />
+                  )}
+                </button>
+              </div>
+            ) : (
+              /* Search expanded row */
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search staff, code, phone..."
+                    autoFocus
+                    className="pl-8 pr-7 py-1.5 w-full bg-zinc-50 dark:bg-zinc-900 border border-emerald-400 dark:border-emerald-600 rounded text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setIsMobileSearchOpen(false); setSearchQuery(''); }}
+                  className="shrink-0 text-[11px] font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Desktop Table View */}

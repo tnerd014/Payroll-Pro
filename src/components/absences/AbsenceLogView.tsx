@@ -6,13 +6,11 @@ import {
   Edit3, 
   Trash2, 
   Calendar, 
-  Clock,
-  DollarSign,
-  Users,
   Lock,
   ChevronRight,
   ChevronUp,
   ChevronDown,
+  SlidersHorizontal,
   X
 } from 'lucide-react';
 import { 
@@ -127,6 +125,26 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
 
   // State
   const [showStats, setShowStats] = useState(true);
+
+  // Table Density Mode (Synced with app-wide table preference)
+  const [isCompactMode, setIsCompactMode] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('payroll_pro_table_compact');
+      if (stored !== null) return stored === 'true';
+    } catch {}
+    return true; // Default to Compact on all tables
+  });
+
+  const toggleCompactMode = () => {
+    setIsCompactMode(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('payroll_pro_table_compact', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
@@ -331,9 +349,9 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 pb-2 select-none">
+    <div className="pb-2 select-none">
       {/* Mobile Sticky Compact Top Bar (Single-Row Succinct Minimalist Header) */}
-      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
+      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b] mb-3">
         <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           {!isMobileSearchOpen ? (
             <div className="flex items-center justify-between gap-2">
@@ -374,7 +392,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                         onPeriodChange(val, yNum);
                       }
                     }}
-                    className="bg-transparent font-semibold text-zinc-800 dark:text-zinc-200 text-xs focus:outline-hidden cursor-pointer"
+                    className="bg-transparent font-semibold text-zinc-800 dark:text-zinc-200 text-xs outline-none focus:outline-none focus:ring-0 cursor-pointer"
                     aria-label="Filter Month"
                   >
                     <option value="ALL" className="dark:bg-zinc-900 font-semibold">
@@ -397,7 +415,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                         onPeriodChange(filterMonth, parseInt(val, 10));
                       }
                     }}
-                    className="bg-transparent font-semibold text-zinc-800 dark:text-zinc-200 text-xs focus:outline-hidden cursor-pointer"
+                    className="bg-transparent font-semibold text-zinc-800 dark:text-zinc-200 text-xs outline-none focus:outline-none focus:ring-0 cursor-pointer"
                     aria-label="Filter Year"
                   >
                     <option value="ALL" className="dark:bg-zinc-900 font-semibold">
@@ -469,19 +487,17 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
       </div>
 
       {/* Desktop Top Header */}
-      <div className="hidden sm:flex pt-3 pb-3 flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="hidden sm:flex pt-3.5 pb-3 flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 mb-4">
         <div>
-          <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
-            <CalendarOff className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-            <span>Employee Absence & Attendance Log</span>
+          <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            Employee Absence &amp; Attendance Log
           </h1>
-          
         </div>
 
         {/* Period Selector & Log Button */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2.5 py-1 rounded-md text-xs">
-            <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+          <div className="h-8 flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium">
+            <Calendar className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
             <select
               value={filterMonth}
               onChange={(e) => {
@@ -493,7 +509,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                   onPeriodChange(val, yNum);
                 }
               }}
-              className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+              className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 outline-none focus:outline-none focus:ring-0 cursor-pointer"
             >
               <option value="ALL" className="dark:bg-zinc-900 font-semibold">
                 All Year
@@ -514,7 +530,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                   onPeriodChange(filterMonth, parseInt(val, 10));
                 }
               }}
-              className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+              className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 outline-none focus:outline-none focus:ring-0 cursor-pointer"
             >
               <option value="ALL" className="dark:bg-zinc-900 font-semibold">
                 All Years
@@ -547,39 +563,49 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
         </div>
       </div>
 
+      <div className="space-y-4">
       {/* Minimalist Stat Cards (Desktop Only - Hidden on Mobile) */}
       {showStats && (
-      <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-            <span>Days Docked ({filterMonth === 'ALL' ? (filterYear === 'ALL' ? 'All Time' : filterYear) : (MONTHS.find(m => m.key.toLowerCase() === filterMonth.toLowerCase())?.label || monthLabel)})</span>
-            <Clock className="w-3.5 h-3.5 text-zinc-400" />
+        <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in duration-150">
+          {/* Card 1: Days Docked */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              Days Docked ({filterMonth === 'ALL' ? (filterYear === 'ALL' ? 'All Time' : filterYear) : (MONTHS.find(m => m.key.toLowerCase() === filterMonth.toLowerCase())?.label || monthLabel)})
+            </span>
+            <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
+              {totalDaysDocked} {totalDaysDocked === 1 ? 'day' : 'days'}
+            </div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate pt-1.5 border-t border-zinc-100 dark:border-zinc-800/60">
+              <span>{monthLabel} {selectedYear} &bull; working days basis</span>
+            </div>
           </div>
-          <div className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
-            {totalDaysDocked} {totalDaysDocked === 1 ? 'day' : 'days'}
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-            <span>Unpaid Deductions</span>
-            <DollarSign className="w-3.5 h-3.5 text-rose-500" />
+          {/* Card 2: Unpaid Deductions */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              Unpaid Deductions
+            </span>
+            <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
+              {formatNaira(totalDeductions)}
+            </div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate pt-1.5 border-t border-zinc-100 dark:border-zinc-800/60">
+              <span>Docked salary adjustment</span>
+            </div>
           </div>
-          <div className="text-lg font-bold font-mono text-rose-600 dark:text-rose-400">
-            -{formatNaira(totalDeductions)}
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-            <span>Affected Staff</span>
-            <Users className="w-3.5 h-3.5 text-zinc-400" />
-          </div>
-          <div className="text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
-            {affectedStaffCount} {affectedStaffCount === 1 ? 'employee' : 'employees'}
+          {/* Card 3: Affected Staff */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              Affected Staff
+            </span>
+            <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
+              {affectedStaffCount} {affectedStaffCount === 1 ? 'employee' : 'employees'}
+            </div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate pt-1.5 border-t border-zinc-100 dark:border-zinc-800/60">
+              <span>{employees.length > 0 ? `${((affectedStaffCount / employees.length) * 100).toFixed(0)}% of total team` : '0% of total team'}</span>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* Desktop Search Bar & Controls (Hidden on Mobile, where it is integrated in the top bar) */}
@@ -594,20 +620,37 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:border-zinc-400"
+            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
           />
         </div>
 
-        {/* Toggle Stats for More Table Room */}
-        <button
-          type="button"
-          onClick={() => setShowStats(!showStats)}
-          className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs shrink-0"
-          title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
-        >
-          {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          <span>{showStats ? "Hide Stats" : "Show Stats"}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Table Density Switcher */}
+          <button
+            type="button"
+            onClick={toggleCompactMode}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition cursor-pointer shrink-0 ${
+              isCompactMode 
+                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent shadow-xs' 
+                : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+            }`}
+            title={isCompactMode ? "Compact table density active (Click for comfortable)" : "Comfortable table density active (Click for compact)"}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
+            <span>{isCompactMode ? 'Compact' : 'Comfortable'}</span>
+          </button>
+
+          {/* Toggle Stats for More Table Room */}
+          <button
+            type="button"
+            onClick={() => setShowStats(!showStats)}
+            className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs shrink-0"
+            title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
+          >
+            {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <span>{showStats ? "Hide Stats" : "Show Stats"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Desktop Absences Table View - Simplified Succinct Layout */}
@@ -616,7 +659,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
           <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
             <thead className="bg-zinc-50/80 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-semibold">
               <tr>
-                <th className="px-4 py-3">
+                <th className={`px-4 ${isCompactMode ? 'py-2' : 'py-3'}`}>
                   <SortableHeader
                     label="Date"
                     field="date"
@@ -626,7 +669,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                     align="left"
                   />
                 </th>
-                <th className="px-4 py-3">
+                <th className={`px-4 ${isCompactMode ? 'py-2' : 'py-3'}`}>
                   <SortableHeader
                     label="Staff Name"
                     field="name"
@@ -636,7 +679,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                     align="left"
                   />
                 </th>
-                <th className="px-4 py-3 text-center">
+                <th className={`px-4 ${isCompactMode ? 'py-2' : 'py-3'} text-center`}>
                   <SortableHeader
                     label="Absent Days"
                     field="days"
@@ -646,7 +689,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                     align="center"
                   />
                 </th>
-                <th className="px-4 py-3 text-right">Details</th>
+                <th className={`px-4 ${isCompactMode ? 'py-2' : 'py-3'} text-right`}>Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
@@ -672,7 +715,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                       className="group hover:bg-zinc-50/90 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
                     >
                       {/* Date */}
-                      <td className="px-4 py-3 font-medium text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                      <td className={`px-4 ${isCompactMode ? 'py-1.5' : 'py-3'} font-medium text-zinc-800 dark:text-zinc-200 whitespace-nowrap`}>
                         <div className="flex items-center gap-2">
                           <Calendar className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-200 transition-colors" />
                           <span>{dateDisplay}</span>
@@ -680,28 +723,30 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                       </td>
 
                       {/* Staff Name */}
-                      <td className="px-4 py-3">
+                      <td className={`px-4 ${isCompactMode ? 'py-1.5' : 'py-3'}`}>
                         <div className="flex items-center gap-2.5">
                           <div>
                             <p className="font-semibold text-zinc-900 dark:text-zinc-100">
                               {emp.firstName} {emp.lastName}
                             </p>
-                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
-                              {emp.code} &bull; {emp.department || 'General'}
-                            </p>
+                            {!isCompactMode && (
+                              <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-mono">
+                                {emp.code} &bull; {emp.department || 'General'}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
 
                       {/* Absent Days */}
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200/60 dark:border-zinc-700/60">
+                      <td className={`px-4 ${isCompactMode ? 'py-1.5' : 'py-3'} text-center whitespace-nowrap`}>
+                        <span className={`inline-flex items-center ${isCompactMode ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'} rounded-lg font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200/60 dark:border-zinc-700/60`}>
                           {rec.daysAbsent} {rec.daysAbsent === 1 ? 'day' : 'days'}
                         </span>
                       </td>
 
                       {/* Details View Hint */}
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <td className={`px-4 ${isCompactMode ? 'py-1.5' : 'py-3'} text-right whitespace-nowrap`}>
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
                           <span>View</span>
                           <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -981,6 +1026,8 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
           />
         </div>
       )}
+
+      </div>
 
       {/* Modal */}
       {isModalOpen && (

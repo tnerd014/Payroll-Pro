@@ -8,7 +8,18 @@ import {
   ShieldCheck, 
   ArrowRight
 } from 'lucide-react';
-import { Employee, CalculatedPayrollItem, PayrollVariables, PayeTaxVariables, PayrollSnapshot, EmployeeLoan } from '../../types';
+import { 
+  Employee, 
+  CalculatedPayrollItem, 
+  PayrollVariables, 
+  PayeTaxVariables, 
+  PayrollSnapshot, 
+  EmployeeLoan,
+  EmployeeContribution,
+  ContributionPayout,
+  EmployeeAbsenceRecord,
+  CompanyProfile
+} from '../../types';
 import { exportPayrollProToExcel, parseEmployeesFromExcel, ExportOptions } from '../../engine/excelEngine';
 import { ExportScopeModal } from './ExportScopeModal';
 import { MONTHS } from '../../store/usePayrollStore';
@@ -23,6 +34,11 @@ interface ExcelHubViewProps {
   activeSnapshot: PayrollSnapshot | undefined;
   onImportEmployees: (items: Partial<Employee>[], mode: 'merge' | 'overwrite') => void;
   loans?: EmployeeLoan[];
+  contributions?: EmployeeContribution[];
+  payouts?: ContributionPayout[];
+  absences?: EmployeeAbsenceRecord[];
+  snapshots?: PayrollSnapshot[];
+  company?: CompanyProfile;
 }
 
 export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
@@ -34,7 +50,12 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
   year,
   activeSnapshot,
   onImportEmployees,
-  loans = []
+  loans = [],
+  contributions = [],
+  payouts = [],
+  absences = [],
+  snapshots = [],
+  company
 }) => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -61,8 +82,8 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
         targetMonthLabel,
         targetYear,
         activeSnapshot,
-        undefined,
-        { ...options, loans },
+        company,
+        { ...options, loans, contributions, payouts, absences, snapshots },
         loans
       );
       setDownloadSuccess(true);
@@ -82,8 +103,8 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
         monthLabel,
         year,
         activeSnapshot,
-        undefined,
-        { scope: 'current-month', includeFormulas: true, loans },
+        company,
+        { scope: 'current-month', includeFormulas: true, loans, contributions, payouts, absences, snapshots },
         loans
       );
       setDownloadSuccess(true);
@@ -125,7 +146,7 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pt-3.5 pb-3">
         <div>
           <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
             Excel Data Hub
@@ -147,7 +168,7 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
               Export Payroll Workbook
             </h2>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {['Summary KPI', 'Payroll Register', 'Bank Schedule', 'PAYE & Pension', 'Annual Matrix', 'Staff Directory'].map(item => (
+              {['Summary KPI', 'Payroll Register', 'Bank Schedule', 'PAYE & Pension', 'Staff Loans', 'Welfare & Savings', 'Absence Log', 'Annual Matrix', 'Staff Directory'].map(item => (
                 <span key={item} className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium">
                   {item}
                 </span>

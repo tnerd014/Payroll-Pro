@@ -35,7 +35,22 @@ import { ExportScopeModal } from '../excel/ExportScopeModal';
 import { LegalModal } from '../legal/LegalModal';
 import { openInstructionManualPdf } from '../legal/openManual';
 import { MONTHS } from '../../store/usePayrollStore';
-import { Employee, CalculatedPayrollItem, PayrollVariables, PayeTaxVariables, PayrollSnapshot, AppView, CompanyProfile, CompanyAccount, TeamMember, EmployeeLoan, EmploymentTypeRule } from '../../types';
+import { 
+  Employee, 
+  CalculatedPayrollItem, 
+  PayrollVariables, 
+  PayeTaxVariables, 
+  PayrollSnapshot, 
+  AppView, 
+  CompanyProfile, 
+  CompanyAccount, 
+  TeamMember, 
+  EmployeeLoan, 
+  EmploymentTypeRule,
+  EmployeeContribution,
+  ContributionPayout,
+  EmployeeAbsenceRecord
+} from '../../types';
 import { checkRealConnectivity, getSavedCloudConfig, isStandaloneOfflineMode } from '../../services/supabaseClient';
 import { checkForGithubReleaseUpdate, openExternalReleaseLink } from '../../utils/releaseUpdate';
 import appLogo from '../../../assets/icon.png';
@@ -66,6 +81,10 @@ interface DesktopTitleBarProps {
   loans?: EmployeeLoan[];
   departments?: string[];
   employmentTypeRules?: EmploymentTypeRule[];
+  contributions?: EmployeeContribution[];
+  payouts?: ContributionPayout[];
+  absences?: EmployeeAbsenceRecord[];
+  snapshots?: PayrollSnapshot[];
 }
 
 export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
@@ -93,6 +112,10 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   loans = [],
   departments = [],
   employmentTypeRules = [],
+  contributions = [],
+  payouts = [],
+  absences = [],
+  snapshots = [],
 }) => {
   const isAuditor = currentUser?.role === 'Auditor';
   const isLocalUser = currentUser?.id === 'local_offline_operator' || isStandaloneOfflineMode() || !getSavedCloudConfig().isEnabled;
@@ -447,7 +470,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         selectedYear,
         activeSnapshot,
         company,
-        { scope: 'current-month', includeFormulas: true, loans },
+        { scope: 'current-month', includeFormulas: true, loans, contributions, payouts, absences, snapshots },
         loans
       );
     } catch (err) {
@@ -472,7 +495,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         targetYear,
         activeSnapshot,
         company,
-        { ...options, loans },
+        { ...options, loans, contributions, payouts, absences, snapshots },
         loans
       );
       setIsExportModalOpen(false);

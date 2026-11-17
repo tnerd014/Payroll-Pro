@@ -678,6 +678,7 @@ export interface WhatsAppSettings {
 
 export const DEFAULT_WHATSAPP_SETTINGS: WhatsAppSettings = {
   enabled: true,
+  isActive: true,
   provider: 'direct',
   cloudApi: {
     phoneNumberId: '',

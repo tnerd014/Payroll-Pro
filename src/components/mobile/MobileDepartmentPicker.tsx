@@ -6,6 +6,7 @@ interface MobileDepartmentPickerProps {
   deptOptions: string[];
   onSelectDept: (dept: string) => void;
   className?: string;
+  align?: 'right' | 'left' | 'center';
 }
 
 export const MobileDepartmentPicker: React.FC<MobileDepartmentPickerProps> = ({
@@ -13,6 +14,7 @@ export const MobileDepartmentPicker: React.FC<MobileDepartmentPickerProps> = ({
   deptOptions,
   onSelectDept,
   className = '',
+  align = 'right',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,10 +57,16 @@ export const MobileDepartmentPicker: React.FC<MobileDepartmentPickerProps> = ({
         )}
       </button>
 
-      {/* Centered Minimalist Department Dropdown Popover */}
-      {/* Positioned directly underneath the button so it never covers the button, centered relative to it */}
+      {/* Minimalist Department Dropdown Popover */}
+      {/* Anchored cleanly below the button without clipping outside the mobile viewport edge */}
       {isOpen && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-2 z-50 text-xs space-y-1 animate-in fade-in zoom-in-95 duration-150">
+        <div className={`absolute ${
+          align === 'left' 
+            ? 'left-0' 
+            : align === 'center' 
+            ? 'left-1/2 -translate-x-1/2' 
+            : 'right-0'
+        } top-full mt-2 w-56 max-w-[calc(100vw-2.5rem)] bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-2 z-50 text-xs space-y-1 animate-in fade-in zoom-in-95 duration-150`}>
           <div className="px-2 py-1 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
             <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400">
               Department

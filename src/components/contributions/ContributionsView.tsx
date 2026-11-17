@@ -125,6 +125,25 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
   const [activeTab, setActiveTab] = useState<'monthly' | 'ledger' | 'payouts'>('monthly');
   const [showStats, setShowStats] = useState(true);
 
+  // Table Density Mode (Synced with app-wide table preference)
+  const [isCompactMode, setIsCompactMode] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('payroll_pro_table_compact');
+      if (stored !== null) return stored === 'true';
+    } catch {}
+    return true; // Default to Compact on all tables
+  });
+
+  const toggleCompactMode = () => {
+    setIsCompactMode(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('payroll_pro_table_compact', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   // Payouts Period Scope Filter ('all' = All Time, 'year' = Current Year, 'month' = Selected Month)
   const [payoutPeriodScope, setPayoutPeriodScope] = useState<'all' | 'year' | 'month'>('all');
 
@@ -503,9 +522,9 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 pb-2 select-none">
+    <div className="pb-2 select-none">
       {/* ── Mobile View: Compact Single-Row Sticky Top Bar (Minimalist Style) ── */}
-      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
+      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b] mb-3">
         <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -534,7 +553,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               <select
                 value={selectedMonth}
                 onChange={(e) => onPeriodChange(e.target.value, selectedYear)}
-                className="bg-transparent font-semibold text-xs text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+                className="bg-transparent font-semibold text-xs text-zinc-800 dark:text-zinc-200 outline-none focus:outline-none focus:ring-0 cursor-pointer"
                 aria-label="Filter Month"
               >
                 {MONTHS.map(m => (
@@ -547,7 +566,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               <select
                 value={selectedYear}
                 onChange={(e) => onPeriodChange(selectedMonth, parseInt(e.target.value, 10))}
-                className="bg-transparent font-semibold text-xs text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+                className="bg-transparent font-semibold text-xs text-zinc-800 dark:text-zinc-200 outline-none focus:outline-none focus:ring-0 cursor-pointer"
                 aria-label="Filter Year"
               >
                 {availableYears.map(y => (
@@ -560,24 +579,22 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       </div>
 
       {/* Desktop Top Header */}
-      <div className="hidden sm:flex pt-3 pb-3 justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="hidden sm:flex pt-3.5 pb-3 justify-between items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 mb-4">
         <div>
-          <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
-            <PiggyBank className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-            <span>Staff Contributions & Welfare</span>
+          <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
+            Staff Contributions &amp; Welfare
           </h1>
-          
         </div>
 
         {/* Period & Top Actions */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Period Selector */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2.5 py-1 rounded-md text-xs">
-            <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+          <div className="h-8 flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium">
+            <Calendar className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
             <select
               value={selectedMonth}
               onChange={(e) => onPeriodChange(e.target.value, selectedYear)}
-              className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+              className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 outline-none focus:outline-none focus:ring-0 cursor-pointer"
             >
               {MONTHS.map(m => (
                 <option key={m.key} value={m.key} className="dark:bg-zinc-900">
@@ -588,7 +605,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             <select
               value={selectedYear}
               onChange={(e) => onPeriodChange(selectedMonth, parseInt(e.target.value, 10))}
-              className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 focus:outline-hidden cursor-pointer"
+              className="bg-transparent font-medium text-zinc-800 dark:text-zinc-200 outline-none focus:outline-none focus:ring-0 cursor-pointer"
             >
               {availableYears.map(y => (
                 <option key={y} value={y} className="dark:bg-zinc-900">
@@ -628,6 +645,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
         </div>
       </div>
 
+      <div className="space-y-4">
       {/* Minimalist Stat Cards (Desktop Only - Hidden on Mobile to prevent clutter) */}
       {showStats && (
       <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -806,9 +824,24 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               placeholder="Search by name, code, dept..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:border-zinc-400"
+              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
             />
           </div>
+
+          {/* Table Density Switcher */}
+          <button
+            type="button"
+            onClick={toggleCompactMode}
+            className={`hidden sm:flex items-center gap-1 h-8 px-2.5 rounded-md border text-xs font-medium transition cursor-pointer shrink-0 ${
+              isCompactMode 
+                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent' 
+                : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+            }`}
+            title="Toggle table row density"
+          >
+            <SlidersHorizontal className="w-3 h-3" />
+            <span>{isCompactMode ? 'Compact' : 'Comfortable'}</span>
+          </button>
 
           {/* Toggle Stats for More Table Room */}
           <button
@@ -858,21 +891,21 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
 
                       return (
                         <tr key={emp.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                          <td className="px-3 py-2 font-mono text-zinc-500">{emp.code}</td>
-                          <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-100">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} font-mono text-zinc-500`}>{emp.code}</td>
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} font-medium text-zinc-900 dark:text-zinc-100`}>
                             {emp.firstName} {emp.lastName}
                           </td>
-                          <td className="px-3 py-2 text-zinc-500">{emp.department}</td>
-                          <td className="px-3 py-2 font-mono text-zinc-600 dark:text-zinc-300">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} text-zinc-500`}>{emp.department}</td>
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} font-mono text-zinc-600 dark:text-zinc-300`}>
                             {formatNaira(emp.monthlyGross)}
                           </td>
-                          <td className="px-3 py-2 text-zinc-500">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} text-zinc-500`}>
                             {contrib?.schemeName || 'Staff Welfare Fund'}
                           </td>
-                          <td className="px-3 py-2 text-right font-mono font-medium text-zinc-900 dark:text-zinc-100">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} text-right font-mono font-medium text-zinc-900 dark:text-zinc-100`}>
                             {formatNaira(amount)}
                           </td>
-                          <td className="px-3 py-2 text-center">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} text-center`}>
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                               Active
                             </span>
@@ -1156,23 +1189,23 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                       const ledgerMenuId = `ledger_${summary.employeeId}`;
                       return (
                         <tr key={summary.employeeId} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                          <td className="px-3 py-2 font-mono text-zinc-500">{summary.employeeCode}</td>
-                          <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-100">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} font-mono text-zinc-500`}>{summary.employeeCode}</td>
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} font-medium text-zinc-900 dark:text-zinc-100`}>
                             {summary.fullName}
                           </td>
-                          <td className="px-3 py-2 text-zinc-500">{summary.department}</td>
-                          <td className="px-3 py-2 text-right font-mono text-zinc-700 dark:text-zinc-300">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} text-zinc-500`}>{summary.department}</td>
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} text-right font-mono text-zinc-700 dark:text-zinc-300`}>
                             {formatNaira(summary.totalContributed)}
                           </td>
-                          <td className="px-3 py-2 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} text-right font-mono text-emerald-600 dark:text-emerald-400`}>
                             {summary.totalDisbursed > 0 ? `-${formatNaira(summary.totalDisbursed)}` : '₦0.00'}
                           </td>
-                          <td className="px-3 py-2 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} text-right font-mono font-bold text-indigo-600 dark:text-indigo-400`}>
                             {formatNaira(summary.currentBalance)}
                           </td>
 
                           {/* 3-Dot Actions Menu */}
-                          <td className="px-3 py-2 text-right whitespace-nowrap">
+                          <td className={`px-3 ${isCompactMode ? 'py-1.5' : 'py-2.5'} text-right whitespace-nowrap`}>
                             <div className="relative inline-block text-left contrib-action-menu">
                               <button
                                 type="button"
@@ -2566,6 +2599,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

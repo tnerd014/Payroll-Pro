@@ -53,6 +53,9 @@ import {
   DEFAULT_EMAIL_SETTINGS,
   WhatsAppSettings,
   WhatsAppProviderType,
+  EmployeeContribution,
+  ContributionPayout,
+  EmployeeAbsenceRecord,
   DEFAULT_WHATSAPP_SETTINGS
 } from '../../../types';
 import { DEFAULT_EMPLOYMENT_TYPE_RULES, DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES } from '../../../engine/payePensionEngine';
@@ -90,6 +93,9 @@ interface MobileSettingsViewProps {
   activeSnapshot?: PayrollSnapshot;
   snapshots?: PayrollSnapshot[];
   loans?: EmployeeLoan[];
+  contributions?: EmployeeContribution[];
+  payouts?: ContributionPayout[];
+  absences?: EmployeeAbsenceRecord[];
   currentUser?: TeamMember | null;
   onImportEmployees?: (employees: Partial<Employee>[], mode: 'merge' | 'overwrite', scope?: 'all' | 'salary-only' | 'bank-only') => void;
   onResetAllData?: (options: ResetOptions) => void;
@@ -121,6 +127,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   activeSnapshot,
   snapshots = [],
   loans = [],
+  contributions = [],
+  payouts = [],
+  absences = [],
   currentUser,
   onImportEmployees,
   onResetAllData,
@@ -195,7 +204,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         targetYear,
         activeSnapshot,
         companyForm,
-        { ...options, loans },
+        { ...options, loans, contributions, payouts, absences, snapshots },
         loans
       );
       setDownloadSuccess(true);
@@ -206,11 +215,11 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   };
 
   const handleQuickExportMonth = () => {
-    handleExportConfirm({ scope: 'current-month', includeFormulas: true, loans });
+    handleExportConfirm({ scope: 'current-month', includeFormulas: true, loans, contributions, payouts, absences, snapshots });
   };
 
   const handleQuickExportYear = () => {
-    handleExportConfirm({ scope: 'full-year', selectedYear: year, includeFormulas: true, loans });
+    handleExportConfirm({ scope: 'full-year', selectedYear: year, includeFormulas: true, loans, contributions, payouts, absences, snapshots });
   };
 
   const handleDownloadTemplate = () => {
@@ -327,7 +336,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   });
 
   const handleTriggerReset = () => {
-    if (!isAdmin) return;
+    if (!isAdmin || isReadOnly) return;
     if (resetConfirmationText.trim() !== 'RESET') return;
     if (onResetAllData) {
       onResetAllData(resetOptions);
@@ -713,14 +722,6 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
   return (
     <div className="space-y-3.5 pb-2 select-none">
-      
-      {/* ── Offline read-only banner ── */}
-      {isReadOnly && (
-        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 text-xs font-medium">
-          <span className="shrink-0">⚠️</span>
-          <span>Offline Mode — Settings are view-only. Reconnect to make changes.</span>
-        </div>
-      )}
       {/* ── 1. Minimalist Compact Header ── */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -2021,8 +2022,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
               <button
                 type="button"
+                disabled={!isAdmin || isReadOnly}
+                title={!isAdmin ? 'Admin access required' : isReadOnly ? 'Resetting is disabled while offline' : undefined}
                 onClick={() => setIsResetModalOpen(true)}
-                className="w-full h-10 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all cursor-pointer"
+                className="w-full h-10 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Configure System Reset...</span>
@@ -2975,7 +2978,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       )}
 
       {/* ── System Reset Confirmation Modal ── */}
-      {isResetModalOpen && (
+      {isResetModalOpen && isAdmin && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-150">
           <div className="bg-white dark:bg-[#121215] border border-rose-300 dark:border-rose-900 rounded-3xl max-w-sm w-full p-4 space-y-3.5 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-rose-100 dark:border-rose-950/60">
@@ -3058,7 +3061,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
               <button
                 type="button"
-                disabled={resetConfirmationText.trim() !== 'RESET'}
+                disabled={!isAdmin || isReadOnly || resetConfirmationText.trim() !== 'RESET'}
                 onClick={handleTriggerReset}
                 className="flex-1 h-10 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:pointer-events-none text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-md"
               >

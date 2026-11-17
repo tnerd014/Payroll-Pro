@@ -85,15 +85,23 @@ header select,
 button,
 [role="button"],
 a,
-summary {
+summary,
+select {
   -webkit-tap-highlight-color: transparent;
 }
 
 button:focus,
 button:focus-visible,
 [role="button"]:focus,
-[role="button"]:focus-visible {
+[role="button"]:focus-visible,
+select,
+select:focus,
+select:focus-visible,
+select:active {
   outline: none !important;
+  outline-color: transparent !important;
+  -webkit-focus-ring-color: transparent !important;
+  box-shadow: none;
 }
 
 /* Native frameless window controls should never display focus rings */
@@ -208,6 +216,9 @@ code, .font-mono {
     break-after: page !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    max-height: 281mm !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
     margin: 0 !important;
     padding: 0 !important;
   }

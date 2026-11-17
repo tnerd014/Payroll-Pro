@@ -552,7 +552,7 @@ async function renderHtmlToPdfBuffer(htmlContent) {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      javascript: false,
+      javascript: true,
     },
   });
 
@@ -561,6 +561,40 @@ async function renderHtmlToPdfBuffer(htmlContent) {
     await printWin.loadURL(dataUri);
     // Allow font styles and CSS layout to fully stabilize
     await new Promise((resolve) => setTimeout(resolve, 350));
+
+    // Auto-fit content to strictly fit within single-page A4 bounds (281mm ≈ 1060px at 96 DPI)
+    try {
+      await printWin.webContents.executeJavaScript(`
+        (function() {
+          var MAX_A4_HEIGHT = 1060;
+
+          // 1. Single payslip canvas
+          var canvas = document.querySelector('.pdf-payslip-canvas');
+          if (canvas) {
+            var scrollH = canvas.scrollHeight;
+            if (scrollH > MAX_A4_HEIGHT) {
+              var scale = Math.max(0.65, (MAX_A4_HEIGHT / scrollH) * 0.98);
+              canvas.style.zoom = String(scale);
+            }
+          }
+
+          // 2. Multi-page consolidated pages (each page fits within 1 A4 sheet)
+          var pages = document.querySelectorAll('.pdf-payslip-page');
+          pages.forEach(function(page) {
+            var pageH = page.scrollHeight;
+            if (pageH > MAX_A4_HEIGHT) {
+              var pageScale = Math.max(0.65, (MAX_A4_HEIGHT / pageH) * 0.98);
+              page.style.zoom = String(pageScale);
+            }
+          });
+        })();
+      `);
+      // Brief pause to allow zoom re-flow to settle
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (jsErr) {
+      console.warn('Auto-fit JS execution warning:', jsErr);
+    }
+
     const pdfBuffer = await printWin.webContents.printToPDF({
       printBackground: true,
       pageSize: 'A4',

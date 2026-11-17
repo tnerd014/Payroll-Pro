@@ -33,6 +33,7 @@ import {
   DEFAULT_COLUMNS,
   normalizeVisibleColumns,
   EmailPayslipContext,
+  WhatsAppPayslipContext,
   DEFAULT_WHATSAPP_SETTINGS
 } from '../../../types';
 import { calculatePayrollItem, formatNaira } from '../../../engine/payePensionEngine';
@@ -61,6 +62,7 @@ interface MobilePayslipPrintViewProps {
   loans?: EmployeeLoan[];
   isLocked?: boolean;
   onEmailPayslips?: (context?: EmailPayslipContext) => void;
+  onWhatsAppPayslips?: (context?: WhatsAppPayslipContext) => void;
 }
 
 export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
@@ -81,6 +83,7 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
   loans = [],
   isLocked = false,
   onEmailPayslips,
+  onWhatsAppPayslips,
 }) => {
   // Navigation & preview state
   const [selectedEmpIndex, setSelectedEmpIndex] = useState(0);
@@ -92,6 +95,7 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isThemePickerOpen, setIsThemePickerOpen] = useState(false);
   const [isColumnsModalOpen, setIsColumnsModalOpen] = useState(false);
+  const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
 
   const datePickerRef = useRef<HTMLDivElement>(null);
   const themePickerRef = useRef<HTMLDivElement>(null);
@@ -366,7 +370,7 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
   };
 
   return (
-    <div className="no-print space-y-3 pb-6 select-none">
+    <div className="no-print space-y-3 pb-24 select-none">
       
       {/* ── 1. Minimalist Top Header Bar (Zero Clutter, Proper Dropdowns) ── */}
       <header className="relative bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2 shadow-xs flex items-center justify-between gap-1.5 z-40">
@@ -680,62 +684,122 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
         </div>
       </div>
 
-      {/* ── 4. Bottom Action Dock: Print, Email & WhatsApp ── */}
-      <div className={`pt-1 grid ${onEmailPayslips ? 'grid-cols-3' : 'grid-cols-2'} gap-2 w-full`}>
-        {/* Print Button */}
-        <button
-          type="button"
-          onClick={handlePrint}
-          className="h-12 px-3 rounded-2xl font-bold text-xs tracking-wide shadow-md flex items-center justify-center gap-1.5 active:scale-[0.98] cursor-pointer transition-all bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 border border-zinc-700/50 dark:border-zinc-200/50"
-          title="Print Payslips"
-        >
-          <Printer className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
-          <span>Print</span>
-        </button>
+      {/* ── 4. Floating Action Button & Speed Dial (Print, Email, WhatsApp) ── */}
+      {/* Backdrop overlay when speed dial is open */}
+      {isSpeedDialOpen && (
+        <div
+          onClick={() => setIsSpeedDialOpen(false)}
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
+        />
+      )}
 
-        {/* Email Button */}
-        {onEmailPayslips && (
-          <button
-            type="button"
-            onClick={() => {
-              onEmailPayslips({
-                selectedEmployeeIds: checkedEmployeeIds.length > 0
-                  ? checkedEmployeeIds
-                  : previewItem?.employeeId
-                    ? [previewItem.employeeId]
-                    : [],
-                selectedMonthKeys: selectedMonthKeys,
-                year: printYear,
-              });
-            }}
-            className="h-12 px-3 rounded-2xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs tracking-wide shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-            title="Email Payslips"
-          >
-            <Mail className="w-4 h-4" />
-            <span>Email</span>
-          </button>
+      {/* Floating Action Button & Speed Dial Menu */}
+      <div className="fixed bottom-[80px] right-4 z-50 flex flex-col items-end gap-2.5 pointer-events-auto">
+        {/* Expanded Speed Dial Action Menu */}
+        {isSpeedDialOpen && (
+          <div className="flex flex-col items-end gap-2 mb-1 animate-in slide-in-from-bottom-2 fade-in duration-200">
+            {/* Action 1: Email Payslips */}
+            {onEmailPayslips && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSpeedDialOpen(false);
+                  onEmailPayslips({
+                    selectedEmployeeIds: checkedEmployeeIds.length > 0
+                      ? checkedEmployeeIds
+                      : previewItem?.employeeId
+                        ? [previewItem.employeeId]
+                        : [],
+                    selectedMonthKeys: selectedMonthKeys,
+                    year: printYear,
+                  });
+                }}
+                className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
+              >
+                <span className="px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+                  Email Payslips
+                </span>
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                  <Mail className="w-4 h-4" />
+                </div>
+              </button>
+            )}
+
+            {/* Action 2: WhatsApp Studio */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSpeedDialOpen(false);
+                if (onWhatsAppPayslips) {
+                  onWhatsAppPayslips({
+                    selectedEmployeeIds: checkedEmployeeIds.length > 0
+                      ? checkedEmployeeIds
+                      : previewItem?.employeeId
+                        ? [previewItem.employeeId]
+                        : [],
+                    selectedMonthKeys: selectedMonthKeys,
+                    year: printYear,
+                  });
+                } else if (previewItem) {
+                  const targetEmp = employees.find(e => e.id === previewItem.employeeId);
+                  openWhatsAppPayslipChat({
+                    item: previewItem,
+                    company,
+                    monthLabel: periodLabel || monthLabel,
+                    year: printYear,
+                    phone: targetEmp?.phone,
+                    config: payslipDesign,
+                  }, true);
+                }
+              }}
+              className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
+            >
+              <span className="px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+                WhatsApp Studio
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                <MessageCircle className="w-4 h-4" />
+              </div>
+            </button>
+
+            {/* Action 3: Print Payslips */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSpeedDialOpen(false);
+                handlePrint();
+              }}
+              className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
+            >
+              <span className="px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+                Print Payslips ({checkedEmployeeIds.length > 0 ? checkedEmployeeIds.length : 1})
+              </span>
+              <div className="w-10 h-10 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-emerald-400 dark:text-emerald-600 border border-zinc-700/50 dark:border-zinc-200/50 shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                <Printer className="w-4 h-4" />
+              </div>
+            </button>
+          </div>
         )}
 
-        {/* WhatsApp Button */}
+        {/* Primary Floating Action Button */}
         <button
           type="button"
-          onClick={() => {
-            if (!previewItem) return;
-            const targetEmp = employees.find(e => e.id === previewItem.employeeId);
-            openWhatsAppPayslipChat({
-              item: previewItem,
-              company,
-              monthLabel: periodLabel || monthLabel,
-              year: printYear,
-              phone: targetEmp?.phone,
-              config: payslipDesign,
-            }, true);
-          }}
-          className="h-12 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-bold text-xs tracking-wide shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-          title="Send Payslip on WhatsApp"
+          onClick={() => setIsSpeedDialOpen(!isSpeedDialOpen)}
+          className={`relative w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-90 outline-none focus:outline-none focus:ring-0 select-none ${
+            isSpeedDialOpen
+              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rotate-90 shadow-2xl'
+              : 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 border border-zinc-700/50 dark:border-zinc-200/50'
+          }`}
+          title={isSpeedDialOpen ? 'Close Actions' : 'Dispatch / Print Actions'}
+          aria-label={isSpeedDialOpen ? 'Close Actions' : 'Dispatch / Print Actions'}
         >
-          <MessageCircle className="w-4 h-4" />
-          <span>WhatsApp</span>
+          {isSpeedDialOpen ? (
+            <X className="w-5 h-5 transition-transform" />
+          ) : (
+            <div className="relative flex items-center justify-center">
+              <Printer className="w-5 h-5 text-emerald-400 dark:text-emerald-600" />
+            </div>
+          )}
         </button>
       </div>
 

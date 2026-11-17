@@ -383,6 +383,7 @@ export const App: React.FC = () => {
     employeeAbsences,
     saveBatchContributions,
     deleteContribution,
+    deleteContributionsForPeriod,
     addContributionPayout,
     deleteContributionPayout,
     saveEmployeeAbsence,
@@ -740,9 +741,13 @@ export const App: React.FC = () => {
           onUpdateEmailSettings={updateEmailSettings}
           whatsappSettings={whatsappSettings}
           onUpdateWhatsAppSettings={updateWhatsAppSettings}
+          whatsappedPayslips={whatsappedPayslips}
+          onRecordWhatsAppedPayslips={recordWhatsAppedPayslips}
+          onOpenWhatsAppSettings={handleOpenWhatsAppSettings}
           emailedPayslips={emailedPayslips}
           onRecordEmailedPayslips={recordEmailedPayslips}
           onUpdateEmployeeEmail={(id, email) => updateEmployee(id, { email })}
+          onUpdateEmployeePhone={(id, phone) => updateEmployee(id, { phone })}
           isAdmin={isAdmin}
           isCloudOffline={isCloudOffline}
           isPhoneFramePreview={isSimulatorMode && !isMobileViewport}
@@ -790,6 +795,10 @@ export const App: React.FC = () => {
           companies={companies}
           activeCompanyId={activeCompanyId}
           loans={state.loans || []}
+          contributions={employeeContributions}
+          payouts={contributionPayouts}
+          absences={employeeAbsences || []}
+          snapshots={state.snapshots || []}
           departments={state.departments || []}
           employmentTypeRules={state.payrollVariables?.employmentTypeRules || []}
           onSelectCompany={async (id) => {
@@ -868,7 +877,7 @@ export const App: React.FC = () => {
                 ? 'flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b]'
                 : state.activeView === 'profile'
                 ? 'flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b]'
-                : 'overflow-auto px-6 pb-6 pt-0.5 md:px-8 md:pb-8 md:pt-0.5 bg-[#fbfbfb] dark:bg-[#09090b]'
+                : 'overflow-auto px-6 pb-6 pt-0 md:px-8 md:pb-8 md:pt-0 bg-[#fbfbfb] dark:bg-[#09090b]'
             }`}
           >
             {state.activeView === 'profile' && !isLocalUser ? (
@@ -943,8 +952,12 @@ export const App: React.FC = () => {
                 onDeletePreset={deletePayslipPreset}
                 loans={state.loans || []}
                 absences={employeeAbsences || []}
+                contributions={employeeContributions}
+                payouts={contributionPayouts}
                 onSaveAbsence={saveEmployeeAbsence}
                 onDeleteAbsence={deleteEmployeeAbsence}
+                onDeleteContribution={deleteContribution}
+                onDeleteContributionsForPeriod={deleteContributionsForPeriod}
                 currentUser={effectiveMember}
                 emailSettings={emailSettings}
                 onUpdateEmployeeEmail={(id, email) => updateEmployee(id, { email })}
@@ -952,6 +965,7 @@ export const App: React.FC = () => {
                 emailedPayslips={emailedPayslips}
                 onRecordEmailedPayslips={recordEmailedPayslips}
                 whatsappSettings={whatsappSettings}
+                onUpdateWhatsAppSettings={updateWhatsAppSettings}
                 onUpdateEmployeePhone={(id, phone) => updateEmployee(id, { phone })}
                 onOpenWhatsAppSettings={handleOpenWhatsAppSettings}
                 whatsappedPayslips={whatsappedPayslips}
@@ -1084,6 +1098,9 @@ export const App: React.FC = () => {
                     snapshots={state.snapshots}
                     snapshotsCount={state.snapshots.length}
                     loans={state.loans || []}
+                    contributions={employeeContributions}
+                    payouts={contributionPayouts}
+                    absences={employeeAbsences || []}
                     payslipDesign={state.payslipDesign}
                     onImportEmployees={importEmployees}
                     onResetAllData={resetAllData}

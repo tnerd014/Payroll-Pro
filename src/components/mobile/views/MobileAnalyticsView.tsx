@@ -119,24 +119,14 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
     return Array.from(set).sort((a, b) => a - b);
   }, [snapshots]);
 
-  // Mobile Contributions state
+  // Mobile Contributions state (synced to top period filter, with optional All-Time toggle)
   const [contribScope, setContribScope] = useState<string>('ALL');
-  const [contribTimeframe, setContribTimeframe] = useState<'month' | 'year' | 'all'>('month');
-  const [contribYear, setContribYear] = useState<number>(() => initialYear || new Date().getFullYear());
-  const [contribMonthKey, setContribMonthKey] = useState<string>(() => initialSelectedMonth || (MONTHS[new Date().getMonth()]?.key || 'oct'));
-
-  useEffect(() => {
-    setContribYear(activeYear);
-  }, [activeYear]);
-
-  useEffect(() => {
-    setContribMonthKey(activeMonthKey);
-  }, [activeMonthKey]);
-
-  useEffect(() => {
-    if (rangeMode === 'single-month') setContribTimeframe('month');
-    else setContribTimeframe('year');
-  }, [rangeMode]);
+  const [contribAllTime, setContribAllTime] = useState<boolean>(false);
+  const contribYear = activeYear;
+  const contribMonthKey = activeMonthKey;
+  const contribTimeframe: 'month' | 'year' | 'all' = contribAllTime
+    ? 'all'
+    : (rangeMode === 'single-month' ? 'month' : 'year');
 
   const schemeNameFallback = schemes[0]?.name || 'Staff Welfare Fund';
 
@@ -229,6 +219,14 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           return { emp, amount, scheme: c?.schemeName || schemeNameFallback };
         })
         .filter(r => r.amount > 0 && (!q || r.emp.code.toLowerCase().includes(q) || `${r.emp.firstName} ${r.emp.lastName}`.toLowerCase().includes(q)));
+    } else if (contribTimeframe === 'all') {
+      return employees
+        .map(emp => {
+          const allContribs = (contributions || []).filter(item => item.employeeId === emp.id && Number(item.amount) > 0);
+          const totalAll = allContribs.reduce((s, item) => s + (Number(item.amount) || 0), 0);
+          return { emp, amount: totalAll, monthsCount: allContribs.length, scheme: allContribs[0]?.schemeName || schemeNameFallback };
+        })
+        .filter(r => r.amount > 0 && (!q || r.emp.code.toLowerCase().includes(q) || `${r.emp.firstName} ${r.emp.lastName}`.toLowerCase().includes(q)));
     } else {
       return employees
         .map(emp => {
@@ -240,11 +238,14 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
     }
   }, [employees, contributions, contribTimeframe, contribYear, contribMonthKey, searchQuery, schemeNameFallback]);
 
-  // Mobile Absences State & Computations
+  // Mobile Absences State & Computations (synced to top period filter, with optional All-Time toggle)
   const [absenceScope, setAbsenceScope] = useState<string>('ALL');
-  const [absenceTimeframe, setAbsenceTimeframe] = useState<'month' | 'year' | 'all'>('month');
-  const [absenceYear, setAbsenceYear] = useState<number>(() => initialYear || new Date().getFullYear());
-  const [absenceMonthKey, setAbsenceMonthKey] = useState<string>(() => initialSelectedMonth || (MONTHS[new Date().getMonth()]?.key || 'oct'));
+  const [absenceAllTime, setAbsenceAllTime] = useState<boolean>(false);
+  const absenceYear = activeYear;
+  const absenceMonthKey = activeMonthKey;
+  const absenceTimeframe: 'month' | 'year' | 'all' = absenceAllTime
+    ? 'all'
+    : (rangeMode === 'single-month' ? 'month' : 'year');
 
   const selectedAbsenceEmployee = useMemo(() => {
     if (absenceScope === 'ALL') return null;
@@ -446,8 +447,12 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
   const totalEmpPension = activeItems.reduce((s, i) => s + (i.employeePension || 0), 0);
   const totalEmplrPension = activeItems.reduce((s, i) => s + (i.employerPension || 0), 0);
   const totalPensionPool = totalEmpPension + totalEmplrPension;
+  const totalLoanDeductions = activeItems.reduce((s, i) => s + (Number(i.loanDeduction) || 0), 0);
+  const totalContribDeductions = activeItems.reduce((s, i) => s + (Number(i.contributionDeduction) || 0), 0);
+  const totalInternalDeductions = totalLoanDeductions + totalContribDeductions;
   const totalEmployerCost = totalGross + totalEmplrPension;
   const totalStatutory = totalPaye + totalPensionPool;
+  const totalDeductions = totalPaye + totalEmpPension + totalInternalDeductions;
 
   // Percentage Proportions
   const netRatio = totalEmployerCost > 0 ? (totalNet / totalEmployerCost) * 100 : 0;
@@ -523,6 +528,10 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
         departmentFilter: selectedDept,
         employmentTypeFilter: 'ALL',
         loans,
+        contributions,
+        payouts,
+        absences,
+        snapshots,
       },
       loans
     );
@@ -785,10 +794,6 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                 Statutory Remittances
               </h3>
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/70 dark:border-emerald-800/60">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>Compliant</span>
-              </span>
             </div>
 
             <div className="space-y-2 divide-y divide-zinc-100 dark:divide-zinc-800/60">
@@ -914,6 +919,26 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
               </span>
               <p className="text-sm sm:text-base font-bold font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
                 {formatNaira(totalEmplrPension)}
+              </p>
+            </div>
+
+            {/* Staff Loan Repayments */}
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+                Loan Repayments
+              </span>
+              <p className="text-sm sm:text-base font-bold font-mono tracking-tight text-purple-600 dark:text-purple-400">
+                {formatNaira(totalLoanDeductions)}
+              </p>
+            </div>
+
+            {/* Staff Welfare & Savings */}
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+                Welfare & Savings
+              </span>
+              <p className="text-sm sm:text-base font-bold font-mono tracking-tight text-teal-600 dark:text-teal-400">
+                {formatNaira(totalContribDeductions)}
               </p>
             </div>
 
@@ -1174,9 +1199,22 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           {/* Mobile Controls */}
           <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-3.5 space-y-2.5">
             <div>
-              <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                Staff Scope
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  Staff Scope
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setContribAllTime(prev => !prev)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition cursor-pointer ${
+                    contribAllTime
+                      ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100'
+                      : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800'
+                  }`}
+                >
+                  {contribAllTime ? 'All-Time ✓' : 'All-Time'}
+                </button>
+              </div>
               <select
                 value={contribScope}
                 onChange={e => setContribScope(e.target.value)}
@@ -1191,38 +1229,6 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                   ))}
                 </optgroup>
               </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                  Timeframe
-                </label>
-                <select
-                  value={contribTimeframe}
-                  onChange={e => setContribTimeframe(e.target.value as any)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-medium text-zinc-900 dark:text-zinc-100"
-                >
-                  <option value="month">Monthly</option>
-                  <option value="year">Full Year</option>
-                  <option value="all">All Records</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                  Year
-                </label>
-                <select
-                  value={contribYear}
-                  onChange={e => setContribYear(Number(e.target.value))}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-medium text-zinc-900 dark:text-zinc-100"
-                >
-                  {years.map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             {selectedContribEmployee && (
@@ -1339,9 +1345,22 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           {/* Controls Card */}
           <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-3.5 space-y-3 shadow-2xs">
             <div>
-              <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                Report Scope
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  Report Scope
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setAbsenceAllTime(prev => !prev)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition cursor-pointer ${
+                    absenceAllTime
+                      ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100'
+                      : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800'
+                  }`}
+                >
+                  {absenceAllTime ? 'All-Time ✓' : 'All-Time'}
+                </button>
+              </div>
               <select
                 value={absenceScope}
                 onChange={e => setAbsenceScope(e.target.value)}
@@ -1356,66 +1375,6 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                   ))}
                 </optgroup>
               </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                  Timeframe
-                </label>
-                <select
-                  value={absenceTimeframe}
-                  onChange={e => setAbsenceTimeframe(e.target.value as any)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-medium text-zinc-900 dark:text-zinc-100"
-                >
-                  <option value="month">Monthly</option>
-                  <option value="year">Full Year</option>
-                  <option value="all">All Records</option>
-                </select>
-              </div>
-
-              {absenceTimeframe === 'month' ? (
-                <div>
-                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                    Month & Year
-                  </label>
-                  <div className="grid grid-cols-2 gap-1">
-                    <select
-                      value={absenceMonthKey}
-                      onChange={e => setAbsenceMonthKey(e.target.value)}
-                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-1.5 py-1.5 text-xs font-medium text-zinc-900 dark:text-zinc-100"
-                    >
-                      {MONTHS.map(m => (
-                        <option key={m.key} value={m.key}>{m.label.slice(0, 3)}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={absenceYear}
-                      onChange={e => setAbsenceYear(Number(e.target.value))}
-                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-1.5 py-1.5 text-xs font-medium text-zinc-900 dark:text-zinc-100"
-                    >
-                      {years.map(y => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                    Year
-                  </label>
-                  <select
-                    value={absenceYear}
-                    onChange={e => setAbsenceYear(Number(e.target.value))}
-                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs font-medium text-zinc-900 dark:text-zinc-100"
-                  >
-                    {years.map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
 
             {selectedAbsenceEmployee && (

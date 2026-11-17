@@ -300,20 +300,20 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
     if (layout === 'banner') {
       return renderSectionWrapper('company_header', (
         <div style={themeStyles.bannerBg} className={`-mx-7 -mt-7 sm:-mx-8 sm:-mt-8 p-6 sm:p-7 ${config.roundedCorners ? 'rounded-t-lg' : ''} mb-4`}>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
               {showLogo && (
                 company.logoUrl ? (
-                  <img src={company.logoUrl} alt="Logo" className="h-10 w-auto object-contain bg-white/10 rounded p-1" />
+                  <img src={company.logoUrl} alt="Logo" className="h-10 w-auto object-contain bg-white/10 rounded p-1 shrink-0" />
                 ) : (
-                  <div className="w-9 h-9 rounded bg-white/20 flex items-center justify-center font-bold text-sm text-white">
+                  <div className="w-9 h-9 rounded bg-white/20 flex items-center justify-center font-bold text-sm text-white shrink-0">
                     ⚡
                   </div>
                 )
               )}
-              <div>
+              <div className="min-w-0">
                 {showName && (
-                  <h1 className="text-base sm:text-lg font-bold tracking-tight uppercase">
+                  <h1 className="text-sm sm:text-lg font-bold tracking-tight uppercase leading-tight">
                     {company.name}
                   </h1>
                 )}
@@ -330,7 +330,7 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
                 )}
               </div>
             </div>
-            <div className="sm:text-right">
+            <div className="text-right shrink-0">
               {showTitle && (
                 interactive && onUpdateConfig ? (
                   <input
@@ -338,18 +338,18 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
                     value={config.payslipTitle}
                     onChange={(e) => onUpdateConfig({ payslipTitle: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] font-semibold uppercase tracking-wider text-white/90 bg-transparent border-b border-dashed border-white/40 hover:border-white focus:border-white focus:outline-none transition block sm:text-right"
+                    className="text-[10px] font-semibold uppercase tracking-wider text-white/90 bg-transparent border-b border-dashed border-white/40 hover:border-white focus:border-white focus:outline-none transition block text-right ml-auto"
                     placeholder="OFFICIAL SALARY ADVICE"
                     title="Tap to edit Document Title directly"
                   />
                 ) : (
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/70 block">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-white/70 block text-right">
                     {config.payslipTitle}
                   </span>
                 )
               )}
               {showPeriod && (
-                <span className="text-sm font-bold font-mono">
+                <span className="text-xs sm:text-sm font-bold font-mono block text-right">
                   {monthLabel.toUpperCase()} {year}
                 </span>
               )}
@@ -360,12 +360,12 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
                     value={config.payslipSubtitle}
                     onChange={(e) => onUpdateConfig({ payslipSubtitle: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] text-white/80 bg-transparent border-b border-dashed border-white/40 hover:border-white focus:border-white focus:outline-none transition block mt-0.5 italic sm:text-right"
+                    className="text-[10px] text-white/80 bg-transparent border-b border-dashed border-white/40 hover:border-white focus:border-white focus:outline-none transition block mt-0.5 italic text-right ml-auto"
                     placeholder="e.g. Strictly Private & Confidential"
                     title="Tap to edit Document Subtitle directly"
                   />
                 ) : (
-                  <span className="text-[10px] text-white/70 block mt-0.5 italic">
+                  <span className="text-[10px] text-white/70 block mt-0.5 italic text-right">
                     {config.payslipSubtitle}
                   </span>
                 )
@@ -454,20 +454,20 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
 
     // Default 'modern' / 'clean' / 'split'
     return renderSectionWrapper('company_header', (
-      <div className="flex flex-col sm:flex-row justify-between items-start border-b border-zinc-200 pb-5 gap-4">
-        <div>
+      <div className="flex flex-row justify-between items-start border-b border-zinc-200 pb-5 gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1 pr-2">
           <div className="flex items-center gap-2.5">
             {showLogo && (
               company.logoUrl ? (
-                <img src={company.logoUrl} alt="Logo" className="h-9 w-auto object-contain" />
+                <img src={company.logoUrl} alt="Logo" className="h-9 w-auto object-contain shrink-0" />
               ) : (
-                <div className="w-8 h-8 rounded border border-zinc-300 flex items-center justify-center font-bold text-xs text-zinc-900">
+                <div className="w-8 h-8 rounded border border-zinc-300 flex items-center justify-center font-bold text-xs text-zinc-900 shrink-0">
                   ⚡
                 </div>
               )
             )}
             {showName && (
-              <h1 className="text-base font-bold tracking-tight uppercase text-zinc-900">
+              <h1 className="text-sm sm:text-base font-bold tracking-tight uppercase text-zinc-900 leading-tight">
                 {company.name}
               </h1>
             )}
@@ -484,7 +484,7 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
             </p>
           )}
         </div>
-        <div className="sm:text-right shrink-0">
+        <div className="text-right shrink-0">
           {showTitle && (
             interactive && onUpdateConfig ? (
               <input
@@ -492,18 +492,18 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
                 value={config.payslipTitle}
                 onChange={(e) => onUpdateConfig({ payslipTitle: e.target.value })}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition block sm:text-right"
+                className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition block text-right ml-auto"
                 placeholder="OFFICIAL SALARY ADVICE"
                 title="Tap to edit Document Title directly"
               />
             ) : (
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 block">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 block text-right">
                 {config.payslipTitle}
               </span>
             )
           )}
           {showPeriod && (
-            <span className="text-xs font-bold font-mono text-zinc-900 block mt-0.5">
+            <span className="text-xs font-bold font-mono text-zinc-900 block mt-0.5 text-right">
               {monthLabel.toUpperCase()} {year}
             </span>
           )}
@@ -514,12 +514,12 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
                 value={config.payslipSubtitle}
                 onChange={(e) => onUpdateConfig({ payslipSubtitle: e.target.value })}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[10px] text-zinc-400 bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition block mt-0.5 italic sm:text-right"
+                className="text-[10px] text-zinc-400 bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none transition block mt-0.5 italic text-right ml-auto"
                 placeholder="e.g. Strictly Private & Confidential"
                 title="Tap to edit Document Subtitle directly"
               />
             ) : (
-              <span className="text-[10px] text-zinc-400 block mt-0.5 italic">
+              <span className="text-[10px] text-zinc-400 block mt-0.5 italic text-right">
                 {config.payslipSubtitle}
               </span>
             )

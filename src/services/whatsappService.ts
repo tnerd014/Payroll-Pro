@@ -31,6 +31,20 @@ export function formatPhoneNumberForWhatsApp(phone?: string | null): string {
 }
 
 /**
+ * Converts a base64 string to a standard binary Blob (for multipart uploads)
+ */
+function base64ToBlob(base64: string, mimeType = 'application/pdf'): Blob {
+  const cleanBase64 = base64.replace(/\s+/g, '');
+  const binaryString = atob(cleanBase64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mimeType });
+}
+
+/**
  * Replaces placeholders in the WhatsApp template with employee payroll data
  */
 export function interpolateWhatsAppTemplate(
@@ -157,13 +171,70 @@ export async function sendWhatsAppPayslip(
     }
 
     try {
-      const res = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : undefined;
+      const safeName = (payload.item.fullName || 'Employee').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_');
+      const fileName = `Payslip_${safeName}_${payload.monthLabel}_${payload.year}.pdf`;
+      let mediaId: string | undefined;
+
+      // 1. Try rendering the official publication PDF via Electron
+      if (electronAPI?.renderPayslipPdf) {
+        try {
+          const htmlContent = renderPayslipToHtml(
+            payload.item,
+            payload.company,
+            payload.monthLabel,
+            payload.year,
+            payload.config
+          );
+          const pdfRes = await electronAPI.renderPayslipPdf(htmlContent);
+          if (pdfRes?.success && pdfRes?.base64) {
+            const pdfBlob = base64ToBlob(pdfRes.base64, 'application/pdf');
+            const formData = new FormData();
+            formData.append('messaging_product', 'whatsapp');
+            formData.append('file', pdfBlob, fileName);
+            formData.append('type', 'application/pdf');
+
+            const uploadRes = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/media`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+              },
+              body: formData,
+            });
+
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              if (uploadData?.id) {
+                mediaId = uploadData.id;
+              }
+            } else {
+              const errData = await uploadRes.json().catch(() => null);
+              console.warn('Meta media upload returned non-OK:', errData);
+            }
+          }
+        } catch (pdfErr) {
+          console.warn('Could not generate or upload PDF for WhatsApp:', pdfErr);
+        }
+      }
+
+      // 2. Dispatch via Document (with PDF) or fallback to Text
+      let messagePayload: any;
+      if (mediaId) {
+        // WhatsApp document captions support up to 1024 characters
+        const caption = messageText.length > 1000 ? messageText.substring(0, 995) + '...' : messageText;
+        messagePayload = {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: targetPhone,
+          type: 'document',
+          document: {
+            id: mediaId,
+            caption,
+            filename: fileName,
+          },
+        };
+      } else {
+        messagePayload = {
           messaging_product: 'whatsapp',
           recipient_type: 'individual',
           to: targetPhone,
@@ -172,7 +243,16 @@ export async function sendWhatsAppPayslip(
             preview_url: false,
             body: messageText,
           },
-        }),
+        };
+      }
+
+      const res = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messagePayload),
       });
 
       const data = await res.json();
@@ -193,17 +273,57 @@ export async function sendWhatsAppPayslip(
     }
 
     try {
-      const res = await fetch(`https://api.ultramsg.com/${instanceId}/messages/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          token,
-          to: targetPhone,
-          body: messageText,
-        }).toString(),
-      });
+      const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : undefined;
+      const safeName = (payload.item.fullName || 'Employee').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_');
+      const fileName = `Payslip_${safeName}_${payload.monthLabel}_${payload.year}.pdf`;
+      let pdfBase64: string | undefined;
+
+      if (electronAPI?.renderPayslipPdf) {
+        try {
+          const htmlContent = renderPayslipToHtml(
+            payload.item,
+            payload.company,
+            payload.monthLabel,
+            payload.year,
+            payload.config
+          );
+          const pdfRes = await electronAPI.renderPayslipPdf(htmlContent);
+          if (pdfRes?.success && pdfRes?.base64) {
+            pdfBase64 = pdfRes.base64;
+          }
+        } catch (pdfErr) {
+          console.warn('Could not generate PDF for UltraMsg:', pdfErr);
+        }
+      }
+
+      let res: Response;
+      if (pdfBase64) {
+        res = await fetch(`https://api.ultramsg.com/${instanceId}/messages/document`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            token,
+            to: targetPhone,
+            filename: fileName,
+            document: `data:application/pdf;base64,${pdfBase64}`,
+            caption: messageText,
+          }).toString(),
+        });
+      } else {
+        res = await fetch(`https://api.ultramsg.com/${instanceId}/messages/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            token,
+            to: targetPhone,
+            body: messageText,
+          }).toString(),
+        });
+      }
 
       const data = await res.json();
       if (data?.error) {

@@ -7,4 +7,4 @@ hs_err_pid*.log
 Thumbs.db
 *.keystore
 *.jks
-keystore-base64.txt
+keystore-base64.txt

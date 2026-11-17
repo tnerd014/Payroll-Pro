@@ -45,7 +45,7 @@ interface MobileLoansDirectoryViewProps {
   isReadOnly?: boolean;
 }
 
-// Helper to sort loans by most recent first
+// Helper to sort loans by most recent business date first (repayment due date, disbursement date, or start period)
 const getLoanRecencyScore = (loan: EmployeeLoan): number => {
   const parseDateToMs = (val?: string | null): number => {
     if (!val) return 0;
@@ -80,12 +80,16 @@ const getLoanRecencyScore = (loan: EmployeeLoan): number => {
     return 0;
   };
 
-  const disb = parseDateToMs(loan.disbursementDate);
+  // 1. Primary visible dates on the card/table: Due Date, Disbursement Date, or Start Period
   const due = parseDateToMs(loan.repaymentDate || loan.repaymentStartDate);
+  const disb = parseDateToMs(loan.disbursementDate);
   const period = parsePeriodKeyToMs(loan.startPeriodKey);
-  const created = parseDateToMs(loan.createdAt);
 
-  return Math.max(disb, due, period, created);
+  const businessDate = Math.max(due, disb, period);
+  if (businessDate > 0) return businessDate;
+
+  // 2. Only if no business date was provided, fall back to record creation timestamp
+  return parseDateToMs(loan.createdAt);
 };
 
 export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> = ({
@@ -187,7 +191,14 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
         const matchesStatus = filterStatus === 'All' || l.status === filterStatus;
         return matchesSearch && matchesStatus;
       })
-      .sort((a, b) => getLoanRecencyScore(b) - getLoanRecencyScore(a));
+      .sort((a, b) => {
+        const scoreB = getLoanRecencyScore(b);
+        const scoreA = getLoanRecencyScore(a);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        const tB = new Date(b.createdAt || 0).getTime();
+        const tA = new Date(a.createdAt || 0).getTime();
+        return tB - tA;
+      });
   }, [loans, empMap, searchQuery, filterStatus]);
 
   // Close details 3-dot menu on outside click

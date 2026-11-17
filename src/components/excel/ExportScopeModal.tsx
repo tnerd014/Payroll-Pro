@@ -83,12 +83,22 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
     {
       id: 'all',
       label: 'Complete Audit Package (All Schedules & Registers)',
-      desc: 'Master Payroll Register, Bank Payment Schedule, PAYE Tax, PenCom Pension, Staff Loans & Advances, Annual Matrix, and Staff Database.',
+      desc: 'Master Payroll Register, Bank Payment Schedule, PAYE Tax, PenCom Pension, Staff Loans, Welfare Contributions, Absence Log, Annual Matrix, and Staff Database.',
     },
     {
       id: 'payroll-register',
       label: 'Master Payroll Register Only',
       desc: 'Monthly gross, full allowance breakdown (Basic, Housing, Transport), statutory deductions, and net pay.',
+    },
+    {
+      id: 'absences-log',
+      label: 'Staff Absence & Attendance Log Only',
+      desc: 'Itemized schedule of employee days absent, daily rates, absence types, and gross pay deductions.',
+    },
+    {
+      id: 'contributions-schedule',
+      label: 'Staff Welfare & Voluntary Savings Only',
+      desc: 'Summary of voluntary staff welfare deductions, savings contributions, and cooperative schemes.',
     },
     {
       id: 'loans-schedule',

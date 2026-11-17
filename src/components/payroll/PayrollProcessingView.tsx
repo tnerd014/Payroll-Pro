@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Calculator, 
-  Lock, 
-  Unlock, 
-  Printer, 
-  Upload, 
+import {
+  Calculator,
+  Lock,
+  Unlock,
+  Printer,
+  Upload,
   Search,
   X,
   SlidersHorizontal,
@@ -18,24 +18,27 @@ import {
   ChevronUp,
   Mail,
   MailCheck,
+  Calendar,
   CalendarOff,
   MessageCircle
 } from 'lucide-react';
-import { 
-  CalculatedPayrollItem, 
-  PayrollSnapshot, 
-  Employee, 
-  PayrollVariables, 
-  PayeTaxVariables, 
-  CompanyProfile, 
-  PayslipDesignConfig, 
-  PayslipCustomPreset, 
-  EmployeeLoan, 
-  TeamMember, 
-  EmailSettings, 
-  EmailedPayslipRecord, 
-  EmailPayslipContext, 
+import {
+  CalculatedPayrollItem,
+  PayrollSnapshot,
+  Employee,
+  PayrollVariables,
+  PayeTaxVariables,
+  CompanyProfile,
+  PayslipDesignConfig,
+  PayslipCustomPreset,
+  EmployeeLoan,
+  TeamMember,
+  EmailSettings,
+  EmailedPayslipRecord,
+  EmailPayslipContext,
   EmployeeAbsenceRecord,
+  EmployeeContribution,
+  ContributionPayout,
   WhatsAppSettings,
   WhatsAppedPayslipRecord,
   WhatsAppPayslipContext
@@ -82,8 +85,12 @@ interface PayrollProcessingViewProps {
   onDeletePreset?: (id: string) => void;
   loans?: EmployeeLoan[];
   absences?: EmployeeAbsenceRecord[];
+  contributions?: EmployeeContribution[];
+  payouts?: ContributionPayout[];
   onSaveAbsence?: (absenceData: Omit<EmployeeAbsenceRecord, 'id' | 'createdAt'> & { id?: string }) => void;
   onDeleteAbsence?: (id: string) => void;
+  onDeleteContribution?: (id: string) => void;
+  onDeleteContributionsForPeriod?: (periodKey: string) => void;
   currentUser?: TeamMember | null;
   emailSettings?: EmailSettings;
   onUpdateEmployeeEmail?: (employeeId: string, newEmail: string) => void;
@@ -91,6 +98,7 @@ interface PayrollProcessingViewProps {
   emailedPayslips?: Record<string, EmailedPayslipRecord>;
   onRecordEmailedPayslips?: (records: EmailedPayslipRecord[]) => void;
   whatsappSettings?: WhatsAppSettings;
+  onUpdateWhatsAppSettings?: (settings: Partial<WhatsAppSettings>) => void;
   onUpdateEmployeePhone?: (employeeId: string, newPhone: string) => void;
   onOpenWhatsAppSettings?: () => void;
   whatsappedPayslips?: Record<string, WhatsAppedPayslipRecord>;
@@ -125,8 +133,12 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   onDeletePreset,
   loans = [],
   absences = [],
+  contributions = [],
+  payouts = [],
   onSaveAbsence,
   onDeleteAbsence,
+  onDeleteContribution,
+  onDeleteContributionsForPeriod,
   currentUser,
   emailSettings,
   onUpdateEmployeeEmail,
@@ -134,6 +146,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   emailedPayslips = {},
   onRecordEmailedPayslips,
   whatsappSettings,
+  onUpdateWhatsAppSettings,
   onUpdateEmployeePhone,
   onOpenWhatsAppSettings,
   whatsappedPayslips = {},
@@ -158,7 +171,23 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   const [selectedSingleSlip, setSelectedSingleSlip] = useState<CalculatedPayrollItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('ALL');
-  const [isCompactMode, setIsCompactMode] = useState<boolean>(false);
+  const [isCompactMode, setIsCompactMode] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('payroll_pro_table_compact');
+      if (stored !== null) return stored === 'true';
+    } catch { }
+    return true; // Default to Compact on all tables
+  });
+
+  const toggleCompactMode = () => {
+    setIsCompactMode(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('payroll_pro_table_compact', String(next));
+      } catch { }
+      return next;
+    });
+  };
   const [showStats, setShowStats] = useState<boolean>(true);
 
   // Selected version key: 'live' or string of version number, e.g. '1', '2'
@@ -288,6 +317,9 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
         case 'pension':
           comparison = a.employeePension - b.employeePension;
           break;
+        case 'loans':
+          comparison = (a.loanDeduction || 0) - (b.loanDeduction || 0);
+          break;
         case 'contribution':
           comparison = (a.contributionDeduction || 0) - (b.contributionDeduction || 0);
           break;
@@ -367,7 +399,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
         targetYear,
         displaySnapshot || activeSnapshot,
         company,
-        { ...options, loans },
+        { ...options, loans, contributions, payouts, absences, snapshots },
         loans
       );
     } catch (err) {
@@ -376,198 +408,167 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 max-w-6xl mx-auto select-none">
-      
+    <div className="space-y-4 select-none">
+
       {/* ── Top Header ── */}
-      <div className="pt-3 pb-3.5 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="pt-3.5 pb-3 border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
               Payroll Processing
             </h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Active cycle for {monthLabel} {year} &bull; {items.length} Employees enrolled
-          </p>
-        </div>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Active cycle for {monthLabel} {year} &bull; {items.length} Employees enrolled
+            </p>
+          </div>
 
-        {/* Action Controls Toolbar - Streamlined Single Row */}
-        <div className="flex items-center gap-2 flex-nowrap">
-          {/* Month Selector */}
-          <select
-            value={selectedMonth}
-            onChange={(e) => onPeriodChange(e.target.value, year)}
-            className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
-          >
-            {MONTHS.map(m => (
-              <option key={m.key} value={m.key}>{m.label}</option>
-            ))}
-          </select>
+          {/* Action Controls Toolbar - Streamlined Single Row */}
+          <div className="flex items-center gap-2 flex-nowrap">
+            {/* Unified Period Selector */}
+            <div className="h-8 flex items-center gap-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium text-zinc-700 dark:text-zinc-200">
+              <Calendar className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+              <select
+                value={selectedMonth}
+                onChange={(e) => onPeriodChange(e.target.value, year)}
+                className="bg-transparent font-medium text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
+              >
+                {MONTHS.map(m => (
+                  <option key={m.key} value={m.key} className="dark:bg-[#121215]">{m.label}</option>
+                ))}
+              </select>
+              <select
+                value={year}
+                onChange={(e) => onPeriodChange(selectedMonth, Number(e.target.value))}
+                className="bg-transparent font-medium text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
+              >
+                {(() => {
+                  const cy = Math.max(new Date().getFullYear(), year || 0);
+                  const snapshotYears = (snapshots || []).map(s => Number(s.year)).filter(y => !isNaN(y) && y > 2000);
+                  const minYear = snapshotYears.length > 0 ? Math.min(...snapshotYears, cy - 4) : cy - 4;
+                  const maxYear = cy + 2;
+                  const yearList: number[] = [];
+                  for (let y = minYear; y <= maxYear; y++) yearList.push(y);
+                  return yearList.map(y => (
+                    <option key={y} value={y} className="dark:bg-[#121215]">{y}</option>
+                  ));
+                })()}
+              </select>
+            </div>
 
-          {/* Year Selector */}
-          <select
-            value={year}
-            onChange={(e) => onPeriodChange(selectedMonth, Number(e.target.value))}
-            className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
-          >
-            {(() => {
-              const cy = Math.max(new Date().getFullYear(), year || 0);
-              const snapshotYears = (snapshots || []).map(s => Number(s.year)).filter(y => !isNaN(y) && y > 2000);
-              const minYear = snapshotYears.length > 0 ? Math.min(...snapshotYears, cy - 4) : cy - 4;
-              const maxYear = cy + 2;
-              const yearList: number[] = [];
-              for (let y = minYear; y <= maxYear; y++) yearList.push(y);
-              return yearList.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ));
-            })()}
-          </select>
-
-          {/* Unified Version Status & Dropdown Switcher */}
-          {snapshotsForPeriod.length > 0 && (
-            <div className="relative flex items-center">
-              <div className={`flex items-center gap-1.5 h-8 px-2 rounded-md border text-xs font-medium transition ${
-                isViewingArchived
+            {/* Unified Version Status & Dropdown Switcher */}
+            {snapshotsForPeriod.length > 0 && (
+              <div className="relative flex items-center">
+                <div className={`flex items-center gap-1.5 h-8 px-2 rounded-md border text-xs font-medium transition ${isViewingArchived
                   ? 'border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold'
                   : isLocked
-                  ? 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-semibold'
-                  : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-700 dark:text-zinc-300'
-              }`}>
-                {isViewingArchived ? (
-                  <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                ) : isLocked ? (
-                  <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                ) : (
-                  <Unlock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                )}
-                
-                <select
-                  value={selectedVersionKey}
-                  onChange={(e) => {
-                    if (e.target.value === '__history__') {
-                      setIsHistoryModalOpen(true);
-                    } else {
-                      setSelectedVersionKey(e.target.value);
-                    }
-                  }}
-                  className="bg-transparent text-xs font-medium outline-none cursor-pointer pr-0.5 text-inherit"
-                  title="Switch version or open history"
-                >
-                  {!isLocked && (
-                    <option value="live" className="text-zinc-900 bg-white dark:bg-[#121215] dark:text-zinc-100">
-                      Draft (Live v{nextVersion})
-                    </option>
+                    ? 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-semibold'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-700 dark:text-zinc-300'
+                  }`}>
+                  {isViewingArchived ? (
+                    <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  ) : isLocked ? (
+                    <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  ) : (
+                    <Unlock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                   )}
-                  {sortedSnapshots.map(snap => (
-                    <option 
-                      key={snap.id} 
-                      value={String(snap.version)}
-                      className="text-zinc-900 bg-white dark:bg-[#121215] dark:text-zinc-100"
-                    >
-                      {snap.isLocked ? `Locked (v${snap.version})` : `Archived (v${snap.version})`}
-                    </option>
-                  ))}
-                  {snapshotsForPeriod.length > 1 && (
-                    <option value="__history__" className="text-zinc-900 bg-white dark:bg-[#121215] dark:text-zinc-100">
-                      Version History ({snapshotsForPeriod.length})...
-                    </option>
-                  )}
-                </select>
-              </div>
-            </div>
-          )}
 
-          {/* Action Control: Unlock / Finalize / Return to Active */}
-          {isViewingArchived ? (
-            <button
-              type="button"
-              onClick={() => setSelectedVersionKey(isLocked ? String(activeSnapshot?.version) : 'live')}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs transition shadow-xs whitespace-nowrap"
-              title="Return to latest version"
-            >
-              <ArrowRight className="w-3.5 h-3.5" />
-              <span>Back to v{activeSnapshot?.version || nextVersion}</span>
-            </button>
-          ) : isLocked ? (
-            !isWriteDisabled ? (
-              <button
-                type="button"
-                onClick={() => setIsUnlockModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition shadow-xs whitespace-nowrap cursor-pointer"
-                title="Unlock to make changes to employee salaries and create a new version"
-              >
-                <Unlock className="w-3.5 h-3.5" />
-                <span>Unlock to Edit</span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-200 dark:border-zinc-700 select-none">
-                <Lock className="w-3.5 h-3.5 text-amber-500" />
-                <span>{isReadOnly ? 'Locked (Offline Read-Only)' : 'Locked (Auditor View)'}</span>
+                  <select
+                    value={selectedVersionKey}
+                    onChange={(e) => {
+                      if (e.target.value === '__history__') {
+                        setIsHistoryModalOpen(true);
+                      } else {
+                        setSelectedVersionKey(e.target.value);
+                      }
+                    }}
+                    className="bg-transparent text-xs font-medium outline-none cursor-pointer pr-0.5 text-inherit"
+                    title="Switch version or open history"
+                  >
+                    {!isLocked && (
+                      <option value="live" className="text-zinc-900 bg-white dark:bg-[#121215] dark:text-zinc-100">
+                        Draft (Live v{nextVersion})
+                      </option>
+                    )}
+                    {sortedSnapshots.map(snap => (
+                      <option
+                        key={snap.id}
+                        value={String(snap.version)}
+                        className="text-zinc-900 bg-white dark:bg-[#121215] dark:text-zinc-100"
+                      >
+                        {snap.isLocked ? `Locked (v${snap.version})` : `Archived (v${snap.version})`}
+                      </option>
+                    ))}
+                    {snapshotsForPeriod.length > 1 && (
+                      <option value="__history__" className="text-zinc-900 bg-white dark:bg-[#121215] dark:text-zinc-100">
+                        Version History ({snapshotsForPeriod.length})...
+                      </option>
+                    )}
+                  </select>
+                </div>
               </div>
-            )
-          ) : (
-            !isWriteDisabled ? (
+            )}
+
+            {/* Action Control: Unlock / Finalize / Return to Active */}
+            {isViewingArchived ? (
               <button
                 type="button"
-                onClick={() => setIsLockModalOpen(true)}
-                className={`flex items-center gap-1.5 px-3 h-8 rounded-md font-medium text-xs transition shadow-xs whitespace-nowrap cursor-pointer ${
-                  snapshotsForPeriod.length > 0
+                onClick={() => setSelectedVersionKey(isLocked ? String(activeSnapshot?.version) : 'live')}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs transition shadow-xs whitespace-nowrap"
+                title="Return to latest version"
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+                <span>Back to v{activeSnapshot?.version || nextVersion}</span>
+              </button>
+            ) : isLocked ? (
+              !isWriteDisabled ? (
+                <button
+                  type="button"
+                  onClick={() => setIsUnlockModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition shadow-xs whitespace-nowrap cursor-pointer"
+                  title="Unlock to make changes to employee salaries and create a new version"
+                >
+                  <Unlock className="w-3.5 h-3.5" />
+                  <span>Unlock to Edit</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-200 dark:border-zinc-700 select-none">
+                  <Lock className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{isReadOnly ? 'Locked (Offline Read-Only)' : 'Locked (Auditor View)'}</span>
+                </div>
+              )
+            ) : (
+              !isWriteDisabled ? (
+                <button
+                  type="button"
+                  onClick={() => setIsLockModalOpen(true)}
+                  className={`flex items-center gap-1.5 px-3 h-8 rounded-md font-medium text-xs transition shadow-xs whitespace-nowrap cursor-pointer ${snapshotsForPeriod.length > 0
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90'
-                }`}
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Finalize &amp; Lock (v{nextVersion})</span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-200 dark:border-zinc-700 select-none">
-                <Unlock className="w-3.5 h-3.5 text-emerald-500" />
-                <span>{isReadOnly ? 'Draft (Offline Read-Only)' : 'Draft (Auditor View)'}</span>
-              </div>
-            )
-          )}
+                    }`}
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Finalize &amp; Lock (v{nextVersion})</span>
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 h-8 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-200 dark:border-zinc-700 select-none">
+                  <Unlock className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>{isReadOnly ? 'Draft (Offline Read-Only)' : 'Draft (Auditor View)'}</span>
+                </div>
+              )
+            )}
 
-          {/* Payslips Button */}
-          <button
-            onClick={() => setIsBulkPrintOpen(true)}
-            className="h-8 px-2.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-100 dark:hover:bg-zinc-800/60 flex items-center gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 transition whitespace-nowrap cursor-pointer"
-            title="Open Bulk Payslip Studio"
-          >
-            <Printer className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Payslips</span>
-          </button>
-
-          {/* WhatsApp Payslips Studio Button */}
-          <button
-            onClick={() => {
-              setWhatsAppModalContext(null);
-              setIsWhatsAppPayslipsOpen(true);
-            }}
-            className="h-8 px-2.5 rounded-md border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/50 dark:bg-emerald-950/30 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/50 flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 transition whitespace-nowrap cursor-pointer"
-            title="Open WhatsApp Payslips Studio"
-          >
-            <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span className="hidden sm:inline">WhatsApp</span>
-          </button>
-
-          {/* Log Absence Shortcut Button */}
-          {!isLocked && !isWriteDisabled && onSaveAbsence && (
+            {/* Payslips Button */}
             <button
-              type="button"
-              onClick={() => {
-                setSelectedAbsenceEmpId(undefined);
-                setIsAbsenceModalOpen(true);
-              }}
+              onClick={() => setIsBulkPrintOpen(true)}
               className="h-8 px-2.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-100 dark:hover:bg-zinc-800/60 flex items-center gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 transition whitespace-nowrap cursor-pointer"
-              title="Log employee unpaid absence (Labour Act Section 5 proration)"
+              title="Open Bulk Payslip Studio"
             >
-              <CalendarOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span className="hidden sm:inline">Log Absence</span>
+              <Printer className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Payslips</span>
             </button>
-          )}
-
+          </div>
         </div>
       </div>
-    </div>
 
       {/* Archived Snapshot Warning Banner */}
       {isViewingArchived && displaySnapshot && (
@@ -619,11 +620,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             <button
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id as any)}
-              className={`px-3 py-1.5 rounded text-xs transition-all whitespace-nowrap ${
-                isActive 
-                  ? 'bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 font-medium shadow-xs' 
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-              }`}
+              className={`px-3 py-1.5 rounded text-xs transition-all whitespace-nowrap ${isActive
+                ? 'bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 font-medium shadow-xs'
+                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
             >
               {tab.label}
             </button>
@@ -657,50 +657,65 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
       {/* 3 Minimal Hero Stat Cards */}
       {showStats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 animate-in fade-in duration-150">
-          
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-in fade-in duration-150">
+
           {/* Card 1: Gross */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-zinc-500">Total Gross Compensation</span>
-              {totalAbsenceDeduction > 0 && (
-                <span className="bg-rose-500/10 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono">
-                  Absence: -{formatNaira(totalAbsenceDeduction)}
-                </span>
-              )}
-            </div>
-            <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <div
+            className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between"
+            title={`Gross Compensation: ${formatNaira(totalGross)}${totalAbsenceDeduction > 0 ? ` (after ${formatNaira(totalAbsenceDeduction)} unpaid absence adjustment)` : ''}`}
+          >
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              Total Gross Compensation
+            </span>
+            <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
               {formatNaira(totalGross)}
+            </div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate pt-1.5 border-t border-zinc-100 dark:border-zinc-800/60">
+              {totalAbsenceDeduction > 0 ? (
+                <span>{displayItems.length} staff &bull; Absence: -{formatNaira(totalAbsenceDeduction)}</span>
+              ) : (
+                <span>{displayItems.length} staff active this period</span>
+              )}
             </div>
           </div>
 
           {/* Card 2: Deductions */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-zinc-500">Total Deductions</span>
-              <div className="flex items-center gap-1.5 text-[10px] font-mono">
-                {totalContributions > 0 && (
-                  <span className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded font-medium">
-                    Welfare: {formatNaira(totalContributions)}
-                  </span>
-                )}
-                {totalLoansDeduction > 0 && (
-                  <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-1.5 py-0.5 rounded">
-                    Loans: {formatNaira(totalLoansDeduction)}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <div
+            className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between"
+            title={`PAYE: ${formatNaira(totalPaye)} | Pension: ${formatNaira(totalEmpPension)} | Loans: ${formatNaira(totalLoansDeduction)} | Welfare: ${formatNaira(totalContributions)}`}
+          >
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              Total Deductions
+            </span>
+            <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
               {formatNaira(totalDeductions)}
+            </div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate pt-1.5 border-t border-zinc-100 dark:border-zinc-800/60">
+              {totalLoansDeduction > 0 || totalContributions > 0 ? (
+                <span>
+                  Statutory
+                  {totalLoansDeduction > 0 ? ` &bull; Loans: ${formatCompactNaira(totalLoansDeduction)}` : ''}
+                  {totalContributions > 0 ? ` &bull; Welfare: ${formatCompactNaira(totalContributions)}` : ''}
+                </span>
+              ) : (
+                <span>PAYE tax &bull; Pension remittances</span>
+              )}
             </div>
           </div>
 
           {/* Card 3: Net */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4">
-            <span className="text-xs text-zinc-500 block mb-1">Total Net Payout (Take-Home)</span>
-            <div className="text-xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">
+          <div
+            className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between"
+            title={`Total Net Take-Home: ${formatNaira(totalNet)}`}
+          >
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              Total Net Payout (Take-Home)
+            </span>
+            <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
               {formatNaira(totalNet)}
+            </div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate pt-1.5 border-t border-zinc-100 dark:border-zinc-800/60">
+              <span>{totalGross > 0 ? `${((totalNet / totalGross) * 100).toFixed(1)}% of gross` : '0%'} &bull; Disbursed to {displayItems.length} staff</span>
             </div>
           </div>
 
@@ -709,7 +724,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
       {/* Filter and Density Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        
+
         {/* Search Input */}
         <div className="relative flex-1 max-w-sm">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
@@ -746,12 +761,11 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
           {/* Table Density Switcher */}
           <button
-            onClick={() => setIsCompactMode(!isCompactMode)}
-            className={`h-8 px-2.5 rounded-md border text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
-              isCompactMode 
-                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent' 
-                : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
-            }`}
+            onClick={toggleCompactMode}
+            className={`h-8 px-2.5 rounded-md border text-xs font-medium flex items-center gap-1 transition cursor-pointer ${isCompactMode
+              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent'
+              : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+              }`}
           >
             <SlidersHorizontal className="w-3 h-3" />
             <span>{isCompactMode ? 'Compact' : 'Comfortable'}</span>
@@ -775,92 +789,102 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
       <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xs overflow-hidden">
         <div className={`overflow-x-auto overflow-y-auto ${showStats ? 'max-h-[calc(100vh-285px)]' : 'max-h-[calc(100vh-185px)]'}`}>
           <table className="w-full text-left border-collapse text-xs">
-          <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shadow-xs">
-            <tr className="bg-zinc-50 dark:bg-zinc-900">
-              <th className="w-20 px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-tl-lg">
-                <SortableHeader
-                  label="Code"
-                  field="code"
-                  currentSortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  align="left"
-                />
-              </th>
-              <th className="px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900">
-                <SortableHeader
-                  label="Employee"
-                  field="name"
-                  currentSortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  align="left"
-                />
-              </th>
-              <th className="px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900">
-                <SortableHeader
-                  label="Dept"
-                  field="dept"
-                  currentSortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  align="left"
-                />
-              </th>
-              <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
-                <SortableHeader
-                  label="Gross"
-                  field="gross"
-                  currentSortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                  align="right"
-                />
-              </th>
-              {activeSubTab === 'processing' && (
-                <>
-                  <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
-                    <SortableHeader
-                      label="PAYE"
-                      field="paye"
-                      currentSortField={sortField}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                      align="right"
-                    />
-                  </th>
-                  <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
-                    <SortableHeader
-                      label="Pension"
-                      field="pension"
-                      currentSortField={sortField}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                      align="right"
-                    />
-                  </th>
-                  <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
-                    <SortableHeader
-                      label="Contribution"
-                      field="contribution"
-                      currentSortField={sortField}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                      align="right"
-                    />
-                  </th>
-                  <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
-                    <SortableHeader
-                      label="Net Pay"
-                      field="net"
-                      currentSortField={sortField}
-                      sortDirection={sortDirection}
-                      onSort={handleSort}
-                      align="right"
-                    />
-                  </th>
-                </>
-              )}
+            <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shadow-xs">
+              <tr className="bg-zinc-50 dark:bg-zinc-900">
+                <th className="w-20 px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-tl-lg">
+                  <SortableHeader
+                    label="Code"
+                    field="code"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="left"
+                  />
+                </th>
+                <th className="px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900">
+                  <SortableHeader
+                    label="Employee"
+                    field="name"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="left"
+                  />
+                </th>
+                <th className="px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900">
+                  <SortableHeader
+                    label="Dept"
+                    field="dept"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="left"
+                  />
+                </th>
+                <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                  <SortableHeader
+                    label="Gross"
+                    field="gross"
+                    currentSortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                  />
+                </th>
+                {activeSubTab === 'processing' && (
+                  <>
+                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                      <SortableHeader
+                        label="PAYE"
+                        field="paye"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                      <SortableHeader
+                        label="Pension"
+                        field="pension"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                      <SortableHeader
+                        label="Loans"
+                        field="loans"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                      <SortableHeader
+                        label="Contribution"
+                        field="contribution"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                      <SortableHeader
+                        label="Net Pay"
+                        field="net"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                  </>
+                )}
                 {activeSubTab === 'paye' && (
                   <>
                     <th className="px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
@@ -946,21 +970,21 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
               {paginatedItems.map(item => (
-                <tr 
-                  key={item.employeeId} 
+                <tr
+                  key={item.employeeId}
                   className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors"
                 >
                   <td className="w-20 px-3 py-2 font-mono text-[11px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
                     {item.employeeCode}
                   </td>
-                  
+
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
                         {item.fullName}
                       </span>
                       {item.isSection5CapExceeded && (
-                        <span 
+                        <span
                           className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                           title={`Labour Act Section 5(7) Notice: Total deductions exceed 1/3 (33.3%) of monthly salary (Max: ${formatNaira(item.section5MaxAllowedDeductions || 0)}).`}
                         >
@@ -968,7 +992,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         </span>
                       )}
                       {Boolean(item.unpaidAbsenceDays && item.unpaidAbsenceDays > 0) && (
-                        <button 
+                        <button
                           type="button"
                           onClick={() => {
                             if (!isLocked && !isWriteDisabled && onSaveAbsence) {
@@ -976,19 +1000,18 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                               setIsAbsenceModalOpen(true);
                             }
                           }}
-                          className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono transition-colors ${
-                            !isLocked && !isWriteDisabled && onSaveAbsence 
-                              ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60 cursor-pointer' 
-                              : 'text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800'
-                          }`}
+                          className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono transition-colors ${!isLocked && !isWriteDisabled && onSaveAbsence
+                            ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/60 cursor-pointer'
+                            : 'text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800'
+                            }`}
                           title={`Unpaid absence: ${item.unpaidAbsenceDays} days (-${formatNaira(item.unpaidAbsenceDeduction || 0)}). Click to view or edit.`}
                         >
                           -{item.unpaidAbsenceDays}d
                         </button>
                       )}
                       {emailedPayslips[`${currentPeriodKey}_${item.employeeId}`] && (
-                        <span 
-                          className="inline-flex items-center text-emerald-600 dark:text-emerald-400" 
+                        <span
+                          className="inline-flex items-center text-emerald-600 dark:text-emerald-400"
                           title={`Payslip emailed on ${new Date(emailedPayslips[`${currentPeriodKey}_${item.employeeId}`].sentAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
                         >
                           <MailCheck className="w-3.5 h-3.5" />
@@ -1030,8 +1053,20 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         {formatNaira(item.employeePension)}
                       </td>
                       <td className="px-3 py-2 text-right font-mono">
+                        {item.loanDeduction && item.loanDeduction > 0 ? (
+                          <span
+                            className="font-medium text-purple-600 dark:text-purple-400"
+                            title={`Staff loan/advance amortization: ${formatNaira(item.loanDeduction)}`}
+                          >
+                            {formatNaira(item.loanDeduction)}
+                          </span>
+                        ) : (
+                          <span className="text-zinc-300 dark:text-zinc-600 font-light">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono">
                         {item.contributionDeduction && item.contributionDeduction > 0 ? (
-                          <span 
+                          <span
                             className="font-medium text-indigo-600 dark:text-indigo-400"
                             title={item.contributionDetails?.[0]?.schemeName || 'Staff Welfare / Savings Contribution'}
                           >
@@ -1091,7 +1126,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={activeSubTab === 'processing' ? 9 : 8} className="px-4 py-8 text-center text-zinc-400 italic">
+                  <td colSpan={activeSubTab === 'processing' ? 9 : activeSubTab === 'paye' ? 8 : 7} className="px-4 py-8 text-center text-zinc-400 italic">
                     No employee records match the filter criteria.
                   </td>
                 </tr>

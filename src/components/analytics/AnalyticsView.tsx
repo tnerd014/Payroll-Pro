@@ -48,11 +48,12 @@ import {
   formatCompactNaira, 
   calculatePayrollItem,
   formatDate,
-  getScheduleWorkdays
+  getScheduleWorkdays,
+  isEmployeeActiveForPeriod
 } from '../../engine/payePensionEngine';
 import { exportPayrollProToExcel } from '../../engine/excelEngine';
 import { PrintableScheduleModal, ScheduleReportType } from './PrintableScheduleModal';
-import { MONTHS } from '../../store/usePayrollStore';
+import { MONTHS, MONTH_KEY_INDEX, normalizeMonthKey, parseDateToYearMonth } from '../../store/usePayrollStore';
 import { TablePagination } from '../common/TablePagination';
 import { SortableHeader, SortDirection } from '../common/SortableHeader';
 
@@ -755,11 +756,166 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     return list;
   }, [payrollVariables.employmentTypeRules]);
 
-  // Helper to calculate items for a specific month
-  const getComputedItemsForMonth = (mKey: string, y: number) => {
-    return (employees || []).filter(e => e && e.status === 'Active').map(emp => 
-      calculatePayrollItem(emp, payrollVariables, payeTaxVariables, mKey, y)
+  // Helper to get or calculate full items for a specific month & year
+  const getComputedItemsForMonth = (mKey: string, y: number): CalculatedPayrollItem[] => {
+    const normKey = normalizeMonthKey(mKey);
+
+    // 1. If snapshot exists (locked or unlocked) in store, prioritize its frozen history
+    const snap = (snapshots || []).find(
+      s => s && normalizeMonthKey(s.monthKey) === normKey && s.year === y
     );
+    if (snap?.items && Array.isArray(snap.items) && snap.items.length > 0) {
+      return snap.items;
+    }
+
+    // 2. If it's the currently active period and initialItems was passed from parent, use it
+    if (normKey === normalizeMonthKey(initialSelectedMonth) && y === initialYear && Array.isArray(initialItems) && initialItems.length > 0) {
+      return initialItems;
+    }
+
+    const currentPeriodKey = `${y}-${normKey}`;
+
+    // Index absences
+    const absenceMap = new Map<string, EmployeeAbsenceRecord>();
+    for (const a of (absences || [])) {
+      if (a && a.periodKey?.toLowerCase() === currentPeriodKey && a.employeeId) {
+        absenceMap.set(a.employeeId, a);
+      }
+    }
+
+    // Index loans
+    const loanMap = new Map<string, number>();
+    const salaryAdvanceMap = new Map<string, number>();
+    const staffLoanMap = new Map<string, number>();
+
+    for (const loan of (loans || [])) {
+      if (!loan || !loan.employeeId) continue;
+      const periodRecord = (loan.history || []).find(h => h.periodKey?.toLowerCase() === currentPeriodKey);
+      let isPaused = loan.status === 'Paused';
+      if (isPaused && loan.pausedUntilPeriodKey) {
+        const parsedResume = parseDateToYearMonth(loan.pausedUntilPeriodKey);
+        if (parsedResume) {
+          const currentVal = Number(y) * 12 + (MONTH_KEY_INDEX[normKey] ?? 0);
+          const resumeVal = parsedResume.year * 12 + parsedResume.monthIdx;
+          if (currentVal >= resumeVal) {
+            isPaused = false;
+          }
+        }
+      }
+
+      let deduction = 0;
+      if (periodRecord) {
+        deduction = periodRecord.id?.startsWith('repay-direct-')
+          ? 0
+          : Math.max(0, Number(periodRecord.amount) || 0);
+      } else if (!isPaused && loan.status !== 'Paid' && (loan.remainingBalance || 0) > 0) {
+        deduction = loan.type === 'Salary Advance'
+          ? Math.max(0, loan.remainingBalance || 0)
+          : Math.max(0, Math.min(Number(loan.monthlyDeduction) || 0, Number(loan.remainingBalance) || 0));
+      }
+      if (deduction > 0) {
+        loanMap.set(loan.employeeId, (loanMap.get(loan.employeeId) || 0) + deduction);
+        if (loan.type === 'Salary Advance') {
+          salaryAdvanceMap.set(loan.employeeId, (salaryAdvanceMap.get(loan.employeeId) || 0) + deduction);
+        } else {
+          staffLoanMap.set(loan.employeeId, (staffLoanMap.get(loan.employeeId) || 0) + deduction);
+        }
+      }
+    }
+
+    // Index contributions
+    const contributionMap = new Map<string, { total: number; details: Array<{ schemeName: string; amount: number }> }>();
+    for (const c of (contributions || [])) {
+      if (c && c.periodKey?.toLowerCase() === currentPeriodKey && c.employeeId) {
+        const amt = Number(c.amount) || 0;
+        const entry = contributionMap.get(c.employeeId) || { total: 0, details: [] };
+        entry.total += amt;
+        entry.details.push({
+          schemeName: c.schemeName || 'Staff Welfare Fund',
+          amount: amt
+        });
+        contributionMap.set(c.employeeId, entry);
+      }
+    }
+
+    const activeEmployees = (employees || []).filter(e => isEmployeeActiveForPeriod(e, y, normKey));
+
+    return activeEmployees.map(emp => {
+      try {
+        const absenceRecord = absenceMap.get(emp.id);
+        let unpaidAbsenceDays = 0;
+        let unpaidAbsenceDeduction = 0;
+        let effectiveEmployee = emp;
+
+        if (absenceRecord && Number(absenceRecord.daysAbsent) > 0) {
+          unpaidAbsenceDays = Number(absenceRecord.daysAbsent);
+          const workdays = getScheduleWorkdays(
+            y,
+            normKey,
+            emp.workSchedule || '5-day',
+            payrollVariables?.workdayDivisorRule || 'actual_weekdays'
+          );
+
+          if (absenceRecord.customOverride && absenceRecord.deductionAmount !== undefined) {
+            unpaidAbsenceDeduction = Math.max(0, Number(absenceRecord.deductionAmount) || 0);
+          } else {
+            const contractualGross = Number(emp.monthlyGross) || 0;
+            const dailyRate = workdays > 0 ? contractualGross / workdays : 0;
+            const impactMultiplier = absenceRecord.absenceType === 'suspension_half_pay' ? 0.5 : 1.0;
+            unpaidAbsenceDeduction = Math.round(dailyRate * unpaidAbsenceDays * impactMultiplier * 100) / 100;
+          }
+
+          const baseMonthly = Number(emp.monthlyGross) || 0;
+          const adjustedGross = Math.max(0, baseMonthly - unpaidAbsenceDeduction);
+          effectiveEmployee = {
+            ...emp,
+            monthlyGross: adjustedGross,
+          };
+        }
+
+        const base = calculatePayrollItem(
+          effectiveEmployee, 
+          payrollVariables, 
+          payeTaxVariables, 
+          normKey, 
+          y
+        );
+
+        const totalLoanDeduction = loanMap.get(emp.id) || 0;
+        const salaryAdvanceDeduction = salaryAdvanceMap.get(emp.id) || 0;
+        const staffLoanDeduction = staffLoanMap.get(emp.id) || 0;
+        const contribEntry = contributionMap.get(emp.id) || { total: 0, details: [] };
+        const totalContributionDeduction = contribEntry.total;
+        const contributionDetails = contribEntry.details;
+
+        const totalDeductions = base.totalDeductions + totalLoanDeduction + totalContributionDeduction;
+        const netTakeHome = Math.max(0, base.netTakeHome - totalLoanDeduction - totalContributionDeduction);
+
+        const baselineGross = Number(emp.monthlyGross) || base.monthlyGross || 0;
+        const section5MaxAllowedDeductions = Math.round((baselineGross / 3) * 100) / 100;
+        const isSection5CapExceeded = totalDeductions > section5MaxAllowedDeductions;
+
+        return {
+          ...base,
+          contractualGross: Number(emp.monthlyGross) || base.monthlyGross,
+          workSchedule: emp.workSchedule || '5-day',
+          unpaidAbsenceDays,
+          unpaidAbsenceDeduction,
+          effectiveGross: base.monthlyGross,
+          loanDeduction: totalLoanDeduction,
+          salaryAdvanceDeduction,
+          staffLoanDeduction,
+          contributionDeduction: totalContributionDeduction,
+          contributionDetails,
+          totalDeductions,
+          netTakeHome,
+          isSection5CapExceeded,
+          section5MaxAllowedDeductions,
+        };
+      } catch (err) {
+        return calculatePayrollItem(emp, payrollVariables, payeTaxVariables, normKey, y);
+      }
+    });
   };
 
   // Filter items matching current department & employment type
@@ -785,6 +941,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       const empPension = monthItems.reduce((s, i) => s + i.employeePension, 0);
       const emplrPension = monthItems.reduce((s, i) => s + i.employerPension, 0);
       const pension = empPension + emplrPension;
+      const loan = monthItems.reduce((s, i) => s + (Number(i.loanDeduction) || 0), 0);
+      const welfare = monthItems.reduce((s, i) => s + (Number(i.contributionDeduction) || 0), 0);
       const totalCost = gross + emplrPension;
       return {
         key: m.key,
@@ -794,59 +952,68 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         net,
         paye,
         pension,
+        loan,
+        welfare,
         totalCost,
       };
     });
-  }, [employees, payrollVariables, payeTaxVariables, activeYear, selectedDept, selectedEmpType]);
+  }, [employees, payrollVariables, payeTaxVariables, activeYear, selectedDept, selectedEmpType, snapshots, loans, contributions, absences, initialItems, initialSelectedMonth, initialYear]);
 
   // Active items based on current rangeMode
   const activeItems = useMemo(() => {
     if (rangeMode === 'single-month') {
-      // Use the parent-provided items for the current period (respects locked snapshots).
-      // For other months, re-compute live from employees.
-      const isActivePeriod =
-        activeMonthKey === initialSelectedMonth && activeYear === initialYear;
-      const baseItems = isActivePeriod
-        ? (Array.isArray(initialItems) ? initialItems : [])
-        : getComputedItemsForMonth(activeMonthKey, activeYear);
+      const baseItems = getComputedItemsForMonth(activeMonthKey, activeYear);
       return baseItems.filter(filterPredicate);
     }
 
-    // For Full Year or All History: aggregate employee 12-month totals into composite items
-    const monthsToScan = rangeMode === 'full-year' ? MONTHS : MONTHS; // extensible to multi-year
+    // For Full Year or All History: aggregate employee totals into composite items
+    const yearsToScan = rangeMode === 'all-history'
+      ? Array.from(new Set([...(snapshots || []).map(s => s.year), activeYear])).sort((a, b) => a - b)
+      : [activeYear];
+
     const annualMap = new Map<string, CalculatedPayrollItem>();
 
-    monthsToScan.forEach(m => {
-      // Use parent items for the current period; re-compute for all other months
-      const isCurrentPeriod = m.key === initialSelectedMonth && activeYear === initialYear;
-      const mItems = (isCurrentPeriod
-        ? (Array.isArray(initialItems) ? initialItems : [])
-        : getComputedItemsForMonth(m.key, activeYear)
-      ).filter(filterPredicate);
-
-      mItems.forEach(item => {
-        const existing = annualMap.get(item.employeeId);
-        if (!existing) {
-          annualMap.set(item.employeeId, { ...item });
-        } else {
-          existing.monthlyGross += item.monthlyGross;
-          existing.basic += item.basic;
-          existing.housing += item.housing;
-          existing.transport += item.transport;
-          existing.otherAllowances += item.otherAllowances;
-          existing.pensionableBHT += item.pensionableBHT;
-          existing.employeePension += item.employeePension;
-          existing.employerPension += item.employerPension;
-          existing.monthlyPaye += item.monthlyPaye;
-          existing.totalDeductions += item.totalDeductions;
-          existing.netTakeHome += item.netTakeHome;
-          existing.employerTotalCost += item.employerTotalCost;
+    yearsToScan.forEach(yr => {
+      MONTHS.forEach(m => {
+        // If all-history, only process months that have a snapshot or the current active period
+        if (rangeMode === 'all-history') {
+          const hasSnapshot = (snapshots || []).some(s => s.year === yr && normalizeMonthKey(s.monthKey) === m.key);
+          const isCurrentLive = yr === initialYear && m.key === normalizeMonthKey(initialSelectedMonth);
+          if (!hasSnapshot && !isCurrentLive) return;
         }
+
+        const mItems = getComputedItemsForMonth(m.key, yr).filter(filterPredicate);
+
+        mItems.forEach(item => {
+          const existing = annualMap.get(item.employeeId);
+          if (!existing) {
+            annualMap.set(item.employeeId, { ...item });
+          } else {
+            existing.monthlyGross += item.monthlyGross;
+            existing.basic += item.basic;
+            existing.housing += item.housing;
+            existing.transport += item.transport;
+            existing.otherAllowances += item.otherAllowances;
+            existing.pensionableBHT += item.pensionableBHT;
+            existing.employeePension += item.employeePension;
+            existing.employerPension += item.employerPension;
+            existing.monthlyPaye += item.monthlyPaye;
+            existing.totalDeductions += item.totalDeductions;
+            existing.netTakeHome += item.netTakeHome;
+            existing.employerTotalCost += item.employerTotalCost;
+            existing.loanDeduction = (Number(existing.loanDeduction) || 0) + (Number(item.loanDeduction) || 0);
+            existing.staffLoanDeduction = (Number(existing.staffLoanDeduction) || 0) + (Number(item.staffLoanDeduction) || 0);
+            existing.salaryAdvanceDeduction = (Number(existing.salaryAdvanceDeduction) || 0) + (Number(item.salaryAdvanceDeduction) || 0);
+            existing.contributionDeduction = (Number(existing.contributionDeduction) || 0) + (Number(item.contributionDeduction) || 0);
+            existing.unpaidAbsenceDeduction = (Number(existing.unpaidAbsenceDeduction) || 0) + (Number(item.unpaidAbsenceDeduction) || 0);
+            existing.unpaidAbsenceDays = (Number(existing.unpaidAbsenceDays) || 0) + (Number(item.unpaidAbsenceDays) || 0);
+          }
+        });
       });
     });
 
     return Array.from(annualMap.values());
-  }, [rangeMode, activeMonthKey, activeYear, initialItems, initialSelectedMonth, initialYear, employees, payrollVariables, payeTaxVariables, selectedDept, selectedEmpType]);
+  }, [rangeMode, activeMonthKey, activeYear, initialItems, initialSelectedMonth, initialYear, employees, payrollVariables, payeTaxVariables, selectedDept, selectedEmpType, snapshots, loans, contributions, absences]);
 
   // Department Sorting
   const [deptSortField, setDeptSortField] = useState<string | null>('gross');
@@ -972,28 +1139,35 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const totalEmpPension = activeItems.reduce((s, i) => s + i.employeePension, 0);
   const totalEmplrPension = activeItems.reduce((s, i) => s + i.employerPension, 0);
   const totalPensionPool = totalEmpPension + totalEmplrPension;
+  const totalLoanDeductions = activeItems.reduce((s, i) => s + (Number(i.loanDeduction) || 0), 0);
+  const totalContribDeductions = activeItems.reduce((s, i) => s + (Number(i.contributionDeduction) || 0), 0);
   const totalEmployerCost = totalGross + totalEmplrPension;
-  const totalDeductions = totalPaye + totalEmpPension;
+  const totalDeductions = totalPaye + totalEmpPension + totalLoanDeductions + totalContribDeductions;
 
-  // Proportions
-  const netRatio = totalGross > 0 ? (totalNet / totalGross) * 100 : 0;
-  const payeRatio = totalGross > 0 ? (totalPaye / totalGross) * 100 : 0;
-  const empPensionRatio = totalGross > 0 ? (totalEmpPension / totalGross) * 100 : 0;
-  const emplrPensionRatio = totalGross > 0 ? (totalEmplrPension / totalGross) * 100 : 0;
+  // Proportions (Calculated against Total Workforce Outflow so segments sum to 100%)
+  const outflowTotal = totalEmployerCost > 0 ? totalEmployerCost : totalGross;
+  const netRatio = outflowTotal > 0 ? (totalNet / outflowTotal) * 100 : 0;
+  const payeRatio = outflowTotal > 0 ? (totalPaye / outflowTotal) * 100 : 0;
+  const empPensionRatio = outflowTotal > 0 ? (totalEmpPension / outflowTotal) * 100 : 0;
+  const emplrPensionRatio = outflowTotal > 0 ? (totalEmplrPension / outflowTotal) * 100 : 0;
+  const loanRatio = outflowTotal > 0 ? (totalLoanDeductions / outflowTotal) * 100 : 0;
+  const contribRatio = outflowTotal > 0 ? (totalContribDeductions / outflowTotal) * 100 : 0;
 
   // Department Breakdown
   const deptList = useMemo(() => {
-    const map: Record<string, { count: number; gross: number; net: number; tax: number; pension: number }> = {};
+    const map: Record<string, { count: number; gross: number; net: number; tax: number; pension: number; loans: number; welfare: number }> = {};
     activeItems.forEach(item => {
       const dept = item.department || 'Unassigned';
       if (!map[dept]) {
-        map[dept] = { count: 0, gross: 0, net: 0, tax: 0, pension: 0 };
+        map[dept] = { count: 0, gross: 0, net: 0, tax: 0, pension: 0, loans: 0, welfare: 0 };
       }
       map[dept].count += 1;
       map[dept].gross += item.monthlyGross;
       map[dept].net += item.netTakeHome;
       map[dept].tax += item.monthlyPaye;
       map[dept].pension += (item.employeePension + item.employerPension);
+      map[dept].loans += (Number(item.loanDeduction) || 0);
+      map[dept].welfare += (Number(item.contributionDeduction) || 0);
     });
     const list = Object.entries(map).map(([dept, data]) => ({ dept, ...data }));
     if (!deptSortField) return list;
@@ -1006,6 +1180,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         case 'net': comparison = a.net - b.net; break;
         case 'tax': comparison = a.tax - b.tax; break;
         case 'pension': comparison = a.pension - b.pension; break;
+        case 'loans': comparison = a.loans - b.loans; break;
+        case 'welfare': comparison = a.welfare - b.welfare; break;
         default: comparison = 0;
       }
       return deptSortDir === 'asc' ? comparison : -comparison;
@@ -1049,6 +1225,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         departmentFilter: selectedDept,
         employmentTypeFilter: selectedEmpType,
         loans,
+        contributions,
+        payouts,
+        absences,
+        snapshots,
       },
       loans
     );
@@ -1074,8 +1254,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     <div className="flex flex-col h-full overflow-hidden select-none">
       
       {/* Top Header - Pinned above scroll container so the vertical scrollbar starts below this header */}
-      <div className="shrink-0 bg-[#fbfbfb] dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 px-6 pt-5 pb-3.5 md:px-8 z-20">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="shrink-0 bg-[#fbfbfb] dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 px-6 pt-3.5 pb-3 md:px-8 z-20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 flex-wrap min-w-0">
             <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight shrink-0">
               Payroll Analytics &amp; Statutory Reports
@@ -1177,7 +1357,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
                       Month
                     </label>
-                    <div className={`flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5 ${rangeMode !== 'single-month' ? 'opacity-40 pointer-events-none' : ''}`}>
+                    <div className={`h-8 flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 ${rangeMode !== 'single-month' ? 'opacity-40 pointer-events-none' : ''}`}>
                       <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                       <select
                         value={activeMonthKey}
@@ -1196,7 +1376,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
                       Year
                     </label>
-                    <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5">
+                    <div className="h-8 flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2">
                       <select
                         value={activeYear}
                         onChange={e => setActiveYear(Number(e.target.value))}
@@ -1215,7 +1395,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
                     Department
                   </label>
-                  <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5">
+                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5">
                     <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                     <select
                       value={selectedDept}
@@ -1236,7 +1416,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
                     Employment Type
                   </label>
-                  <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5">
+                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5">
                     <Users className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                     <select
                       value={selectedEmpType}
@@ -1437,70 +1617,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {/* ================= TAB 1: EXECUTIVE SUMMARY ================= */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
-          
-          {/* 5 Minimalist KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
-            
-            {/* Card 1: Gross */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3.5 space-y-1">
-              <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">
-                Total Gross Payroll
-              </span>
-              <p className="text-base sm:text-lg font-semibold font-mono text-zinc-900 dark:text-zinc-100 tracking-tight">
-                {formatNaira(totalGross)}
-              </p>
-            </div>
-
-            {/* Card 2: Net Take-Home */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3.5 space-y-1">
-              <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">
-                Net Take-Home Pay
-              </span>
-              <p className="text-base sm:text-lg font-semibold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight">
-                {formatNaira(totalNet)}
-              </p>
-            </div>
-
-            {/* Card 3: Total PAYE */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3.5 space-y-1">
-              <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">
-                Total PAYE Remittance
-              </span>
-              <p className="text-base sm:text-lg font-semibold font-mono text-amber-600 dark:text-amber-400 tracking-tight">
-                {formatNaira(totalPaye)}
-              </p>
-            </div>
-
-            {/* Card 4: Pension Pool */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3.5 space-y-1">
-              <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">
-                Combined Pension Pool
-              </span>
-              <p className="text-base sm:text-lg font-semibold font-mono text-blue-600 dark:text-blue-400 tracking-tight">
-                {formatNaira(totalPensionPool)}
-              </p>
-            </div>
-
-            {/* Card 5: Total Employer Cost */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3.5 space-y-1 col-span-2 sm:col-span-1">
-              <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">
-                Total Employer Cost
-              </span>
-              <p className="text-base sm:text-lg font-semibold font-mono text-zinc-900 dark:text-zinc-100 tracking-tight">
-                {formatNaira(totalEmployerCost)}
-              </p>
-            </div>
-
-          </div>
-
           {/* Minimalist Payroll Outflow Composition Bar (Proportional, Sleek & Simple) */}
           <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between text-xs">
               <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">
-                Payroll Outflow &amp; Remittance Composition
+                Payroll Outflow &amp; Deductions Composition
               </h3>
               <span className="text-zinc-400 font-mono text-[11px]">
-                Total Outflow: {formatNaira(totalEmployerCost)}
+                Total Workforce Outflow: {formatNaira(totalEmployerCost)}
               </span>
             </div>
 
@@ -1526,14 +1650,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 className="bg-indigo-500 h-full transition-all duration-300" 
                 title={`Employer Pension (10%): ${emplrPensionRatio.toFixed(1)}%`}
               />
+              <div 
+                style={{ width: `${loanRatio}%` }} 
+                className="bg-purple-500 h-full transition-all duration-300" 
+                title={`Staff Loans: ${loanRatio.toFixed(1)}%`}
+              />
+              <div 
+                style={{ width: `${contribRatio}%` }} 
+                className="bg-teal-500 h-full transition-all duration-300" 
+                title={`Welfare & Savings: ${contribRatio.toFixed(1)}%`}
+              />
             </div>
 
             {/* Minimalist Legend Chips */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1 text-[11px]">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
                 <div className="truncate">
-                  <span className="text-zinc-500 dark:text-zinc-400 block truncate">Net Take-Home ({netRatio.toFixed(1)}%)</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 block truncate">Net Pay ({netRatio.toFixed(1)}%)</span>
                   <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalNet)}</span>
                 </div>
               </div>
@@ -1549,7 +1683,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
                 <div className="truncate">
-                  <span className="text-zinc-500 dark:text-zinc-400 block truncate">Employee Pension ({empPensionRatio.toFixed(1)}%)</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 block truncate">Emp Pension ({empPensionRatio.toFixed(1)}%)</span>
                   <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalEmpPension)}</span>
                 </div>
               </div>
@@ -1557,44 +1691,84 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0" />
                 <div className="truncate">
-                  <span className="text-zinc-500 dark:text-zinc-400 block truncate">Employer Pension ({emplrPensionRatio.toFixed(1)}%)</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 block truncate">Emplr Pension ({emplrPensionRatio.toFixed(1)}%)</span>
                   <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalEmplrPension)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
+                <div className="truncate">
+                  <span className="text-zinc-500 dark:text-zinc-400 block truncate">Loans ({loanRatio.toFixed(1)}%)</span>
+                  <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalLoanDeductions)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shrink-0" />
+                <div className="truncate">
+                  <span className="text-zinc-500 dark:text-zinc-400 block truncate">Welfare ({contribRatio.toFixed(1)}%)</span>
+                  <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalContribDeductions)}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section: Statutory Obligations & Department Share */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Section: Statutory, Internal Deductions & Department Share */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             
             {/* Statutory Remittance Obligations */}
             <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-                  Statutory Remittance Obligations
+                  Statutory Remittances
                 </h3>
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-900">
-                  <ShieldCheck className="w-3 h-3" />
-                  <span>Compliant</span>
-                </span>
               </div>
 
               <div className="space-y-2 text-xs divide-y divide-zinc-100 dark:divide-zinc-800/60">
                 <div className="flex justify-between py-1.5">
-                  <span className="text-zinc-500 dark:text-zinc-400">State Internal Revenue Service (PAYE):</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">State IRS (PAYE Tax):</span>
                   <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalPaye)}</span>
                 </div>
                 <div className="flex justify-between py-1.5">
-                  <span className="text-zinc-500 dark:text-zinc-400">Pension Fund Custodians (Employee 8%):</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">PFAs (Employee 8%):</span>
                   <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalEmpPension)}</span>
                 </div>
                 <div className="flex justify-between py-1.5">
-                  <span className="text-zinc-500 dark:text-zinc-400">Company Matching Pension (Employer 10%):</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">Company Match (Employer 10%):</span>
                   <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalEmplrPension)}</span>
                 </div>
                 <div className="flex justify-between pt-2 font-semibold text-zinc-900 dark:text-zinc-100 text-xs">
-                  <span>Total Compliance Outflow:</span>
-                  <span className="font-mono text-emerald-600 dark:text-emerald-400">{formatNaira(totalPaye + totalPensionPool)}</span>
+                  <span>Total Statutory Remittance:</span>
+                  <span className="font-mono text-zinc-900 dark:text-zinc-100">{formatNaira(totalPaye + totalPensionPool)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Staff Loans & Welfare Obligations */}
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+                  Loans &amp; Welfare Deductions
+                </h3>
+              </div>
+
+              <div className="space-y-2 text-xs divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                <div className="flex justify-between py-1.5">
+                  <span className="text-zinc-500 dark:text-zinc-400">Staff Loan Amortizations:</span>
+                  <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalLoanDeductions)}</span>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-zinc-500 dark:text-zinc-400">Voluntary Welfare Deductions:</span>
+                  <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalContribDeductions)}</span>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-zinc-500 dark:text-zinc-400">Total Internal Recoveries:</span>
+                  <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">{formatNaira(totalLoanDeductions + totalContribDeductions)}</span>
+                </div>
+                <div className="flex justify-between pt-2 font-semibold text-zinc-900 dark:text-zinc-100 text-xs">
+                  <span>Grand Total Deductions:</span>
+                  <span className="font-mono text-zinc-900 dark:text-zinc-100">{formatNaira(totalDeductions)}</span>
                 </div>
               </div>
             </div>
@@ -1603,7 +1777,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
-                  Employment Type Demarcation
+                  Employment Demarcation
                 </h3>
                 <span className="text-[11px] font-mono text-zinc-400">
                   {empTypeList.length} Categories
@@ -1704,6 +1878,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       <th className="py-2 px-3 font-medium text-right font-sans">Net Pay</th>
                       <th className="py-2 px-3 font-medium text-right font-sans">PAYE Tax</th>
                       <th className="py-2 px-3 font-medium text-right font-sans">Pension</th>
+                      <th className="py-2 px-3 font-medium text-right font-sans">Loans</th>
+                      <th className="py-2 px-3 font-medium text-right font-sans">Welfare</th>
                       <th className="py-2 px-3 font-medium text-right font-sans">Employer Cost</th>
                     </tr>
                   </thead>
@@ -1716,6 +1892,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         <td className="py-2 px-3 text-right text-emerald-600 dark:text-emerald-400">{formatNaira(m.net)}</td>
                         <td className="py-2 px-3 text-right text-amber-600 dark:text-amber-400">{formatNaira(m.paye)}</td>
                         <td className="py-2 px-3 text-right text-blue-600 dark:text-blue-400">{formatNaira(m.pension)}</td>
+                        <td className="py-2 px-3 text-right text-purple-600 dark:text-purple-400">{formatNaira(m.loan)}</td>
+                        <td className="py-2 px-3 text-right text-teal-600 dark:text-teal-400">{formatNaira(m.welfare)}</td>
                         <td className="py-2 px-3 text-right text-zinc-700 dark:text-zinc-300 font-medium">{formatNaira(m.totalCost)}</td>
                       </tr>
                     ))}
@@ -1728,6 +1906,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       <td className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400">{formatNaira(totalNet)}</td>
                       <td className="py-2.5 px-3 text-right text-amber-600 dark:text-amber-400">{formatNaira(totalPaye)}</td>
                       <td className="py-2.5 px-3 text-right text-blue-600 dark:text-blue-400">{formatNaira(totalPensionPool)}</td>
+                      <td className="py-2.5 px-3 text-right text-purple-600 dark:text-purple-400">{formatNaira(totalLoanDeductions)}</td>
+                      <td className="py-2.5 px-3 text-right text-teal-600 dark:text-teal-400">{formatNaira(totalContribDeductions)}</td>
                       <td className="py-2.5 px-3 text-right text-zinc-900 dark:text-zinc-100">{formatNaira(totalEmployerCost)}</td>
                     </tr>
                   </tfoot>
@@ -1771,6 +1951,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     <SortableHeader label="Total Pension" field="pension" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="right" />
                   </th>
                   <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Staff Loans" field="loans" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
+                    <SortableHeader label="Welfare & Savings" field="welfare" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="right" />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-right">
                     <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500">% of Payroll</span>
                   </th>
                 </tr>
@@ -1784,6 +1970,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     <td className="py-2.5 px-3 text-right text-zinc-700 dark:text-zinc-300">{formatNaira(d.net)}</td>
                     <td className="py-2.5 px-3 text-right text-zinc-700 dark:text-zinc-300">{formatNaira(d.tax)}</td>
                     <td className="py-2.5 px-3 text-right text-zinc-700 dark:text-zinc-300">{formatNaira(d.pension)}</td>
+                    <td className="py-2.5 px-3 text-right text-purple-600 dark:text-purple-400">{formatNaira(d.loans)}</td>
+                    <td className="py-2.5 px-3 text-right text-teal-600 dark:text-teal-400">{formatNaira(d.welfare)}</td>
                     <td className="py-2.5 px-3 text-right text-zinc-500 dark:text-zinc-400 font-sans">
                       {((d.gross / (totalGross || 1)) * 100).toFixed(1)}%
                     </td>
@@ -2024,7 +2212,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     setContribScope(e.target.value);
                     setContribPage(1);
                   }}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium focus:outline-hidden focus:border-zinc-400 cursor-pointer"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus:outline-none focus:ring-0 focus:border-zinc-400 cursor-pointer"
                 >
                   <option value="ALL">All Contributing Staff (Company Schedule)</option>
                   <optgroup label="Select Specific Employee Statement">
@@ -2077,7 +2265,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               {/* Right: Year and Month Selectors */}
               <div className="flex items-center gap-2 shrink-0">
                 {/* Year Dropdown */}
-                <div className={`flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1 ${contribTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div className={`h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 ${contribTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
                   <span className="text-[10px] text-zinc-400 uppercase font-semibold">Year:</span>
                   <select
                     value={contribYear}
@@ -2086,7 +2274,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       setContribYear(Number(e.target.value));
                       setContribPage(1);
                     }}
-                    className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-hidden cursor-pointer"
+                    className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 cursor-pointer"
                   >
                     {allContribYears.map(y => (
                       <option key={y} value={y} className="dark:bg-zinc-900">{y}</option>
@@ -2096,7 +2284,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 {/* Month Dropdown (active when 'month') */}
                 {contribTimeframe === 'month' && (
-                  <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1">
+                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2">
                     <Calendar className="w-3 h-3 text-zinc-400" />
                     <select
                       value={contribMonthKey}
@@ -2104,7 +2292,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         setContribMonthKey(e.target.value);
                         setContribPage(1);
                       }}
-                      className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-hidden cursor-pointer"
+                      className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 cursor-pointer"
                     >
                       {MONTHS.map(m => (
                         <option key={m.key} value={m.key} className="dark:bg-zinc-900">{m.label}</option>
@@ -2117,7 +2305,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsPrintStatementModalOpen(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                  className="h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>{selectedContribEmployee ? 'Print Statement' : 'Print Schedule'}</span>
@@ -2135,7 +2323,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     placeholder="Search contributing staff by name, code, department..."
                     value={contribSearchQuery}
                     onChange={(e) => setContribSearchQuery(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-hidden focus:border-zinc-400"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
                   />
                 </div>
                 {contribSearchQuery && (
@@ -2647,7 +2835,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     setAbsenceScope(e.target.value);
                     setAbsencePage(1);
                   }}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium focus:outline-hidden focus:border-zinc-400 cursor-pointer"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus:outline-none focus:ring-0 focus:border-zinc-400 cursor-pointer"
                 >
                   <option value="ALL">All Affected Staff (Company Absence Schedule)</option>
                   <optgroup label="Select Specific Employee Attendance Statement">
@@ -2699,7 +2887,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
               {/* Right: Year and Month Selectors */}
               <div className="flex items-center gap-2 shrink-0">
-                <div className={`flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1 ${absenceTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div className={`h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 ${absenceTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
                   <span className="text-[10px] text-zinc-400 uppercase font-semibold">Year:</span>
                   <select
                     value={absenceYear}
@@ -2708,7 +2896,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       setAbsenceYear(Number(e.target.value));
                       setAbsencePage(1);
                     }}
-                    className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-hidden cursor-pointer"
+                    className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 cursor-pointer"
                   >
                     {allAbsenceYears.map(y => (
                       <option key={y} value={y} className="dark:bg-zinc-900">{y}</option>
@@ -2717,7 +2905,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 </div>
 
                 {absenceTimeframe === 'month' && (
-                  <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 py-1">
+                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2">
                     <Calendar className="w-3 h-3 text-zinc-400" />
                     <select
                       value={absenceMonthKey}
@@ -2725,7 +2913,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         setAbsenceMonthKey(e.target.value);
                         setAbsencePage(1);
                       }}
-                      className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-hidden cursor-pointer"
+                      className="bg-transparent text-xs font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 cursor-pointer"
                     >
                       {MONTHS.map(m => (
                         <option key={m.key} value={m.key} className="dark:bg-zinc-900">{m.label}</option>
@@ -2737,7 +2925,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsPrintAbsenceModalOpen(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                  className="h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>{selectedAbsenceEmployee ? 'Print Statement' : 'Print Schedule'}</span>
@@ -2757,7 +2945,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       setAbsenceSearchQuery(e.target.value);
                       setAbsencePage(1);
                     }}
-                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:border-zinc-400"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
                   />
                 </div>
                 <div className="text-[11px] text-zinc-400">

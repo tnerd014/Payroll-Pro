@@ -1371,7 +1371,9 @@ export function usePayrollStore() {
 
       let deduction = 0;
       if (periodRecord) {
-        deduction = Math.max(0, Number(periodRecord.amount) || 0);
+        deduction = periodRecord.id?.startsWith('repay-direct-')
+          ? 0
+          : Math.max(0, Number(periodRecord.amount) || 0);
       } else if (!isPaused && loan.status !== 'Paid' && (loan.remainingBalance || 0) > 0) {
         deduction = loan.type === 'Salary Advance'
           ? Math.max(0, loan.remainingBalance || 0)
@@ -2481,9 +2483,14 @@ export function usePayrollStore() {
   const updateWhatsAppSettings = (settings: Partial<WhatsAppSettings>) => {
     if (!guardCloudMutation('update WhatsApp settings')) return;
     const current = state.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS;
+    const isNowActive = settings.isActive !== undefined 
+      ? settings.isActive 
+      : (settings.enabled !== undefined ? settings.enabled : (current.isActive ?? current.enabled ?? true));
     const nextSettings = {
       ...current,
       ...settings,
+      enabled: isNowActive,
+      isActive: isNowActive,
       cloudApi: {
         ...current.cloudApi,
         ...(settings.cloudApi || {}),
@@ -3021,6 +3028,32 @@ export function usePayrollStore() {
     }
   };
 
+  const deleteContributionsForPeriod = (periodKey: string) => {
+    if (!guardCloudMutation('clear period contributions')) return;
+    const toDelete = (state.employeeContributions || []).filter(c => c.periodKey === periodKey);
+    if (toDelete.length === 0) return;
+
+    setState(prev => ({
+      ...prev,
+      employeeContributions: (prev.employeeContributions || []).filter(c => c.periodKey !== periodKey)
+    }));
+
+    if (activeCompanyId) {
+      toDelete.forEach(c => {
+        deleteContributionFromCloud(c.id, activeCompanyId).catch(err => {
+          console.warn('Failed to delete contribution from cloud:', err);
+        });
+      });
+    }
+
+    logAuditEvent(
+      activeCompanyId || '',
+      activeCompany?.name || '',
+      'DELETED_CONTRIBUTIONS',
+      `Cleared all ${toDelete.length} staff contributions for period ${periodKey}`
+    );
+  };
+
   const addContributionPayout = (payoutData: Omit<ContributionPayout, 'id' | 'createdAt'>) => {
     if (!guardCloudMutation('record contribution payout')) return;
     const newPayout: ContributionPayout = {
@@ -3246,6 +3279,7 @@ export function usePayrollStore() {
     contributionSchemes: state.contributionSchemes || [],
     saveBatchContributions,
     deleteContribution,
+    deleteContributionsForPeriod,
     addContributionPayout,
     deleteContributionPayout,
     saveContributionScheme,
