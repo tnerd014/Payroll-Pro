@@ -422,8 +422,8 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             </p>
           </div>
 
-          {/* Action Controls Toolbar - Streamlined Single Row */}
-          <div className="flex items-center gap-2 flex-nowrap">
+          {/* Action Controls Toolbar */}
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Unified Period Selector */}
             <div className="h-8 flex items-center gap-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium text-zinc-700 dark:text-zinc-200">
               <Calendar className="w-3.5 h-3.5 text-zinc-500 shrink-0" />

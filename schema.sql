@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS public.employees (
     original_hire_date TEXT DEFAULT '',
     stints JSONB DEFAULT '[]'::jsonb,
     monthly_salaries JSONB DEFAULT '{}'::jsonb,
+    client_updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -27,10 +27,6 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
   onConfirmPause,
   onConfirmResume,
 }) => {
-  if (!isOpen || !loan) return null;
-
-  const isAlreadyPaused = loan.status === 'Paused';
-
   // Build the next 6 month options + Indefinite + Custom
   const monthOptions = useMemo(() => {
     const curIdx = Math.max(0, MONTHS.findIndex(m => m.key.toLowerCase() === selectedMonth.toLowerCase()));
@@ -48,6 +44,12 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
   // Selected mode: month key (e.g. "2027-mar") | "indefinite" | "custom"
   const [resumeMode, setResumeMode] = useState<string>(monthOptions[0]?.key ?? 'indefinite');
 
+  React.useEffect(() => {
+    if (isOpen && loan) {
+      setResumeMode(monthOptions[0]?.key ?? 'indefinite');
+    }
+  }, [isOpen, loan?.id, selectedMonth, selectedYear, monthOptions]);
+
   // Custom month/year state
   const [customMonthKey, setCustomMonthKey] = useState<string>(() => {
     const curIdx = Math.max(0, MONTHS.findIndex(m => m.key.toLowerCase() === selectedMonth.toLowerCase()));
@@ -63,6 +65,10 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
   const REASONS = ['Hardship', 'Medical', 'Dispute', 'Leave', 'Admin', 'Custom'];
   const [reasonCategory, setReasonCategory] = useState<string>('Hardship');
   const [customReasonText, setCustomReasonText] = useState<string>('');
+
+  if (!isOpen || !loan) return null;
+
+  const isAlreadyPaused = loan.status === 'Paused';
 
   // Handle Pause submit
   const handlePauseSubmit = (e: React.FormEvent) => {

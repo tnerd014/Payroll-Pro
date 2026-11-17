@@ -943,7 +943,7 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       .from('companies')
       .select('*')
       .eq('id', companyId)
-      .single();
+      .maybeSingle();
 
     if (compErr && compErr.code !== 'PGRST116') {
       throw new Error(`Failed to load company: ${compErr.message}`);
@@ -963,14 +963,14 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       .from('payroll_variables')
       .select('*')
       .eq('company_id', companyId)
-      .single();
+      .maybeSingle();
 
     // 5. Fetch Paye Tax Variables
     const { data: ptvData } = await client
       .from('paye_tax_variables')
       .select('*')
       .eq('company_id', companyId)
-      .single();
+      .maybeSingle();
 
     // 6. Fetch Loans (paginated)
     const loanData = await fetchPaginatedCompanyRows(client, 'employee_loans', companyId);
@@ -983,7 +983,7 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       .from('payslip_designs')
       .select('config')
       .eq('company_id', companyId)
-      .single();
+      .maybeSingle();
 
     // 9. Fetch Payslip Presets
     const { data: ppData } = await client

@@ -326,6 +326,9 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
   // Which period is currently shown in the preview (index into periodPayslips)
   const [activePeriodIdx, setActivePeriodIdx] = useState(0);
+  const PREVIEW_PAGE_SIZE = 10;
+  const [previewPage, setPreviewPage] = useState(0);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
   // Clamp activePeriodIdx when periods change
   useEffect(() => {
@@ -443,28 +446,34 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
   const handlePrint = () => {
     if (selectedEmployees.length === 0) return;
+    setIsPreparingPrint(true);
 
-    // Strict 1-Page A4 Auto-Fit: scale down any payslip whose content exceeds single A4 printable bounds
-    const printPages = document.querySelectorAll<HTMLElement>('.print-page');
-    printPages.forEach(page => {
-      const maxA4Height = 1060; // Standard A4 printable height at 96 DPI with margins
-      const h = page.scrollHeight;
-      if (h > maxA4Height) {
-        page.style.zoom = String(Math.max(0.65, (maxA4Height / h) * 0.98));
-      }
+    // Wait for React to mount .print-all-payslips, then run A4 auto-fit & print
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const printPages = document.querySelectorAll<HTMLElement>('.print-page');
+        printPages.forEach(page => {
+          const maxA4Height = 1060; // Standard A4 printable height at 96 DPI with margins
+          const h = page.scrollHeight;
+          if (h > maxA4Height) {
+            page.style.zoom = String(Math.max(0.65, (maxA4Height / h) * 0.98));
+          }
+        });
+
+        const beforePrint = () => document.body.classList.add('print-portal-active');
+        const afterPrint = () => {
+          document.body.classList.remove('print-portal-active');
+          printPages.forEach(page => {
+            page.style.zoom = '';
+          });
+          setIsPreparingPrint(false);
+        };
+        window.addEventListener('beforeprint', beforePrint, { once: true });
+        window.addEventListener('afterprint', afterPrint, { once: true });
+        document.body.classList.add('print-portal-active');
+        window.print();
+      }, 60);
     });
-
-    const beforePrint = () => document.body.classList.add('print-portal-active');
-    const afterPrint = () => {
-      document.body.classList.remove('print-portal-active');
-      printPages.forEach(page => {
-        page.style.zoom = '';
-      });
-    };
-    window.addEventListener('beforeprint', beforePrint, { once: true });
-    window.addEventListener('afterprint', afterPrint, { once: true });
-    document.body.classList.add('print-portal-active');
-    window.print();
   };
 
   const handleSendWhatsApp = async () => {
@@ -519,12 +528,16 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
   const scrollToVoucher = (empId: string) => {
     setPreviewEmployeeId(empId);
+    const idx = activePeriodItems.findIndex(i => i.employeeId === empId);
+    if (idx >= 0) {
+      setPreviewPage(Math.floor(idx / PREVIEW_PAGE_SIZE));
+    }
     setTimeout(() => {
       const el = document.getElementById(`voucher-${empId}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
-    }, 40);
+    }, 50);
   };
 
   const goToNextPreview = () => {
@@ -1265,11 +1278,44 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                 </div>
               )}
 
-              {/* ── Payslips for the active period only ── */}
-              {activePeriod && (
+              {/* ── Payslips for the active period only (paginated for fast rendering) ── */}
+              {activePeriod && (() => {
+                const totalPages = Math.max(1, Math.ceil(activePeriod.items.length / PREVIEW_PAGE_SIZE));
+                const safePage = Math.min(previewPage, totalPages - 1);
+                const pageStart = safePage * PREVIEW_PAGE_SIZE;
+                const visibleItems = activePeriod.items.slice(pageStart, pageStart + PREVIEW_PAGE_SIZE);
+                return (
                 <div className="flex flex-col items-center gap-8 print:gap-0">
-                  {/* Screen: only active period */}
-                  {activePeriod.items.map((item) => (
+                  {activePeriod.items.length > PREVIEW_PAGE_SIZE && (
+                    <div className="no-print w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs text-zinc-600 dark:text-zinc-300 shadow-xs">
+                      <span>
+                        Showing <strong>{pageStart + 1}–{Math.min(pageStart + PREVIEW_PAGE_SIZE, activePeriod.items.length)}</strong> of <strong>{activePeriod.items.length}</strong> payslips
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={safePage === 0}
+                          onClick={() => setPreviewPage(Math.max(0, safePage - 1))}
+                          className="px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                        >
+                          Prev
+                        </button>
+                        <span className="px-2 font-mono text-[11px]">
+                          Page {safePage + 1} / {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={safePage >= totalPages - 1}
+                          onClick={() => setPreviewPage(Math.min(totalPages - 1, safePage + 1))}
+                          className="px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Screen: only active period page */}
+                  {visibleItems.map((item) => (
                     <div
                       key={`${activePeriod.periodKey}-${item.employeeId}`}
                       id={`voucher-${item.employeeId}`}
@@ -1296,7 +1342,8 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                     </div>
                   ))}
                 </div>
-              )}
+                );
+              })()}
 
             </div>
           )}
@@ -1304,7 +1351,8 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
       </div>
 
-      {/* ── Print-only: ALL selected payslips, always rendered off-screen so the browser lays them out ── */}
+      {/* ── Print-only: Mounted on-demand when Print is triggered so 150+ staff don't bloat DOM on open ── */}
+      {isPreparingPrint && (
       <div
         aria-hidden="true"
         className="print-all-payslips no-select"
@@ -1339,6 +1387,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
           ))
         )}
       </div>
+      )}
 
       {/* WhatsApp Toast Notification */}
       {whatsappToast && (

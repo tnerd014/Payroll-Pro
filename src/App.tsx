@@ -491,6 +491,15 @@ export const App: React.FC = () => {
       state.activeView === 'variables' || 
       state.activeView === 'excel';
 
+    if (isSettingsActive && unsavedSettingsInfo?.isDirty) {
+      const label = unsavedSettingsInfo.tabName || 'System Settings';
+      const shouldDiscard = window.confirm(
+        `You have unsaved changes in ${label}.\n\nClick OK to discard changes and leave, or Cancel to stay and save.`
+      );
+      if (!shouldDiscard) return;
+      unsavedSettingsInfo.discard();
+    }
+
     // Set settings tab (defaults to branding if not explicitly specified)
     if (targetView === 'settings') {
       setSettingsInitialTab(initialTab || 'branding');

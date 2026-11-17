@@ -2416,7 +2416,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition shadow-sm cursor-pointer"
+                  disabled={isWriteDisabled || !payoutEmpId || payoutAmount <= 0}
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition shadow-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Record Disbursement
                 </button>

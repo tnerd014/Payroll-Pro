@@ -52,6 +52,7 @@ import {
   saveWhatsAppSettingsToCloud,
   saveEmailedPayslipsToCloud,
   saveSnapshotToCloud,
+  saveSingleLoanToCloud,
   deleteSnapshotFromCloud,
   deleteLoanFromCloud,
   deletePayoutFromCloud,
@@ -767,6 +768,32 @@ export function loadPersistedState(): AppState {
   return loadCompanyData(first?.id || 'comp-default', first);
 }
 
+function getSyncableSignature(s: AppState, compId: string | null): string {
+  try {
+    return JSON.stringify({
+      cid: compId,
+      company: s.company,
+      employees: s.employees,
+      departments: s.departments,
+      payrollVariables: s.payrollVariables,
+      payeTaxVariables: s.payeTaxVariables,
+      loans: s.loans || [],
+      snapshots: s.snapshots,
+      payslipDesign: s.payslipDesign,
+      savedPayslipPresets: s.savedPayslipPresets || [],
+      emailSettings: s.emailSettings,
+      emailedPayslips: s.emailedPayslips,
+      whatsappedPayslips: s.whatsappedPayslips,
+      employeeContributions: s.employeeContributions || [],
+      contributionPayouts: s.contributionPayouts || [],
+      employeeAbsences: s.employeeAbsences || [],
+      whatsappSettings: s.whatsappSettings,
+    });
+  } catch {
+    return '';
+  }
+}
+
 export function usePayrollStore() {
   const [companies, setCompanies] = useState<CompanyAccount[]>(() => loadCompaniesRegistry());
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
@@ -782,13 +809,27 @@ export function usePayrollStore() {
     return loadCompanyData(firstComp?.id || 'comp-default', firstComp || undefined);
   });
 
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isFirstRender = useRef(true);
+  const isLocalUploadInProgressRef = useRef(false);
+  const lastLocalUploadTimeRef = useRef(0);
+  // Tracks locally updated employee records to prevent realtime echo overwrite before cloud persists
+  const pendingLocalEmployeesRef = useRef<Map<string, { employee: Employee; timestamp: number }>>(new Map());
+  // True once the active company's cloud copy has been loaded (or there is nothing to load).
+  // Until then we must NEVER upload, otherwise an empty/stale local copy overwrites the cloud.
+  const cloudReadyRef = useRef(false);
+  // Snapshot of the last synced/loaded business data fingerprint per company so pure UI changes
+  // (activeView, isDarkTheme, selectedMonth, selectedYear) never trigger cloud uploads or offline flags.
+  const lastSyncedSignatureRef = useRef<string>('');
+
   const reloadFromStorage = () => {
     const currentList = loadCompaniesRegistry();
     setCompanies(currentList);
     if (activeCompanyId) {
       const activeAcc = currentList.find(c => c.id === activeCompanyId);
-      skipNextAutoSyncRef.current = true;
-      setState(loadCompanyData(activeCompanyId, activeAcc));
+      const reloaded = loadCompanyData(activeCompanyId, activeAcc);
+      lastSyncedSignatureRef.current = getSyncableSignature(reloaded, activeCompanyId);
+      setState(reloaded);
     }
   };
 
@@ -929,7 +970,6 @@ export function usePayrollStore() {
     downloadCompanyDataFromSupabase(activeCompanyId).then(res => {
       if (!res.success) return;
       cloudReadyRef.current = true;
-      skipNextAutoSyncRef.current = true;
       setState(prev => {
         if (prev.company?.id && prev.company.id !== activeCompanyId) return prev;
         if (prev.employees.length > 0 && (!res.employees || res.employees.length === 0)) return prev;
@@ -946,7 +986,7 @@ export function usePayrollStore() {
             )
           : prev.employees;
 
-        return {
+        const nextState: AppState = {
           ...prev,
           ...(res.company ? { company: { ...prev.company, ...res.company } } : {}),
           ...(res.departments && res.departments.length > 0 ? { departments: res.departments } : {}),
@@ -964,6 +1004,10 @@ export function usePayrollStore() {
           ...(res.payouts ? { contributionPayouts: res.payouts } : {}),
           ...(res.absences ? { employeeAbsences: res.absences } : {}),
         };
+        if (dirtyIds.size === 0 && pendingLocalEmployeesRef.current.size === 0) {
+          lastSyncedSignatureRef.current = getSyncableSignature(nextState, activeCompanyId);
+        }
+        return nextState;
       });
     }).catch(err => {
       console.warn('Failed to refresh data on reconnect:', err);
@@ -1019,43 +1063,7 @@ export function usePayrollStore() {
     };
   }, [state, activeCompanyId]);
 
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isFirstRender = useRef(true);
-  const isLocalUploadInProgressRef = useRef(false);
-  const lastLocalUploadTimeRef = useRef(0);
-  // Tracks locally updated employee records to prevent realtime echo overwrite before cloud persists
-  const pendingLocalEmployeesRef = useRef<Map<string, { employee: Employee; timestamp: number }>>(new Map());
-  // True once the active company's cloud copy has been loaded (or there is nothing to load).
-  // Until then we must NEVER upload, otherwise an empty/stale local copy overwrites the cloud.
-  const cloudReadyRef = useRef(false);
-  // Set right before programmatic state loads (company open / cloud download) so they
-  // are not mistaken for user edits and uploaded back.
-  const skipNextAutoSyncRef = useRef(false);
-  // Snapshot of the last synced/loaded business data fingerprint per company so pure UI changes
-  // (activeView, isDarkTheme, selectedMonth, selectedYear) never trigger cloud uploads or offline flags.
-  const lastSyncedSignatureRef = useRef<string>('');
-
-  const getSyncableSignature = (s: AppState, compId: string | null): string => {
-    try {
-      return JSON.stringify({
-        cid: compId,
-        company: s.company,
-        employees: s.employees,
-        departments: s.departments,
-        payrollVariables: s.payrollVariables,
-        payeTaxVariables: s.payeTaxVariables,
-        loans: s.loans || [],
-        snapshots: s.snapshots,
-        payslipDesign: s.payslipDesign,
-        savedPayslipPresets: s.savedPayslipPresets || [],
-        emailSettings: s.emailSettings,
-        emailedPayslips: s.emailedPayslips,
-        whatsappedPayslips: s.whatsappedPayslips,
-      });
-    } catch {
-      return '';
-    }
-  };
+  const currentSyncSignature = getSyncableSignature(state, activeCompanyId);
 
   // Auto-sync state changes: immediate local save, debounced upload when online, or queue if offline
   useEffect(() => {
@@ -1063,7 +1071,7 @@ export function usePayrollStore() {
 
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      lastSyncedSignatureRef.current = getSyncableSignature(state, activeCompanyId);
+      lastSyncedSignatureRef.current = currentSyncSignature;
       return;
     }
 
@@ -1075,20 +1083,11 @@ export function usePayrollStore() {
       return;
     }
 
-    const currentSignature = getSyncableSignature(state, activeCompanyId);
-
-    // LOAD GUARD: this state change came from opening a company / applying a cloud download
-    if (skipNextAutoSyncRef.current) {
-      skipNextAutoSyncRef.current = false;
-      lastSyncedSignatureRef.current = currentSignature;
-      return;
-    }
-
     // UI-ONLY GUARD: Ignore changes that only affect UI state (activeView, theme, period selector)
-    if (currentSignature === lastSyncedSignatureRef.current) {
+    // or programmatic cloud hydration that already updated lastSyncedSignatureRef
+    if (currentSyncSignature === lastSyncedSignatureRef.current) {
       return;
     }
-    lastSyncedSignatureRef.current = currentSignature;
 
     // HYDRATION GUARD: cloud copy not loaded yet — queue the edit instead of uploading
     if (!cloudReadyRef.current) {
@@ -1114,6 +1113,7 @@ export function usePayrollStore() {
       }
 
       syncTimeoutRef.current = setTimeout(() => {
+        lastSyncedSignatureRef.current = currentSyncSignature;
         isLocalUploadInProgressRef.current = true;
         const dirtyEmpIds = getDirtyEmployeeIds(activeCompanyId);
         uploadCompanyDataToSupabase(
@@ -1142,11 +1142,13 @@ export function usePayrollStore() {
           } else {
             // Upload failed without throwing (e.g. connection dropped mid-sync) — keep it queued
             console.warn('Auto-sync upload failed:', res.error);
+            lastSyncedSignatureRef.current = '';
             localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
           }
           window.dispatchEvent(new Event('payroll-sync-status-changed'));
         }).catch(err => {
           console.warn('Auto-sync upload error:', err);
+          lastSyncedSignatureRef.current = '';
           localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + activeCompanyId, 'true');
           window.dispatchEvent(new Event('payroll-sync-status-changed'));
         }).finally(() => {
@@ -1160,7 +1162,7 @@ export function usePayrollStore() {
       cleanedUp = true;
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     };
-  }, [state, activeCompanyId]);
+  }, [currentSyncSignature, activeCompanyId]);
 
   // Reconnection sync: upload pending offline changes for ALL companies (not only the active one).
   // Triggered by the browser 'online' event AND a 20s connectivity poll, because in Electron the
@@ -1219,7 +1221,6 @@ export function usePayrollStore() {
         downloadCompanyDataFromSupabase(activeCompanyId).then(res => {
           if (!res.success) return;
           cloudReadyRef.current = true;
-          skipNextAutoSyncRef.current = true;
           setState(prev => {
             // Isolation guard: Never apply cloud updates if the user switched companies in the interim
             if (prev.company?.id && prev.company.id !== activeCompanyId) {
@@ -1243,7 +1244,7 @@ export function usePayrollStore() {
                 )
               : prev.employees;
 
-            return {
+            const nextState: AppState = {
               ...prev,
               // Company profile synced (logoUrl, name, subtitle, address, phone, email)
               ...(res.company ? { company: { ...prev.company, ...res.company } } : {}),
@@ -1272,6 +1273,10 @@ export function usePayrollStore() {
               ...(res.payouts ? { contributionPayouts: res.payouts } : {}),
               ...(res.absences ? { employeeAbsences: res.absences } : {}),
             };
+            if (dirtyIds.size === 0 && pendingLocalEmployeesRef.current.size === 0) {
+              lastSyncedSignatureRef.current = getSyncableSignature(nextState, activeCompanyId);
+            }
+            return nextState;
           });
         });
       }, 600);
@@ -1640,12 +1645,11 @@ export function usePayrollStore() {
         downloadCompanyDataFromSupabase(companyId).then(res => {
           if (!res.success) return;
           cloudReadyRef.current = true;
-          skipNextAutoSyncRef.current = true;
           setState(prev => {
             if (activeCompanyIdRef.current !== companyId) return prev;
             const currentDirtyIds = getDirtyEmployeeIds(companyId);
             const currentDeletedIds = getPendingDeletedEmployeeIds(companyId);
-            return {
+            const nextState: AppState = {
               ...prev,
               company: res.company ? { ...prev.company, ...res.company, id: companyId } : prev.company,
               employees: res.employees
@@ -1666,6 +1670,10 @@ export function usePayrollStore() {
               contributionPayouts: res.payouts || prev.contributionPayouts || [],
               employeeAbsences: res.absences || prev.employeeAbsences || [],
             };
+            if (currentDirtyIds.size === 0 && pendingLocalEmployeesRef.current.size === 0) {
+              lastSyncedSignatureRef.current = getSyncableSignature(nextState, companyId);
+            }
+            return nextState;
           });
         }).catch(() => {});
       }
@@ -1681,7 +1689,7 @@ export function usePayrollStore() {
     }
 
     // Set state and activeCompanyId with complete hydrated data
-    skipNextAutoSyncRef.current = true;
+    lastSyncedSignatureRef.current = getSyncableSignature(finalData, companyId);
     setState(finalData);
     setActiveCompanyId(companyId);
 
@@ -1764,6 +1772,7 @@ export function usePayrollStore() {
       saveCompaniesRegistry(nextCompanies);
 
       if (getSavedCloudConfig().isEnabled) {
+        lastLocalUploadTimeRef.current = Date.now();
         syncCompanyToSupabase(newAccount);
         uploadCompanyDataToSupabase(
           newCompanyProfile,
@@ -1781,7 +1790,7 @@ export function usePayrollStore() {
       }
 
       cloudReadyRef.current = true;
-      skipNextAutoSyncRef.current = true;
+      lastSyncedSignatureRef.current = getSyncableSignature(newAppState, newId);
       setState(newAppState);
       setActiveCompanyId(newId);
 
@@ -2029,6 +2038,30 @@ export function usePayrollStore() {
     }
 
     setState(s => ({ ...s, employees: [...newEmps, ...s.employees] }));
+
+    // Immediate batch single-employee cloud save so other views/devices see them immediately
+    if (activeCompanyId && getSavedCloudConfig().isEnabled) {
+      const compId = activeCompanyId;
+      Promise.all(newEmps.map(ne => saveSingleEmployeeToCloud(ne, compId))).then(results => {
+        results.forEach((res, idx) => {
+          const empId = newEmps[idx].id;
+          if (res.success) {
+            unmarkEmployeeDirty(compId, empId);
+            setTimeout(() => {
+              pendingLocalEmployeesRef.current.delete(empId);
+            }, 4000);
+          } else {
+            localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + compId, 'true');
+            window.dispatchEvent(new Event('payroll-sync-status-changed'));
+          }
+        });
+      }).catch(err => {
+        console.warn('Direct cloud save for batch employees error:', err);
+        localStorage.setItem(PENDING_OFFLINE_SYNC_PREFIX + compId, 'true');
+        window.dispatchEvent(new Event('payroll-sync-status-changed'));
+      });
+    }
+
     logAuditEvent(
       activeCompanyId || '',
       activeCompany?.name || '',
@@ -2348,6 +2381,7 @@ export function usePayrollStore() {
       };
     });
 
+    lastLocalUploadTimeRef.current = Date.now();
     setState(s => ({
       ...s,
       loans: updatedLoans,
@@ -2361,10 +2395,20 @@ export function usePayrollStore() {
       ]
     }));
 
-    // Instantly sync lock to Supabase Cloud so all devices (mobile, desktop) lock immediately
+    // Instantly sync lock and amortized loans to Supabase Cloud so all devices (mobile, desktop) lock immediately
     if (activeCompanyId) {
       saveSnapshotToCloud(newSnapshot, activeCompanyId).catch(err => {
         console.warn('Direct cloud lock upload failed, auto-sync will retry:', err);
+      });
+
+      const oldLoanMap = new Map((state.loans || []).map(l => [l.id, l]));
+      updatedLoans.forEach(loan => {
+        const old = oldLoanMap.get(loan.id);
+        if (!old || old.remainingBalance !== loan.remainingBalance || old.totalRepaid !== loan.totalRepaid || old.status !== loan.status) {
+          saveSingleLoanToCloud(loan, activeCompanyId).catch(err => {
+            console.warn('Direct cloud loan amortization upload failed, auto-sync will retry:', err);
+          });
+        }
       });
 
       // Update any previous versions of this period that became unlocked
@@ -2393,6 +2437,7 @@ export function usePayrollStore() {
         : snap
     );
 
+    lastLocalUploadTimeRef.current = Date.now();
     setState(s => ({
       ...s,
       snapshots: updatedSnapshots

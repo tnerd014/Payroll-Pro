@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS public.employees (
     original_hire_date TEXT DEFAULT '',
     stints JSONB DEFAULT '[]'::jsonb,
     monthly_salaries JSONB DEFAULT '{}'::jsonb,
+    client_updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -220,6 +221,7 @@ CREATE TABLE IF NOT EXISTS public.employee_contributions (
     is_percentage BOOLEAN DEFAULT FALSE,
     rate NUMERIC(5, 2) DEFAULT 0,
     notes TEXT DEFAULT '',
+    dates JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -236,6 +238,7 @@ CREATE TABLE IF NOT EXISTS public.contribution_payouts (
     payment_method TEXT NOT NULL DEFAULT 'bank_transfer', -- 'bank_transfer', 'cheque', 'cash'
     reference_no TEXT DEFAULT '',
     notes TEXT DEFAULT '',
+    dates JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -251,6 +254,7 @@ CREATE TABLE IF NOT EXISTS public.employee_absences (
     deduction_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
     custom_override BOOLEAN DEFAULT FALSE,
     notes TEXT DEFAULT '',
+    dates JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -289,6 +293,8 @@ ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS start_date TEXT DEFAULT ''
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS end_date TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS original_hire_date TEXT DEFAULT '';
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS stints JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS client_updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS annual_rents JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Payroll Variables columns

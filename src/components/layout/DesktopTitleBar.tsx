@@ -1174,9 +1174,9 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             type="button"
             title={updateBadgeTitle}
             onClick={handleCheckForUpdates}
-            className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 shadow-sm transition hover:border-violet-300 hover:bg-violet-100 dark:border-violet-700/60 dark:bg-violet-500/10 dark:text-violet-300"
+            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-[10px] font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-200/70 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:bg-zinc-700 cursor-pointer"
           >
-            <RefreshCw className="h-2.5 w-2.5" />
+            <RefreshCw className="h-2.5 w-2.5 text-zinc-500 dark:text-zinc-400" />
             <span>Update v{updateState.latestVersion || ''} available</span>
           </button>
         )}

@@ -220,33 +220,22 @@ export const AppUpdateBanner: React.FC = () => {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm w-full mx-4 sm:mx-0 animate-in slide-in-from-bottom-3 duration-300 pointer-events-auto">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-4 text-zinc-900 dark:text-zinc-100 select-none relative overflow-hidden backdrop-blur-md">
-        
-        {/* Subtle accent hairline at top */}
-        <div className={`absolute top-0 left-0 right-0 h-1 ${
-          updateState.status === 'downloaded'
-            ? 'bg-emerald-500'
-            : updateState.status === 'downloading'
-              ? 'bg-blue-500'
-              : updateState.status === 'error'
-                ? 'bg-rose-500'
-                : 'bg-zinc-900 dark:bg-white'
-        }`} />
+      <div className="bg-white/95 dark:bg-[#121215]/95 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg p-4 text-zinc-900 dark:text-zinc-100 select-none relative overflow-hidden backdrop-blur-md">
 
         {/* STATE 1: Update Available */}
         {updateState.status === 'available' && (
-          <div className="space-y-3 pt-1">
+          <div className="space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-900 dark:text-zinc-100">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
+                <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/80 dark:border-zinc-700/80 flex items-center justify-center shrink-0 text-zinc-700 dark:text-zinc-300">
+                  <DownloadCloud className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <h4 className="text-xs font-bold tracking-tight">
+                    <h4 className="text-xs font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                       Update Available
                     </h4>
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60">
+                    <span className="px-1.5 py-0.5 rounded-md text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
                       v{updateState.latestVersion}
                     </span>
                   </div>

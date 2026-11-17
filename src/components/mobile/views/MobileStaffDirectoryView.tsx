@@ -77,18 +77,19 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
   const activeCount = safeEmployees.filter(e => e.status === 'Active').length;
 
   const handleOpenAdd = () => {
-    if (isAuditor) return;
+    if (isWriteDisabled) return;
     setEditingEmp(null);
     setIsFormModalOpen(true);
   };
 
   const handleEdit = (emp: Employee) => {
-    if (isAuditor) return;
+    if (isWriteDisabled) return;
     setEditingEmp(emp);
     setIsFormModalOpen(true);
   };
 
   const handleSave = (empData: Omit<Employee, 'id'>) => {
+    if (isWriteDisabled) return;
     if (editingEmp) {
       onUpdateEmployee(editingEmp.id, empData);
     } else {
@@ -99,6 +100,7 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
   };
 
   const handleSaveMultiple = (emps: Omit<Employee, 'id'>[]) => {
+    if (isWriteDisabled) return;
     emps.forEach(emp => onAddEmployee(emp));
     setIsFormModalOpen(false);
     setEditingEmp(null);

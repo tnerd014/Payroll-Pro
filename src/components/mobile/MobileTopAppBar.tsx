@@ -269,7 +269,7 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
               <button
                 type="button"
                 onClick={handleCheckForUpdates}
-                className="px-2 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs transition cursor-pointer"
+                className="px-2 py-1 rounded-full bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer"
                 title={`Update v${availableUpdate.latestVersion} available`}
               >
                 <Download className="w-3 h-3" />
