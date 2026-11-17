@@ -115,6 +115,17 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
     return 0.52;
   }, [zoomMode, containerWidth]);
 
+  // Keep print-portal-active set for the entire time this full-screen preview is open,
+  // so Android's async PrintManager never loses the #root hiding class after a timeout.
+  useEffect(() => {
+    if (isOpen && item) {
+      document.body.classList.add('print-portal-active');
+      return () => {
+        document.body.classList.remove('print-portal-active');
+      };
+    }
+  }, [isOpen, item]);
+
   if (!isOpen || !item) return null;
 
   // High-fidelity native print: print pure official document unscaled, supporting AndroidPrinter
@@ -131,9 +142,6 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
     } else {
       window.print();
     }
-    setTimeout(() => {
-      document.body.classList.remove('print-portal-active');
-    }, 1500);
   };
 
   return createPortal(

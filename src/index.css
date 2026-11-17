@@ -145,7 +145,7 @@ code, .font-mono {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 10mm;
+    margin: 5mm 7mm;
   }
   * {
     -webkit-print-color-adjust: exact !important;
@@ -170,15 +170,17 @@ code, .font-mono {
     background: #ffffff !important;
     overflow: visible !important;
     height: auto !important;
-    min-height: 100% !important;
+    min-height: 0 !important;
     position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   .print-modal-root {
     position: static !important;
     display: block !important;
     width: 100% !important;
     height: auto !important;
-    min-height: 100% !important;
+    min-height: 0 !important;
     overflow: visible !important;
     background: #ffffff !important;
     margin: 0 !important;

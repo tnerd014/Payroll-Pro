@@ -1124,7 +1124,7 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
   const isTwoColBreakdown = config.breakdownLayout === 'two-column' && earningsEnabled && deductionsEnabled;
 
   return (
-    <div className={`w-full relative bg-white text-zinc-900 ${scaleClass} ${fontClass} ${roundedClass} ${borderClass} ${densityStyles.padding} ${densityStyles.spacing} shadow-sm print:shadow-none print:break-inside-avoid overflow-hidden print:overflow-visible select-none transition-colors duration-150`} style={{ colorScheme: 'light' }} data-force-light="true">
+    <div className={`w-full relative bg-white text-zinc-900 ${scaleClass} ${fontClass} ${roundedClass} ${borderClass} ${densityStyles.padding} print:p-4 ${densityStyles.spacing} shadow-sm print:shadow-none print:break-inside-avoid overflow-hidden print:overflow-visible select-none transition-colors duration-150`} style={{ colorScheme: 'light' }} data-force-light="true">
       {isCustomScaled && (
         <style>{`
           .${scaleClass} { font-size: ${Math.round(13 * fontScaleRatio * 10) / 10}px; }
