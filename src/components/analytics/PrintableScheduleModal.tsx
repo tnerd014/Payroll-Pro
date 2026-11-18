@@ -89,21 +89,40 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
 
   const currentDateStr = formatDate(new Date());
 
-  // A4 Portrait Pagination:
-  // Page 1 contains company letterhead + metadata + KPI metrics + rows (holds ~13 items)
-  // Continuation pages hold up to 20 rows each.
-  const PAGE_1_SIZE = 13;
-  const CONT_PAGE_SIZE = 20;
+  // A4 Portrait Pagination (sized to ~268mm printable height so pages fill cleanly without overflow):
+  // - Page 1 has company letterhead + metadata + KPI metrics (~19 rows max, or ~14 if it also holds totals & signatories)
+  // - Continuation pages have a compact header (~28 rows max, or ~22 if it also holds totals & signatories)
+  const PAGE_1_SIZE = 21;
+  const PAGE_1_LAST_SIZE = 15;
+  const CONT_PAGE_SIZE = 29;
+  const CONT_LAST_PAGE_SIZE = 23;
 
   const paginatedPages = useMemo(() => {
-    if (reportItems.length === 0) return [[]];
-    const pages: (typeof reportItems)[] = [];
-    pages.push(reportItems.slice(0, PAGE_1_SIZE));
+    const total = reportItems.length;
+    if (total === 0) return [[]];
 
-    let offset = PAGE_1_SIZE;
-    while (offset < reportItems.length) {
-      pages.push(reportItems.slice(offset, offset + CONT_PAGE_SIZE));
-      offset += CONT_PAGE_SIZE;
+    const pages: (typeof reportItems)[] = [];
+    if (total <= PAGE_1_LAST_SIZE) {
+      pages.push(reportItems);
+      return pages;
+    }
+
+    const firstPageCount = Math.min(PAGE_1_SIZE, total);
+    pages.push(reportItems.slice(0, firstPageCount));
+
+    let offset = firstPageCount;
+    while (offset < total) {
+      const remaining = total - offset;
+      if (remaining <= CONT_LAST_PAGE_SIZE) {
+        pages.push(reportItems.slice(offset));
+        break;
+      }
+      // If remaining rows exceed what fits alongside totals + signatories on the last page,
+      // fill this page up to CONT_PAGE_SIZE (unless remaining <= CONT_PAGE_SIZE, in which case
+      // cap at CONT_LAST_PAGE_SIZE so the final page still has rows with its signatory block).
+      const take = remaining > CONT_PAGE_SIZE ? CONT_PAGE_SIZE : CONT_LAST_PAGE_SIZE;
+      pages.push(reportItems.slice(offset, offset + take));
+      offset += take;
     }
     return pages;
   }, [reportItems]);
@@ -113,7 +132,9 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
   const renderPageContent = (pageItems: typeof reportItems, pageIndex: number, isPrintMode = false) => {
     const isFirstPage = pageIndex === 0;
     const isLastPage = pageIndex === totalPages - 1;
-    const startIdx = pageIndex === 0 ? 0 : PAGE_1_SIZE + (pageIndex - 1) * CONT_PAGE_SIZE;
+    const startIdx = paginatedPages
+      .slice(0, pageIndex)
+      .reduce((sum, p) => sum + p.length, 0);
 
     return (
       <div 
@@ -238,20 +259,20 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
                     <th className="py-2 px-2.5 w-10">S/N</th>
                     <th className="py-2 px-2.5">Beneficiary Name</th>
                     <th className="py-2 px-2.5">Bank Name</th>
-                    <th className="py-2 px-2.5">NUBAN Account No</th>
-                    <th className="py-2 px-2.5 text-right">Net Amount (₦)</th>
-                    <th className="py-2 px-2.5">Payment Narration</th>
+                    <th className="py-2 px-2.5 whitespace-nowrap">NUBAN Account No</th>
+                    <th className="py-2 px-2.5 text-right whitespace-nowrap">Net Amount (₦)</th>
+                    <th className="py-2 px-2.5 whitespace-nowrap">Payment Narration</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 font-mono text-zinc-800 text-[11px]">
                   {pageItems.map((i, idx) => (
                     <tr key={i.employeeId} className="hover:bg-zinc-50/50">
-                      <td className="py-1.5 px-2.5 text-zinc-400">{startIdx + idx + 1}</td>
+                      <td className="py-1.5 px-2.5 text-zinc-400 whitespace-nowrap">{startIdx + idx + 1}</td>
                       <td className="py-1.5 px-2.5 font-sans font-medium text-zinc-900">{i.fullName}</td>
-                      <td className="py-1.5 px-2.5 font-sans text-zinc-700">{i.bankName}</td>
-                      <td className="py-1.5 px-2.5 font-semibold text-zinc-900">{i.accountNumber}</td>
-                      <td className="py-1.5 px-2.5 text-right font-bold text-zinc-900">{formatNaira(i.netTakeHome)}</td>
-                      <td className="py-1.5 px-2.5 font-sans text-zinc-500 text-[10px]">
+                      <td className="py-1.5 px-2.5 font-sans text-zinc-700 whitespace-nowrap">{i.bankName}</td>
+                      <td className="py-1.5 px-2.5 font-semibold text-zinc-900 whitespace-nowrap">{i.accountNumber}</td>
+                      <td className="py-1.5 px-2.5 text-right font-bold text-zinc-900 whitespace-nowrap">{formatNaira(i.netTakeHome)}</td>
+                      <td className="py-1.5 px-2.5 font-sans text-zinc-500 text-[10px] whitespace-nowrap">
                         SALARY {monthLabel.toUpperCase()} {year}
                       </td>
                     </tr>
