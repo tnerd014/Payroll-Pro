@@ -31,8 +31,10 @@ function normalizeVersion(value) {
 }
 
 function compareVersions(current, incoming) {
-  const currentParts = normalizeVersion(current).split('.').map(v => Number.parseInt(v, 10) || 0);
-  const incomingParts = normalizeVersion(incoming).split('.').map(v => Number.parseInt(v, 10) || 0);
+  const [curBase, curPre = ''] = normalizeVersion(current).split('-');
+  const [incBase, incPre = ''] = normalizeVersion(incoming).split('-');
+  const currentParts = curBase.split('.').map(v => Number.parseInt(v, 10) || 0);
+  const incomingParts = incBase.split('.').map(v => Number.parseInt(v, 10) || 0);
 
   const maxLength = Math.max(currentParts.length, incomingParts.length);
   for (let i = 0; i < maxLength; i++) {
@@ -41,6 +43,11 @@ function compareVersions(current, incoming) {
     if (incomingPart > currentPart) return 1;
     if (incomingPart < currentPart) return -1;
   }
+
+  // SemVer: stable (no prerelease suffix) > prerelease (e.g. 1.2.0 > 1.2.0-rc.1)
+  if (curPre && !incPre) return 1;
+  if (!curPre && incPre) return -1;
+  if (curPre !== incPre) return incPre.localeCompare(curPre, undefined, { numeric: true });
   return 0;
 }
 

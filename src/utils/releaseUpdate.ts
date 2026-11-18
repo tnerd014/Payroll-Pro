@@ -43,8 +43,10 @@ export async function getRuntimeAppVersion(fallback = DEFAULT_APP_VERSION): Prom
 }
 
 export function compareReleaseVersions(current: string, incoming: string): number {
-  const currentParts = normalizeReleaseVersion(current).split('.').map((part) => Number.parseInt(part, 10) || 0);
-  const incomingParts = normalizeReleaseVersion(incoming).split('.').map((part) => Number.parseInt(part, 10) || 0);
+  const [curBase, curPre = ''] = normalizeReleaseVersion(current).split('-');
+  const [incBase, incPre = ''] = normalizeReleaseVersion(incoming).split('-');
+  const currentParts = curBase.split('.').map((part) => Number.parseInt(part, 10) || 0);
+  const incomingParts = incBase.split('.').map((part) => Number.parseInt(part, 10) || 0);
   const maxLength = Math.max(currentParts.length, incomingParts.length);
 
   for (let index = 0; index < maxLength; index += 1) {
@@ -54,6 +56,10 @@ export function compareReleaseVersions(current: string, incoming: string): numbe
     if (incomingPart < currentPart) return -1;
   }
 
+  // SemVer: stable release (no prerelease suffix) is newer than a prerelease (1.2.0 > 1.2.0-rc.1)
+  if (curPre && !incPre) return 1;
+  if (!curPre && incPre) return -1;
+  if (curPre !== incPre) return incPre.localeCompare(curPre, undefined, { numeric: true });
   return 0;
 }
 
@@ -65,45 +71,27 @@ export async function checkForGithubReleaseUpdate(currentVersion: string): Promi
       'User-Agent': 'Payroll-Pro-App-Update-Checker',
     };
 
-    let response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
       headers,
       cache: 'no-store',
     });
 
     let payload: any = null;
     if (response.ok) {
-      payload = await response.json();
+      const candidate = await response.json();
+      if (candidate && !candidate.draft && !candidate.prerelease) {
+        payload = candidate;
+      }
     } else {
-      // Fallback: check the releases list in case latest is still indexing or marked pre-release
-      const listResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=5`, {
+      // Fallback: inspect recent releases, strictly ignoring drafts and prereleases (Beta/RC)
+      const listResponse = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=10`, {
         headers,
         cache: 'no-store',
       });
       if (listResponse.ok) {
         const list = await listResponse.json();
         if (Array.isArray(list) && list.length > 0) {
-          payload = list.find((r: any) => !r.draft) || list[0];
-        }
-      }
-      if (!payload) {
-        // Secondary rate-limit-immune fallback via raw.githubusercontent.com (CORS-enabled)
-        try {
-          const rawRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_REPO}/main/package.json`, {
-            cache: 'no-store',
-          });
-          if (rawRes.ok) {
-            const pkg = await rawRes.json();
-            const rawVer = normalizeReleaseVersion(pkg?.version || '');
-            if (rawVer) {
-              payload = {
-                tag_name: `v${rawVer}`,
-                html_url: `https://github.com/${GITHUB_REPO}/releases/tag/v${rawVer}`,
-                assets: [],
-              };
-            }
-          }
-        } catch {
-          // Ignore and return original error below
+          payload = list.find((r: any) => !r.draft && !r.prerelease) || null;
         }
       }
 

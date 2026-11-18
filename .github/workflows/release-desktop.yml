@@ -7,9 +7,14 @@ name: Release Desktop Build
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v1.0.8). Leave blank to use package.json version.'
+        description: 'Release version tag (e.g. v1.2.0-rc.1 for Beta, or v1.2.0 for Production). Leave blank to use package.json.'
         required: false
         default: ''
+      publish_immediately:
+        description: 'Publish stable release immediately (false = create Draft so you can verify Desktop + Android first)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   desktop-release:
@@ -30,7 +35,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Determine Release Tag
+      - name: Determine Release Tag & Channel
         id: release_info
         shell: bash
         run: |
@@ -43,16 +48,39 @@ jobs:
             PKG_VER=$(node -p "require('./package.json').version")
             TAG="v$PKG_VER"
           fi
+
+          VERSION="${TAG#v}"
+
+          # Pre-release tags (e.g. v1.2.0-rc.1, v1.2.0-beta.1, v1.2.0-alpha.1) go straight to GitHub Pre-release
+          # for internal testing — invisible to production users.
+          # Stable tags (e.g. v1.2.0) are created as Draft so you can confirm both Windows + Android succeed
+          # before clicking "Publish release" on GitHub.
+          if [[ "$TAG" =~ -(alpha|beta|rc) ]]; then
+            IS_PRERELEASE="true"
+            IS_DRAFT="false"
+            CHANNEL="beta"
+          else
+            IS_PRERELEASE="false"
+            if [ "${{ github.event.inputs.publish_immediately }}" = "true" ]; then
+              IS_DRAFT="false"
+            else
+              IS_DRAFT="true"
+            fi
+            CHANNEL="production"
+          fi
+
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Target tag is $TAG"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          echo "is_draft=$IS_DRAFT" >> $GITHUB_OUTPUT
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+          echo "Target tag=$TAG | version=$VERSION | channel=$CHANNEL | prerelease=$IS_PRERELEASE | draft=$IS_DRAFT"
 
       - name: Build app
         run: npm run build
 
-      - name: Package Windows installer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --x64 --publish always
+      - name: Package Windows installer (no auto-publish)
+        run: npx electron-builder --win --x64 --publish never -c.extraMetadata.version=${{ steps.release_info.outputs.version }}
 
       - name: Generate release manifest
         env:
@@ -60,13 +88,19 @@ jobs:
           RELEASE_TAG: ${{ steps.release_info.outputs.tag }}
         run: node scripts/generate-release-manifest.mjs
 
-      - name: Upload manifest to GitHub release
+      - name: Upload Windows release assets to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_info.outputs.tag }}
-          draft: false
-          prerelease: false
+          name: "Payroll Pro ${{ steps.release_info.outputs.tag }}${{ steps.release_info.outputs.is_prerelease == 'true' && ' (Beta / Test)' || '' }}"
+          draft: ${{ steps.release_info.outputs.is_draft == 'true' }}
+          prerelease: ${{ steps.release_info.outputs.is_prerelease == 'true' }}
+          fail_on_unmatched_files: false
           files: |
+            release/Payroll-Pro-Setup-*.exe
+            release/Payroll-Pro-*.exe
+            release/*.blockmap
+            release/latest.yml
             release/latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

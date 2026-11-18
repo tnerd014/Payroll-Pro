@@ -7,9 +7,14 @@ name: Release Android APK
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v1.0.8). Leave blank to use package.json version.'
+        description: 'Release version tag (e.g. v1.2.0-rc.1 for Beta, or v1.2.0 for Production). Leave blank to use package.json.'
         required: false
         default: ''
+      publish_immediately:
+        description: 'Publish stable release immediately (false = create Draft so you can verify Desktop + Android first)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   android-release:
@@ -27,7 +32,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Determine Release Tag
+      - name: Determine Release Tag & Channel
         id: release_info
         shell: bash
         run: |
@@ -40,8 +45,29 @@ jobs:
             PKG_VER=$(node -p "require('./package.json').version")
             TAG="v$PKG_VER"
           fi
+
+          VERSION="${TAG#v}"
+
+          if [[ "$TAG" =~ -(alpha|beta|rc) ]]; then
+            IS_PRERELEASE="true"
+            IS_DRAFT="false"
+            CHANNEL="beta"
+          else
+            IS_PRERELEASE="false"
+            if [ "${{ github.event.inputs.publish_immediately }}" = "true" ]; then
+              IS_DRAFT="false"
+            else
+              IS_DRAFT="true"
+            fi
+            CHANNEL="production"
+          fi
+
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Target tag is $TAG"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          echo "is_draft=$IS_DRAFT" >> $GITHUB_OUTPUT
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+          echo "Target tag=$TAG | version=$VERSION | channel=$CHANNEL | prerelease=$IS_PRERELEASE | draft=$IS_DRAFT"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -87,12 +113,13 @@ jobs:
           RELEASE_TAG: ${{ steps.release_info.outputs.tag }}
         run: node scripts/generate-release-manifest.mjs
 
-      - name: Upload release assets
+      - name: Upload Android release assets to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_info.outputs.tag }}
-          draft: false
-          prerelease: false
+          name: "Payroll Pro ${{ steps.release_info.outputs.tag }}${{ steps.release_info.outputs.is_prerelease == 'true' && ' (Beta / Test)' || '' }}"
+          draft: ${{ steps.release_info.outputs.is_draft == 'true' }}
+          prerelease: ${{ steps.release_info.outputs.is_prerelease == 'true' }}
           files: |
             release/app-release.apk
             release/latest.json
