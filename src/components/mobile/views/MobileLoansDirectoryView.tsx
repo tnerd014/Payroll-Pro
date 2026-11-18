@@ -273,6 +273,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
       remainingBalance: remaining,
       disbursementDate: editDisbursedDate || undefined,
       repaymentDate: editRepaymentDate || undefined,
+      repaymentStartDate: editRepaymentDate || undefined,
       notes: editNotes || undefined,
       description: editNotes || undefined,
     });
@@ -871,7 +872,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
 
               <div>
                 <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1">
-                  Repayment Date
+                  {editType === 'Salary Advance' ? 'Repayment Date' : 'Repayment Start Date'}
                 </label>
                 <input
                   type="date"
@@ -879,6 +880,11 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   onChange={(e) => setEditRepaymentDate(e.target.value)}
                   className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                 />
+                <p className="text-[10px] text-zinc-400 mt-1">
+                  {editType === 'Salary Advance'
+                    ? 'Month when full advance is deducted.'
+                    : 'Payroll deductions begin from this month.'}
+                </p>
               </div>
             </div>
 

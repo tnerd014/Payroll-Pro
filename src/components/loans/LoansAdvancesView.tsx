@@ -461,9 +461,9 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
   };
 
   const getEffectiveStartPeriodKey = (loan: EmployeeLoan): string => {
-    if (loan.startPeriodKey) return loan.startPeriodKey;
-    const repDate = loan.repaymentDate || loan.repaymentStartDate;
+    const repDate = loan.repaymentStartDate || loan.repaymentDate;
     if (repDate) return getPeriodKeyFromDate(repDate, selectedYear, selectedMonth);
+    if (loan.startPeriodKey) return loan.startPeriodKey;
     return currentPeriodKey;
   };
 
@@ -831,6 +831,9 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
     }
 
     const updatedStatus: LoanStatus = balanceNum <= 0 ? 'Paid' : editStatus;
+    const updatedStartPeriod = editRepaymentDate
+      ? getPeriodKeyFromDate(editRepaymentDate, selectedYear, selectedMonth)
+      : editingLoan.startPeriodKey;
 
     onUpdateLoan(editingLoan.id, {
       type: editType,
@@ -841,6 +844,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
       disbursementDate: editDisbursementDate,
       repaymentDate: editRepaymentDate,
       repaymentStartDate: editRepaymentDate,
+      startPeriodKey: updatedStartPeriod,
       notes: editNotes.trim() || undefined,
     });
 
@@ -1592,7 +1596,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
 
                   <div>
                     <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                      Repayment Date
+                      {newLoanType === 'Salary Advance' ? 'Repayment Date' : 'Repayment Start Date'}
                     </label>
                     <input
                       type="date"
@@ -1600,6 +1604,11 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                       onChange={e => setNewRepaymentDate(e.target.value)}
                       className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                     />
+                    <p className="text-[10px] text-zinc-400 mt-1">
+                      {newLoanType === 'Salary Advance'
+                        ? 'Month when full advance is deducted.'
+                        : 'Payroll deductions begin from this month.'}
+                    </p>
                   </div>
                 </div>
 
@@ -1790,7 +1799,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
 
                   <div>
                     <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
-                      Repayment Date
+                      {editType === 'Salary Advance' ? 'Repayment Date' : 'Repayment Start Date'}
                     </label>
                     <input
                       type="date"
@@ -1798,6 +1807,11 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                       onChange={e => setEditRepaymentDate(e.target.value)}
                       className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                     />
+                    <p className="text-[10px] text-zinc-400 mt-1">
+                      {editType === 'Salary Advance'
+                        ? 'Month when full advance is deducted.'
+                        : 'Payroll deductions begin from this month.'}
+                    </p>
                   </div>
                 </div>
 
@@ -2472,7 +2486,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
             {(selectedLoanForLedger.disbursementDate || selectedLoanForLedger.repaymentDate || selectedLoanForLedger.repaymentStartDate) && (
               <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 font-mono shrink-0">
                 <span>Disbursed: {formatDate(selectedLoanForLedger.disbursementDate)}</span>
-                <span>Repayment Date: {formatDate(selectedLoanForLedger.repaymentDate || selectedLoanForLedger.repaymentStartDate)}</span>
+                <span>{selectedLoanForLedger.type === 'Salary Advance' ? 'Repayment Date' : 'Repayment Start'}: {formatDate(selectedLoanForLedger.repaymentStartDate || selectedLoanForLedger.repaymentDate)}</span>
               </div>
             )}
 

@@ -160,6 +160,30 @@ export function parseDateToYearMonth(dateStr?: string): { year: number; monthIdx
   return null;
 }
 
+export function getLoanStartYearMonth(loan: EmployeeLoan): { year: number; monthIdx: number } | null {
+  return (
+    parseDateToYearMonth(loan.repaymentStartDate) ||
+    parseDateToYearMonth(loan.repaymentDate) ||
+    parseDateToYearMonth(loan.startPeriodKey) ||
+    parseDateToYearMonth(loan.disbursementDate) ||
+    parseDateToYearMonth(loan.createdAt)
+  );
+}
+
+export function isPeriodBeforeLoanStart(
+  loan: EmployeeLoan,
+  year: number,
+  monthKey: string
+): boolean {
+  const start = getLoanStartYearMonth(loan);
+  if (!start) return false;
+  const targetMonthIdx = MONTH_KEY_INDEX[(monthKey || '').toLowerCase()];
+  if (targetMonthIdx === undefined) return false;
+  const targetVal = Number(year) * 12 + targetMonthIdx;
+  const startVal = start.year * 12 + start.monthIdx;
+  return targetVal < startVal;
+}
+
 /**
  * Automatically synchronizes loan amortizations and deductions from the repayment
  * start date up to the active target payroll period (e.g. from January 2026 to October 2026).
@@ -191,22 +215,42 @@ export function autoSyncLoansForPeriod(
         }
       }
     }
-    if (isCurrentlyPaused) {
-      return loan;
-    }
 
     let startYear = targetYear;
     let startMonthIdx = 0; // default to Jan
 
-    const parsedStart = parseDateToYearMonth(loan.startPeriodKey) ||
-      parseDateToYearMonth(loan.repaymentStartDate) ||
-      parseDateToYearMonth(loan.disbursementDate) ||
-      parseDateToYearMonth(loan.repaymentDate) ||
-      parseDateToYearMonth(loan.createdAt);
+    const parsedStart = getLoanStartYearMonth(loan);
 
     if (parsedStart) {
       startYear = parsedStart.year;
       startMonthIdx = parsedStart.monthIdx;
+    }
+
+    const startVal = startYear * 12 + startMonthIdx;
+    const normalizedStartPeriodKey = `${startYear}-${MONTHS[startMonthIdx]?.key || 'jan'}`;
+
+    // Prune any stale automated deduction entries that now fall strictly BEFORE the loan's repayment start month
+    const originalHistory = loan.history || [];
+    const prunedHistory = originalHistory.filter(h => {
+      if (!h.id?.startsWith('repay-auto-')) return true;
+      const parsedRec = parseDateToYearMonth(h.periodKey);
+      if (!parsedRec) return true;
+      const recVal = parsedRec.year * 12 + parsedRec.monthIdx;
+      return recVal >= startVal;
+    });
+    const prunedAny = prunedHistory.length !== originalHistory.length;
+
+    if (isCurrentlyPaused) {
+      if (!prunedAny && loan.startPeriodKey === normalizedStartPeriodKey) return loan;
+      const totalRepaid = prunedHistory.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+      const remainingBalance = Math.max(0, (loan.principalAmount || 0) - totalRepaid);
+      return {
+        ...loan,
+        startPeriodKey: normalizedStartPeriodKey,
+        history: prunedHistory,
+        totalRepaid,
+        remainingBalance,
+      };
     }
 
     const elapsedPeriods: { key: string; year: number; monthIdx: number }[] = [];
@@ -240,15 +284,14 @@ export function autoSyncLoansForPeriod(
       safety++;
     }
 
-    if (elapsedPeriods.length === 0) return loan;
-
-    const history = [...(loan.history || [])];
+    const history = [...prunedHistory];
     const monthlyDeduction = loan.type === 'Salary Advance'
       ? (loan.principalAmount || 0)
       : (Number(loan.monthlyDeduction) || loan.principalAmount || 0);
 
     // Track repaid sum incrementally to avoid O(N^2) inner-loop reduce iterations
     let currentRepaid = history.reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+    let addedAny = false;
 
     for (const period of elapsedPeriods) {
       const alreadyHas = history.some(h => h.periodKey === period.key);
@@ -267,16 +310,24 @@ export function autoSyncLoansForPeriod(
             notes: `Automated deduction (${mLabel} ${period.year})`,
           });
           currentRepaid += deduction;
+          addedAny = true;
         }
       }
     }
 
+    if (!prunedAny && !addedAny) {
+      return loan.startPeriodKey === normalizedStartPeriodKey
+        ? loan
+        : { ...loan, startPeriodKey: normalizedStartPeriodKey };
+    }
+
     const totalRepaid = currentRepaid;
     const remainingBalance = Math.max(0, (loan.principalAmount || 0) - totalRepaid);
-    const status: LoanStatus = remainingBalance <= 0 ? 'Paid' : loan.status;
+    const status: LoanStatus = remainingBalance <= 0 ? 'Paid' : (loan.status === 'Paid' ? 'Active' : loan.status);
 
     return {
       ...loan,
+      startPeriodKey: normalizedStartPeriodKey,
       history,
       totalRepaid,
       remainingBalance,
@@ -1380,6 +1431,7 @@ export function usePayrollStore() {
 
     for (const loan of (state.loans || [])) {
       if (!loan || !loan.employeeId) continue;
+      const beforeStart = isPeriodBeforeLoanStart(loan, state.selectedYear, state.selectedMonth);
       const periodRecord = (loan.history || []).find(h => h.periodKey === currentPeriodKey);
       let isPaused = loan.status === 'Paused';
       if (isPaused && loan.pausedUntilPeriodKey) {
@@ -1395,10 +1447,15 @@ export function usePayrollStore() {
 
       let deduction = 0;
       if (periodRecord) {
-        deduction = periodRecord.id?.startsWith('repay-direct-')
-          ? 0
-          : Math.max(0, Number(periodRecord.amount) || 0);
-      } else if (!isPaused && loan.status !== 'Paid' && (loan.remainingBalance || 0) > 0) {
+        if (periodRecord.id?.startsWith('repay-direct-')) {
+          deduction = 0;
+        } else if (beforeStart && periodRecord.id?.startsWith('repay-auto-')) {
+          // Ignore stale auto-deduction records from before a rescheduled repayment start month
+          deduction = 0;
+        } else {
+          deduction = Math.max(0, Number(periodRecord.amount) || 0);
+        }
+      } else if (!beforeStart && !isPaused && loan.status !== 'Paid' && (loan.remainingBalance || 0) > 0) {
         deduction = loan.type === 'Salary Advance'
           ? Math.max(0, loan.remainingBalance || 0)
           : Math.max(0, Math.min(Number(loan.monthlyDeduction) || 0, Number(loan.remainingBalance) || 0));
@@ -2375,6 +2432,10 @@ export function usePayrollStore() {
       if (isPaused || loan.status === 'Paid' || (loan.remainingBalance || 0) <= 0) {
         return loan;
       }
+      // Do not amortize loans whose repayment start month is after the finalized period
+      if (isPeriodBeforeLoanStart(loan, state.selectedYear, normCurMonth)) {
+        return loan;
+      }
       // Avoid double deduction: skip if ANY history entry (auto or manual) exists for this period
       const alreadyDeducted = (loan.history || []).some(h => h.periodKey === currentPeriodKey);
       if (alreadyDeducted) return loan;
@@ -2832,17 +2893,29 @@ export function usePayrollStore() {
 
   const updateLoan = (id: string, updates: Partial<EmployeeLoan>) => {
     if (!guardCloudMutation('update loans')) return;
-    setState(s => ({
-      ...s,
-      loans: (s.loans || []).map(l => {
+    setState(s => {
+      const updatedList = (s.loans || []).map(l => {
         if (l.id !== id) return l;
-        const updated = { ...l, ...updates };
+        const updated: EmployeeLoan = { ...l, ...updates };
+        // Keep startPeriodKey synchronized whenever repayment start date is edited
+        const editedStartDate = updates.repaymentStartDate ?? updates.repaymentDate;
+        if (editedStartDate) {
+          const parsed = parseDateToYearMonth(editedStartDate);
+          if (parsed) {
+            updated.startPeriodKey = `${parsed.year}-${MONTHS[parsed.monthIdx]?.key || 'jan'}`;
+          }
+        }
         if (updated.remainingBalance !== undefined && updated.remainingBalance <= 0) {
           updated.status = 'Paid';
         }
         return updated;
-      }),
-    }));
+      });
+      const synced = autoSyncLoansForPeriod(updatedList, s.selectedYear, s.selectedMonth);
+      return {
+        ...s,
+        loans: synced,
+      };
+    });
   };
 
   const deleteLoan = (id: string) => {
@@ -2997,6 +3070,10 @@ export function usePayrollStore() {
       ...s,
       loans: (s.loans || []).map(loan => {
         if (loan.status !== 'Active' || (loan.remainingBalance || 0) <= 0) return loan;
+        const parsedTarget = parseDateToYearMonth(targetPeriod);
+        if (parsedTarget && isPeriodBeforeLoanStart(loan, parsedTarget.year, MONTHS[parsedTarget.monthIdx]?.key || s.selectedMonth)) {
+          return loan;
+        }
         if ((loan.history || []).some(h => h.periodKey === targetPeriod)) return loan;
 
         const deduction = Math.min(Number(loan.monthlyDeduction) || 0, Number(loan.remainingBalance) || 0);
