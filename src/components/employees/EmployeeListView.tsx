@@ -616,6 +616,7 @@ const ReactivateEmployeeModal: React.FC<ReactivateEmployeeModalProps> = ({
             </label>
             <input
               type="number"
+              step="any"
               value={grossSalary}
               onChange={e => setGrossSalary(Number(e.target.value))}
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"

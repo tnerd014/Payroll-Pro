@@ -16,7 +16,7 @@ export interface GitHubReleaseCheckResult {
 }
 
 export const GITHUB_REPO = 'tnerd014/Payroll-Pro';
-export const DEFAULT_APP_VERSION = '1.1.1';
+export const DEFAULT_APP_VERSION = '1.1.2';
 
 export function normalizeReleaseVersion(value: string): string {
   return String(value || '').trim().replace(/^v/i, '');

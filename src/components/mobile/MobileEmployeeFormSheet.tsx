@@ -890,7 +890,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                   </span>
                   <input
                     type="number"
-                    inputMode="numeric"
+                    step="any"
+                    inputMode="decimal"
                     required
                     placeholder="350000"
                     value={monthlyGross}
@@ -977,7 +978,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       </span>
                       <input
                         type="number"
-                        inputMode="numeric"
+                        step="any"
+                        inputMode="decimal"
                         placeholder="e.g. 1200000"
                         value={
                           annualRents[activeYear] !== undefined
@@ -1120,7 +1122,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                             </div>
                             <input
                               type="number"
-                              inputMode="numeric"
+                              step="any"
+                              inputMode="decimal"
                               value={
                                 monthlySalaries[`${activeYear}-${m.key}`] !== undefined
                                   ? monthlySalaries[`${activeYear}-${m.key}`]
@@ -1155,7 +1158,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                           <span className="font-mono text-[10px] font-bold text-zinc-400 shrink-0">₦</span>
                           <input
                             type="number"
-                            inputMode="numeric"
+                            step="any"
+                            inputMode="decimal"
                             value={
                               annualRents[activeYear] !== undefined
                                 ? annualRents[activeYear]
@@ -1496,7 +1500,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                         </span>
                         <input
                           type="number"
-                          inputMode="numeric"
+                          step="any"
+                          inputMode="decimal"
                           placeholder="Salary"
                           value={row.monthlySalary}
                           onChange={(e) => handleUpdateBatchRow(row.id, 'monthlySalary', e.target.value)}

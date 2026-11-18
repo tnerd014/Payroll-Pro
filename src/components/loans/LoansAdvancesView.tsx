@@ -1551,7 +1551,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                       value={newLoanType === 'Salary Advance' ? 1 : newRepayMonths}
                       onChange={e => handleRepayMonthsChange(e.target.value)}
                       disabled={newLoanType === 'Salary Advance'}
-                      step="1"
+                      step="any"
                       className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 font-mono text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none disabled:opacity-60 disabled:bg-zinc-50 dark:disabled:bg-zinc-900"
                     />
                   </div>
@@ -2615,7 +2615,6 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                     value={paymentAmount}
                     onChange={e => setPaymentAmount(e.target.value === '' ? '' : Number(e.target.value))}
                     step="any"
-                    min="1"
                     className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 font-mono text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition"
                     placeholder="Enter amount..."
                     autoFocus

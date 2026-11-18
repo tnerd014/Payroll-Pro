@@ -203,6 +203,9 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
                 {pv.prorateMidMonth ? 'Enabled' : 'Disabled'}
               </span>
             </div>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-1">
+              Automatically calculates partial-month pay (active calendar days ÷ total days in the month) for staff whose <strong>Start Date</strong> or <strong>Exit Date</strong> falls mid-month. Skipped if a manual monthly salary override is set for that period; when disabled, joiners and leavers receive their full monthly salary.
+            </p>
           </div>
 
           <label className="relative inline-flex items-center cursor-pointer shrink-0">

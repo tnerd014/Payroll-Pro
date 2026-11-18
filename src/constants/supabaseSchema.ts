@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS public.payroll_variables (
     prorate_mid_month BOOLEAN DEFAULT FALSE,
     workday_divisor_rule TEXT DEFAULT 'actual_weekdays',
     section5_cap_enforcement TEXT DEFAULT 'advisory_warning',
+    contribution_schemes JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -303,6 +304,7 @@ ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS employment_type_ru
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS prorate_mid_month BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS workday_divisor_rule TEXT DEFAULT 'actual_weekdays';
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS section5_cap_enforcement TEXT DEFAULT 'advisory_warning';
+ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS contribution_schemes JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE public.payroll_variables ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 

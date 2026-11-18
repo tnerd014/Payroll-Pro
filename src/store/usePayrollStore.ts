@@ -71,6 +71,25 @@ export const DIRTY_EMPLOYEES_PREFIX = 'PAYROLL_PRO_DIRTY_EMPS_';
 export const DELETED_EMPLOYEES_PREFIX = 'PAYROLL_PRO_DELETED_EMPS_';
 export const THEME_PREFERENCE_KEY = 'PAYROLL_PRO_THEME_PREF';
 
+export const DEFAULT_CONTRIBUTION_SCHEMES: ContributionScheme[] = [
+  {
+    id: 'scheme-cooperative',
+    name: 'Staff Cooperative Society',
+    description: 'Monthly voluntary staff cooperative society savings',
+    defaultAmount: 25000,
+    defaultMode: 'fixed',
+    isDefault: true,
+  },
+  {
+    id: 'scheme-welfare',
+    name: 'Staff Welfare Fund',
+    description: 'Monthly voluntary staff welfare and social support fund',
+    defaultAmount: 5000,
+    defaultMode: 'fixed',
+    isDefault: false,
+  },
+];
+
 export const MONTHS = [
   { key: 'jan', label: 'January' },
   { key: 'feb', label: 'February' },
@@ -304,6 +323,7 @@ export interface AppState {
   contributionPayouts?: ContributionPayout[];
   employeeAbsences?: EmployeeAbsenceRecord[];
   contributionSchemes?: ContributionScheme[];
+  contributionSchemesInitialized?: boolean;
   emailSettings?: EmailSettings;
   whatsappSettings?: WhatsAppSettings;
   emailedPayslips?: Record<string, EmailedPayslipRecord>; // Key: `${periodKey}_${employeeId}`
@@ -519,6 +539,7 @@ export async function syncAllPendingCompanies(): Promise<{ synced: string[]; fai
             dirtyEmployeeIds: dirtyEmpIds,
             contributions: data.employeeContributions || [],
             payouts: data.contributionPayouts || [],
+            contributionSchemes: data.contributionSchemes || [],
             absences: data.employeeAbsences || [],
           }
         );
@@ -687,18 +708,19 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
           loans: (parsed.loans && Array.isArray(parsed.loans)) ? parsed.loans : [],
           employeeContributions: (parsed.employeeContributions && Array.isArray(parsed.employeeContributions)) ? parsed.employeeContributions : [],
           contributionPayouts: (parsed.contributionPayouts && Array.isArray(parsed.contributionPayouts)) ? parsed.contributionPayouts : [],
-          contributionSchemes: (parsed.contributionSchemes && Array.isArray(parsed.contributionSchemes) && parsed.contributionSchemes.length > 0)
-            ? parsed.contributionSchemes
-            : [
-                {
-                  id: 'scheme-welfare',
-                  name: 'Staff Welfare Fund',
-                  description: 'Monthly voluntary staff welfare and social support fund',
-                  defaultAmount: 5000,
-                  defaultMode: 'fixed',
-                  isDefault: true,
-                }
-              ],
+          contributionSchemes: (() => {
+            if (parsed.contributionSchemesInitialized && Array.isArray(parsed.contributionSchemes)) {
+              return parsed.contributionSchemes;
+            }
+            const isLegacyUntouchedDefault =
+              !Array.isArray(parsed.contributionSchemes) ||
+              parsed.contributionSchemes.length === 0 ||
+              (parsed.contributionSchemes.length === 1 && parsed.contributionSchemes[0]?.id === 'scheme-welfare');
+            return isLegacyUntouchedDefault
+              ? DEFAULT_CONTRIBUTION_SCHEMES.map(s => ({ ...s }))
+              : parsed.contributionSchemes;
+          })(),
+          contributionSchemesInitialized: true,
           employeeAbsences: (parsed.employeeAbsences && Array.isArray(parsed.employeeAbsences)) ? parsed.employeeAbsences : [],
           emailSettings: parsed.emailSettings ? { ...DEFAULT_EMAIL_SETTINGS, ...parsed.emailSettings } : DEFAULT_EMAIL_SETTINGS,
           whatsappSettings: parsed.whatsappSettings ? { ...DEFAULT_WHATSAPP_SETTINGS, ...parsed.whatsappSettings } : DEFAULT_WHATSAPP_SETTINGS,
@@ -746,16 +768,8 @@ export function loadCompanyData(companyId: string, initialAccount?: CompanyAccou
     employeeContributions: [],
     contributionPayouts: [],
     employeeAbsences: [],
-    contributionSchemes: [
-      {
-        id: 'scheme-welfare',
-        name: 'Staff Welfare Fund',
-        description: 'Monthly voluntary staff welfare and social support fund',
-        defaultAmount: 5000,
-        defaultMode: 'fixed',
-        isDefault: true,
-      }
-    ],
+    contributionSchemes: DEFAULT_CONTRIBUTION_SCHEMES.map(s => ({ ...s })),
+    contributionSchemesInitialized: true,
     emailSettings: DEFAULT_EMAIL_SETTINGS,
     whatsappSettings: DEFAULT_WHATSAPP_SETTINGS,
     emailedPayslips: {},
@@ -787,6 +801,7 @@ function getSyncableSignature(s: AppState, compId: string | null): string {
       whatsappedPayslips: s.whatsappedPayslips,
       employeeContributions: s.employeeContributions || [],
       contributionPayouts: s.contributionPayouts || [],
+      contributionSchemes: s.contributionSchemes || [],
       employeeAbsences: s.employeeAbsences || [],
       whatsappSettings: s.whatsappSettings,
     });
@@ -1003,6 +1018,7 @@ export function usePayrollStore() {
           ...(res.whatsappSettings ? { whatsappSettings: res.whatsappSettings } : {}),
           ...(res.contributions ? { employeeContributions: res.contributions } : {}),
           ...(res.payouts ? { contributionPayouts: res.payouts } : {}),
+          ...(res.contributionSchemes && res.contributionSchemes.length > 0 ? { contributionSchemes: res.contributionSchemes } : {}),
           ...(res.absences ? { employeeAbsences: res.absences } : {}),
         };
         if (dirtyIds.size === 0 && pendingLocalEmployeesRef.current.size === 0) {
@@ -1133,6 +1149,7 @@ export function usePayrollStore() {
             dirtyEmployeeIds: dirtyEmpIds,
             contributions: state.employeeContributions || [],
             payouts: state.contributionPayouts || [],
+            contributionSchemes: state.contributionSchemes || [],
             absences: state.employeeAbsences || [],
             whatsappSettings: state.whatsappSettings || DEFAULT_WHATSAPP_SETTINGS,
           }
@@ -1272,6 +1289,7 @@ export function usePayrollStore() {
               // Staff welfare contributions, payouts, and absences
               ...(res.contributions ? { employeeContributions: res.contributions } : {}),
               ...(res.payouts ? { contributionPayouts: res.payouts } : {}),
+              ...(res.contributionSchemes && res.contributionSchemes.length > 0 ? { contributionSchemes: res.contributionSchemes } : {}),
               ...(res.absences ? { employeeAbsences: res.absences } : {}),
             };
             if (dirtyIds.size === 0 && pendingLocalEmployeesRef.current.size === 0) {
@@ -1639,6 +1657,7 @@ export function usePayrollStore() {
               whatsappedPayslips: res.whatsappedPayslips || finalData.whatsappedPayslips || {},
               employeeContributions: res.contributions || finalData.employeeContributions || [],
               contributionPayouts: res.payouts || finalData.contributionPayouts || [],
+              contributionSchemes: (res.contributionSchemes && res.contributionSchemes.length > 0) ? res.contributionSchemes : finalData.contributionSchemes,
               employeeAbsences: res.absences || finalData.employeeAbsences || [],
             };
           }
@@ -1673,6 +1692,7 @@ export function usePayrollStore() {
               whatsappedPayslips: res.whatsappedPayslips || prev.whatsappedPayslips || {},
               employeeContributions: res.contributions || prev.employeeContributions || [],
               contributionPayouts: res.payouts || prev.contributionPayouts || [],
+              contributionSchemes: (res.contributionSchemes && res.contributionSchemes.length > 0) ? res.contributionSchemes : prev.contributionSchemes,
               employeeAbsences: res.absences || prev.employeeAbsences || [],
             };
             if (currentDirtyIds.size === 0 && pendingLocalEmployeesRef.current.size === 0) {
@@ -3156,19 +3176,49 @@ export function usePayrollStore() {
 
   const saveContributionScheme = (scheme: ContributionScheme) => {
     if (!guardCloudMutation('configure contribution scheme')) return;
+    const trimmedName = scheme.name.trim();
+    if (!trimmedName) return;
+    const normalized: ContributionScheme = {
+      ...scheme,
+      name: trimmedName,
+      description: scheme.description?.trim() || '',
+    };
     setState(prev => {
       const existing = prev.contributionSchemes || [];
-      const idx = existing.findIndex(s => s.id === scheme.id);
+      const idx = existing.findIndex(s => s.id === normalized.id);
+      const oldName = idx >= 0 ? existing[idx].name : null;
+
       let updated: ContributionScheme[];
       if (idx >= 0) {
-        updated = [...existing];
-        updated[idx] = scheme;
+        updated = existing.map((s, i) => {
+          if (i === idx) return normalized;
+          return normalized.isDefault ? { ...s, isDefault: false } : s;
+        });
       } else {
-        updated = [...existing, scheme];
+        const base = normalized.isDefault
+          ? existing.map(s => ({ ...s, isDefault: false }))
+          : existing;
+        updated = [...base, normalized];
       }
+
+      const shouldRenameRecords = Boolean(oldName && oldName !== trimmedName);
+      const updatedContributions = shouldRenameRecords
+        ? (prev.employeeContributions || []).map(c =>
+            c.schemeName === oldName ? { ...c, schemeName: trimmedName, updatedAt: new Date().toISOString() } : c
+          )
+        : prev.employeeContributions;
+      const updatedPayouts = shouldRenameRecords
+        ? (prev.contributionPayouts || []).map(p =>
+            p.schemeName === oldName ? { ...p, schemeName: trimmedName } : p
+          )
+        : prev.contributionPayouts;
+
       return {
         ...prev,
-        contributionSchemes: updated
+        contributionSchemes: updated,
+        contributionSchemesInitialized: true,
+        employeeContributions: updatedContributions,
+        contributionPayouts: updatedPayouts,
       };
     });
 
@@ -3176,17 +3226,24 @@ export function usePayrollStore() {
       activeCompanyId || '',
       activeCompany?.name || '',
       'CONFIGURED_CONTRIBUTION_SCHEME',
-      `Configured contribution scheme "${scheme.name}"`
+      `Configured contribution scheme "${trimmedName}"`
     );
   };
 
   const deleteContributionScheme = (id: string) => {
     if (!guardCloudMutation('delete contribution scheme')) return;
     const existing = (state.contributionSchemes || []).find(s => s.id === id);
-    setState(prev => ({
-      ...prev,
-      contributionSchemes: (prev.contributionSchemes || []).filter(s => s.id !== id)
-    }));
+    setState(prev => {
+      const remaining = (prev.contributionSchemes || []).filter(s => s.id !== id);
+      if (remaining.length > 0 && !remaining.some(s => s.isDefault)) {
+        remaining[0] = { ...remaining[0], isDefault: true };
+      }
+      return {
+        ...prev,
+        contributionSchemes: remaining,
+        contributionSchemesInitialized: true,
+      };
+    });
 
     if (existing) {
       logAuditEvent(

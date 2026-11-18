@@ -100,16 +100,35 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
   const canEdit = !isWriteDisabled && !isPeriodLocked;
 
   const currentPeriodKey = `${selectedYear}-${selectedMonth}`;
-  const effectiveSchemes: ContributionScheme[] = schemes.length > 0 ? schemes : [
-    {
-      id: 'scheme-welfare',
-      name: 'Staff Welfare Fund',
-      description: 'Standard voluntary staff welfare and social support fund',
-      defaultAmount: 5000,
-      defaultMode: 'fixed',
-      isDefault: true,
-    }
-  ];
+  const effectiveSchemes: ContributionScheme[] = useMemo(() => {
+    const base: ContributionScheme[] = Array.isArray(schemes) ? [...schemes] : [];
+    const seen = new Set(base.map(s => s.name.trim().toLowerCase()));
+    const recordNames = new Set<string>();
+    (contributions || []).forEach(c => {
+      if (c.schemeName?.trim()) recordNames.add(c.schemeName.trim());
+    });
+    (payouts || []).forEach(p => {
+      if (p.schemeName?.trim()) recordNames.add(p.schemeName.trim());
+    });
+    recordNames.forEach(name => {
+      if (!seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        base.push({
+          id: `scheme-detected-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+          name,
+          description: 'Detected from existing contribution records',
+          defaultAmount: 5000,
+          defaultMode: 'fixed',
+        });
+      }
+    });
+    return base;
+  }, [schemes, contributions, payouts]);
+
+  const defaultSchemeObj = useMemo(
+    () => effectiveSchemes.find(s => s.isDefault) || effectiveSchemes[0],
+    [effectiveSchemes]
+  );
 
   // Helper to resolve baseline take-home pay before voluntary contributions
   const getEmployeeTakeHome = (empId: string, monthlyGross: number) => {
@@ -379,14 +398,21 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
     isSelected: boolean;
     amount: number;
   }>>([]);
-  const [bulkScheme, setBulkScheme] = useState(effectiveSchemes[0]?.name || 'Staff Welfare Fund');
+  const [bulkScheme, setBulkScheme] = useState(defaultSchemeObj?.name || '');
   const [batchMode, setBatchMode] = useState<'fixed' | 'percent_take_home'>('fixed');
-  const [batchValue, setBatchValue] = useState<number>(5000);
+  const [batchValue, setBatchValue] = useState<number>(Number(defaultSchemeObj?.defaultAmount) || 5000);
 
   const openBulkModal = () => {
+    const activeSchemeName = effectiveSchemes.some(s => s.name === bulkScheme)
+      ? bulkScheme
+      : (defaultSchemeObj?.name || '');
+    const activeSchemeObj = effectiveSchemes.find(s => s.name === activeSchemeName) || defaultSchemeObj;
+    const defaultAmt = Number(activeSchemeObj?.defaultAmount) || 5000;
+    setBulkScheme(activeSchemeName);
+    setBatchValue(defaultAmt);
     const initial = employees.map(emp => {
       const existing = currentMonthContributions.find(
-        c => c.employeeId === emp.id && c.schemeName === bulkScheme
+        c => c.employeeId === emp.id && c.schemeName === activeSchemeName
       );
       const gross = Number(emp.monthlyGross) || 0;
       const takeHome = getEmployeeTakeHome(emp.id, gross);
@@ -398,7 +424,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
         monthlyGross: gross,
         takeHomePay: takeHome,
         isSelected: existing ? Number(existing.amount) > 0 : true,
-        amount: existing ? Number(existing.amount) : 5000,
+        amount: existing ? Number(existing.amount) : defaultAmt,
       };
     });
     setBulkRows(initial);
@@ -447,8 +473,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
   // Open single edit modal
   const handleOpenEditSingle = (emp: Employee, existing?: EmployeeContribution) => {
     setEditingSingleEmp({ emp, existing });
-    setSingleAmount(existing ? Number(existing.amount) : 5000);
-    setSingleScheme(existing?.schemeName || effectiveSchemes[0]?.name || 'Staff Welfare Fund');
+    setSingleAmount(existing ? Number(existing.amount) : (Number(defaultSchemeObj?.defaultAmount) || 5000));
+    setSingleScheme(existing?.schemeName || defaultSchemeObj?.name || 'Staff Welfare Fund');
   };
 
   const handleSaveSingle = (e: React.FormEvent) => {
@@ -1802,7 +1828,9 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   onChange={(e) => setSingleScheme(e.target.value)}
                   className="w-full bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs"
                 >
-                  {effectiveSchemes.map(s => (
+                  {effectiveSchemes.length === 0 ? (
+                    <option value="">No schemes configured — add one in Settings → Variables</option>
+                  ) : effectiveSchemes.map(s => (
                     <option key={s.id} value={s.name}>{s.name}</option>
                   ))}
                 </select>
@@ -1826,8 +1854,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                         <span className="absolute left-3 text-xs text-zinc-400 font-mono">₦</span>
                         <input
                           type="number"
-                          min="0"
-                          step="500"
+                          step="any"
                           value={singleAmount}
                           onChange={(e) => setSingleAmount(Math.max(0, parseFloat(e.target.value) || 0))}
                           className="w-full pl-7 pr-3 py-2 bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs"
@@ -1956,7 +1983,9 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   onChange={(e) => setBulkScheme(e.target.value)}
                   className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2.5 py-1 rounded-lg text-xs font-medium text-zinc-900 dark:text-zinc-100 shadow-2xs focus:outline-none focus:ring-1 focus:ring-zinc-400 max-w-[180px] sm:max-w-none truncate"
                 >
-                  {effectiveSchemes.map(s => (
+                  {effectiveSchemes.length === 0 ? (
+                    <option value="">No schemes configured (Settings → Variables)</option>
+                  ) : effectiveSchemes.map(s => (
                     <option key={s.id} value={s.name}>{s.name}</option>
                   ))}
                 </select>
@@ -1987,7 +2016,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   </span>
                   <input
                     type="number"
-                    min="0"
+                    step="any"
                     value={batchValue}
                     onChange={(e) => setBatchValue(Math.max(0, parseFloat(e.target.value) || 0))}
                     placeholder={batchMode === 'fixed' ? '5000' : '5'}
@@ -2070,7 +2099,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                             <span className="absolute left-2.5 text-xs text-zinc-400 font-mono">₦</span>
                             <input
                               type="number"
-                              min="0"
+                              step="any"
                               disabled={!row.isSelected}
                               value={row.amount}
                               onChange={(e) => {
@@ -2167,7 +2196,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                                 <span className="absolute left-2 text-[11px] text-zinc-400 font-mono">₦</span>
                                 <input
                                   type="number"
-                                  min="0"
+                                  step="any"
                                   disabled={!row.isSelected}
                                   value={row.amount}
                                   onChange={(e) => {
@@ -2319,8 +2348,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                     <span className="absolute left-3 text-xs text-zinc-400 font-mono">₦</span>
                     <input
                       type="number"
-                      min="1"
-                      step="100"
+                      step="any"
                       value={payoutAmount || ''}
                       onChange={(e) => setPayoutAmount(Math.max(0, parseFloat(e.target.value) || 0))}
                       className="w-full pl-7 pr-3 py-2 bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs"

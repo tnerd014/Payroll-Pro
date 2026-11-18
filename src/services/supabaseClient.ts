@@ -14,6 +14,7 @@ import {
   AuditLogEntry,
   EmployeeContribution,
   ContributionPayout,
+  ContributionScheme,
   EmployeeAbsenceRecord
 } from '../types';
 import { hashCredential, verifyCredential, isBcryptHash } from '../utils/cryptoAuth';
@@ -555,6 +556,7 @@ export async function uploadCompanyDataToSupabase(
     forceOverwrite?: boolean;
     contributions?: EmployeeContribution[];
     payouts?: ContributionPayout[];
+    contributionSchemes?: ContributionScheme[];
     absences?: EmployeeAbsenceRecord[];
     whatsappSettings?: any;
   }
@@ -701,7 +703,7 @@ export async function uploadCompanyDataToSupabase(
     }
 
     // 4. Upsert Payroll Variables
-    await client.from('payroll_variables').upsert({
+    const basePvPayload = {
       company_id: companyId,
       basic: payrollVariables.basic,
       housing: payrollVariables.housing,
@@ -715,7 +717,15 @@ export async function uploadCompanyDataToSupabase(
       workday_divisor_rule: payrollVariables.workdayDivisorRule || 'actual_weekdays',
       section5_cap_enforcement: payrollVariables.section5CapEnforcement || 'advisory_warning',
       updated_at: new Date().toISOString(),
-    });
+    };
+    const pvPayload = options?.contributionSchemes !== undefined
+      ? { ...basePvPayload, contribution_schemes: options.contributionSchemes }
+      : basePvPayload;
+    const { error: pvUpsertErr } = await client.from('payroll_variables').upsert(pvPayload);
+    if (pvUpsertErr && options?.contributionSchemes !== undefined && /contribution_schemes/i.test(pvUpsertErr.message || '')) {
+      // Graceful fallback for cloud schemas that have not added contribution_schemes yet
+      await client.from('payroll_variables').upsert(basePvPayload);
+    }
 
     // 5. Upsert PAYE Tax Variables
     await client.from('paye_tax_variables').upsert({
@@ -929,6 +939,7 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
   whatsappSettings?: any;
   contributions?: EmployeeContribution[];
   payouts?: ContributionPayout[];
+  contributionSchemes?: ContributionScheme[];
   absences?: EmployeeAbsenceRecord[];
   error?: string;
 }> {
@@ -1131,6 +1142,9 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
       emailedPayslips: cloudEmailedPayslips,
       whatsappedPayslips: cloudWhatsAppedPayslips,
       whatsappSettings: cloudWhatsAppSettings,
+      contributionSchemes: Array.isArray(pvData?.contribution_schemes) && pvData.contribution_schemes.length > 0
+        ? pvData.contribution_schemes
+        : undefined,
       contributions: (contribData || []).map(c => ({
         id: c.id,
         employeeId: c.employee_id,

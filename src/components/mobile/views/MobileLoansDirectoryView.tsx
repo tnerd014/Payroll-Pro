@@ -1015,6 +1015,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
             </label>
             <input
               type="number"
+              step="any"
               placeholder="e.g. 50000"
               value={paymentAmount}
               onChange={(e) => setPaymentAmount(e.target.value)}
@@ -1108,6 +1109,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
             </label>
             <input
               type="number"
+              step="any"
               placeholder="e.g. 200000"
               value={newPrincipal}
               onChange={(e) => setNewPrincipal(e.target.value)}
@@ -1121,6 +1123,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
             </label>
             <input
               type="number"
+              step="any"
               placeholder="e.g. 50000"
               value={newMonthly}
               onChange={(e) => setNewMonthly(e.target.value)}

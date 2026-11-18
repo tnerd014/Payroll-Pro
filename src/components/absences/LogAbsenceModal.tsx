@@ -446,8 +446,7 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
                 <span className="absolute left-3 text-xs text-zinc-400 font-mono">₦</span>
                 <input
                   type="number"
-                  min="0"
-                  step="100"
+                  step="any"
                   placeholder="0.00"
                   value={customDeductionAmount || ''}
                   disabled={isReadOnly}

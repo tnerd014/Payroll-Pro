@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  Building2, 
-  Sliders, 
-  ShieldCheck, 
-  Save, 
-  Check, 
-  Upload, 
-  Trash2, 
-  Download, 
+import {
+  Building2,
+  Sliders,
+  ShieldCheck,
+  Save,
+  Check,
+  Upload,
+  Trash2,
+  Download,
   CheckCircle2,
   ChevronRight,
   Briefcase,
@@ -33,13 +33,13 @@ import {
   Paperclip,
   MessageCircle
 } from 'lucide-react';
-import { 
-  CompanyProfile, 
-  PayrollVariables, 
-  PayeTaxVariables, 
-  AppView, 
-  Employee, 
-  CalculatedPayrollItem, 
+import {
+  CompanyProfile,
+  PayrollVariables,
+  PayeTaxVariables,
+  AppView,
+  Employee,
+  CalculatedPayrollItem,
   EmploymentTypeRule,
   PayrollSnapshot,
   EmployeeLoan,
@@ -55,15 +55,16 @@ import {
   WhatsAppProviderType,
   EmployeeContribution,
   ContributionPayout,
+  ContributionScheme,
   EmployeeAbsenceRecord,
   DEFAULT_WHATSAPP_SETTINGS
 } from '../../../types';
 import { DEFAULT_EMPLOYMENT_TYPE_RULES, DEFAULT_PAYROLL_VARIABLES, DEFAULT_PAYE_VARIABLES } from '../../../engine/payePensionEngine';
-import { 
-  exportPayrollProToExcel, 
-  parseEmployeesFromExcel, 
-  downloadExcelImportTemplate, 
-  ExportOptions 
+import {
+  exportPayrollProToExcel,
+  parseEmployeesFromExcel,
+  downloadExcelImportTemplate,
+  ExportOptions
 } from '../../../engine/excelEngine';
 import { ExportScopeModal } from '../../excel/ExportScopeModal';
 import { fetchAuditLogs } from '../../../services/supabaseClient';
@@ -95,6 +96,9 @@ interface MobileSettingsViewProps {
   loans?: EmployeeLoan[];
   contributions?: EmployeeContribution[];
   payouts?: ContributionPayout[];
+  contributionSchemes?: ContributionScheme[];
+  onSaveContributionScheme?: (scheme: ContributionScheme) => void;
+  onDeleteContributionScheme?: (id: string) => void;
   absences?: EmployeeAbsenceRecord[];
   currentUser?: TeamMember | null;
   onImportEmployees?: (employees: Partial<Employee>[], mode: 'merge' | 'overwrite', scope?: 'all' | 'salary-only' | 'bank-only') => void;
@@ -129,6 +133,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   loans = [],
   contributions = [],
   payouts = [],
+  contributionSchemes = [],
+  onSaveContributionScheme,
+  onDeleteContributionScheme,
   absences = [],
   currentUser,
   onImportEmployees,
@@ -151,7 +158,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       setActiveTab(initialTab);
     }
   }, [initialTab]);
-  
+
   // Local form state
   const [companyForm, setCompanyForm] = useState<CompanyProfile>(company);
   const [pvForm, setPvForm] = useState<PayrollVariables>(payrollVariables);
@@ -362,7 +369,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   }, [companyForm, company]);
 
   const isPayrollDirty = useMemo(() => {
-    const pvChanged = 
+    const pvChanged =
       pvForm.basic !== payrollVariables.basic ||
       pvForm.housing !== payrollVariables.housing ||
       pvForm.transport !== payrollVariables.transport ||
@@ -373,7 +380,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       Boolean(pvForm.prorateMidMonth) !== Boolean(payrollVariables.prorateMidMonth) ||
       JSON.stringify(pvForm.employmentTypeRules || []) !== JSON.stringify(payrollVariables.employmentTypeRules || []);
 
-    const tvChanged = 
+    const tvChanged =
       tvForm.craBase !== payeTaxVariables.craBase ||
       tvForm.rentReliefRate !== payeTaxVariables.rentReliefRate ||
       tvForm.rentReliefCap !== payeTaxVariables.rentReliefCap ||
@@ -429,6 +436,104 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   const activeRules: EmploymentTypeRule[] = pvForm.employmentTypeRules && pvForm.employmentTypeRules.length > 0
     ? pvForm.employmentTypeRules
     : DEFAULT_EMPLOYMENT_TYPE_RULES;
+
+  // Contribution schemes management
+  const [isAddingScheme, setIsAddingScheme] = useState(false);
+  const [newSchemeName, setNewSchemeName] = useState('');
+  const [newSchemeDesc, setNewSchemeDesc] = useState('');
+  const [newSchemeDefaultAmt, setNewSchemeDefaultAmt] = useState('5000');
+  const [editingSchemeId, setEditingSchemeId] = useState<string | null>(null);
+  const [editSchemeName, setEditSchemeName] = useState('');
+  const [editSchemeDesc, setEditSchemeDesc] = useState('');
+  const [editSchemeDefaultAmt, setEditSchemeDefaultAmt] = useState('');
+
+  const activeSchemes: ContributionScheme[] = useMemo(() => {
+    return Array.isArray(contributionSchemes) ? contributionSchemes : [];
+  }, [contributionSchemes]);
+
+  const detectedUnlistedSchemes = useMemo(() => {
+    const existing = new Set(activeSchemes.map(s => s.name.trim().toLowerCase()));
+    const discovered = new Set<string>();
+    (contributions || []).forEach(c => {
+      const name = (c.schemeName || '').trim();
+      if (name && !existing.has(name.toLowerCase())) discovered.add(name);
+    });
+    (payouts || []).forEach(p => {
+      const name = (p.schemeName || '').trim();
+      if (name && !existing.has(name.toLowerCase())) discovered.add(name);
+    });
+    return Array.from(discovered);
+  }, [activeSchemes, contributions, payouts]);
+
+  const handleAddScheme = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isWriteDisabled) return;
+    const trimmed = newSchemeName.trim();
+    if (!trimmed) return;
+    if (activeSchemes.some(s => s.name.trim().toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Scheme "${trimmed}" already exists.`);
+      return;
+    }
+    onSaveContributionScheme?.({
+      id: `scheme-${Date.now()}`,
+      name: trimmed,
+      description: newSchemeDesc.trim() || 'Voluntary staff contribution scheme',
+      defaultAmount: Math.max(0, parseFloat(newSchemeDefaultAmt) || 0),
+      defaultMode: 'fixed',
+      isDefault: activeSchemes.length === 0,
+    });
+    setNewSchemeName('');
+    setNewSchemeDesc('');
+    setNewSchemeDefaultAmt('5000');
+    setIsAddingScheme(false);
+  };
+
+  const handleQuickAddDetectedScheme = (name: string) => {
+    if (isWriteDisabled) return;
+    if (activeSchemes.some(s => s.name.trim().toLowerCase() === name.toLowerCase())) return;
+    onSaveContributionScheme?.({
+      id: `scheme-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      description: 'Staff voluntary contribution scheme',
+      defaultAmount: 5000,
+      defaultMode: 'fixed',
+      isDefault: false,
+    });
+  };
+
+  const handleStartEditScheme = (scheme: ContributionScheme) => {
+    setEditingSchemeId(scheme.id);
+    setEditSchemeName(scheme.name);
+    setEditSchemeDesc(scheme.description || '');
+    setEditSchemeDefaultAmt(String(scheme.defaultAmount ?? 5000));
+  };
+
+  const handleSaveEditScheme = (scheme: ContributionScheme) => {
+    if (isWriteDisabled) return;
+    const trimmed = editSchemeName.trim();
+    if (!trimmed) {
+      setEditingSchemeId(null);
+      return;
+    }
+    if (activeSchemes.some(s => s.id !== scheme.id && s.name.trim().toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Scheme "${trimmed}" already exists.`);
+      return;
+    }
+    onSaveContributionScheme?.({
+      ...scheme,
+      name: trimmed,
+      description: editSchemeDesc.trim(),
+      defaultAmount: Math.max(0, parseFloat(editSchemeDefaultAmt) || 0),
+    });
+    setEditingSchemeId(null);
+  };
+
+  const handleDeleteScheme = (scheme: ContributionScheme) => {
+    if (isWriteDisabled) return;
+    if (confirm(`Remove the "${scheme.name}" contribution scheme? Existing records will retain their history.`)) {
+      onDeleteContributionScheme?.(scheme.id);
+    }
+  };
 
   // Handle Testing Email Connection
   const handleTestEmailConnection = async () => {
@@ -584,7 +689,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   };
 
   const handleToggleRule = (ruleId: string, field: 'hasPayeDefault' | 'hasPensionDefault') => {
-    const updated = activeRules.map(r => 
+    const updated = activeRules.map(r =>
       r.id === ruleId ? { ...r, [field]: !r[field] } : r
     );
     setPvForm(prev => ({ ...prev, employmentTypeRules: updated }));
@@ -628,8 +733,8 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   // Extra relief condition handlers
   const handleToggleExtraCondition = (condId: string) => {
     setTvForm(prev => {
-      const base = prev.extraConditions && prev.extraConditions.length > 0 
-        ? prev.extraConditions 
+      const base = prev.extraConditions && prev.extraConditions.length > 0
+        ? prev.extraConditions
         : DEFAULT_PAYE_VARIABLES.extraConditions;
       const updated = base.map(c =>
         c.id === condId ? { ...c, enabled: !c.enabled } : c
@@ -640,8 +745,8 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
   const handleUpdateExtraConditionAmount = (condId: string, amount: number) => {
     setTvForm(prev => {
-      const base = prev.extraConditions && prev.extraConditions.length > 0 
-        ? prev.extraConditions 
+      const base = prev.extraConditions && prev.extraConditions.length > 0
+        ? prev.extraConditions
         : DEFAULT_PAYE_VARIABLES.extraConditions;
       const updated = base.map(c =>
         c.id === condId ? { ...c, amount } : c
@@ -735,7 +840,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <Building2 className="w-5 h-5" />
               </div>
             )}
-            
+
             {!isWriteDisabled && (
               <button
                 type="button"
@@ -783,11 +888,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('profile')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-            activeTab === 'profile'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-              : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
-          }`}
+          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'profile'
+            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            }`}
         >
           <Building2 className="w-3.5 h-3.5 shrink-0" />
           <span>Profile</span>
@@ -797,11 +901,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('payroll')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-            activeTab === 'payroll'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-              : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
-          }`}
+          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'payroll'
+            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            }`}
         >
           <Sliders className="w-3.5 h-3.5 shrink-0" />
           <span>Payroll &amp; Tax</span>
@@ -812,11 +915,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('excel')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-            activeTab === 'excel'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-              : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
-          }`}
+          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'excel'
+            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            }`}
         >
           <FileSpreadsheet className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>Excel Sync</span>
@@ -826,11 +928,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('email')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'email'
-                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-                : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
-            }`}
+            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'email'
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+              : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+              }`}
           >
             <Mail className="w-3.5 h-3.5 shrink-0 text-sky-600 dark:text-sky-400" />
             <span>Email</span>
@@ -842,11 +943,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('whatsapp')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'whatsapp'
-                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-                : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
-            }`}
+            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'whatsapp'
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+              : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+              }`}
           >
             <MessageCircle className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <span>WhatsApp</span>
@@ -857,11 +957,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('audit')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-            activeTab === 'audit'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-              : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
-          }`}
+          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'audit'
+            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            }`}
         >
           <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
           <span>Audit Trail</span>
@@ -870,11 +969,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('backup')}
-          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-            activeTab === 'backup'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-              : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
-          }`}
+          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'backup'
+            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            }`}
         >
           <RotateCcw className="w-3.5 h-3.5 shrink-0" />
           <span>Backup</span>
@@ -886,7 +984,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {/* ── TAB 1: Profile & Identity ── */}
       {activeTab === 'profile' && (
         <div className="space-y-3 animate-in fade-in duration-150">
-          
+
           {/* Card 1: Corporate Identity */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
             <div className="px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40">
@@ -1106,63 +1204,59 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {/* ── TAB 2: Payroll & Tax Rules ── */}
       {activeTab === 'payroll' && (
         <div className="space-y-3.5 animate-in fade-in duration-150">
-          
+
           {/* Section 0: Salary Calculation Mode */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-2.5">
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                 Salary Calculation Mode
               </h3>
-              
+
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setPvForm(prev => ({ ...prev, salaryCalculationMode: 'gross-to-net' }))}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  (pvForm.salaryCalculationMode || 'gross-to-net') === 'gross-to-net'
-                    ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-500/70 text-blue-900 dark:text-blue-100 shadow-xs'
-                    : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/60 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400'
-                }`}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${(pvForm.salaryCalculationMode || 'gross-to-net') === 'gross-to-net'
+                  ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-500/70 text-blue-900 dark:text-blue-100 shadow-xs'
+                  : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/60 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400'
+                  }`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] font-bold">Gross to Net</span>
-                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                    (pvForm.salaryCalculationMode || 'gross-to-net') === 'gross-to-net'
-                      ? 'border-blue-600 bg-blue-600 dark:border-blue-400 dark:bg-blue-400'
-                      : 'border-zinc-300 dark:border-zinc-600'
-                  }`}>
+                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${(pvForm.salaryCalculationMode || 'gross-to-net') === 'gross-to-net'
+                    ? 'border-blue-600 bg-blue-600 dark:border-blue-400 dark:bg-blue-400'
+                    : 'border-zinc-300 dark:border-zinc-600'
+                    }`}>
                     {(pvForm.salaryCalculationMode || 'gross-to-net') === 'gross-to-net' && (
                       <span className="w-1.5 h-1.5 rounded-full bg-white" />
                     )}
                   </span>
                 </div>
-                
+
               </button>
 
               <button
                 type="button"
                 onClick={() => setPvForm(prev => ({ ...prev, salaryCalculationMode: 'net-to-gross' }))}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  (pvForm.salaryCalculationMode || 'gross-to-net') === 'net-to-gross'
-                    ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500/70 text-amber-900 dark:text-amber-100 shadow-xs'
-                    : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/60 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400'
-                }`}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${(pvForm.salaryCalculationMode || 'gross-to-net') === 'net-to-gross'
+                  ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500/70 text-amber-900 dark:text-amber-100 shadow-xs'
+                  : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200/60 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400'
+                  }`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] font-bold">Net to Gross</span>
-                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                    (pvForm.salaryCalculationMode || 'gross-to-net') === 'net-to-gross'
-                      ? 'border-amber-600 bg-amber-600 dark:border-amber-400 dark:bg-amber-400'
-                      : 'border-zinc-300 dark:border-zinc-600'
-                  }`}>
+                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${(pvForm.salaryCalculationMode || 'gross-to-net') === 'net-to-gross'
+                    ? 'border-amber-600 bg-amber-600 dark:border-amber-400 dark:bg-amber-400'
+                    : 'border-zinc-300 dark:border-zinc-600'
+                    }`}>
                     {(pvForm.salaryCalculationMode || 'gross-to-net') === 'net-to-gross' && (
                       <span className="w-1.5 h-1.5 rounded-full bg-white" />
                     )}
                   </span>
                 </div>
-                
+
               </button>
             </div>
           </div>
@@ -1175,14 +1269,16 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                     Mid-Month Proration
                   </h3>
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                    pvForm.prorateMidMonth
-                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
-                  }`}>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${pvForm.prorateMidMonth
+                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+                    }`}>
                     {pvForm.prorateMidMonth ? 'Active' : 'Off'}
                   </span>
                 </div>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed pt-0.5">
+                  Pro-rates pay by active calendar days for staff joining or exiting mid-month (unless a manual monthly override is set). When off, full monthly salary applies.
+                </p>
               </div>
 
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -1196,7 +1292,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               </label>
             </div>
           </div>
-          
+
           {/* Section 1: Salary Allocation Matrix */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
@@ -1207,11 +1303,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <p className="text-[10px] text-zinc-400 mt-0.5">Sum must equal exactly 100%</p>
               </div>
 
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-bold border ${
-                isAllowanceValid
-                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/70'
-                  : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200/70 animate-pulse'
-              }`}>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-bold border ${isAllowanceValid
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/70'
+                : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200/70 animate-pulse'
+                }`}>
                 {allowanceSum}% / 100%
               </span>
             </div>
@@ -1234,6 +1329,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <div className="flex items-center gap-1 mt-1.5">
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     max="100"
                     value={pvForm.basic}
@@ -1252,6 +1348,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <div className="flex items-center gap-1 mt-1.5">
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     max="100"
                     value={pvForm.housing}
@@ -1270,6 +1367,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <div className="flex items-center gap-1 mt-1.5">
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     max="100"
                     value={pvForm.transport}
@@ -1288,6 +1386,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <div className="flex items-center gap-1 mt-1.5">
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     max="100"
                     value={pvForm.otherAllowances}
@@ -1307,7 +1406,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                   Pension Reform Act (PRA)
                 </h3>
-                
+
               </div>
 
               <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/70">
@@ -1323,6 +1422,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <div className="flex items-center gap-1.5 mt-1">
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     max="50"
                     value={pvForm.employeePensionRate}
@@ -1340,6 +1440,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <div className="flex items-center gap-1.5 mt-1">
                   <input
                     type="number"
+                    step="any"
                     min="0"
                     max="50"
                     value={pvForm.employerPensionRate}
@@ -1358,7 +1459,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                 PITA Tax Relief Parameters
               </h3>
-              
+
             </div>
 
             {/* CRA Base */}
@@ -1373,6 +1474,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <span className="text-xs font-mono font-bold text-zinc-400">₦</span>
                 <input
                   type="number"
+                  step="any"
                   value={tvForm.craBase}
                   onChange={(e) => setTvForm(prev => ({ ...prev, craBase: Number(e.target.value) || 0 }))}
                   className="w-full h-8 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-bold font-mono text-zinc-900 dark:text-zinc-100"
@@ -1392,7 +1494,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <div className="flex items-center gap-1.5 mt-1">
                   <input
                     type="number"
-                    step="1"
+                    step="any"
                     min="0"
                     max="100"
                     value={Math.round((tvForm.rentReliefRate ?? 0.20) * 100)}
@@ -1412,6 +1514,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                   <span className="text-xs font-mono font-bold text-zinc-400">₦</span>
                   <input
                     type="number"
+                    step="any"
                     value={tvForm.rentReliefCap ?? 500000}
                     onChange={(e) => setTvForm(prev => ({ ...prev, rentReliefCap: Number(e.target.value) || 0 }))}
                     className="w-full h-8 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-bold font-mono text-zinc-900 dark:text-zinc-100"
@@ -1427,11 +1530,11 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 Additional Statutory Tax Reliefs
               </span>
 
-              {(tvForm.extraConditions && tvForm.extraConditions.length > 0 
-                ? tvForm.extraConditions 
+              {(tvForm.extraConditions && tvForm.extraConditions.length > 0
+                ? tvForm.extraConditions
                 : DEFAULT_PAYE_VARIABLES.extraConditions
               ).map((cond) => (
-                <div 
+                <div
                   key={cond.id}
                   className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 space-y-2"
                 >
@@ -1442,11 +1545,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleToggleExtraCondition(cond.id)}
-                      className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${
-                        cond.enabled
-                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/70'
-                          : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
-                      }`}
+                      className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${cond.enabled
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/70'
+                        : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
+                        }`}
                     >
                       {cond.enabled ? 'ACTIVE' : 'OFF'}
                     </button>
@@ -1457,6 +1559,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                       <span className="text-[10px] text-zinc-400 font-medium shrink-0">Annual Amount (₦):</span>
                       <input
                         type="number"
+                        step="any"
                         value={cond.amount || ''}
                         placeholder="0"
                         onChange={(e) => handleUpdateExtraConditionAmount(cond.id, Number(e.target.value) || 0)}
@@ -1476,7 +1579,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                   PAYE Tax Brackets
                 </h3>
-                
+
               </div>
 
               <button
@@ -1491,7 +1594,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
             <div className="space-y-2">
               {(tvForm.taxBrackets || DEFAULT_PAYE_VARIABLES.taxBrackets).map((bracket, index) => (
-                <div 
+                <div
                   key={bracket.id}
                   className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 space-y-2"
                 >
@@ -1523,6 +1626,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                       </span>
                       <input
                         type="number"
+                        step="any"
                         placeholder="No limit (balance)"
                         value={bracket.upTo === null ? '' : bracket.upTo}
                         onChange={(e) => handleUpdateBracket(index, { upTo: e.target.value === '' ? null : Number(e.target.value) })}
@@ -1537,7 +1641,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                       <div className="flex items-center gap-1">
                         <input
                           type="number"
-                          step="0.1"
+                          step="any"
                           min="0"
                           max="100"
                           value={Math.round((bracket.rate || 0) * 100 * 10) / 10}
@@ -1560,7 +1664,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                   Employment Demarcations
                 </h3>
-                
+
               </div>
 
               <button
@@ -1623,7 +1727,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               {activeRules.map((rule) => {
                 const isCoreType = ['Full-Time', 'Part-Time', 'Contract', 'Intern / NYSC'].includes(rule.name);
                 return (
-                  <div 
+                  <div
                     key={rule.id}
                     className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2"
                   >
@@ -1647,11 +1751,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleToggleRule(rule.id, 'hasPayeDefault')}
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${
-                          rule.hasPayeDefault
-                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200/70'
-                            : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
-                        }`}
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${rule.hasPayeDefault
+                          ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200/70'
+                          : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
+                          }`}
                         title="Toggle PAYE Tax"
                       >
                         PAYE: {rule.hasPayeDefault ? 'YES' : 'NO'}
@@ -1660,11 +1763,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleToggleRule(rule.id, 'hasPensionDefault')}
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${
-                          rule.hasPensionDefault
-                            ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200/70'
-                            : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
-                        }`}
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-colors cursor-pointer ${rule.hasPensionDefault
+                          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200/70'
+                          : 'bg-zinc-200/60 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700'
+                          }`}
                         title="Toggle Pension"
                       >
                         PEN: {rule.hasPensionDefault ? 'YES' : 'NO'}
@@ -1681,6 +1783,204 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                         </button>
                       )}
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 5b: Staff Contribution & Welfare Schemes */}
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                  Contribution Schemes
+                </h3>
+                <p className="text-[10px] text-zinc-400 mt-0.5">
+                  Voluntary welfare &amp; cooperative schemes
+                </p>
+              </div>
+
+              {!isWriteDisabled && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingScheme(!isAddingScheme)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[10px] font-bold cursor-pointer active:scale-95 transition-all"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>{isAddingScheme ? 'Close' : 'Add'}</span>
+                </button>
+              )}
+            </div>
+
+            {!isWriteDisabled && detectedUnlistedSchemes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40">
+                <span className="text-[10px] font-medium text-amber-800 dark:text-amber-300">
+                  Found in records:
+                </span>
+                {detectedUnlistedSchemes.map(name => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => handleQuickAddDetectedScheme(name)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white dark:bg-zinc-900 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-[10px] font-semibold cursor-pointer"
+                  >
+                    <Plus className="w-2.5 h-2.5" />
+                    <span>{name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {isAddingScheme && !isWriteDisabled && (
+              <form onSubmit={handleAddScheme} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700 space-y-2">
+                <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 block">
+                  New Contribution Scheme
+                </span>
+                <input
+                  type="text"
+                  value={newSchemeName}
+                  onChange={(e) => setNewSchemeName(e.target.value)}
+                  placeholder="Scheme name (e.g. Staff Cooperative Society)..."
+                  className="w-full h-8 px-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <input
+                  type="text"
+                  value={newSchemeDesc}
+                  onChange={(e) => setNewSchemeDesc(e.target.value)}
+                  placeholder="Description (optional)..."
+                  className="w-full h-8 px-2.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1 flex-1">
+                    <span className="text-[10px] text-zinc-400 font-medium shrink-0">Default (₦):</span>
+                    <input
+                      type="number"
+                      step="any"
+                      value={newSchemeDefaultAmt}
+                      onChange={(e) => setNewSchemeDefaultAmt(e.target.value)}
+                      placeholder="5000"
+                      className="w-24 h-8 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!newSchemeName.trim()}
+                    className="px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-bold disabled:opacity-40 cursor-pointer active:scale-95 transition-all"
+                  >
+                    Add
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div className="space-y-1.5">
+              {activeSchemes.length === 0 ? (
+                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-dashed border-zinc-200 dark:border-zinc-700 text-center text-[11px] text-zinc-400">
+                  No contribution schemes configured. Tap Add above to create yours.
+                </div>
+              ) : activeSchemes.map((scheme) => {
+                const isEditing = editingSchemeId === scheme.id;
+                return (
+                  <div
+                    key={scheme.id}
+                    className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60"
+                  >
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={editSchemeName}
+                          onChange={(e) => setEditSchemeName(e.target.value)}
+                          placeholder="Scheme name"
+                          className="w-full h-8 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-900 dark:text-zinc-100"
+                        />
+                        <input
+                          type="text"
+                          value={editSchemeDesc}
+                          onChange={(e) => setEditSchemeDesc(e.target.value)}
+                          placeholder="Description (optional)"
+                          className="w-full h-8 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-900 dark:text-zinc-100"
+                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-zinc-400">₦</span>
+                            <input
+                              type="number"
+                              step="any"
+                              value={editSchemeDefaultAmt}
+                              onChange={(e) => setEditSchemeDefaultAmt(e.target.value)}
+                              className="w-24 h-7 px-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditScheme(scheme)}
+                              className="px-2.5 py-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-[10px] font-bold cursor-pointer"
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingSchemeId(null)}
+                              className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                              {scheme.name}
+                            </span>
+                            {scheme.isDefault && (
+                              <span className="text-[8px] font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/70">
+                                Default
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[9px] text-zinc-400 block truncate">
+                            ₦{(Number(scheme.defaultAmount) || 0).toLocaleString()} default{scheme.description ? ` · ${scheme.description}` : ''}
+                          </span>
+                        </div>
+
+                        {!isWriteDisabled && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            {!scheme.isDefault && (
+                              <button
+                                type="button"
+                                onClick={() => onSaveContributionScheme?.({ ...scheme, isDefault: true })}
+                                className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-zinc-200/60 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 cursor-pointer"
+                                title="Set as default scheme"
+                              >
+                                Default
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditScheme(scheme)}
+                              className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded transition cursor-pointer"
+                              title={`Edit ${scheme.name}`}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteScheme(scheme)}
+                              className="p-1 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition cursor-pointer"
+                              title={`Delete ${scheme.name}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1705,7 +2005,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {/* ── TAB 3: Excel Integration & Sync ── */}
       {activeTab === 'excel' && (
         <div className="space-y-3.5 animate-in fade-in duration-150">
-          
+
           {/* Card 1: Export to Excel */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center gap-3">
@@ -1820,7 +2120,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {/* ── TAB 4: Workspace Audit Trail ── */}
       {activeTab === 'audit' && (
         <div className="space-y-3.5 animate-in fade-in duration-150">
-          
+
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             {/* Header & Count Badge */}
             <div className="flex items-center justify-between">
@@ -1832,7 +2132,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                     Audit Trail
                   </h3>
-                  
+
                 </div>
               </div>
 
@@ -1907,14 +2207,14 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     const isLockAction = log.action.toLowerCase().includes('lock') || log.action.toLowerCase().includes('approv');
                     const isStaffAction = log.action.toLowerCase().includes('staff') || log.action.toLowerCase().includes('employee');
                     const isSignAction = log.action.toLowerCase().includes('sign') || log.action.toLowerCase().includes('login');
-                    
+
                     const badgeColor = isLockAction
                       ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
                       : isStaffAction
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800/60'
-                      : isSignAction
-                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60'
-                      : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700';
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800/60'
+                        : isSignAction
+                          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60'
+                          : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700';
 
                     return (
                       <div key={log.id} className="p-3 hover:bg-zinc-100/50 dark:hover:bg-zinc-800/40 transition-colors space-y-1.5">
@@ -1960,14 +2260,14 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {/* ── TAB 5: Data & Backup / Reset ── */}
       {activeTab === 'backup' && (
         <div className="space-y-3.5 animate-in fade-in duration-150">
-          
+
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-1.5 border-b border-zinc-100 dark:border-zinc-800">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                   Data Vault &amp; Backup
                 </h3>
-                
+
               </div>
               <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -2011,7 +2311,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     <h4 className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
                       Selective System Reset
                     </h4>
-                    
+
                   </div>
                 </div>
               </div>
@@ -2039,15 +2339,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {/* ── TAB 4: Email Delivery Configuration ── */}
       {activeTab === 'email' && isAdmin && (
         <div className="space-y-3 animate-in fade-in duration-150">
-          
+
           {/* Unconfigured Alert Banner */}
           {!((emailForm.provider === 'smtp' && Boolean(emailForm.smtp.host && emailForm.smtp.user && emailForm.smtp.pass)) ||
             (emailForm.provider === 'resend' && Boolean(emailForm.resend.apiKey))) && (
-            <div className="p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 shadow-2xs">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <strong className="font-semibold text-amber-900 dark:text-amber-100">Mail Delivery Unconfigured</strong>
-            </div>
-          )}
+              <div className="p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 shadow-2xs">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <strong className="font-semibold text-amber-900 dark:text-amber-100">Mail Delivery Unconfigured</strong>
+              </div>
+            )}
 
           {/* Card 1: Dispatch Provider Architecture */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
@@ -2064,17 +2364,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setEmailForm(prev => ({ ...prev, provider: 'smtp' }))}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  emailForm.provider === 'smtp'
-                    ? 'border-sky-500 bg-sky-50/60 dark:bg-sky-950/40 text-sky-900 dark:text-sky-100 shadow-2xs font-bold'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
-                }`}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${emailForm.provider === 'smtp'
+                  ? 'border-sky-500 bg-sky-50/60 dark:bg-sky-950/40 text-sky-900 dark:text-sky-100 shadow-2xs font-bold'
+                  : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
+                  }`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold">SMTP Dispatch</span>
-                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                    emailForm.provider === 'smtp' ? 'border-sky-600 bg-sky-600' : 'border-zinc-400'
-                  }`}>
+                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${emailForm.provider === 'smtp' ? 'border-sky-600 bg-sky-600' : 'border-zinc-400'
+                    }`}>
                     {emailForm.provider === 'smtp' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                 </div>
@@ -2086,17 +2384,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setEmailForm(prev => ({ ...prev, provider: 'resend' }))}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  emailForm.provider === 'resend'
-                    ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 text-purple-900 dark:text-purple-100 shadow-2xs font-bold'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
-                }`}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${emailForm.provider === 'resend'
+                  ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 text-purple-900 dark:text-purple-100 shadow-2xs font-bold'
+                  : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
+                  }`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold">Resend API</span>
-                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                    emailForm.provider === 'resend' ? 'border-purple-600 bg-purple-600' : 'border-zinc-400'
-                  }`}>
+                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${emailForm.provider === 'resend' ? 'border-purple-600 bg-purple-600' : 'border-zinc-400'
+                    }`}>
                     {emailForm.provider === 'resend' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                 </div>
@@ -2167,16 +2463,17 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     </label>
                     <input
                       type="number"
+                      step="any"
                       value={emailForm.smtp.port}
                       onChange={(e) => {
                         const newPort = Number(e.target.value);
-                        setEmailForm(prev => ({ 
-                          ...prev, 
-                          smtp: { 
-                            ...prev.smtp, 
+                        setEmailForm(prev => ({
+                          ...prev,
+                          smtp: {
+                            ...prev.smtp,
                             port: newPort,
                             secure: newPort === 465 ? true : (newPort === 587 ? false : prev.smtp.secure)
-                          } 
+                          }
                         }));
                       }}
                       placeholder="465"
@@ -2194,13 +2491,13 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                         checked={emailForm.smtp.secure}
                         onChange={(e) => {
                           const isSec = e.target.checked;
-                          setEmailForm(prev => ({ 
-                            ...prev, 
-                            smtp: { 
-                              ...prev.smtp, 
+                          setEmailForm(prev => ({
+                            ...prev,
+                            smtp: {
+                              ...prev.smtp,
                               secure: isSec,
                               port: isSec && prev.smtp.port === 587 ? 465 : (!isSec && prev.smtp.port === 465 ? 587 : prev.smtp.port)
-                            } 
+                            }
                           }));
                         }}
                         className="rounded text-blue-600 focus:ring-blue-500"
@@ -2453,11 +2750,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               </button>
 
               {testResult && (
-                <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
-                  testResult.success
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
-                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
-                }`}>
+                <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${testResult.success
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                  }`}>
                   {testResult.success ? (
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
@@ -2489,11 +2785,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                   setTimeout(() => setSavedToast(false), 2200);
                 }
               }}
-              className={`w-full h-11 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer ${
-                isEmailDirty
-                  ? 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 ring-2 ring-blue-500/30'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
-              }`}
+              className={`w-full h-11 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer ${isEmailDirty
+                ? 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 ring-2 ring-blue-500/30'
+                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
+                }`}
             >
               <Save className="w-4 h-4" />
               <span>{isEmailDirty ? 'Save Email Settings' : 'Email Settings Saved'}</span>
@@ -2506,7 +2801,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {/* ── TAB 4B: WhatsApp Dispatch Configuration ── */}
       {activeTab === 'whatsapp' && isAdmin && (
         <div className="space-y-3 animate-in fade-in duration-150">
-          
+
           {/* Main Activation Card */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
             <div className="px-3.5 py-2.5 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
@@ -2550,21 +2845,19 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                       key={p.id}
                       type="button"
                       onClick={() => setWhatsAppForm(prev => ({ ...prev, provider: p.id }))}
-                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                        isSelected
-                          ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 font-bold shadow-2xs'
-                          : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
-                      }`}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${isSelected
+                        ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 font-bold shadow-2xs'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
+                        }`}
                     >
                       <div className="flex items-center justify-between mb-0.5">
                         <span className="text-xs font-bold leading-tight">{p.label}</span>
-                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
-                          isSelected ? 'border-emerald-600 bg-emerald-600' : 'border-zinc-400'
-                        }`}>
+                        <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-emerald-600 bg-emerald-600' : 'border-zinc-400'
+                          }`}>
                           {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                         </div>
                       </div>
-                      
+
                     </button>
                   );
                 })}
@@ -2794,11 +3087,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             </button>
 
             {whatsAppTestResult && (
-              <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
-                whatsAppTestResult.success
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
-              }`}>
+              <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${whatsAppTestResult.success
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                }`}>
                 {whatsAppTestResult.success ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 ) : (
@@ -2829,11 +3121,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                   setTimeout(() => setSavedToast(false), 2200);
                 }
               }}
-              className={`w-full h-11 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer ${
-                isWhatsAppDirty
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-500/30'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
-              }`}
+              className={`w-full h-11 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer ${isWhatsAppDirty
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-500/30'
+                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
+                }`}
             >
               <Save className="w-4 h-4" />
               <span>{isWhatsAppDirty ? 'Save WhatsApp Settings' : 'WhatsApp Settings Saved'}</span>
@@ -2906,11 +3197,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setImportMode('merge')}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    importMode === 'merge'
-                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold text-emerald-900 dark:text-emerald-200'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
-                  }`}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${importMode === 'merge'
+                    ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold text-emerald-900 dark:text-emerald-200'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
+                    }`}
                 >
                   <span className="block text-xs font-semibold">Merge &amp; Update</span>
                   <span className="block text-[9px] text-zinc-400 mt-0.5">Keep existing records</span>
@@ -2919,11 +3209,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setImportMode('overwrite')}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    importMode === 'overwrite'
-                      ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/30 font-bold text-rose-900 dark:text-rose-200'
-                      : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
-                  }`}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${importMode === 'overwrite'
+                    ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/30 font-bold text-rose-900 dark:text-rose-200'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400'
+                    }`}
                 >
                   <span className="block text-xs font-semibold">Replace All</span>
                   <span className="block text-[9px] text-zinc-400 mt-0.5">Overwrite directory</span>
@@ -2942,11 +3231,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     key={sc}
                     type="button"
                     onClick={() => setImportScope(sc)}
-                    className={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer ${
-                      importScope === sc
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold'
-                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400'
-                    }`}
+                    className={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer ${importScope === sc
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold'
+                      : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400'
+                      }`}
                   >
                     {sc === 'all' ? 'All Data' : sc === 'salary-only' ? 'Salary' : 'Bank'}
                   </button>

@@ -106,6 +106,8 @@ interface MobileAppShellProps {
     onDeleteContribution?: (id: string) => void;
     onAddPayout?: (payout: Omit<ContributionPayout, 'id' | 'createdAt'>) => void;
     onDeletePayout?: (id: string) => void;
+    onSaveContributionScheme?: (scheme: ContributionScheme) => void;
+    onDeleteContributionScheme?: (id: string) => void;
     onSaveAbsence?: (absenceData: Omit<EmployeeAbsenceRecord, 'id' | 'createdAt'> & { id?: string }) => void;
     onDeleteAbsence?: (id: string) => void;
     onUpdateCompany: (profile: Partial<CompanyProfile>) => void;
@@ -189,6 +191,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     onDeleteContribution,
     onAddPayout,
     onDeletePayout,
+    onSaveContributionScheme,
+    onDeleteContributionScheme,
     onSaveAbsence,
     onDeleteAbsence,
     onUpdateCompany,
@@ -624,6 +628,9 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                             loans={loans}
                             contributions={contributions}
                             payouts={contributionPayouts}
+                            contributionSchemes={contributionSchemes}
+                            onSaveContributionScheme={onSaveContributionScheme}
+                            onDeleteContributionScheme={onDeleteContributionScheme}
                             absences={absences}
                             currentUser={currentUser}
                             onImportEmployees={onImportEmployees}

@@ -59,6 +59,7 @@ import {
   WhatsAppSettings,
   EmployeeContribution,
   ContributionPayout,
+  ContributionScheme,
   EmployeeAbsenceRecord
 } from '../../types';
 import {
@@ -111,6 +112,9 @@ interface SettingsViewProps {
   loans?: EmployeeLoan[];
   contributions?: EmployeeContribution[];
   payouts?: ContributionPayout[];
+  contributionSchemes?: ContributionScheme[];
+  onSaveContributionScheme?: (scheme: ContributionScheme) => void;
+  onDeleteContributionScheme?: (id: string) => void;
   absences?: EmployeeAbsenceRecord[];
   payslipDesign?: PayslipDesignConfig;
   onImportEmployees: (items: Partial<Employee>[], mode: 'merge' | 'overwrite', scope?: 'all' | 'salary-only' | 'bank-only') => void;
@@ -150,6 +154,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   loans = [],
   contributions = [],
   payouts = [],
+  contributionSchemes = [],
+  onSaveContributionScheme,
+  onDeleteContributionScheme,
   absences = [],
   payslipDesign,
   onImportEmployees,
@@ -697,6 +704,136 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setPv(updatedPv);
       onUpdatePayrollVariables(updatedPv);
       showTypeNotice(`Removed "${target.name}".`);
+    }
+  };
+
+  // --- CONTRIBUTION SCHEMES STATE ---
+  const [newSchemeName, setNewSchemeName] = useState('');
+  const [newSchemeDesc, setNewSchemeDesc] = useState('');
+  const [newSchemeDefaultAmt, setNewSchemeDefaultAmt] = useState<string>('5000');
+  const [editingSchemeId, setEditingSchemeId] = useState<string | null>(null);
+  const [editSchemeName, setEditSchemeName] = useState('');
+  const [editSchemeDesc, setEditSchemeDesc] = useState('');
+  const [editSchemeDefaultAmt, setEditSchemeDefaultAmt] = useState<string>('');
+  const [schemeFeedback, setSchemeFeedback] = useState<string | null>(null);
+
+  const showSchemeNotice = (msg: string) => {
+    setSchemeFeedback(msg);
+    setTimeout(() => setSchemeFeedback(null), 3000);
+  };
+
+  const activeSchemes: ContributionScheme[] = useMemo(() => {
+    return Array.isArray(contributionSchemes) ? contributionSchemes : [];
+  }, [contributionSchemes]);
+
+  const detectedUnlistedSchemes = useMemo(() => {
+    const existing = new Set(activeSchemes.map(s => s.name.trim().toLowerCase()));
+    const discovered = new Set<string>();
+    (contributions || []).forEach(c => {
+      const name = (c.schemeName || '').trim();
+      if (name && !existing.has(name.toLowerCase())) discovered.add(name);
+    });
+    (payouts || []).forEach(p => {
+      const name = (p.schemeName || '').trim();
+      if (name && !existing.has(name.toLowerCase())) discovered.add(name);
+    });
+    return Array.from(discovered);
+  }, [activeSchemes, contributions, payouts]);
+
+  const getSchemeUsageCount = (schemeName: string) => {
+    const target = schemeName.trim().toLowerCase();
+    const empIds = new Set<string>();
+    (contributions || []).forEach(c => {
+      if ((c.schemeName || '').trim().toLowerCase() === target) empIds.add(c.employeeId);
+    });
+    return empIds.size;
+  };
+
+  const handleAddScheme = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isAuditor || isReadOnly) return;
+    const trimmed = newSchemeName.trim();
+    if (!trimmed) return;
+    if (activeSchemes.some(s => s.name.trim().toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Contribution scheme "${trimmed}" already exists.`);
+      return;
+    }
+    const parsedAmt = Math.max(0, parseFloat(newSchemeDefaultAmt) || 0);
+    onSaveContributionScheme?.({
+      id: `scheme-${Date.now()}`,
+      name: trimmed,
+      description: newSchemeDesc.trim() || 'Voluntary staff contribution scheme',
+      defaultAmount: parsedAmt,
+      defaultMode: 'fixed',
+      isDefault: activeSchemes.length === 0,
+    });
+    setNewSchemeName('');
+    setNewSchemeDesc('');
+    setNewSchemeDefaultAmt('5000');
+    showSchemeNotice(`Added "${trimmed}" scheme.`);
+  };
+
+  const handleQuickAddDetectedScheme = (name: string) => {
+    if (isAuditor || isReadOnly) return;
+    if (activeSchemes.some(s => s.name.trim().toLowerCase() === name.toLowerCase())) return;
+    onSaveContributionScheme?.({
+      id: `scheme-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      description: 'Staff voluntary contribution scheme',
+      defaultAmount: 5000,
+      defaultMode: 'fixed',
+      isDefault: false,
+    });
+    showSchemeNotice(`Added "${name}" to configured schemes.`);
+  };
+
+  const handleStartEditScheme = (scheme: ContributionScheme) => {
+    setEditingSchemeId(scheme.id);
+    setEditSchemeName(scheme.name);
+    setEditSchemeDesc(scheme.description || '');
+    setEditSchemeDefaultAmt(String(scheme.defaultAmount ?? 5000));
+  };
+
+  const handleSaveEditScheme = (scheme: ContributionScheme) => {
+    if (isAuditor || isReadOnly) return;
+    const trimmed = editSchemeName.trim();
+    if (!trimmed) {
+      setEditingSchemeId(null);
+      return;
+    }
+    if (activeSchemes.some(s => s.id !== scheme.id && s.name.trim().toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Contribution scheme "${trimmed}" already exists.`);
+      return;
+    }
+    const parsedAmt = Math.max(0, parseFloat(editSchemeDefaultAmt) || 0);
+    onSaveContributionScheme?.({
+      ...scheme,
+      name: trimmed,
+      description: editSchemeDesc.trim(),
+      defaultAmount: parsedAmt,
+    });
+    setEditingSchemeId(null);
+    showSchemeNotice(`Updated "${trimmed}".`);
+  };
+
+  const handleSetDefaultScheme = (scheme: ContributionScheme) => {
+    if (isAuditor || isReadOnly) return;
+    onSaveContributionScheme?.({
+      ...scheme,
+      isDefault: true,
+    });
+    showSchemeNotice(`"${scheme.name}" set as default scheme.`);
+  };
+
+  const handleDeleteScheme = (scheme: ContributionScheme) => {
+    if (isAuditor || isReadOnly) return;
+    const usageCount = getSchemeUsageCount(scheme.name);
+    const msg = usageCount > 0
+      ? `"${scheme.name}" is currently referenced by ${usageCount} staff member(s).\n\nRemoving it will hide it from new entries while preserving existing contribution history.\n\nProceed?`
+      : `Remove the "${scheme.name}" contribution scheme?`;
+    if (confirm(msg)) {
+      onDeleteContributionScheme?.(scheme.id);
+      showSchemeNotice(`Removed "${scheme.name}".`);
     }
   };
 
@@ -1359,6 +1496,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     {pv.prorateMidMonth ? 'Enabled' : 'Disabled'}
                   </span>
                 </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed pt-1">
+                  Automatically calculates partial-month pay (active calendar days ÷ total days in the month) for staff whose <strong>Start Date</strong> or <strong>Exit Date</strong> falls mid-month. Skipped if a manual monthly salary override is set for that period; when disabled, joiners and leavers receive their full monthly salary.
+                </p>
               </div>
 
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -1692,6 +1832,226 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             )}
           </div>
 
+          {/* Staff Contribution & Welfare Schemes */}
+          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Staff Contribution &amp; Welfare Schemes
+                </h2>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  Configure voluntary deduction schemes (e.g. Cooperative Society, Welfare Fund, Thrift / Ajo) available in Staff Contributions.
+                </p>
+              </div>
+              {schemeFeedback && (
+                <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{schemeFeedback}</span>
+                </span>
+              )}
+            </div>
+
+            {/* Auto-detected schemes from existing records */}
+            {!isAuditor && !isReadOnly && detectedUnlistedSchemes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 text-xs">
+                <span className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
+                  Found in existing staff records:
+                </span>
+                {detectedUnlistedSchemes.map(name => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => handleQuickAddDetectedScheme(name)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white dark:bg-zinc-900 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 hover:bg-amber-100/70 dark:hover:bg-amber-900/40 text-[11px] font-medium transition cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Save &ldquo;{name}&rdquo;</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Configured Schemes List */}
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+              {activeSchemes.length === 0 ? (
+                <div className="p-4 text-center text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50/40 dark:bg-zinc-900/20">
+                  No contribution schemes configured. Add your company&apos;s scheme below.
+                </div>
+              ) : (
+                <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                  {activeSchemes.map(scheme => {
+                    const isEditing = editingSchemeId === scheme.id;
+                    const staffCount = getSchemeUsageCount(scheme.name);
+                    return (
+                      <div key={scheme.id} className="p-3 bg-white dark:bg-zinc-900/30 hover:bg-zinc-50/60 dark:hover:bg-zinc-900/50 transition">
+                        {isEditing ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                            <input
+                              type="text"
+                              value={editSchemeName}
+                              onChange={e => setEditSchemeName(e.target.value)}
+                              placeholder="Scheme Name"
+                              className="sm:col-span-4 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded px-2.5 py-1.5 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                            />
+                            <input
+                              type="text"
+                              value={editSchemeDesc}
+                              onChange={e => setEditSchemeDesc(e.target.value)}
+                              placeholder="Short description (optional)"
+                              className="sm:col-span-4 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                            />
+                            <div className="sm:col-span-2 relative flex items-center">
+                              <span className="absolute left-2 text-[11px] text-zinc-400 font-mono">₦</span>
+                              <input
+                                type="number"
+                                step="any"
+                                value={editSchemeDefaultAmt}
+                                onChange={e => setEditSchemeDefaultAmt(e.target.value)}
+                                placeholder="5000"
+                                className="w-full pl-6 pr-2 py-1.5 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                              />
+                            </div>
+                            <div className="sm:col-span-2 flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditScheme(scheme)}
+                                className="px-2.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded text-xs font-medium hover:opacity-90 transition cursor-pointer"
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingSchemeId(null)}
+                                className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded transition cursor-pointer"
+                                title="Cancel"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                                  {scheme.name}
+                                </span>
+                                {scheme.isDefault && (
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+                                    Default
+                                  </span>
+                                )}
+                                {staffCount > 0 && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                                    {staffCount} staff
+                                  </span>
+                                )}
+                              </div>
+                              {scheme.description && (
+                                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                  {scheme.description}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[11px] font-mono font-medium text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800/80 px-2 py-1 rounded">
+                                Default: {formatNaira(Number(scheme.defaultAmount) || 0)}
+                              </span>
+
+                              {!isAuditor && !isReadOnly && (
+                                <>
+                                  {!scheme.isDefault && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetDefaultScheme(scheme)}
+                                      className="px-2 py-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                      title="Set as default scheme"
+                                    >
+                                      Set Default
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditScheme(scheme)}
+                                    className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                    title={`Edit "${scheme.name}"`}
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteScheme(scheme)}
+                                    className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                    title={`Delete "${scheme.name}"`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Add New Contribution Scheme Form */}
+            {!isAuditor && !isReadOnly && (
+              <form onSubmit={handleAddScheme} className="bg-zinc-50/70 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-2.5">
+                <span className="font-semibold text-zinc-700 dark:text-zinc-300 text-xs flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5 text-zinc-500" />
+                  Add Contribution Scheme
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+                  <input
+                    type="text"
+                    value={newSchemeName}
+                    onChange={e => setNewSchemeName(e.target.value)}
+                    placeholder="Scheme Name (e.g. Staff Cooperative Society, Thrift / Ajo)..."
+                    className="sm:col-span-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                  />
+
+                  <input
+                    type="text"
+                    value={newSchemeDesc}
+                    onChange={e => setNewSchemeDesc(e.target.value)}
+                    placeholder="Description (optional)..."
+                    className="sm:col-span-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                  />
+
+                  <div className="sm:col-span-2 relative flex items-center">
+                    <span className="absolute left-2.5 text-[11px] text-zinc-400 font-mono">₦</span>
+                    <input
+                      type="number"
+                      step="any"
+                      value={newSchemeDefaultAmt}
+                      onChange={e => setNewSchemeDefaultAmt(e.target.value)}
+                      placeholder="Default"
+                      title="Default Monthly Amount (₦)"
+                      className="w-full pl-6 pr-2 py-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded text-zinc-900 dark:text-zinc-100 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={!newSchemeName.trim()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 disabled:opacity-40 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Scheme</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </div>
+
           {/* Statutory Allowances Ratio */}
           <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
@@ -1714,6 +2074,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <label className="text-zinc-600 dark:text-zinc-400 font-medium">Basic Allowance (%)</label>
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   max="100"
                   value={pv.basic}
@@ -1726,6 +2087,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <label className="text-zinc-600 dark:text-zinc-400 font-medium">Housing Allowance (%)</label>
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   max="100"
                   value={pv.housing}
@@ -1738,6 +2100,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <label className="text-zinc-600 dark:text-zinc-400 font-medium">Transport Allowance (%)</label>
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   max="100"
                   value={pv.transport}
@@ -1750,6 +2113,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <label className="text-zinc-600 dark:text-zinc-400 font-medium">Other Allowances (%)</label>
                 <input
                   type="number"
+                  step="any"
                   min="0"
                   max="100"
                   value={pv.otherAllowances}
@@ -1774,7 +2138,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="relative">
                   <input
                     type="number"
-                    step="0.01"
+                    step="any"
                     min="0"
                     max="1"
                     value={pv.employeePensionRate}
@@ -1792,7 +2156,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="relative">
                   <input
                     type="number"
-                    step="0.01"
+                    step="any"
                     min="0"
                     max="1"
                     value={pv.employerPensionRate}
@@ -1820,6 +2184,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <label className="text-zinc-600 dark:text-zinc-400 font-medium">CRA Base Statutory (₦)</label>
                 <input
                   type="number"
+                  step="any"
                   value={tv.craBase}
                   onChange={e => setTv({ ...tv, craBase: Number(e.target.value) || 0 })}
                   className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
@@ -1830,7 +2195,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <label className="text-zinc-600 dark:text-zinc-400 font-medium">Rent Relief Rate (20% = 0.20)</label>
                 <input
                   type="number"
-                  step="0.01"
+                  step="any"
                   value={tv.rentReliefRate}
                   onChange={e => setTv({ ...tv, rentReliefRate: Number(e.target.value) || 0 })}
                   className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
@@ -1841,6 +2206,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <label className="text-zinc-600 dark:text-zinc-400 font-medium">Rent Relief Max Cap (₦)</label>
                 <input
                   type="number"
+                  step="any"
                   value={tv.rentReliefCap}
                   onChange={e => setTv({ ...tv, rentReliefCap: Number(e.target.value) || 0 })}
                   className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
@@ -1896,6 +2262,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       <td className="p-2.5">
                         <input
                           type="number"
+                          step="any"
                           placeholder="No limit (balance)"
                           value={bracket.upTo === null ? '' : bracket.upTo}
                           onChange={e => {
@@ -1910,7 +2277,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         <div className="flex items-center gap-1">
                           <input
                             type="number"
-                            step="0.01"
+                            step="any"
                             value={bracket.rate}
                             onChange={e => {
                               const updated = [...tv.taxBrackets];
@@ -2379,6 +2746,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
+                      step="any"
                       value={emailForm.smtp.port}
                       onChange={e => {
                         const newPort = Number(e.target.value);

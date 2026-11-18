@@ -386,6 +386,8 @@ export const App: React.FC = () => {
     deleteContributionsForPeriod,
     addContributionPayout,
     deleteContributionPayout,
+    saveContributionScheme,
+    deleteContributionScheme,
     saveEmployeeAbsence,
     deleteEmployeeAbsence,
     resetAllData,
@@ -739,6 +741,8 @@ export const App: React.FC = () => {
           onDeleteContribution={deleteContribution}
           onAddPayout={addContributionPayout}
           onDeletePayout={deleteContributionPayout}
+          onSaveContributionScheme={saveContributionScheme}
+          onDeleteContributionScheme={deleteContributionScheme}
           onUpdateCompany={updateCompanyProfile}
           onUpdatePayrollVariables={updatePayrollVariables}
           onUpdatePayeTaxVariables={updatePayeTaxVariables}
@@ -1109,6 +1113,9 @@ export const App: React.FC = () => {
                     loans={state.loans || []}
                     contributions={employeeContributions}
                     payouts={contributionPayouts}
+                    contributionSchemes={contributionSchemes}
+                    onSaveContributionScheme={saveContributionScheme}
+                    onDeleteContributionScheme={deleteContributionScheme}
                     absences={employeeAbsences || []}
                     payslipDesign={state.payslipDesign}
                     onImportEmployees={importEmployees}
