@@ -80,7 +80,8 @@ jobs:
         run: npm run build
 
       - name: Package Windows installer (no auto-publish)
-        run: npx electron-builder --win --x64 --publish never -c.extraMetadata.version=${{ steps.release_info.outputs.version }}
+        shell: bash
+        run: npx electron-builder --win --x64 --publish never "-c.extraMetadata.version=${{ steps.release_info.outputs.version }}"
 
       - name: Generate release manifest
         env:
