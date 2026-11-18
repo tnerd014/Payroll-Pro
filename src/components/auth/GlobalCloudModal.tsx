@@ -331,11 +331,9 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
   return createPortal(
     <div 
       className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex flex-col justify-end sm:items-center sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
-      onClick={onClose}
     >
       <div 
         className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-5 shadow-2xl space-y-4 text-xs max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-250 ease-out"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Android Drag Handle Pill (Mobile only) */}
         <div className="sm:hidden w-full flex justify-center -mt-2 pb-1.5 cursor-grab">
@@ -368,15 +366,6 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                   </p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
-                title="Close"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
             </div>
 
             {/* Selection Bar */}
@@ -556,15 +545,6 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                   </div>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
-                title="Close"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
             </div>
 
             {/* Connection Form */}

@@ -243,15 +243,9 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
   return (
     <div 
       className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
     >
       <div 
         className="relative bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
-        onClick={e => e.stopPropagation()}
       >
         {/* Mobile Pull Handle */}
         <div className="sm:hidden pt-3 pb-1 flex justify-center">
@@ -276,13 +270,6 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
               
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition shrink-0 ml-2 cursor-pointer"
-            title="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Form Container */}

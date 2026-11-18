@@ -882,6 +882,37 @@ export function usePayrollStore() {
   const lastLocalUploadTimeRef = useRef(0);
   // Tracks locally updated employee records to prevent realtime echo overwrite before cloud persists
   const pendingLocalEmployeesRef = useRef<Map<string, { employee: Employee; timestamp: number }>>(new Map());
+  const pendingLocalPayoutsRef = useRef<Map<string, { payout: ContributionPayout; timestamp: number }>>(new Map());
+
+  const mergePayoutsWithCloud = (localPayouts: ContributionPayout[], cloudPayouts: ContributionPayout[]) => {
+    const now = Date.now();
+    const cloudMap = new Map(cloudPayouts.map(p => [p.id, p]));
+    // Clear pending payouts that have already arrived from cloud
+    for (const [id] of pendingLocalPayoutsRef.current) {
+      if (cloudMap.has(id)) {
+        pendingLocalPayoutsRef.current.delete(id);
+      }
+    }
+    const pendingExtras: ContributionPayout[] = [];
+    for (const [id, entry] of pendingLocalPayoutsRef.current) {
+      if (!cloudMap.has(id) && now - entry.timestamp < 60000) {
+        pendingExtras.push(entry.payout);
+      } else if (now - entry.timestamp >= 60000) {
+        pendingLocalPayoutsRef.current.delete(id);
+      }
+    }
+    // Also preserve any local payout created in the last 15s not yet in cloud
+    const localIdsInExtras = new Set(pendingExtras.map(p => p.id));
+    for (const lp of localPayouts) {
+      if (!cloudMap.has(lp.id) && !localIdsInExtras.has(lp.id)) {
+        const createdMs = lp.createdAt ? new Date(lp.createdAt).getTime() : 0;
+        if (createdMs && now - createdMs < 15000) {
+          pendingExtras.push(lp);
+        }
+      }
+    }
+    return [...pendingExtras, ...cloudPayouts];
+  };
   // True once the active company's cloud copy has been loaded (or there is nothing to load).
   // Until then we must NEVER upload, otherwise an empty/stale local copy overwrites the cloud.
   const cloudReadyRef = useRef(false);
@@ -1068,7 +1099,7 @@ export function usePayrollStore() {
           ...(res.whatsappedPayslips ? { whatsappedPayslips: res.whatsappedPayslips } : {}),
           ...(res.whatsappSettings ? { whatsappSettings: res.whatsappSettings } : {}),
           ...(res.contributions ? { employeeContributions: res.contributions } : {}),
-          ...(res.payouts ? { contributionPayouts: res.payouts } : {}),
+          ...(res.payouts ? { contributionPayouts: mergePayoutsWithCloud(prev.contributionPayouts || [], res.payouts) } : {}),
           ...(res.contributionSchemes && res.contributionSchemes.length > 0 ? { contributionSchemes: res.contributionSchemes } : {}),
           ...(res.absences ? { employeeAbsences: res.absences } : {}),
         };
@@ -1287,6 +1318,9 @@ export function usePayrollStore() {
       // 2. Debounce by 600ms so batch changes settle together rather than triggering multiple concurrent downloads
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
+        if (isLocalUploadInProgressRef.current || (Date.now() - lastLocalUploadTimeRef.current < 5000)) {
+          return;
+        }
         downloadCompanyDataFromSupabase(activeCompanyId).then(res => {
           if (!res.success) return;
           cloudReadyRef.current = true;
@@ -1339,7 +1373,7 @@ export function usePayrollStore() {
               ...(res.whatsappedPayslips ? { whatsappedPayslips: res.whatsappedPayslips } : {}),
               // Staff welfare contributions, payouts, and absences
               ...(res.contributions ? { employeeContributions: res.contributions } : {}),
-              ...(res.payouts ? { contributionPayouts: res.payouts } : {}),
+              ...(res.payouts ? { contributionPayouts: mergePayoutsWithCloud(prev.contributionPayouts || [], res.payouts) } : {}),
               ...(res.contributionSchemes && res.contributionSchemes.length > 0 ? { contributionSchemes: res.contributionSchemes } : {}),
               ...(res.absences ? { employeeAbsences: res.absences } : {}),
             };
@@ -1484,6 +1518,22 @@ export function usePayrollStore() {
       }
     }
 
+    const withSalaryPayoutMap = new Map<string, { total: number; details: Array<{ schemeName: string; reason: string; amount: number }> }>();
+    for (const p of (state.contributionPayouts || [])) {
+      if (p && p.disbursementMode === 'with_salary' && p.payrollPeriodKey === currentPeriodKey && p.employeeId) {
+        const amt = Math.max(0, Number(p.amount) || 0);
+        if (amt <= 0) continue;
+        const entry = withSalaryPayoutMap.get(p.employeeId) || { total: 0, details: [] };
+        entry.total += amt;
+        entry.details.push({
+          schemeName: p.schemeName || 'Staff Welfare Fund',
+          reason: p.reason || 'annual_payout',
+          amount: amt,
+        });
+        withSalaryPayoutMap.set(p.employeeId, entry);
+      }
+    }
+
     return activeEmployees.map((emp: Employee) => {
       try {
         const absenceRecord = absenceMap.get(emp.id);
@@ -1532,8 +1582,12 @@ export function usePayrollStore() {
         const totalContributionDeduction = contribEntry.total;
         const contributionDetails = contribEntry.details;
 
+        const payoutEntry = withSalaryPayoutMap.get(emp.id) || { total: 0, details: [] };
+        const nonTaxablePayout = payoutEntry.total;
+        const nonTaxablePayoutDetails = payoutEntry.details;
+
         const totalDeductions = base.totalDeductions + totalLoanDeduction + totalContributionDeduction;
-        const netTakeHome = Math.max(0, base.netTakeHome - totalLoanDeduction - totalContributionDeduction);
+        const netTakeHome = Math.max(0, base.netTakeHome - totalLoanDeduction - totalContributionDeduction) + nonTaxablePayout;
 
         const { section5MaxAllowedDeductions, isSection5CapExceeded } = evaluateSection5Cap(
           base.monthlyGross,
@@ -1555,6 +1609,8 @@ export function usePayrollStore() {
           staffLoanDeduction,
           contributionDeduction: totalContributionDeduction,
           contributionDetails,
+          nonTaxablePayout,
+          nonTaxablePayoutDetails,
           totalDeductions,
           netTakeHome,
           isSection5CapExceeded,
@@ -1608,6 +1664,7 @@ export function usePayrollStore() {
     state.selectedYear,
     state.loans,
     state.employeeContributions,
+    state.contributionPayouts,
     state.employeeAbsences
   ]);
 
@@ -3208,6 +3265,8 @@ export function usePayrollStore() {
       id: `payout_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       createdAt: new Date().toISOString()
     };
+    lastLocalUploadTimeRef.current = Date.now();
+    pendingLocalPayoutsRef.current.set(newPayout.id, { payout: newPayout, timestamp: Date.now() });
     const emp = (state.employees || []).find(e => e.id === payoutData.employeeId);
     const empName = emp ? `${emp.firstName} ${emp.lastName}` : (payoutData.employeeId || 'Staff');
 
@@ -3226,6 +3285,8 @@ export function usePayrollStore() {
 
   const deleteContributionPayout = (id: string) => {
     if (!guardCloudMutation('delete contribution payout')) return;
+    lastLocalUploadTimeRef.current = Date.now();
+    pendingLocalPayoutsRef.current.delete(id);
     const existing = (state.contributionPayouts || []).find(p => p.id === id);
     const emp = existing ? (state.employees || []).find(e => e.id === existing.employeeId) : null;
     const empName = emp ? `${emp.firstName} ${emp.lastName}` : (existing?.employeeId || 'Staff');

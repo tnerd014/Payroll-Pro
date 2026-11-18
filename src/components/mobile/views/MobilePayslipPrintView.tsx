@@ -871,7 +871,6 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
                 { sectionId: 'company_header', title: 'Company Header & Logo' },
                 { sectionId: 'pay_period_banner', title: 'Pay Period Banner' },
                 { sectionId: 'employer_contributions', title: 'Employer Contributions' },
-                { sectionId: 'bank_details', title: 'Disbursement Details' },
                 { sectionId: 'signatures', title: 'Signatures Block' },
                 { sectionId: 'footer_notes', title: 'Footer & Disclaimer' },
               ].map(group => {

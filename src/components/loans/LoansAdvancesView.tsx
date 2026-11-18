@@ -1411,25 +1411,12 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
       {isAddModalOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsAddModalOpen(false);
-            }
-          }}
         >
           <div className="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-100 flex flex-col max-h-[90vh] overflow-hidden">
             <div className="flex items-center justify-between p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 New Loan or Salary Advance
               </h2>
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(false)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             <form onSubmit={handleCreateLoan} className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -1872,9 +1859,6 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
         return (
           <div
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setViewingLoan(null);
-            }}
           >
             <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-2xl w-full shadow-2xl max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
 
@@ -1920,14 +1904,6 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setViewingLoan(null)}
-                  className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shrink-0"
-                  title="Close"
-                >
-                  <X className="w-5 h-5" />
-                </button>
               </div>
 
               {/* Scrollable Body */}

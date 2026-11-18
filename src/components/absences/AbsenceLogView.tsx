@@ -861,15 +861,9 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
         return (
           <div 
             className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setViewingAbsence(null);
-              }
-            }}
           >
             <div 
               className="relative bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
-              onClick={e => e.stopPropagation()}
             >
               {/* Mobile Pull Handle */}
               <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">

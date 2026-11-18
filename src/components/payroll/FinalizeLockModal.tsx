@@ -40,13 +40,9 @@ export const FinalizeLockModal: React.FC<FinalizeLockModalProps> = ({
   return createPortal(
     <div 
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div 
         className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
       >
         
         {/* Header */}
@@ -58,14 +54,6 @@ export const FinalizeLockModal: React.FC<FinalizeLockModalProps> = ({
             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
               v{nextVersion}
             </span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition cursor-pointer"
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
 

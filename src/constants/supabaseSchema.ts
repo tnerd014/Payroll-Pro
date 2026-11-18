@@ -237,6 +237,8 @@ CREATE TABLE IF NOT EXISTS public.contribution_payouts (
     payout_date TEXT NOT NULL DEFAULT '',
     reason TEXT NOT NULL DEFAULT 'annual_payout', -- 'annual_payout', 'partial_withdrawal', 'exit_settlement', 'other'
     payment_method TEXT NOT NULL DEFAULT 'bank_transfer', -- 'bank_transfer', 'cheque', 'cash'
+    disbursement_mode TEXT NOT NULL DEFAULT 'separate', -- 'separate', 'with_salary'
+    payroll_period_key TEXT DEFAULT '', -- e.g. '2026-nov' when disbursement_mode = 'with_salary'
     reference_no TEXT DEFAULT '',
     notes TEXT DEFAULT '',
     dates JSONB DEFAULT '[]'::jsonb,
@@ -368,6 +370,8 @@ ALTER TABLE public.employee_contributions ADD COLUMN IF NOT EXISTS updated_at TI
 -- Contribution Payouts columns
 ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS scheme_name TEXT DEFAULT 'Staff Welfare Fund';
 ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'bank_transfer';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS disbursement_mode TEXT DEFAULT 'separate';
+ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS payroll_period_key TEXT DEFAULT '';
 ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS reference_no TEXT DEFAULT '';
 ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
 ALTER TABLE public.contribution_payouts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();

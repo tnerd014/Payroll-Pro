@@ -112,11 +112,9 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className="relative bg-white dark:bg-[#111113] border-t sm:border border-zinc-200/80 dark:border-zinc-800/80 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
-        onClick={e => e.stopPropagation()}
       >
         {/* Pull Handle */}
         <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
@@ -131,13 +129,6 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
             </p>
             <p className="text-xs text-zinc-400 truncate">{empName} · {formatNaira(loan.remainingBalance)}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Body */}

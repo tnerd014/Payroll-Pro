@@ -843,11 +843,21 @@ export async function uploadCompanyDataToSupabase(
         payout_date: p.payoutDate || '',
         reason: p.reason || 'annual_payout',
         payment_method: p.paymentMethod || 'bank_transfer',
+        disbursement_mode: p.disbursementMode || 'separate',
+        payroll_period_key: p.payrollPeriodKey || '',
         reference_no: p.referenceNo || '',
         notes: p.notes || '',
         updated_at: new Date().toISOString(),
       }));
-      await client.from('contribution_payouts').upsert(payoutRows);
+      const { error: payoutErr } = await client.from('contribution_payouts').upsert(payoutRows);
+      if (payoutErr) {
+        console.warn('[CloudSync] contribution_payouts upsert error, retrying without settlement columns:', payoutErr.message);
+        const legacyPayoutRows = payoutRows.map(({ disbursement_mode: _dm, payroll_period_key: _pk, ...rest }) => rest);
+        const { error: retryErr } = await client.from('contribution_payouts').upsert(legacyPayoutRows);
+        if (retryErr) {
+          console.error('[CloudSync] contribution_payouts legacy upsert failed:', retryErr.message);
+        }
+      }
     }
 
     // 12. Upsert Employee Absences
@@ -1165,6 +1175,8 @@ export async function downloadCompanyDataFromSupabase(companyId: string): Promis
         payoutDate: p.payout_date || '',
         reason: p.reason || 'annual_payout',
         paymentMethod: p.payment_method || 'bank_transfer',
+        disbursementMode: (p.disbursement_mode === 'with_salary' ? 'with_salary' : 'separate') as 'separate' | 'with_salary',
+        payrollPeriodKey: p.payroll_period_key || '',
         referenceNo: p.reference_no || '',
         notes: p.notes || '',
         createdAt: p.created_at,

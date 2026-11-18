@@ -489,7 +489,6 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
             { id: 'deductions', label: 'Deductions Breakdown', enabled: true },
             { id: 'net_pay', label: 'Net Take-Home Highlight Card', enabled: true },
             { id: 'employer_contributions', label: 'Employer Contributions & Total Cost', enabled: true },
-            { id: 'bank_details', label: 'Bank Disbursement Details', enabled: true },
             { id: 'signatures', label: 'Signatures & Authorization Block', enabled: false },
             { id: 'footer_notes', label: 'Footer Disclaimer & Notes', enabled: true },
           ]
@@ -517,7 +516,6 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
             { id: 'earnings', label: 'Earnings Breakdown', enabled: true },
             { id: 'deductions', label: 'Deductions Breakdown', enabled: true },
             { id: 'net_pay', label: 'Net Take-Home Highlight Card', enabled: true },
-            { id: 'bank_details', label: 'Bank Disbursement Details', enabled: true },
             { id: 'employer_contributions', label: 'Employer Contributions & Total Cost', enabled: true },
             { id: 'signatures', label: 'Signatures & Authorization Block', enabled: true },
             { id: 'footer_notes', label: 'Footer Disclaimer & Notes', enabled: true },
@@ -547,7 +545,6 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
             { id: 'earnings', label: 'Earnings Breakdown', enabled: true },
             { id: 'deductions', label: 'Deductions Breakdown', enabled: true },
             { id: 'net_pay', label: 'Net Take-Home Highlight Card', enabled: true },
-            { id: 'bank_details', label: 'Bank Disbursement Details', enabled: true },
             { id: 'signatures', label: 'Signatures & Authorization Block', enabled: true },
             { id: 'footer_notes', label: 'Footer Disclaimer & Notes', enabled: true },
             { id: 'employer_contributions', label: 'Employer Contributions & Total Cost', enabled: false },
@@ -578,7 +575,6 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
             { id: 'deductions', label: 'Deductions Breakdown', enabled: true },
             { id: 'net_pay', label: 'Net Take-Home Highlight Card', enabled: true },
             { id: 'employer_contributions', label: 'Employer Contributions & Total Cost', enabled: true },
-            { id: 'bank_details', label: 'Bank Disbursement Details', enabled: true },
             { id: 'signatures', label: 'Signatures & Authorization Block', enabled: true },
             { id: 'footer_notes', label: 'Footer Disclaimer & Notes', enabled: true },
           ]

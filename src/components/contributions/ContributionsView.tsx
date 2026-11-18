@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Plus, 
   Search, 
@@ -337,10 +338,27 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
     };
   }, [payouts, selectedYear, targetMonthNum]);
 
-  // Filtered & Paginated Payouts
+  type PayoutSortKey = 'date' | 'staff' | 'reason' | 'settlement' | 'method' | 'reference' | 'amount';
+  const [payoutSortKey, setPayoutSortKey] = useState<PayoutSortKey>('date');
+  const [payoutSortDir, setPayoutSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const handlePayoutSort = (key: PayoutSortKey) => {
+    setCurrentPage(1);
+    if (payoutSortKey === key) {
+      setPayoutSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setPayoutSortKey(key);
+      setPayoutSortDir(key === 'date' || key === 'amount' ? 'desc' : 'asc');
+    }
+  };
+
+  // Filtered & Sorted Payouts
   const filteredPayouts = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return payouts.filter(p => {
+    const empNameMap = new Map<string, string>();
+    employees.forEach(e => empNameMap.set(e.id, `${e.firstName} ${e.lastName}`.toLowerCase()));
+
+    const filtered = payouts.filter(p => {
       // 1. Period Scope Filter (All Time, Current Year, or Selected Month)
       if (payoutPeriodScope !== 'all') {
         const { year: pYear, month: pMonth } = parsePayoutDate(p.payoutDate);
@@ -354,15 +372,54 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
 
       // 2. Search Query Filter
       if (!q) return true;
-      const emp = employees.find(e => e.id === p.employeeId);
-      const name = emp ? `${emp.firstName} ${emp.lastName}`.toLowerCase() : '';
+      const name = empNameMap.get(p.employeeId) || '';
       return (
         name.includes(q) ||
         p.reason.toLowerCase().includes(q) ||
         (p.referenceNo || '').toLowerCase().includes(q)
       );
     });
-  }, [payouts, employees, searchQuery, payoutPeriodScope, selectedYear, targetMonthNum]);
+
+    const dir = payoutSortDir === 'asc' ? 1 : -1;
+    const toDateTimestamp = (dateStr?: string) => {
+      if (!dateStr) return 0;
+      const t = new Date(dateStr).getTime();
+      return isNaN(t) ? 0 : t;
+    };
+
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      switch (payoutSortKey) {
+        case 'date':
+          cmp = toDateTimestamp(a.payoutDate) - toDateTimestamp(b.payoutDate);
+          break;
+        case 'staff':
+          cmp = (empNameMap.get(a.employeeId) || 'former staff').localeCompare(empNameMap.get(b.employeeId) || 'former staff');
+          break;
+        case 'reason':
+          cmp = (a.reason || '').localeCompare(b.reason || '');
+          break;
+        case 'settlement': {
+          const sa = a.disbursementMode === 'with_salary' ? `1_${a.payrollPeriodKey || ''}` : '0_separate';
+          const sb = b.disbursementMode === 'with_salary' ? `1_${b.payrollPeriodKey || ''}` : '0_separate';
+          cmp = sa.localeCompare(sb);
+          break;
+        }
+        case 'method':
+          cmp = (a.paymentMethod || '').localeCompare(b.paymentMethod || '');
+          break;
+        case 'reference':
+          cmp = (a.referenceNo || '').localeCompare(b.referenceNo || '');
+          break;
+        case 'amount':
+          cmp = (Number(a.amount) || 0) - (Number(b.amount) || 0);
+          break;
+      }
+      if (cmp !== 0) return cmp * dir;
+      // Tie-breaker: latest date first, then createdAt
+      return toDateTimestamp(b.payoutDate) - toDateTimestamp(a.payoutDate);
+    });
+  }, [payouts, employees, searchQuery, payoutPeriodScope, selectedYear, targetMonthNum, payoutSortKey, payoutSortDir]);
 
   const paginatedPayouts = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -506,8 +563,19 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
   const [payoutDate, setPayoutDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [payoutReason, setPayoutReason] = useState<ContributionPayout['reason']>('annual_payout');
   const [payoutMethod, setPayoutMethod] = useState<ContributionPayout['paymentMethod']>('bank_transfer');
+  const [payoutDisbursementMode, setPayoutDisbursementMode] = useState<'separate' | 'with_salary'>('separate');
+  const [payoutPayrollMonth, setPayoutPayrollMonth] = useState<string>(selectedMonth || 'jan');
+  const [payoutPayrollYear, setPayoutPayrollYear] = useState<number>(selectedYear || new Date().getFullYear());
   const [payoutRef, setPayoutRef] = useState('');
   const [payoutNotes, setPayoutNotes] = useState('');
+  const [receiptPayout, setReceiptPayout] = useState<ContributionPayout | null>(null);
+
+  const formatPeriodBadge = (periodKey?: string) => {
+    if (!periodKey) return '';
+    const [yr, mKey] = periodKey.split('-');
+    const mLabel = MONTHS.find(m => m.key === mKey)?.label || mKey?.toUpperCase() || '';
+    return `${mLabel.slice(0, 3)} ${yr || ''}`.trim();
+  };
 
   const selectedPayoutEmpSummary = useMemo(() => {
     return employeeSummaries.find(s => s.employeeId === payoutEmpId);
@@ -536,6 +604,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       payoutDate,
       reason: payoutReason,
       paymentMethod: payoutMethod,
+      disbursementMode: payoutDisbursementMode,
+      payrollPeriodKey: payoutDisbursementMode === 'with_salary' ? `${payoutPayrollYear}-${payoutPayrollMonth}` : '',
       referenceNo: payoutRef.trim(),
       notes: payoutNotes.trim(),
     });
@@ -543,6 +613,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
     setIsPayoutModalOpen(false);
     setPayoutEmpId('');
     setPayoutAmount(0);
+    setPayoutDisbursementMode('separate');
     setPayoutRef('');
     setPayoutNotes('');
   };
@@ -1434,19 +1505,48 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
                 <thead className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
                   <tr>
-                    <th className="px-3 py-2.5">Date</th>
-                    <th className="px-3 py-2.5">Staff Name</th>
-                    <th className="px-3 py-2.5">Reason</th>
-                    <th className="px-3 py-2.5">Payment Method</th>
-                    <th className="px-3 py-2.5">Reference No</th>
-                    <th className="px-3 py-2.5 text-right">Amount Paid</th>
-                    {!isWriteDisabled && <th className="px-3 py-2.5 text-right">Actions</th>}
+                    {(
+                      [
+                        { key: 'date', label: 'Date', align: 'left' },
+                        { key: 'staff', label: 'Staff Name', align: 'left' },
+                        { key: 'reason', label: 'Reason', align: 'left' },
+                        { key: 'settlement', label: 'Settlement', align: 'left' },
+                        { key: 'method', label: 'Payment Method', align: 'left' },
+                        { key: 'reference', label: 'Reference No', align: 'left' },
+                        { key: 'amount', label: 'Amount Paid', align: 'right' },
+                      ] as const
+                    ).map(col => {
+                      const isActive = payoutSortKey === col.key;
+                      return (
+                        <th
+                          key={col.key}
+                          onClick={() => handlePayoutSort(col.key)}
+                          className={`px-3 py-2.5 cursor-pointer select-none hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors ${
+                            col.align === 'right' ? 'text-right' : 'text-left'
+                          }`}
+                        >
+                          <span className={`inline-flex items-center gap-1 ${col.align === 'right' ? 'justify-end' : ''}`}>
+                            <span>{col.label}</span>
+                            {isActive ? (
+                              payoutSortDir === 'asc' ? (
+                                <ChevronUp className="w-3 h-3 text-zinc-900 dark:text-zinc-100" />
+                              ) : (
+                                <ChevronDown className="w-3 h-3 text-zinc-900 dark:text-zinc-100" />
+                              )
+                            ) : (
+                              <ChevronDown className="w-3 h-3 opacity-25" />
+                            )}
+                          </span>
+                        </th>
+                      );
+                    })}
+                    <th className="px-3 py-2.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-normal">
                   {filteredPayouts.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-3 py-8 text-center text-zinc-400">
+                      <td colSpan={8} className="px-3 py-8 text-center text-zinc-400">
                         {payoutPeriodScope === 'month' ? (
                           <div className="space-y-1.5">
                             <p>No payouts recorded for {monthLabel} {selectedYear}.</p>
@@ -1479,13 +1579,29 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                       const emp = employees.find(e => e.id === payout.employeeId);
                       const payoutMenuId = `payout_${payout.id}`;
                       return (
-                        <tr key={payout.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                        <tr
+                          key={payout.id}
+                          onClick={() => setReceiptPayout(payout)}
+                          className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                          title="Click to view disbursement receipt"
+                        >
                           <td className="px-3 py-2 font-mono text-zinc-500">{formatDate(payout.payoutDate)}</td>
                           <td className="px-3 py-2 font-medium text-zinc-900 dark:text-zinc-100">
                             {emp ? `${emp.firstName} ${emp.lastName}` : 'Former Staff'}
                           </td>
                           <td className="px-3 py-2 capitalize text-zinc-600 dark:text-zinc-300">
                             {payout.reason.replace('_', ' ')}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {payout.disbursementMode === 'with_salary' ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/60">
+                                With {formatPeriodBadge(payout.payrollPeriodKey) || 'Salary'} Salary
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700">
+                                Paid Separately
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2 capitalize text-zinc-500">
                             {payout.paymentMethod.replace('_', ' ')}
@@ -1498,8 +1614,10 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                           </td>
 
                           {/* 3-Dot Actions Menu */}
-                          {!isWriteDisabled && (
-                            <td className="px-3 py-2 text-right whitespace-nowrap">
+                          <td
+                            className="px-3 py-2 text-right whitespace-nowrap"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                               <div className="relative inline-block text-left contrib-action-menu">
                                 <button
                                   type="button"
@@ -1538,27 +1656,40 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                                       bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
                                       right: `${menuCoords.right}px` 
                                     }}
-                                    className="fixed w-40 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left contrib-action-dropdown"
+                                    className="fixed w-44 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left contrib-action-dropdown"
                                   >
                                     <button
                                       type="button"
                                       onClick={() => {
                                         setActiveMenuId(null);
                                         setMenuCoords(null);
-                                        if (confirm('Are you sure you want to delete this payout record?')) {
-                                          onDeletePayout(payout.id);
-                                        }
+                                        setReceiptPayout(payout);
                                       }}
-                                      className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                                      className="w-full px-3 py-1.5 flex items-center gap-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
                                     >
-                                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                      <span>Delete Payout</span>
+                                      <Printer className="w-3.5 h-3.5 shrink-0" />
+                                      <span>View Receipt</span>
                                     </button>
+                                    {!isWriteDisabled && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveMenuId(null);
+                                          setMenuCoords(null);
+                                          if (confirm('Are you sure you want to delete this payout record?')) {
+                                            onDeletePayout(payout.id);
+                                          }
+                                        }}
+                                        className="w-full px-3 py-1.5 flex items-center gap-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Delete Payout</span>
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </div>
                             </td>
-                          )}
                         </tr>
                       );
                     })
@@ -1637,7 +1768,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 return (
                   <div
                     key={payout.id}
-                    className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs"
+                    onClick={() => setReceiptPayout(payout)}
+                    className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs cursor-pointer active:scale-[0.99] transition"
                   >
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -1671,7 +1803,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                       {!isWriteDisabled && (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (confirm('Are you sure you want to delete this payout record?')) {
                               onDeletePayout(payout.id);
                             }
@@ -1777,11 +1910,9 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       {editingSingleEmp && (
         <div 
           className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => setEditingSingleEmp(null)}
         >
           <div 
             className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
-            onClick={e => e.stopPropagation()}
           >
             {/* Mobile Drag Handle */}
             <div className="sm:hidden pt-3 pb-1 flex justify-center">
@@ -1808,13 +1939,6 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setEditingSingleEmp(null)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition shrink-0 ml-2 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             <form onSubmit={handleSaveSingle} className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -1966,12 +2090,6 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => setIsBulkModalOpen(false)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition shrink-0 ml-2"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             {/* Quick Batch Toolbar */}
@@ -2260,11 +2378,9 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       {isPayoutModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => setIsPayoutModalOpen(false)}
         >
           <div 
             className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
-            onClick={e => e.stopPropagation()}
           >
             {/* Mobile Drag Handle */}
             <div className="sm:hidden pt-3 pb-1 flex justify-center">
@@ -2288,13 +2404,6 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsPayoutModalOpen(false)}
-                className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition shrink-0 ml-2 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             <form onSubmit={handleSavePayout} className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -2403,6 +2512,67 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 </div>
               </div>
 
+              {/* Settlement Mode: Paid Separately vs Paid with Salary */}
+              <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2.5">
+                <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                  Settlement Mode
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPayoutDisbursementMode('separate')}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                      payoutDisbursementMode === 'separate'
+                        ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100'
+                        : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    Paid Separately
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPayoutDisbursementMode('with_salary')}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                      payoutDisbursementMode === 'with_salary'
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    Paid with Salary
+                  </button>
+                </div>
+                {payoutDisbursementMode === 'with_salary' && (
+                  <div className="pt-1 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-zinc-500 mb-1">Payroll Month</label>
+                        <select
+                          value={payoutPayrollMonth}
+                          onChange={(e) => setPayoutPayrollMonth(e.target.value)}
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                        >
+                          {MONTHS.map(m => (
+                            <option key={m.key} value={m.key}>{m.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-zinc-500 mb-1">Payroll Year</label>
+                        <input
+                          type="number"
+                          value={payoutPayrollYear}
+                          onChange={(e) => setPayoutPayrollYear(Number(e.target.value) || new Date().getFullYear())}
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-indigo-700 dark:text-indigo-300 leading-snug">
+                      Added as a <strong>non-taxable</strong> addition on the employee&apos;s payslip and bank transfer schedule for that month (not subject to PAYE or pension).
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Reference */}
               <div>
                 <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
@@ -2459,11 +2629,9 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       {selectedLedgerEmpId && (
         <div 
           className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => setSelectedLedgerEmpId(null)}
         >
           <div 
             className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
-            onClick={e => e.stopPropagation()}
           >
             {/* Mobile Drag Handle */}
             <div className="sm:hidden pt-3 pb-1 flex justify-center">
@@ -2539,12 +2707,6 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                         title="Print Statement"
                       >
                         <Printer className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setSelectedLedgerEmpId(null)}
-                        className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -2627,6 +2789,230 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             })()}
           </div>
         </div>
+      )}
+
+      {/* DISBURSEMENT RECEIPT / VOUCHER MODAL (Minimalist Payslip Style) */}
+      {receiptPayout && typeof document !== 'undefined' && createPortal(
+        (() => {
+          const emp = employees.find(e => e.id === receiptPayout.employeeId);
+          const isWithSalary = receiptPayout.disbursementMode === 'with_salary';
+          const periodBadge = formatPeriodBadge(receiptPayout.payrollPeriodKey);
+          const refDisplay = receiptPayout.referenceNo || receiptPayout.id.slice(0, 12).toUpperCase();
+          const handlePrintReceipt = () => {
+            document.body.classList.add('print-portal-active');
+            const cleanup = () => {
+              document.body.classList.remove('print-portal-active');
+              window.removeEventListener('afterprint', cleanup);
+            };
+            window.addEventListener('afterprint', cleanup);
+            window.print();
+          };
+          return (
+            <div
+              className="print-modal-root fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto print:p-0 print:bg-white print:static"
+            >
+              <div
+                className="bg-white text-zinc-900 rounded-xl shadow-2xl border border-zinc-200 w-full max-w-2xl overflow-hidden my-auto print:shadow-none print:border-0 print:max-w-none print:w-full"
+              >
+                {/* Modal Top Bar (no-print) */}
+                <div className="no-print px-5 py-3 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                      Disbursement Receipt
+                    </span>
+                    <span className="text-zinc-300">&bull;</span>
+                    <span className="font-mono text-[11px] text-zinc-600">{refDisplay}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReceiptPayout(null)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-200 text-zinc-700 hover:bg-zinc-100 cursor-pointer transition"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handlePrintReceipt}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 text-white hover:opacity-90 flex items-center gap-1.5 cursor-pointer transition"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      Print / Save PDF
+                    </button>
+                  </div>
+                </div>
+
+                {/* Printable Receipt Sheet (Minimalist Payslip Layout) */}
+                <div className="p-6 sm:p-8 space-y-6 text-xs">
+                  {/* 1. Company Letterhead & Document Title */}
+                  <div className="flex items-start justify-between gap-4 border-b border-zinc-200 pb-5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2.5">
+                        {company?.logoUrl ? (
+                          <img src={company.logoUrl} alt="Logo" className="h-9 w-auto object-contain" />
+                        ) : (
+                          <div className="w-7 h-7 rounded border border-zinc-300 flex items-center justify-center font-bold text-xs text-zinc-900">
+                            ⚡
+                          </div>
+                        )}
+                        <div>
+                          <h2 className="text-sm font-bold uppercase tracking-tight text-zinc-900">
+                            {company?.name || 'Company Payroll'}
+                          </h2>
+                          {company?.subtitle && (
+                            <p className="text-[10px] text-zinc-500 font-medium">{company.subtitle}</p>
+                          )}
+                        </div>
+                      </div>
+                      {company?.address && (
+                        <p className="text-[10px] text-zinc-400 pt-0.5">{company.address}</p>
+                      )}
+                    </div>
+
+                    <div className="text-right space-y-0.5 shrink-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                        Disbursement Voucher
+                      </span>
+                      <span className="font-mono text-xs font-bold text-zinc-900 block">
+                        {refDisplay}
+                      </span>
+                      <span className="font-mono text-[10px] text-zinc-500 block">
+                        Paid: {formatDate(receiptPayout.payoutDate)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 2. Beneficiary & Settlement Metadata Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-zinc-50/70 border border-zinc-200/90 rounded-lg p-3.5">
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold tracking-wider text-zinc-400 block">
+                        Beneficiary
+                      </span>
+                      <span className="font-semibold text-zinc-900 block mt-0.5">
+                        {emp ? `${emp.firstName} ${emp.lastName}` : 'Former Staff'}
+                      </span>
+                      {emp?.code && (
+                        <span className="font-mono text-[10px] text-zinc-500">{emp.code}</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold tracking-wider text-zinc-400 block">
+                        Department
+                      </span>
+                      <span className="font-medium text-zinc-800 block mt-0.5">
+                        {emp?.department || '—'}
+                      </span>
+                      {emp?.position && (
+                        <span className="text-[10px] text-zinc-500 block">{emp.position}</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold tracking-wider text-zinc-400 block">
+                        Settlement Mode
+                      </span>
+                      <span className="font-semibold text-zinc-900 block mt-0.5">
+                        {isWithSalary ? `With ${periodBadge || 'Monthly'} Salary` : 'Paid Separately'}
+                      </span>
+                      <span className="capitalize text-[10px] text-zinc-500 block">
+                        {receiptPayout.paymentMethod.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold tracking-wider text-zinc-400 block">
+                        Bank Details
+                      </span>
+                      <span className="font-medium text-zinc-800 block mt-0.5">
+                        {emp?.bankName || '—'}
+                      </span>
+                      <span className="font-mono text-[10px] text-zinc-500 block">
+                        {emp?.accountNumber || '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 3. Minimalist Breakdown Table */}
+                  <div className="border border-zinc-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-zinc-50 border-b border-zinc-200 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                        <tr>
+                          <th className="py-2 px-3">Description / Scheme</th>
+                          <th className="py-2 px-3">Disbursement Type</th>
+                          <th className="py-2 px-3">Tax Treatment</th>
+                          <th className="py-2 px-3 text-right">Amount (₦)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 text-[11px]">
+                        <tr>
+                          <td className="py-3 px-3 font-medium text-zinc-900">
+                            {receiptPayout.schemeName || 'Staff Welfare Fund'}
+                          </td>
+                          <td className="py-3 px-3 capitalize text-zinc-600">
+                            {receiptPayout.reason.replace(/_/g, ' ')}
+                          </td>
+                          <td className="py-3 px-3 text-zinc-500">
+                            Non-Taxable (Pre-Taxed)
+                          </td>
+                          <td className="py-3 px-3 text-right font-mono font-bold text-zinc-900">
+                            {formatNaira(receiptPayout.amount)}
+                          </td>
+                        </tr>
+                        {receiptPayout.notes && (
+                          <tr className="bg-zinc-50/40">
+                            <td colSpan={4} className="py-2 px-3 text-[11px] text-zinc-500">
+                              <span className="font-semibold text-zinc-600">Note:</span> {receiptPayout.notes}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 4. Net Disbursed Summary Card (Payslip Net Pay Style) */}
+                  <div className="p-4 rounded-lg border border-zinc-200 bg-zinc-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-zinc-900 block">
+                        Net Amount Disbursed
+                      </span>
+                      <span className="text-[10px] text-zinc-500">
+                        {isWithSalary
+                          ? `Credited alongside ${periodBadge || 'monthly'} net salary • Exempt from PAYE & Pension`
+                          : 'Standalone disbursement • Exempt from PAYE & Pension'}
+                      </span>
+                    </div>
+                    <span className="text-2xl font-black font-mono tracking-tight text-zinc-900">
+                      {formatNaira(receiptPayout.amount)}
+                    </span>
+                  </div>
+
+                  {/* 5. Signatories */}
+                  <div className="pt-4 border-t border-zinc-100 grid grid-cols-2 gap-8 text-[10px] text-zinc-500">
+                    <div>
+                      <div className="border-b border-zinc-300 h-8 mb-1.5" />
+                      <div className="flex justify-between">
+                        <span>Authorized By</span>
+                        <span>Date</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="border-b border-zinc-300 h-8 mb-1.5" />
+                      <div className="flex justify-between">
+                        <span>Beneficiary Signature</span>
+                        <span>Date</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 6. Minimalist Footer */}
+                  <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-[10px] text-zinc-400 font-mono">
+                    <span>Payroll Pro Official Disbursement Voucher &bull; {refDisplay}</span>
+                    <span>Non-Taxable Settlement</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })(),
+        document.body
       )}
       </div>
     </div>

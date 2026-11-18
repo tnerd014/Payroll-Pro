@@ -860,7 +860,6 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
                   { id: 'showLogo', label: 'Company Logo', active: payslipDesign.showLogo, toggle: () => onUpdatePayslipDesign({ showLogo: !payslipDesign.showLogo }) },
                   { id: 'showCompanyAddress', label: 'Company Address', active: payslipDesign.showCompanyAddress, toggle: () => onUpdatePayslipDesign({ showCompanyAddress: !payslipDesign.showCompanyAddress }) },
                   { id: 'showCompanyPhoneEmail', label: 'Phone & Email', active: payslipDesign.showCompanyPhoneEmail, toggle: () => onUpdatePayslipDesign({ showCompanyPhoneEmail: !payslipDesign.showCompanyPhoneEmail }) },
-                  { id: 'bank_details', label: 'Bank Details', active: isSectionEnabled('bank_details'), toggle: () => handleToggleSection('bank_details') },
                   { id: 'employer_contributions', label: 'Employer Cost', active: isSectionEnabled('employer_contributions'), toggle: () => handleToggleSection('employer_contributions') },
                   { id: 'signatures', label: 'Signatures Block', active: isSectionEnabled('signatures'), toggle: () => handleToggleSection('signatures') },
                   { id: 'footer_notes', label: 'Footer Disclaimer', active: isSectionEnabled('footer_notes'), toggle: () => handleToggleSection('footer_notes') },

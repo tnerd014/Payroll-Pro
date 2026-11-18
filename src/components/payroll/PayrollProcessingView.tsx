@@ -323,6 +323,9 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
         case 'contribution':
           comparison = (a.contributionDeduction || 0) - (b.contributionDeduction || 0);
           break;
+        case 'payout':
+          comparison = (a.nonTaxablePayout || 0) - (b.nonTaxablePayout || 0);
+          break;
         case 'net':
           comparison = a.netTakeHome - b.netTakeHome;
           break;
@@ -811,16 +814,6 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                     align="left"
                   />
                 </th>
-                <th className="px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900">
-                  <SortableHeader
-                    label="Dept"
-                    field="dept"
-                    currentSortField={sortField}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="left"
-                  />
-                </th>
                 <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                   <SortableHeader
                     label="Gross"
@@ -867,6 +860,16 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                       <SortableHeader
                         label="Contribution"
                         field="contribution"
+                        currentSortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        align="right"
+                      />
+                    </th>
+                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                      <SortableHeader
+                        label="Payout"
+                        field="payout"
                         currentSortField={sortField}
                         sortDirection={sortDirection}
                         onSort={handleSort}
@@ -963,16 +966,15 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                     </th>
                   </>
                 )}
-                <th className="w-16 px-3 py-2.5 text-center font-semibold uppercase tracking-wider text-[10px] text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900 rounded-tr-lg">
-                  Action
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
               {paginatedItems.map(item => (
                 <tr
                   key={item.employeeId}
-                  className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors"
+                  onClick={() => setSelectedSingleSlip(item)}
+                  className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer"
+                  title="Click to view payslip"
                 >
                   <td className="w-20 px-3 py-2 font-mono text-[11px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
                     {item.employeeCode}
@@ -994,7 +996,8 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                       {Boolean(item.unpaidAbsenceDays && item.unpaidAbsenceDays > 0) && (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (!isLocked && !isWriteDisabled && onSaveAbsence) {
                               setSelectedAbsenceEmpId(item.employeeId);
                               setIsAbsenceModalOpen(true);
@@ -1036,10 +1039,6 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                     )}
                   </td>
 
-                  <td className="px-3 py-2 text-zinc-500 text-xs truncate max-w-[140px]">
-                    {item.department}
-                  </td>
-
                   <td className="px-3 py-2 text-right font-mono text-zinc-800 dark:text-zinc-200">
                     {formatNaira(item.monthlyGross)}
                   </td>
@@ -1071,6 +1070,18 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                             title={item.contributionDetails?.[0]?.schemeName || 'Staff Welfare / Savings Contribution'}
                           >
                             {formatNaira(item.contributionDeduction)}
+                          </span>
+                        ) : (
+                          <span className="text-zinc-300 dark:text-zinc-600 font-light">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono whitespace-nowrap">
+                        {item.nonTaxablePayout && item.nonTaxablePayout > 0 ? (
+                          <span
+                            className="font-medium text-emerald-600 dark:text-emerald-400"
+                            title={item.nonTaxablePayoutDetails?.map(d => `${d.schemeName}: ${formatNaira(d.amount)}`).join(', ') || 'Non-Taxable Contribution Payout'}
+                          >
+                            +{formatNaira(item.nonTaxablePayout)}
                           </span>
                         ) : (
                           <span className="text-zinc-300 dark:text-zinc-600 font-light">—</span>
@@ -1112,21 +1123,12 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                       </td>
                     </>
                   )}
-
-                  <td className="w-16 px-3 py-2 text-center whitespace-nowrap">
-                    <button
-                      onClick={() => setSelectedSingleSlip(item)}
-                      className="px-2.5 py-0.5 rounded text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                    >
-                      View
-                    </button>
-                  </td>
                 </tr>
               ))}
 
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={activeSubTab === 'processing' ? 9 : activeSubTab === 'paye' ? 8 : 7} className="px-4 py-8 text-center text-zinc-400 italic">
+                  <td colSpan={activeSubTab === 'processing' ? 8 : activeSubTab === 'paye' ? 6 : 5} className="px-4 py-8 text-center text-zinc-400 italic">
                     No employee records match the filter criteria.
                   </td>
                 </tr>

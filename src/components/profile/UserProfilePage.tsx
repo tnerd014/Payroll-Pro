@@ -79,18 +79,10 @@ const Modal: React.FC<{ title: string; onClose: () => void; children: React.Reac
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div
       className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
     />
     <div className="relative bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
       <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
         <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{title}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-        </button>
       </div>
       <div className="px-5 py-4 space-y-4">{children}</div>
     </div>

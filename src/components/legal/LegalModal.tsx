@@ -54,11 +54,9 @@ export const LegalModal: React.FC<LegalModalProps> = ({
   return (
     <div 
       className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4 sm:p-6 animate-in fade-in duration-100"
-      onClick={onClose}
     >
       <div 
         className="w-full max-w-4xl h-[88vh] max-h-[760px] bg-white dark:bg-[#111113] text-zinc-900 dark:text-zinc-100 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-col overflow-hidden animate-in zoom-in-[0.98] duration-100"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Minimalist Header */}
         <div className="no-print h-12 px-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#111113]">
@@ -104,9 +102,9 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               type="button"
               onClick={onClose}
               title="Close (Esc)"
-              className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded transition cursor-pointer ml-1"
+              className="px-2.5 py-1 text-xs font-medium border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition cursor-pointer ml-1"
             >
-              <X className="w-4 h-4" />
+              Close
             </button>
           </div>
         </div>

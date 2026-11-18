@@ -173,6 +173,8 @@ export interface CalculatedPayrollItem {
   effectiveGross?: number;
   contributionDeduction?: number;
   contributionDetails?: Array<{ schemeName: string; amount: number }>;
+  nonTaxablePayout?: number;
+  nonTaxablePayoutDetails?: Array<{ schemeName: string; reason: string; amount: number }>;
   isSection5CapExceeded?: boolean;
   section5MaxAllowedDeductions?: number;
 }
@@ -263,6 +265,8 @@ export interface ContributionPayout {
   payoutDate: string; // ISO date YYYY-MM-DD
   reason: 'annual_payout' | 'partial_withdrawal' | 'exit_settlement' | 'other';
   paymentMethod: 'bank_transfer' | 'cheque' | 'cash';
+  disbursementMode?: 'separate' | 'with_salary';
+  payrollPeriodKey?: string; // e.g. '2026-nov' when disbursementMode === 'with_salary'
   referenceNo?: string;
   notes?: string;
   createdAt: string;
@@ -489,9 +493,6 @@ export const ALL_PAYSLIP_COLUMNS: PayslipColumnDef[] = [
   { id: 'employer_pension', label: 'Employer Statutory Pension (10%)', sectionId: 'employer_contributions', defaultChecked: true },
   { id: 'employer_cost', label: 'Total Employer Monthly Cost', sectionId: 'employer_contributions', defaultChecked: true },
 
-  // Bank Disbursement
-  { id: 'bank_details', label: 'Disbursement Details Card', sectionId: 'bank_details', defaultChecked: true },
-
   // Signatures & Footer
   { id: 'signatures', label: 'Signatures / Approval Block', sectionId: 'signatures', defaultChecked: false },
   { id: 'footer_notes', label: 'Footer Disclaimer & Security ID', sectionId: 'footer_notes', defaultChecked: true },
@@ -567,7 +568,6 @@ export const DEFAULT_PAYSLIP_DESIGN: PayslipDesignConfig = {
     { id: 'deductions', label: 'Deductions Breakdown', enabled: true },
     { id: 'net_pay', label: 'Net Take-Home Highlight Card', enabled: true },
     { id: 'employer_contributions', label: 'Employer Contributions & Total Cost', enabled: true },
-    { id: 'bank_details', label: 'Bank Disbursement Details', enabled: true },
     { id: 'signatures', label: 'Signatures & Authorization Block', enabled: false },
     { id: 'footer_notes', label: 'Footer Disclaimer & Notes', enabled: true },
   ],

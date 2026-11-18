@@ -999,11 +999,9 @@ Password: ${createdCredentials.pass}`;
       {editingMember && createPortal(
         <div 
           className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setEditingMember(null)}
         >
           <div 
             className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden mt-2 shrink-0" />
@@ -1022,13 +1020,6 @@ Password: ${createdCredentials.pass}`;
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setEditingMember(null)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             <form onSubmit={handleSaveEdit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -1176,11 +1167,9 @@ Password: ${createdCredentials.pass}`;
       {isAddModalOpen && createPortal(
         <div 
           className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setIsAddModalOpen(false)}
         >
           <div 
             className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden mt-2 shrink-0" />
@@ -1196,13 +1185,6 @@ Password: ${createdCredentials.pass}`;
                   </h3>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             <form onSubmit={handleSaveMember} className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -1364,11 +1346,9 @@ Password: ${createdCredentials.pass}`;
       {createdCredentials && createPortal(
         <div 
           className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setCreatedCredentials(null)}
         >
           <div 
             className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-3.5 text-xs animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
@@ -1415,22 +1395,12 @@ Password: ${createdCredentials.pass}`;
       {viewMember && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setViewMember(null)}
         >
           <div
             className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 text-xs max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
-            onClick={e => e.stopPropagation()}
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
-            {/* Close */}
-            <button
-              type="button"
-              onClick={() => setViewMember(null)}
-              className="absolute top-3 right-3 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
 
             {/* Avatar + Name header */}
             <div className="px-6 pt-6 pb-4 flex items-center gap-4 border-b border-zinc-100 dark:border-zinc-800">
@@ -1596,11 +1566,9 @@ Password: ${createdCredentials.pass}`;
       {mobileActionMember && createPortal(
         <div 
           className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setMobileActionMember(null)}
         >
           <div 
             className="w-full sm:max-w-md bg-white dark:bg-[#121215] rounded-t-3xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 sm:p-6 shadow-2xl space-y-3.5 animate-in slide-in-from-bottom duration-200"
-            onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
@@ -1614,13 +1582,6 @@ Password: ${createdCredentials.pass}`;
                   @{mobileActionMember.username || mobileActionMember.email?.split('@')[0]} &bull; {mobileActionMember.role}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setMobileActionMember(null)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             <div className="space-y-2 pt-1">
@@ -1687,11 +1648,9 @@ Password: ${createdCredentials.pass}`;
       {confirmAction && createPortal(
         <div 
           className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => !isExecutingAction && setConfirmAction(null)}
         >
           <div 
             className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />

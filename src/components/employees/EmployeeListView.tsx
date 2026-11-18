@@ -96,11 +96,9 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 sm:p-6 animate-in fade-in duration-150 overflow-y-auto"
-      onClick={onClose}
     >
       <div
         className="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto flex flex-col max-h-[calc(100vh-3rem)]"
-        onClick={e => e.stopPropagation()}
       >
         {/* ── Landscape Header ── */}
         <div className="px-6 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 shrink-0">
@@ -142,14 +140,6 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
                   {formatNaira(emp.monthlyGross)}<span className="text-[10px] text-zinc-400 font-normal"> / mo</span>
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
           </div>
         </div>

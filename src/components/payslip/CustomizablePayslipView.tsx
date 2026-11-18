@@ -897,58 +897,81 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
       onUpdateConfig({ netPayFontSize: cycleSizes[nextIdx] });
     };
 
+    const payoutTotal = Number(item.nonTaxablePayout) || 0;
+    const payoutDetails = item.nonTaxablePayoutDetails && item.nonTaxablePayoutDetails.length > 0
+      ? item.nonTaxablePayoutDetails
+      : payoutTotal > 0
+        ? [{ schemeName: 'Contribution Disbursement', reason: 'payout', amount: payoutTotal }]
+        : [];
+
     return renderSectionWrapper('net_pay', (
-      <div style={themeStyles.accentLightBg} className="p-4 sm:p-5 rounded border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all">
-        <div className="flex-1 min-w-0 pr-2">
-          {interactive && onUpdateConfig ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={config.netPayTitle}
-                onChange={(e) => onUpdateConfig({ netPayTitle: e.target.value })}
-                onClick={(e) => e.stopPropagation()}
-                className={`${titleSizeClass} font-extrabold uppercase tracking-wider block bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none flex-1 transition`}
-                placeholder="NET TAKE-HOME PAY"
-                title="Click to edit Net Pay Header directly"
-              />
-              <div
-                className="flex items-center gap-0.5 bg-black/10 rounded px-1.5 py-0.5 shrink-0 select-none shadow-2xs"
-                onClick={(e) => e.stopPropagation()}
-                title="Net Pay Font Size (A- / A+)"
-              >
-                <button
-                  type="button"
-                  onClick={() => handleStepFontSize(-1)}
-                  disabled={currentSizeIdx === 0}
-                  className="px-1 text-[11px] font-bold hover:bg-black/10 rounded disabled:opacity-30 cursor-pointer"
-                  title="Smaller Net Pay Font"
-                >
-                  A-
-                </button>
-                <span className="text-[10px] font-mono px-1 uppercase font-semibold">
-                  {netSize}
+      <div className="space-y-3">
+        {payoutTotal > 0 && (
+          <div className="border-t border-b border-zinc-200 py-3 px-1 space-y-2">
+            {payoutDetails.map((pd, idx) => (
+              <div key={idx} className="flex items-center justify-between gap-4">
+                <span className="text-xs sm:text-sm font-medium text-zinc-700">
+                  {pd.schemeName}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => handleStepFontSize(1)}
-                  disabled={currentSizeIdx === cycleSizes.length - 1}
-                  className="px-1 text-[11px] font-bold hover:bg-black/10 rounded disabled:opacity-30 cursor-pointer"
-                  title="Larger Net Pay Font"
-                >
-                  A+
-                </button>
+                <span className="font-mono text-sm sm:text-base font-bold text-zinc-900 shrink-0">
+                  +{formatNaira(pd.amount)}
+                </span>
               </div>
-            </div>
-          ) : (
-            <span style={!isSolidTint ? themeStyles.accentText : undefined} className={`${titleSizeClass} font-extrabold uppercase tracking-wider block`}>
-              {config.netPayTitle}
+            ))}
+          </div>
+        )}
+        <div style={themeStyles.accentLightBg} className="p-4 sm:p-5 rounded border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all">
+          <div className="flex-1 min-w-0 pr-2">
+            {interactive && onUpdateConfig ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={config.netPayTitle}
+                  onChange={(e) => onUpdateConfig({ netPayTitle: e.target.value })}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`${titleSizeClass} font-extrabold uppercase tracking-wider block bg-transparent border-b border-dashed border-current/30 hover:border-current focus:border-current focus:outline-none flex-1 transition`}
+                  placeholder="NET TAKE-HOME PAY"
+                  title="Click to edit Net Pay Header directly"
+                />
+                <div
+                  className="flex items-center gap-0.5 bg-black/10 rounded px-1.5 py-0.5 shrink-0 select-none shadow-2xs"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Net Pay Font Size (A- / A+)"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleStepFontSize(-1)}
+                    disabled={currentSizeIdx === 0}
+                    className="px-1 text-[11px] font-bold hover:bg-black/10 rounded disabled:opacity-30 cursor-pointer"
+                    title="Smaller Net Pay Font"
+                  >
+                    A-
+                  </button>
+                  <span className="text-[10px] font-mono px-1 uppercase font-semibold">
+                    {netSize}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleStepFontSize(1)}
+                    disabled={currentSizeIdx === cycleSizes.length - 1}
+                    className="px-1 text-[11px] font-bold hover:bg-black/10 rounded disabled:opacity-30 cursor-pointer"
+                    title="Larger Net Pay Font"
+                  >
+                    A+
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <span style={!isSolidTint ? themeStyles.accentText : undefined} className={`${titleSizeClass} font-extrabold uppercase tracking-wider block`}>
+                {config.netPayTitle}
+              </span>
+            )}
+          </div>
+          <div className="sm:text-right shrink-0">
+            <span style={!isSolidTint ? themeStyles.accentText : undefined} className={`${amountSizeClass} font-black font-mono tracking-tight leading-none`}>
+              {formatNaira(item.netTakeHome)}
             </span>
-          )}
-        </div>
-        <div className="sm:text-right shrink-0">
-          <span style={!isSolidTint ? themeStyles.accentText : undefined} className={`${amountSizeClass} font-black font-mono tracking-tight leading-none`}>
-            {formatNaira(item.netTakeHome)}
-          </span>
+          </div>
         </div>
       </div>
     ));
@@ -987,38 +1010,8 @@ export const CustomizablePayslipView: React.FC<CustomizablePayslipViewProps> = (
     ));
   };
 
-  // Section 8: Bank Details
-  const renderBankDetails = () => {
-    if (!isCol('bank_details') && !isCol('bank_name') && !isCol('account_number')) return null;
-    return renderSectionWrapper('bank_details', (
-      <div className="border border-zinc-200 rounded p-3 bg-white text-xs">
-        <div className="flex items-center gap-2 mb-2 text-zinc-500 text-[11px] font-semibold uppercase">
-          <Landmark className="w-3.5 h-3.5 text-zinc-400" />
-          <span>Disbursement Channel</span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-          <div>
-            <span className="text-zinc-400 block text-[10px]">Bank</span>
-            <span className="font-medium text-zinc-800">{item.bankName}</span>
-          </div>
-          <div>
-            <span className="text-zinc-400 block text-[10px]">NUBAN Account</span>
-            <span className="font-mono font-medium text-zinc-900">{item.accountNumber}</span>
-          </div>
-          <div>
-            <span className="text-zinc-400 block text-[10px]">Account Name</span>
-            <span className="font-medium text-zinc-800">{item.fullName}</span>
-          </div>
-          <div>
-            <span className="text-zinc-400 block text-[10px]">Narration</span>
-            <span className="text-zinc-600 font-mono text-[10px]">
-              SALARY {monthLabel.toUpperCase()} {year}
-            </span>
-          </div>
-        </div>
-      </div>
-    ));
-  };
+  // Section 8: Bank Details (disabled across all payslips)
+  const renderBankDetails = () => null;
 
   // Section 9: Signatures
   const renderSignatures = () => {
