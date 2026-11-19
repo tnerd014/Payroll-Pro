@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, 
   UserPlus, 
@@ -15,6 +15,7 @@ import { MobileStaffCard } from '../MobileStaffCard';
 import { MobileStaffDetailSheet } from '../MobileStaffDetailSheet';
 import { MobileEmployeeFormSheet } from '../MobileEmployeeFormSheet';
 import { MobileDepartmentPicker } from '../MobileDepartmentPicker';
+import { TablePagination } from '../../common/TablePagination';
 
 interface MobileStaffDirectoryViewProps {
   employees: Employee[];
@@ -53,6 +54,8 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
   const [selectedStaff, setSelectedStaff] = useState<Employee | null>(null);
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const safeEmployees = useMemo(() => Array.isArray(employees) ? employees.filter(Boolean) : [], [employees]);
   const deptOptions = useMemo(() => {
@@ -73,6 +76,15 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
       return matchesSearch && matchesDept && matchesStatus;
     });
   }, [safeEmployees, searchQuery, selectedDept, selectedStatus]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDept, selectedStatus, pageSize]);
+
+  const paginatedEmployees = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredEmployees.slice(start, start + pageSize);
+  }, [filteredEmployees, currentPage, pageSize]);
 
   const activeCount = safeEmployees.filter(e => e.status === 'Active').length;
 
@@ -212,13 +224,25 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
             </p>
           </div>
         ) : (
-          filteredEmployees.map((emp) => (
-            <MobileStaffCard
-              key={emp.id}
-              employee={emp}
-              onView={(e) => setSelectedStaff(e)}
-            />
-          ))
+          <>
+            {paginatedEmployees.map((emp) => (
+              <MobileStaffCard
+                key={emp.id}
+                employee={emp}
+                onView={(e) => setSelectedStaff(e)}
+              />
+            ))}
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden mt-2">
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={filteredEmployees.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                itemLabel="staff records"
+              />
+            </div>
+          </>
         )}
       </div>
 

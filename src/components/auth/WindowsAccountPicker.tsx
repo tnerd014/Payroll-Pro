@@ -711,19 +711,6 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 <Download className="w-4 h-4" />
               </button>
 
-              <button
-                type="button"
-                onClick={() => setIsCloudModalOpen(true)}
-                title={cloudConfig.isEnabled ? 'Connected to Team Server' : 'Connect to Team Server'}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition cursor-pointer ${
-                  cloudConfig.isEnabled
-                    ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50'
-                    : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                }`}
-              >
-                <Cloud className="w-4 h-4" />
-              </button>
-
               {currentUser && (
                 <div className="relative" ref={userMenuRef}>
                   <button
@@ -816,18 +803,6 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
               >
                 <Smartphone className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
                 <span className="hidden md:inline">Android View</span>
-              </button>
-            )}
-
-            {/* Cloud Setup — only show when cloud is active (already connected) */}
-            {!isLocalMode && (
-              <button
-                onClick={() => setIsCloudModalOpen(true)}
-                title={'Connected to Team Cloud Database'}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-              >
-                <Cloud className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="hidden sm:inline">Cloud Live</span>
               </button>
             )}
 

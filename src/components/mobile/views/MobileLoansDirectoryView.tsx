@@ -110,6 +110,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
   const isWriteDisabled = isAuditor || isReadOnly;
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'All' | LoanStatus>('All');
+  const [filterType, setFilterType] = useState<'All' | 'Staff Loan' | 'Salary Advance'>('All');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isStatusPickerOpen, setIsStatusPickerOpen] = useState(false);
   const statusPickerRef = useRef<HTMLDivElement>(null);
@@ -189,7 +190,8 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
         const empName = empMap.get(l.employeeId) || '';
         const matchesSearch = empName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = filterStatus === 'All' || l.status === filterStatus;
-        return matchesSearch && matchesStatus;
+        const matchesType = filterType === 'All' || l.type === filterType;
+        return matchesSearch && matchesStatus && matchesType;
       })
       .sort((a, b) => {
         const scoreB = getLoanRecencyScore(b);
@@ -199,7 +201,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
         const tA = new Date(a.createdAt || 0).getTime();
         return tB - tA;
       });
-  }, [loans, empMap, searchQuery, filterStatus]);
+  }, [loans, empMap, searchQuery, filterStatus, filterType]);
 
   // Close details 3-dot menu on outside click
   useEffect(() => {
@@ -365,20 +367,28 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   type="button"
                   onClick={() => setIsStatusPickerOpen(prev => !prev)}
                   className={`h-8 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                    filterStatus !== 'All'
+                    filterStatus !== 'All' || filterType !== 'All'
                       ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
                       : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
                   }`}
-                  title={`Filter by status (${filterStatus})`}
-                  aria-label="Filter by status"
+                  title={`Filter (${filterStatus}, ${filterType})`}
+                  aria-label="Filter by status and type"
                 >
                   <Filter className="w-3 h-3" />
-                  <span>{filterStatus}</span>
+                  <span className="max-w-[110px] truncate">
+                    {filterStatus === 'All' && filterType === 'All'
+                      ? 'All'
+                      : filterStatus !== 'All' && filterType !== 'All'
+                        ? `${filterStatus} · ${filterType === 'Salary Advance' ? 'Advance' : 'Loan'}`
+                        : filterStatus !== 'All'
+                          ? filterStatus
+                          : filterType}
+                  </span>
                   <ChevronDown className="w-3 h-3 opacity-60" />
                 </button>
 
                 {isStatusPickerOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 z-50 text-xs space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute right-0 top-full mt-2 w-44 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 z-50 text-xs space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-2 py-1 text-[9px] uppercase tracking-wider font-bold text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 mb-1">
                       Filter Status
                     </div>
@@ -399,6 +409,31 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                           }`}
                         >
                           <span>{st}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </button>
+                      );
+                    })}
+
+                    <div className="px-2 pt-2 pb-1 text-[9px] uppercase tracking-wider font-bold text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 mb-1">
+                      Filter Type
+                    </div>
+                    {(['All', 'Staff Loan', 'Salary Advance'] as const).map((tp) => {
+                      const isSelected = filterType === tp;
+                      return (
+                        <button
+                          key={tp}
+                          type="button"
+                          onClick={() => {
+                            setFilterType(tp);
+                            setIsStatusPickerOpen(false);
+                          }}
+                          className={`w-full px-2.5 py-1.5 rounded-xl text-left flex items-center justify-between text-xs transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-800'
+                              : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                          }`}
+                        >
+                          <span>{tp === 'All' ? 'All Types' : tp}</span>
                           {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                         </button>
                       );

@@ -355,11 +355,11 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
         <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           {!isMobileSearchOpen ? (
             <div className="flex items-center justify-between gap-2">
-              {/* Left: Total Docked Summary */}
+              {/* Left: Absence Roster Summary */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">
-                    Total Docked
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                    Absence Log
                   </span>
                   {isPeriodLocked && (
                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
@@ -368,11 +368,8 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                   )}
                 </div>
                 <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="font-mono text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400 truncate">
-                    {totalDeductions > 0 ? `-${formatNaira(totalDeductions)}` : '₦0.00'}
-                  </span>
-                  <span className="text-[10px] text-zinc-400 font-medium truncate">
-                    &bull; {affectedStaffCount} staff ({totalDaysDocked}d)
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium truncate">
+                    {affectedStaffCount} {affectedStaffCount === 1 ? 'staff' : 'staff'} &bull; {totalDaysDocked} {totalDaysDocked === 1 ? 'day' : 'days'} docked
                   </span>
                 </div>
               </div>
@@ -781,37 +778,50 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
               <div
                 key={rec.id}
                 onClick={() => setViewingAbsence(rec)}
-                className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3 shadow-xs active:scale-[0.99] transition cursor-pointer select-none"
+                className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-all select-none cursor-pointer active:scale-[0.99] group"
               >
-                <div className="flex items-center justify-between gap-2.5">
-                  {/* Left: Avatar with Initials & Name / Code */}
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shrink-0">
+                <div className="flex items-start justify-between gap-2.5">
+                  {/* Left: Avatar & Identity */}
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shrink-0 mt-0.5">
                       {initials}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-xs sm:text-[13px] font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-snug truncate">
+                      <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-snug break-words group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                         {emp.firstName} {emp.lastName}
                       </h4>
-                      <p className="text-[10px] text-zinc-400 font-mono mt-0.5 truncate">
-                        {emp.code} &bull; {dateDisplay}
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 break-words">
+                        {emp.position || 'Staff Member'} &bull; <span className="font-medium text-zinc-700 dark:text-zinc-300">{emp.department || 'General'}</span>
+                      </p>
+                      <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                        {dateDisplay}
                       </p>
                     </div>
                   </div>
 
-                  {/* Right: Days Docked / Deduction & Minimal Chevron */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="text-right">
-                      <div className="text-xs sm:text-[13px] font-bold font-mono text-rose-600 dark:text-rose-400 leading-tight">
-                        {Number(rec.deductionAmount) > 0 ? `-${formatNaira(rec.deductionAmount)}` : `${rec.daysAbsent}d docked`}
-                      </div>
-                      <div className="text-[10px] text-zinc-400 font-medium mt-0.5">
-                        {rec.daysAbsent} {rec.daysAbsent === 1 ? 'day' : 'days'} docked
-                      </div>
-                    </div>
-                    <div className="w-7 h-7 rounded-xl bg-zinc-100 dark:bg-zinc-800/70 text-zinc-400 dark:text-zinc-500 flex items-center justify-center shrink-0">
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </div>
+                  {/* Right: Absence Type Badge & Arrow */}
+                  <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                    {getAbsenceTypeBadge(rec.absenceType)}
+                    <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+
+                {/* Bottom Metadata Strip */}
+                <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-zinc-500">
+                    <span className="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800/80 px-1.5 py-0.5 rounded text-zinc-700 dark:text-zinc-300 font-semibold">
+                      {emp.code || 'ID'}
+                    </span>
+                    <span className="text-[11px] text-zinc-400">
+                      {emp.workSchedule === '6-day' ? '6-Day' : '5-Day'}
+                    </span>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="font-mono font-bold text-xs text-zinc-900 dark:text-zinc-100">
+                      {rec.daysAbsent} {rec.daysAbsent === 1 ? 'day' : 'days'}
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-normal"> docked</span>
                   </div>
                 </div>
               </div>
@@ -1009,14 +1019,15 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
         );
       })()}
 
-      {filteredAbsences.length > pageSize && (
-        <div className="mt-3">
+      {filteredAbsences.length > 0 && (
+        <div className="mt-3 bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden">
           <TablePagination
             currentPage={currentPage}
             pageSize={pageSize}
             totalItems={filteredAbsences.length}
             onPageChange={setCurrentPage}
             onPageSizeChange={setPageSize}
+            itemLabel="absence records"
           />
         </div>
       )}

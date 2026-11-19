@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Calculator, 
   Lock, 
@@ -33,6 +33,7 @@ import {
 import { formatNaira, formatCompactNaira } from '../../../engine/payePensionEngine';
 import { MobilePayrollCard } from '../MobilePayrollCard';
 import { MobilePayslipPreviewSheet } from '../MobilePayslipPreviewSheet';
+import { TablePagination } from '../../common/TablePagination';
 import { FinalizeLockModal } from '../../payroll/FinalizeLockModal';
 import { UnlockPayrollModal } from '../../payroll/UnlockPayrollModal';
 import { exportNibssBankTransferCsv } from '../../../engine/bankPaymentEngine';
@@ -92,6 +93,8 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
   const [isSpeedDialOpen, setIsSpeedDialOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const periodKey = `${year}-${(selectedMonth || monthLabel || '').toLowerCase()}`;
   const emailedCountForPeriod = useMemo(() => {
@@ -120,6 +123,15 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
       return matchesSearch && matchesDept;
     });
   }, [items, searchQuery, selectedDept]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDept, selectedMonth, year, pageSize]);
+
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, currentPage, pageSize]);
 
   // Aggregated totals
   const totalNet = items.reduce((s, i) => s + i.netTakeHome, 0);
@@ -268,15 +280,27 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
             </p>
           </div>
         ) : (
-          filteredItems.map((item) => (
-            <MobilePayrollCard
-              key={item.employeeId}
-              item={item}
-              onViewPayslip={(slip) => setSelectedSlipItem(slip)}
-              isLocked={isLocked}
-              isEmailed={Boolean(emailedPayslips?.[`${periodKey}_${item.employeeId}`])}
-            />
-          ))
+          <>
+            {paginatedItems.map((item) => (
+              <MobilePayrollCard
+                key={item.employeeId}
+                item={item}
+                onViewPayslip={(slip) => setSelectedSlipItem(slip)}
+                isLocked={isLocked}
+                isEmailed={Boolean(emailedPayslips?.[`${periodKey}_${item.employeeId}`])}
+              />
+            ))}
+            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden mt-2">
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={filteredItems.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                itemLabel="staff records"
+              />
+            </div>
+          </>
         )}
       </div>
 

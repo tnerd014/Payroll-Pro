@@ -631,39 +631,33 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                   )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleSaveAndConnect}
-                  disabled={isSyncing || !url || !anonKey}
-                  className="h-9 px-4 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow-xs"
-                >
-                  {isSyncing ? 'Connecting...' : 'Connect'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="h-9 px-3.5 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveAndConnect}
+                    disabled={isSyncing || !url || !anonKey}
+                    className="h-9 px-4 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow-xs"
+                  >
+                    {isSyncing ? 'Connecting...' : 'Connect'}
+                  </button>
+                </div>
               </div>
 
               {/* Quick Sync actions when connected */}
               {config.isEnabled && (
-                <div className="pt-2.5 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={handleStartInspection}
-                    disabled={isSyncing || isInspecting}
-                    className="flex-1 h-[38px] flex items-center justify-center gap-1.5 px-2.5 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                    title="Review and upload local workspaces to cloud"
-                  >
-                    <UploadCloud className={`w-3.5 h-3.5 text-emerald-500 ${isInspecting ? 'animate-bounce' : ''}`} />
-                    <span>
-                      {isInspecting 
-                        ? 'Inspecting...' 
-                        : `Push Local Workspaces (${localCompanies.length})`}
-                    </span>
-                  </button>
-
+                <div className="pt-2.5 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={handlePullFromCloud}
                     disabled={isSyncing}
-                    className="h-[38px] flex items-center justify-center gap-1.5 px-3 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer shadow-2xs"
+                    className="w-full h-[38px] flex items-center justify-center gap-1.5 px-3 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer shadow-2xs"
                     title="Refresh company list from cloud"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 text-blue-500 ${isSyncing ? 'animate-spin' : ''}`} />
