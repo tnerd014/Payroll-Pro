@@ -21,12 +21,12 @@ export const MobilePayrollCard: React.FC<MobilePayrollCardProps> = ({
 
   return (
     <div 
-      className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3 shadow-xs select-none"
+      className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3 shadow-xs select-none"
     >
       <div className="flex items-center justify-between gap-2.5">
         {/* Left: Avatar with Initials & Employee Name */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shrink-0">
+          <div className="app-subtle-surface w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shrink-0">
             {initials}
           </div>
           
@@ -36,7 +36,7 @@ export const MobilePayrollCard: React.FC<MobilePayrollCardProps> = ({
             </h4>
             {isEmailed && (
               <span 
-                className="inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0" 
+                className="app-positive-text inline-flex items-center text-emerald-600 dark:text-emerald-400 shrink-0" 
                 title="Payslip emailed"
               >
                 <MailCheck className="w-3.5 h-3.5" />
@@ -47,14 +47,14 @@ export const MobilePayrollCard: React.FC<MobilePayrollCardProps> = ({
 
         {/* Right: Net Take Home & View Payslip Button */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="text-xs sm:text-[13px] font-bold font-mono text-emerald-600 dark:text-emerald-400 leading-tight">
+          <div className="app-money-text text-xs sm:text-[13px] font-bold font-mono text-emerald-600 dark:text-emerald-400 leading-tight">
             {formatNaira(item.netTakeHome)}
           </div>
 
           <button
             type="button"
             onClick={() => onViewPayslip(item)}
-            className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/60 flex items-center justify-center transition-all shadow-2xs active:scale-90 cursor-pointer shrink-0"
+            className="app-subtle-surface app-accent-text w-8 h-8 rounded-xl bg-emerald-50 hover:opacity-85 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/60 flex items-center justify-center transition-all shadow-2xs active:scale-90 cursor-pointer shrink-0"
             title="View Payslip"
             aria-label="View Payslip"
           >

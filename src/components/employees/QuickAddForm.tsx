@@ -348,7 +348,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Top Controls Toolbar */}
-      <div className="px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+      <div className="app-subtle-surface px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Default Type:</span>
@@ -357,7 +357,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
                 id="quick-add-default-type-select"
                 defaultValue={defaultType}
                 onChange={e => applyTypeToAll(e.target.value)}
-                className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                className="app-surface-card bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none"
               >
                 {activeRules.map(r => (
                   <option key={r.id} value={r.name}>{r.name}</option>
@@ -366,7 +366,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
             </div>
           </div>
 
-          <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-950 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+          <label className="app-surface-card flex items-center gap-1.5 cursor-pointer select-none text-[11px] text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-950 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
             <input 
               type="checkbox"
               checked={fastEnterMode}
@@ -381,7 +381,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
           <button
             type="button"
             onClick={() => setShowPasteModal(!showPasteModal)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer text-xs"
+            className="app-surface-card flex items-center gap-1 px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer text-xs"
           >
             <Clipboard className="w-3 h-3 text-zinc-500" />
             <span>Paste Batch</span>
@@ -389,7 +389,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
           <button
             type="button"
             onClick={() => addRow(rows.length)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium transition-colors cursor-pointer text-xs"
+            className="app-surface-card flex items-center gap-1 px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-800 dark:text-zinc-200 font-medium transition-colors cursor-pointer text-xs"
           >
             <Plus className="w-3 h-3" />
             <span>Add Row</span>
@@ -399,7 +399,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
 
       {/* Paste Batch Collapsible Panel */}
       {showPasteModal && (
-        <div className="p-4 bg-zinc-100/80 dark:bg-zinc-900/90 border-b border-zinc-200 dark:border-zinc-800 shrink-0 space-y-2 animate-in fade-in duration-150">
+        <div className="app-subtle-surface p-4 bg-zinc-100/80 dark:bg-zinc-900/90 border-b border-zinc-200 dark:border-zinc-800 shrink-0 space-y-2 animate-in fade-in duration-150">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
               Paste Text / Excel Columns
@@ -413,13 +413,13 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
             onChange={e => setPasteText(e.target.value)}
             rows={4}
             placeholder={`Adebayo Olawale, 350000, Full-Time\nGrace Danjuma, 280000, Contract\nChidi Okafor, 400000, Full-Time`}
-            className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+            className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
           />
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setShowPasteModal(false)}
-              className="px-3 py-1 rounded text-xs text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
+              className="app-surface-card px-3 py-1 rounded border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-300 hover:opacity-90 cursor-pointer"
             >
               Cancel
             </button>
@@ -427,7 +427,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
               type="button"
               onClick={() => parseAndApplyBatchText(pasteText, 0)}
               disabled={!pasteText.trim()}
-              className="px-3 py-1 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 disabled:opacity-50"
+              className="app-primary-btn px-3 py-1 rounded text-xs font-medium disabled:opacity-50 cursor-pointer"
             >
               Apply to Rows
             </button>
@@ -455,13 +455,13 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
       {/* Rows Table */}
       <div className="flex-1 overflow-y-auto min-h-[260px] p-4">
         <table className="w-full border-collapse">
-          <thead>
+          <thead className="app-subtle-surface">
             <tr className="border-b border-zinc-200 dark:border-zinc-800 text-left text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-              <th className="pb-2 pl-2 w-10 text-center">#</th>
-              <th className="pb-2 px-2 w-[38%]">Full Name <span className="text-rose-500">*</span></th>
-              <th className="pb-2 px-2 w-[25%]">Monthly Salary (₦)</th>
-              <th className="pb-2 px-2 w-[23%]">Department</th>
-              <th className="pb-2 pr-2 w-10 text-center"></th>
+              <th className="py-2 pl-2 w-10 text-center">#</th>
+              <th className="py-2 px-2 w-[38%]">Full Name <span className="text-rose-500">*</span></th>
+              <th className="py-2 px-2 w-[25%]">Monthly Salary (₦)</th>
+              <th className="py-2 px-2 w-[23%]">Department</th>
+              <th className="py-2 pr-2 w-10 text-center"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
@@ -473,7 +473,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
                 <tr 
                   key={row.id} 
                   className={`group transition-colors ${
-                    isFilled ? 'bg-white dark:bg-[#121215]' : 'bg-zinc-50/30 dark:bg-zinc-900/10'
+                    isFilled ? 'bg-transparent' : 'bg-zinc-50/30 dark:bg-zinc-900/10'
                   }`}
                 >
                   {/* Row Index */}
@@ -491,7 +491,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
                       onKeyDown={e => handleNameKeyDown(e, idx)}
                       onPaste={e => handleNamePaste(e, idx)}
                       placeholder="e.g. Babatunde Raji"
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                      className="app-subtle-surface w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
                     />
                   </td>
 
@@ -517,7 +517,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
                         }}
                         onKeyDown={e => handleSalaryKeyDown(e, idx)}
                         placeholder="350,000"
-                        className="w-full pl-6 pr-2.5 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs font-mono text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                        className="app-subtle-surface w-full pl-6 pr-2.5 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs font-mono text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
                       />
                     </div>
                   </td>
@@ -529,7 +529,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
                       value={row.department}
                       onChange={e => updateRow(idx, { department: e.target.value })}
                       onKeyDown={e => handleTypeKeyDown(e, idx)}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                      className="app-subtle-surface w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
                     >
                       {availableDepartments.map(dept => (
                         <option key={dept} value={dept}>{dept}</option>
@@ -560,20 +560,20 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
           <button
             type="button"
             onClick={() => addRow(rows.length)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 transition-colors cursor-pointer"
+            className="app-subtle-surface app-accent-text flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:opacity-90 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Next Employee Row</span>
           </button>
 
           <span className="text-[11px] text-zinc-400">
-            💡 Press <kbd className="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 font-mono text-[10px]">Enter</kbd> to move to next field &amp; line automatically
+            💡 Press <kbd className="app-subtle-surface px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 font-mono text-[10px]">Enter</kbd> to move to next field &amp; line automatically
           </span>
         </div>
       </div>
 
       {/* Footer Summary & Action Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/50 shrink-0">
+      <div className="app-subtle-surface flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/50 shrink-0">
         <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
             <span className="font-medium text-zinc-700 dark:text-zinc-300">
@@ -600,7 +600,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="app-surface-card px-3.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:opacity-90 transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -608,7 +608,7 @@ export const QuickAddForm: React.FC<QuickAddFormProps> = ({
             type="button"
             onClick={() => handleSubmit()}
             disabled={validRows.length === 0}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-zinc-950 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="app-primary-btn flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             <Check className="w-3.5 h-3.5" />
             <span>Add {validRows.length > 0 ? `All ${validRows.length} Employees` : 'Employees'}</span>

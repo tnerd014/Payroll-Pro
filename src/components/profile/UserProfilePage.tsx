@@ -26,8 +26,12 @@ import {
   ChevronRight,
   X,
   Edit2,
+  Palette,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { TeamMember, DEFAULT_SECURITY_QUESTIONS } from '../../types';
+import { APP_THEMES, AppThemeCategory, AppThemeId } from '../../constants/appThemes';
 import {
   saveTeamMemberToCloud,
   setActiveTeamMember,
@@ -61,6 +65,10 @@ interface UserProfilePageProps {
   onUpdateCurrentUser?: (member: TeamMember) => void;
   onSignOut?: () => void;
   isMobileView?: boolean;
+  appTheme?: AppThemeId;
+  onSelectTheme?: (themeId: AppThemeId) => void;
+  isDarkTheme?: boolean;
+  onToggleTheme?: () => void;
 }
 
 const AVATAR_COLORS = [
@@ -80,7 +88,7 @@ const Modal: React.FC<{ title: string; onClose: () => void; children: React.Reac
     <div
       className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"
     />
-    <div className="relative bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+    <div className="app-surface-card relative bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
       <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
         <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{title}</h2>
       </div>
@@ -138,7 +146,7 @@ const SettingRow: React.FC<{
       onClick ? 'hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer' : ''
     }`}
   >
-    <div className="shrink-0 w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+    <div className="app-subtle-surface shrink-0 w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
       {icon}
     </div>
     <div className="flex-1 min-w-0">
@@ -170,7 +178,7 @@ const TextInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { accent
   className = '', accent = 'focus:border-zinc-500', ...props
 }) => (
   <input
-    className={`w-full h-9 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none transition ${accent} ${className}`}
+    className={`app-subtle-surface w-full h-9 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none transition ${accent} ${className}`}
     {...props}
   />
 );
@@ -226,12 +234,12 @@ const ModalActions: React.FC<{
   disabled?: boolean;
   isSaving?: boolean;
   color?: string;
-}> = ({ onCancel, submitLabel, disabled, isSaving, color = 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' }) => (
+}> = ({ onCancel, submitLabel, disabled, isSaving, color = 'app-primary-btn bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' }) => (
   <div className="flex justify-end gap-2 pt-1">
     <button
       type="button"
       onClick={onCancel}
-      className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs font-semibold transition cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700"
+      className="app-subtle-surface px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs font-semibold transition cursor-pointer hover:opacity-90"
     >
       Cancel
     </button>
@@ -247,13 +255,22 @@ const ModalActions: React.FC<{
 );
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-type Section = 'profile' | 'password' | 'biometrics' | 'twofactor' | 'session';
+type Section = 'profile' | 'appearance' | 'password' | 'biometrics' | 'twofactor' | 'session';
 type ModalType = null | 'edit-profile' | 'change-password' | 'change-pin' | 'security-questions' | 'setup-2fa';
 
 export const UserProfilePage: React.FC<UserProfilePageProps> = ({
-  currentUser, onBack, onUpdateCurrentUser, onSignOut, isMobileView = false,
+  currentUser,
+  onBack,
+  onUpdateCurrentUser,
+  onSignOut,
+  isMobileView = false,
+  appTheme = 'default',
+  onSelectTheme,
+  isDarkTheme = false,
+  onToggleTheme,
 }) => {
   const [activeSection, setActiveSection] = useState<Section>('profile');
+  const [themeCategoryFilter, setThemeCategoryFilter] = useState<'all' | AppThemeCategory>('all');
   const [modal, setModal] = useState<ModalType>(null);
   const closeModal = () => setModal(null);
 
@@ -352,7 +369,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
   if (!currentUser) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-zinc-50 dark:bg-[#09090b]">
+      <div className="app-shell-bg flex-1 flex items-center justify-center bg-zinc-50 dark:bg-[#09090b]">
         <div className="text-center">
           <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
           <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">No Active Session</p>
@@ -522,9 +539,13 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   };
 
   const NAV_ITEMS: { id: Section; icon: React.ReactNode; label: string }[] = isLocalDefaultAdmin
-    ? [{ id: 'profile', icon: <User className="w-4 h-4" />, label: 'Profile' }]
+    ? [
+        { id: 'profile', icon: <User className="w-4 h-4" />, label: 'Profile' },
+        { id: 'appearance', icon: <Palette className="w-4 h-4" />, label: 'Themes' },
+      ]
     : [
         { id: 'profile',    icon: <User className="w-4 h-4" />,       label: 'Profile'           },
+        { id: 'appearance', icon: <Palette className="w-4 h-4" />,    label: 'Themes'            },
         { id: 'password',   icon: <KeyRound className="w-4 h-4" />,   label: 'Password & PIN'    },
         { id: 'biometrics', icon: <Fingerprint className="w-4 h-4" />,label: 'Biometric'         },
         { id: 'twofactor',  icon: <Shield className="w-4 h-4" />,     label: 'Two-Factor Auth'   },
@@ -532,14 +553,14 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       ];
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100">
+    <div className="app-shell-bg flex-1 flex flex-col h-full overflow-hidden bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100">
 
       {/* ── Toast notification ────────────────────────────────────────── */}
       {toast && (
         <div className="fixed top-12 md:top-14 left-1/2 -translate-x-1/2 z-[10001] pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200">
           <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium border ${
             toast.type === 'success'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700'
+              ? 'app-surface-card bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700'
               : 'bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800'
           }`}>
             {toast.type === 'success'
@@ -551,13 +572,13 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       )}
 
       {/* ── Mobile Top Header & Navigation (Shown on mobile devices or isMobileView) ── */}
-      <div className={`${isMobileView ? 'flex' : 'flex md:hidden'} flex-col bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 shrink-0`}>
-        <div className="px-4 py-3 flex items-center justify-between gap-3">
+      <div className={`${isMobileView ? 'flex' : 'flex md:hidden'} flex-col shrink-0`}>
+        <div className="app-header px-4 py-3 flex items-center justify-between gap-3 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
               onClick={onBack}
-              className="p-1.5 -ml-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              className="app-header-icon p-1.5 -ml-1 rounded-lg border transition cursor-pointer"
               title="Back"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -568,23 +589,23 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               {userInitial}
             </div>
             <div className="min-w-0">
-              <h1 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">{name || currentUser.name}</h1>
-              <p className="text-[10px] text-zinc-400 truncate">{currentUser.role} {!isLocalDefaultAdmin && `• ${securityScore}% Secure`}</p>
+              <h1 className="app-header-text text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">{name || currentUser.name}</h1>
+              <p className="app-header-subtext text-[10px] text-zinc-400 truncate">{currentUser.role} {!isLocalDefaultAdmin && `• ${securityScore}% Secure`}</p>
             </div>
           </div>
           {onSignOut && (
             <button
               type="button"
               onClick={onSignOut}
-              className="text-xs text-rose-500 font-semibold px-2.5 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition shrink-0 cursor-pointer"
+              className="app-header-pill app-header-text text-xs font-semibold px-2.5 py-1 rounded-lg border transition shrink-0 cursor-pointer"
             >
               Sign Out
             </button>
           )}
         </div>
 
-        {/* Horizontal Category Nav */}
-        <div className="px-3 pb-2.5 overflow-x-auto no-scrollbar flex items-center gap-1.5">
+        {/* Horizontal Category Nav (on crisp surface strip so active tab contrasts cleanly on dark-header themes) */}
+        <div className="app-surface-card px-3 py-2.5 overflow-x-auto no-scrollbar flex items-center gap-1.5 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
@@ -592,8 +613,8 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               onClick={() => setActiveSection(item.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 activeSection === item.id
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
-                  : 'text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800'
+                  ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
+                  : 'app-subtle-surface text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800'
               }`}
             >
               {item.icon}
@@ -607,14 +628,14 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       <div className="flex-1 flex overflow-hidden">
 
         {/* Left Navigation Rail (Hidden on mobile or when isMobileView) */}
-        <aside className={`${isMobileView ? 'hidden' : 'hidden md:flex'} w-64 shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] overflow-y-auto`}>
+        <aside className={`${isMobileView ? 'hidden' : 'hidden md:flex'} app-surface-card w-64 shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] overflow-y-auto`}>
 
           {/* Back + user identity */}
           <div className="px-4 pt-5 pb-4 border-b border-zinc-100 dark:border-zinc-800">
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 font-medium transition cursor-pointer mb-4"
+              className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium transition cursor-pointer mb-4"
             >
               <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M15 18l-6-6 6-6"/>
@@ -638,7 +659,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   <span className="text-[10px] text-zinc-400 font-medium">Security Health</span>
                   <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-300">{securityScore}%</span>
                 </div>
-                <div className="h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div className="app-subtle-surface h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                   <div
                     className={`h-full bg-gradient-to-r ${scoreGradient} transition-all duration-500 rounded-full`}
                     style={{ width: `${securityScore}%` }}
@@ -657,7 +678,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 onClick={() => setActiveSection(item.id)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer text-left ${
                   activeSection === item.id
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
                     : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                 }`}
               >
@@ -693,7 +714,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               </div>
 
               {/* Identity card */}
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
                 <div className="p-5">
                   <div className="flex items-start gap-4">
                     <div className={`w-12 h-12 rounded-2xl ${avatarColor} text-white font-extrabold text-lg flex items-center justify-center shrink-0`}>
@@ -702,7 +723,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{name || currentUser.name}</h2>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                        <span className="app-subtle-surface px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
                           {currentUser.role}
                         </span>
                       </div>
@@ -712,7 +733,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     <button
                       type="button"
                       onClick={() => setModal('edit-profile')}
-                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 text-xs font-semibold transition cursor-pointer"
+                      className="app-subtle-surface shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:opacity-90 text-zinc-600 dark:text-zinc-300 text-xs font-semibold transition cursor-pointer"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                       Edit
@@ -748,7 +769,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               </div>
 
               {/* Locked credentials */}
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
                 <SettingRow
                   icon={<Mail className="w-3.5 h-3.5 text-zinc-400" />}
                   label="Work Email"
@@ -777,13 +798,242 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             </div>
           )}
 
+          {/* ── APPEARANCE / THEMES ─────────────────────────────────── */}
+          {activeSection === 'appearance' && (
+            <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">App Themes</h1>
+
+                {/* Light / Dark Mode Switch (applies to every palette) */}
+                {onToggleTheme && (
+                  <div className="app-subtle-surface inline-flex items-center rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => { if (isDarkTheme) onToggleTheme(); }}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                        !isDarkTheme
+                          ? 'app-active-tab bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                          : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                      }`}
+                    >
+                      <Sun className="w-3.5 h-3.5" />
+                      <span>Light</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { if (!isDarkTheme) onToggleTheme(); }}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                        isDarkTheme
+                          ? 'app-active-tab bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
+                          : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                      }`}
+                    >
+                      <Moon className="w-3.5 h-3.5" />
+                      <span>Dark</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(
+                  [
+                    { id: 'all', label: `All (${APP_THEMES.length})` },
+                    { id: 'default', label: 'No Theme' },
+                    { id: 'fintech', label: 'Fintech & Banking' },
+                    { id: 'editorial', label: 'Editorial' },
+                  ] as const
+                ).map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setThemeCategoryFilter(cat.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer border ${
+                      themeCategoryFilter === cat.id
+                        ? 'app-active-tab border-transparent'
+                        : 'app-subtle-surface text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:opacity-90'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {APP_THEMES.filter((t) => themeCategoryFilter === 'all' || t.category === themeCategoryFilter).map((theme) => {
+                  const isActive = appTheme === theme.id;
+                  const p = isDarkTheme ? theme.preview.dark : theme.preview.light;
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectTheme?.(theme.id);
+                        showToast('success', `Theme applied: ${theme.name}`);
+                      }}
+                      className={`app-surface-card group text-left rounded-2xl border p-3.5 transition-all cursor-pointer active:scale-[0.99] bg-white dark:bg-[#121215] ${
+                        isActive
+                          ? 'border-emerald-500 ring-2 ring-emerald-500/25 shadow-sm'
+                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                      }`}
+                    >
+                      {/* Mini UI Preview (adapts to Light/Dark + Mobile/Desktop) */}
+                      <div
+                        className="w-full h-32 rounded-xl overflow-hidden border flex flex-col mb-3 relative"
+                        style={{ background: p.shellBg, borderColor: p.cardBorder }}
+                      >
+                        {isMobileView ? (
+                          <>
+                            {/* Mobile Mini Top Bar */}
+                            <div
+                              className="h-6 px-2.5 flex items-center justify-between shrink-0"
+                              style={{ background: p.headerBg, borderBottom: `1px solid ${p.cardBorder}` }}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-3 h-3 rounded-full" style={{ background: p.heroAccent }} />
+                                <span className="w-14 h-1.5 rounded-full opacity-80" style={{ background: p.headerText }} />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="w-2.5 h-2.5 rounded-full opacity-40" style={{ background: p.headerText }} />
+                                <span className="w-2.5 h-2.5 rounded-full opacity-60" style={{ background: p.heroAccent }} />
+                              </div>
+                            </div>
+
+                            {/* Mobile Mini Home Body */}
+                            <div className="flex-1 p-2 space-y-1.5 overflow-hidden">
+                              <div
+                                className="rounded-lg p-2 border"
+                                style={{ background: p.heroBg, borderColor: p.cardBorder }}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="w-12 h-1 rounded-full opacity-55" style={{ background: p.heroText }} />
+                                  <span className="w-6 h-2 rounded-full opacity-85" style={{ background: p.heroAccent }} />
+                                </div>
+                                <div className="w-20 h-2.5 rounded-full mb-1.5" style={{ background: p.heroText }} />
+                                <div className="flex gap-1">
+                                  <span className="w-10 h-1.5 rounded-full opacity-35" style={{ background: p.heroText }} />
+                                  <span className="w-8 h-1.5 rounded-full opacity-35" style={{ background: p.heroText }} />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <div className="h-5 rounded-md border p-1 flex items-center" style={{ background: p.cardBg, borderColor: p.cardBorder }}>
+                                  <span className="w-full h-1.5 rounded-full" style={{ background: p.barFill }} />
+                                </div>
+                                <div className="h-5 rounded-md border p-1 flex items-center" style={{ background: p.cardBg, borderColor: p.cardBorder }}>
+                                  <span className="w-2/3 h-1.5 rounded-full" style={{ background: p.barFill }} />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Mobile Mini Bottom Nav */}
+                            <div
+                              className="h-5 px-4 flex items-center justify-between shrink-0"
+                              style={{ background: p.navBg, borderTop: `1px solid ${p.cardBorder}` }}
+                            >
+                              <span
+                                className="h-2 rounded-full"
+                                style={{
+                                  width: p.useM3Pill ? '18px' : '10px',
+                                  background: p.navActive,
+                                }}
+                              />
+                              <span className="w-2.5 h-1.5 rounded-full opacity-25" style={{ background: p.navActive }} />
+                              <span className="w-2.5 h-1.5 rounded-full opacity-25" style={{ background: p.navActive }} />
+                              <span className="w-2.5 h-1.5 rounded-full opacity-25" style={{ background: p.navActive }} />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* Desktop Mini Title Bar */}
+                            <div
+                              className="h-5 px-2.5 flex items-center justify-between shrink-0"
+                              style={{ background: p.headerBg, borderBottom: `1px solid ${p.cardBorder}` }}
+                            >
+                              <div className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full" style={{ background: p.heroAccent }} />
+                                <span className="w-12 h-1.5 rounded-full opacity-75" style={{ background: p.headerText }} />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full opacity-35" style={{ background: p.headerText }} />
+                                <span className="w-2 h-2 rounded-full opacity-35" style={{ background: p.headerText }} />
+                              </div>
+                            </div>
+
+                            {/* Desktop Mini Sidebar + Content */}
+                            <div className="flex-1 flex overflow-hidden">
+                              <div
+                                className="w-12 p-1.5 space-y-1 shrink-0"
+                                style={{ background: p.sidebarBg, borderRight: `1px solid ${p.cardBorder}` }}
+                              >
+                                <div className="h-2 rounded-md" style={{ background: p.heroAccent, opacity: 0.9 }} />
+                                <div className="h-1.5 rounded-md opacity-30" style={{ background: p.headerText }} />
+                                <div className="h-1.5 rounded-md opacity-30" style={{ background: p.headerText }} />
+                                <div className="h-1.5 rounded-md opacity-30" style={{ background: p.headerText }} />
+                              </div>
+                              <div className="flex-1 p-2 space-y-1.5">
+                                <div
+                                  className="rounded-lg p-2 border"
+                                  style={{ background: p.heroBg, borderColor: p.cardBorder }}
+                                >
+                                  <div className="w-16 h-2 rounded-full mb-1.5" style={{ background: p.heroText }} />
+                                  <div className="w-full h-1.5 rounded-full" style={{ background: p.barFill }} />
+                                </div>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  <div className="h-7 rounded-md border" style={{ background: p.cardBg, borderColor: p.cardBorder }} />
+                                  <div className="h-7 rounded-md border" style={{ background: p.cardBg, borderColor: p.cardBorder }} />
+                                  <div className="h-7 rounded-md border" style={{ background: p.cardBg, borderColor: p.cardBorder }} />
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Theme Title, Swatches & Active Check */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate block">
+                            {theme.name}
+                          </span>
+                          <p className="text-[10px] text-zinc-400 truncate mt-0.5">{theme.tag}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center -space-x-1">
+                            {theme.swatches.map((hex) => (
+                              <span
+                                key={hex}
+                                className="w-3.5 h-3.5 rounded-full border border-black/15 dark:border-white/20"
+                                style={{ backgroundColor: hex }}
+                              />
+                            ))}
+                          </div>
+                          <div
+                            className={`w-5 h-5 rounded-full flex items-center justify-center transition ${
+                              isActive
+                                ? 'app-primary-btn bg-emerald-600 text-white'
+                                : 'border border-zinc-300 dark:border-zinc-700'
+                            }`}
+                          >
+                            {isActive && <Check className="w-3 h-3" />}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── PASSWORD & PIN ────────────────────────────────────────── */}
           {activeSection === 'password' && !isLocalDefaultAdmin && (
             <div className="max-w-3xl lg:max-w-4xl mx-auto px-4 sm:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
               <div>
                 <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Password & PIN</h1>
               </div>
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
                 <SettingRow
                   icon={<KeyRound className="w-3.5 h-3.5 text-indigo-500" />}
                   label="Login Password"
@@ -820,7 +1070,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Biometric Authentication</h1>
               </div>
 
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
                 <SettingRow
                   icon={<Fingerprint className="w-3.5 h-3.5 text-violet-500" />}
                   label="Biometric Unlock"
@@ -837,7 +1087,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               )}
 
               {!biometricCapability?.platformAuthenticatorAvailable && (
-                <div className="flex items-start gap-3 p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                <div className="app-subtle-surface flex items-start gap-3 p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
                   <AlertCircle className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-zinc-500">No biometric sensor detected. Windows Hello, fingerprint scanner, or face recognition hardware is required.</p>
                 </div>
@@ -848,7 +1098,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   type="button"
                   onClick={toggleBiometric}
                   disabled={!biometricCapability?.platformAuthenticatorAvailable || isTestingBiometric}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="app-primary-btn flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:opacity-90 text-white text-xs font-semibold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Fingerprint className="w-3.5 h-3.5" />
                   {isBiometricEnrolled ? 'Re-enroll' : 'Enroll Biometrics'}
@@ -858,7 +1108,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     type="button"
                     onClick={testBiometric}
                     disabled={isTestingBiometric}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold transition cursor-pointer"
+                    className="app-subtle-surface flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:opacity-90 text-zinc-700 dark:text-zinc-200 text-xs font-semibold transition cursor-pointer"
                   >
                     {isTestingBiometric
                       ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -868,7 +1118,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 )}
               </div>
 
-              <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+              <div className="app-subtle-surface p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl">
                 <p className="text-[11px] text-zinc-500 leading-relaxed">
                   Biometric credentials are stored locally only and never sent to the cloud. Authentication uses your device's secure enclave (Windows Hello TPM / WebAuthn platform authenticator).
                 </p>
@@ -883,10 +1133,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Two-Factor Authentication</h1>
               </div>
 
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
                 <div className="p-5 flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${is2FaEnabled ? 'bg-teal-50 dark:bg-teal-950/50' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${is2FaEnabled ? 'bg-teal-50 dark:bg-teal-950/50' : 'app-subtle-surface bg-zinc-100 dark:bg-zinc-800'}`}>
                       <Shield className={`w-4 h-4 ${is2FaEnabled ? 'text-teal-600 dark:text-teal-400' : 'text-zinc-400'}`} />
                     </div>
                     <div>
@@ -913,7 +1163,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     <button
                       type="button"
                       onClick={() => { setMfaError(null); setMfaVerifyCode(''); setModal('setup-2fa'); }}
-                      className="shrink-0 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition cursor-pointer"
+                      className="app-primary-btn shrink-0 px-3 py-1.5 rounded-xl bg-teal-600 hover:opacity-90 text-white text-xs font-semibold transition cursor-pointer"
                     >
                       Set Up 2FA
                     </button>
@@ -922,7 +1172,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               </div>
 
               {is2FaEnabled && (
-                <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 space-y-3">
+                <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <ShieldAlert className="w-4 h-4 text-amber-500" />
@@ -946,7 +1196,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   <p className="text-[11px] text-zinc-400 leading-relaxed">Save these in a safe place. Each can be used once if you lose your authenticator device.</p>
                   <div className="grid grid-cols-2 gap-2">
                     {backupCodes.map((code, idx) => (
-                      <div key={idx} className="px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-center font-mono text-[11px] text-zinc-700 dark:text-zinc-300">
+                      <div key={idx} className="app-subtle-surface px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-center font-mono text-[11px] text-zinc-700 dark:text-zinc-300">
                         {code}
                       </div>
                     ))}
@@ -954,7 +1204,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 </div>
               )}
 
-              <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+              <div className="app-subtle-surface p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl">
                 <p className="text-[11px] text-zinc-500 leading-relaxed">
                   Compatible with Google Authenticator, Microsoft Authenticator, Authy, and 1Password. Install one before setting up 2FA.
                 </p>
@@ -969,7 +1219,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 <h1 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Session & Privacy</h1>
               </div>
 
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden">
                 <SettingRow
                   icon={<Lock className="w-3.5 h-3.5 text-amber-500" />}
                   label="Require Login on App Launch"
@@ -1009,7 +1259,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               </div>
 
               {/* Inactivity lock */}
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 space-y-3">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-indigo-500" />
                   <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Inactivity Auto-Lock</p>
@@ -1034,8 +1284,8 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                       }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                         inactivityMinutes === item.val
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                          ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                          : 'app-subtle-surface bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                       }`}
                     >
                       {item.label}
@@ -1045,7 +1295,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               </div>
 
               {/* Active device */}
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
                 <SettingRow
                   icon={<Monitor className="w-3.5 h-3.5 text-zinc-400" />}
                   label="Active Device"
@@ -1118,7 +1368,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               submitLabel="Update Password"
               disabled={!newPw}
               isSaving={isSaving}
-              color="bg-indigo-600 hover:bg-indigo-700 text-white"
             />
           </form>
         </Modal>
@@ -1154,7 +1403,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               submitLabel="Save PIN"
               disabled={pin.length !== 4}
               isSaving={isSaving}
-              color="bg-amber-600 hover:bg-amber-700 text-white"
             />
           </form>
         </Modal>
@@ -1258,7 +1506,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 submitLabel="Verify & Activate"
                 disabled={mfaVerifyCode.length !== 6}
                 isSaving={isSaving}
-                color="bg-teal-600 hover:bg-teal-700 text-white"
               />
             </form>
           </div>

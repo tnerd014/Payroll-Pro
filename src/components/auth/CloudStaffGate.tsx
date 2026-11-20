@@ -762,7 +762,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
 
   if (isLoadingCheck) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100">
+      <div className="app-shell-bg h-screen w-screen flex flex-col items-center justify-center bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100">
         <RefreshCw className="w-5 h-5 text-zinc-400 animate-spin mb-2" />
         <span className="text-xs text-zinc-400 font-mono">Connecting to Team Server...</span>
       </div>
@@ -770,36 +770,36 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
   }
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-zinc-900">
+    <div className="app-shell-bg w-full h-full flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-zinc-900">
 
       {/* Header: Android Material 3 Mobile Bar OR Desktop Native Title Bar */}
       {isMobile ? (
-        <header className="no-print bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 select-none shrink-0 z-40 shadow-xs">
+        <header className="app-header no-print bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 select-none shrink-0 z-40 shadow-xs">
           {/* Android Top App Bar */}
           <div className="h-12 px-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center p-1 border border-emerald-500/20">
+              <div className="app-header-pill w-7 h-7 rounded-lg flex items-center justify-center p-1 border">
                 <img src={appLogo} alt="Payroll Pro" className="w-full h-full object-contain shrink-0" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-xs tracking-tight text-zinc-900 dark:text-zinc-100">
+                  <span className="app-header-text font-bold text-xs tracking-tight text-zinc-900 dark:text-zinc-100">
                     Payroll Pro
                   </span>
-                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 px-1.5 py-0.2 rounded-full">
+                  <span className="app-header-pill app-header-text text-[10px] font-semibold border px-1.5 py-0.2 rounded-full">
                     Staff Portal
                   </span>
                 </div>
-                <p className="text-[10px] text-zinc-400 font-medium">Team Authentication</p>
+                <p className="app-header-subtext text-[10px] text-zinc-400 font-medium">Team Authentication</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={handleCheckForUpdates}
                 title="Check for updates"
-                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="app-header-icon w-8 h-8 rounded-full border flex items-center justify-center transition cursor-pointer"
               >
                 <Download className="w-4 h-4" />
               </button>
@@ -809,7 +809,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   type="button"
                   onClick={onToggleTheme}
                   title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                  className="app-header-icon w-8 h-8 rounded-full border flex items-center justify-center transition cursor-pointer"
                 >
                   {isDarkTheme ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </button>
@@ -820,27 +820,27 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
       ) : (
         /* Native Desktop Title Bar */
         <header
-          className="no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between px-3 text-xs select-none shrink-0"
+          className="app-header app-titlebar no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between px-3 text-xs select-none shrink-0"
           style={{ WebkitAppRegion: 'drag' } as any}
         >
           {/* Left: App Logo & Title */}
           <div className="flex items-center gap-2">
             <img src={appLogo} alt="Payroll Pro" className="w-4 h-4 rounded object-contain shrink-0" />
-            <span className="font-semibold text-xs tracking-tight text-zinc-800 dark:text-zinc-200">
+            <span className="app-header-text font-semibold text-xs tracking-tight text-zinc-800 dark:text-zinc-200">
               Payroll Pro
             </span>
-            <span className="text-[10px] text-zinc-400 font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">
+            <span className="app-header-pill app-header-subtext text-[10px] font-mono px-1.5 py-0.5 rounded border">
               Staff Portal
             </span>
           </div>
 
           {/* Center: Quiet Clock */}
-          <div className="hidden sm:flex items-center gap-2 text-xs font-normal text-zinc-400 pointer-events-none">
-            <span className="font-mono text-zinc-600 dark:text-zinc-400">
+          <div className="hidden sm:flex items-center gap-2 text-xs font-normal pointer-events-none">
+            <span className="app-header-text font-mono opacity-90">
               {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
-            <span className="text-zinc-300 dark:text-zinc-700">&bull;</span>
-            <span className="text-zinc-400 text-[11px]">
+            <span className="app-header-subtext opacity-60">&bull;</span>
+            <span className="app-header-subtext text-[11px]">
               {currentTime.toLocaleDateString('en-GB', { weekday: 'short' })} &bull; {formatDate(currentTime)}
             </span>
           </div>
@@ -852,7 +852,9 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                 <button
                   type="button"
                   onClick={() => setHelpMenuOpen((open) => !open)}
-                  className="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                  className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px] font-medium transition cursor-pointer ${
+                    helpMenuOpen ? 'app-header-pill' : ''
+                  }`}
                   title="Help"
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
@@ -860,7 +862,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                 </button>
 
                 {helpMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-64 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 z-50">
+                  <div className="app-surface-card absolute right-0 top-full mt-2 w-64 rounded-lg border border-zinc-200 bg-white text-zinc-900 dark:text-zinc-100 p-2 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 z-50">
                     <button
                       type="button"
                       onClick={handleCheckForUpdates}
@@ -887,9 +889,9 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                 type="button"
                 onClick={onToggleSimulator}
                 title={isSimulatorMode ? "Exit Android Phone Frame" : "Preview in Android Phone Frame"}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer"
               >
-                <Smartphone className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
+                <Smartphone className="w-3.5 h-3.5" />
                 <span className="hidden md:inline">Android View</span>
               </button>
             )}
@@ -898,31 +900,34 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
               <button
                 onClick={onToggleTheme}
                 title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-                className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="p-1 rounded transition cursor-pointer"
               >
                 {isDarkTheme ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
               </button>
             )}
 
             {isElectron && (
-              <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1">
+              <div
+                className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1"
+                style={{ borderColor: 'var(--theme-header-border)' }}
+              >
                 <button
                   onClick={() => (window as any).electronAPI?.windowMinimize?.()}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
+                  className="w-6 h-6 flex items-center justify-center rounded transition cursor-pointer"
                   title="Minimize"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
                 <button
                   onClick={() => (window as any).electronAPI?.windowMaximize?.()}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
+                  className="w-6 h-6 flex items-center justify-center rounded transition cursor-pointer"
                   title="Maximize"
                 >
                   <Square className="w-2.5 h-2.5" />
                 </button>
                 <button
                   onClick={() => (window as any).electronAPI?.windowClose?.()}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition cursor-pointer"
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white transition cursor-pointer"
                   title="Close"
                 >
                   <X className="w-3 h-3" />
@@ -939,10 +944,10 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
 
           {/* Consistent Avatar Badge */}
           <div className="relative mb-3">
-            <div className="w-16 h-16 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-xs p-2">
+            <div className="app-surface-card w-16 h-16 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-xs p-2">
               <img src={appLogo} alt="Payroll Pro" className="w-full h-full object-contain" />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 flex items-center justify-center shadow-xs">
+            <div className="app-surface-card absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 flex items-center justify-center shadow-xs">
               {viewMode === 'connect_server' ? (
                 <Server className="w-2.5 h-2.5 text-blue-500" />
               ) : viewMode === 'initial_admin' ? (
@@ -975,7 +980,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                       setLoginIdentifier(e.target.value);
                       if (loginError) setLoginError(null);
                     }}
-                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
+                    className="app-surface-card w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
                   />
                 </div>
 
@@ -989,7 +994,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                       setLoginPassword(e.target.value);
                       if (loginError) setLoginError(null);
                     }}
-                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 pr-10 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
+                    className="app-surface-card w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 pr-10 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
                   />
                   <button
                     type="button"
@@ -1033,7 +1038,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   <button
                     type="submit"
                     disabled={isLoggingIn || isBiometricLoading}
-                    className="flex-1 h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="app-primary-btn flex-1 h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     {isLoggingIn ? (
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1103,7 +1108,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                     placeholder="Server URL (https://...)"
                     value={serverUrl}
                     onChange={(e) => setServerUrl(e.target.value)}
-                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs font-mono text-[11px]"
+                    className="app-surface-card w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs font-mono text-[11px]"
                   />
                 </div>
 
@@ -1114,7 +1119,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                     placeholder="Access Key"
                     value={serverKey}
                     onChange={(e) => setServerKey(e.target.value)}
-                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 pr-10 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs font-mono text-[11px]"
+                    className="app-surface-card w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 pr-10 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs font-mono text-[11px]"
                   />
                   <button
                     type="button"
@@ -1135,7 +1140,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                 <button
                   type="submit"
                   disabled={isConnecting}
-                  className="w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="app-primary-btn w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   {isConnecting ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1154,14 +1159,14 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                         <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
                       </div>
                       <div className="relative flex justify-center text-[10px] uppercase font-semibold">
-                        <span className="bg-white dark:bg-[#121215] px-2 text-zinc-400">or work offline</span>
+                        <span className="app-shell-bg bg-[#fbfbfb] dark:bg-[#09090b] px-2 text-zinc-400">or work offline</span>
                       </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={handleContinueOffline}
-                      className="w-full h-9 bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-medium rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-2 border border-zinc-200/80 dark:border-zinc-700/60 shadow-2xs"
+                      className="app-subtle-surface w-full h-9 bg-zinc-100 hover:opacity-90 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 font-medium rounded-lg text-xs transition cursor-pointer flex items-center justify-center gap-2 border border-zinc-200/80 dark:border-zinc-700/60 shadow-2xs"
                     >
                       <WifiOff className="w-3.5 h-3.5 text-zinc-500" />
                       <span>Continue in Offline / Standalone Mode</span>
@@ -1187,8 +1192,8 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                               : `Runtime mode switched to ${nextMode.replace('_', ' ')}.`);
                           }}
                           className={`h-8 rounded-md text-[10px] font-medium transition ${currentRuntimeMode === mode
-                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                            : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'}`}
+                            ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                            : 'app-subtle-surface bg-zinc-100 text-zinc-700 hover:opacity-90 dark:bg-zinc-800 dark:text-zinc-200'}`}
                         >
                           {mode.replace('_', ' ')}
                         </button>
@@ -1355,7 +1360,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                 <button
                   type="submit"
                   disabled={isRegisteringAdmin}
-                  className="w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="app-primary-btn w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   {isRegisteringAdmin ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1442,7 +1447,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                 <button
                   type="submit"
                   disabled={isUpdatingPassword}
-                  className="w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="app-primary-btn w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   {isUpdatingPassword ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1507,7 +1512,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                 <button
                   type="submit"
                   disabled={isVerifying2Fa || !twoFaCode.trim()}
-                  className="w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="app-primary-btn w-full h-9 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white font-medium rounded-lg text-xs transition shadow-xs cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   {isVerifying2Fa ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1544,7 +1549,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                 <button
                   type="button"
                   onClick={() => { setLegalModalTab('privacy'); setLegalModalOpen(true); }}
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer inline transition-colors"
+                  className="app-accent-text text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer inline transition-colors"
                 >
                   Privacy Policy
                 </button>
@@ -1552,7 +1557,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                 <button
                   type="button"
                   onClick={() => { setLegalModalTab('terms'); setLegalModalOpen(true); }}
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer inline transition-colors"
+                  className="app-accent-text text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer inline transition-colors"
                 >
                   Terms of Service
                 </button>
@@ -1567,7 +1572,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
       {/* ================= FORGOT PASSWORD MODAL ================= */}
       {isForgotModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 max-w-sm w-full shadow-xl space-y-3.5 text-xs">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 max-w-sm w-full shadow-xl space-y-3.5 text-xs">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-zinc-900 dark:text-zinc-100">
                 Password Recovery
@@ -1600,7 +1605,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   placeholder="name@company.com or username"
                   value={recoveryIdentifier}
                   onChange={(e) => setRecoveryIdentifier(e.target.value)}
-                  className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
+                  className="app-subtle-surface w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
                 />
 
                 <div className="flex items-center justify-between pt-1 text-[11px]">
@@ -1614,7 +1619,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   <button
                     type="submit"
                     disabled={isProcessingRecovery}
-                    className="px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg"
+                    className="app-primary-btn px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg cursor-pointer"
                   >
                     Next
                   </button>
@@ -1624,7 +1629,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
 
             {recoveryStep === 'answer_question' && (
               <form onSubmit={handleAnswerQuestionAndReset} className="space-y-3">
-                <div className="p-2 bg-zinc-50 dark:bg-zinc-800/60 rounded border border-zinc-200 dark:border-zinc-700/80 text-[11px]">
+                <div className="app-subtle-surface p-2 bg-zinc-50 dark:bg-zinc-800/60 rounded border border-zinc-200 dark:border-zinc-700/80 text-[11px]">
                   <span className="text-zinc-400 block text-[10px]">Security Question:</span>
                   <span className="font-medium text-zinc-800 dark:text-zinc-200">{fetchedQuestion}</span>
                 </div>
@@ -1635,7 +1640,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   placeholder="Security answer"
                   value={recoveryAnswer}
                   onChange={(e) => setRecoveryAnswer(e.target.value)}
-                  className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
+                  className="app-subtle-surface w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
                 />
 
                 <div className="grid grid-cols-2 gap-2">
@@ -1645,7 +1650,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                     placeholder="New password"
                     value={recoveryNewPassword}
                     onChange={(e) => setRecoveryNewPassword(e.target.value)}
-                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
+                    className="app-subtle-surface w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
                   />
                   <input
                     type="password"
@@ -1653,7 +1658,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                     placeholder="Confirm"
                     value={recoveryConfirmPassword}
                     onChange={(e) => setRecoveryConfirmPassword(e.target.value)}
-                    className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
+                    className="app-subtle-surface w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700/80 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
                   />
                 </div>
 
@@ -1668,7 +1673,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   <button
                     type="submit"
                     disabled={isProcessingRecovery}
-                    className="px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg"
+                    className="app-primary-btn px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg cursor-pointer"
                   >
                     Reset &amp; Sign In
                   </button>
@@ -1682,7 +1687,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                   Temporary password issued for account associated with <strong>{recoveryTargetEmail}</strong>:
                 </p>
 
-                <div className="p-2.5 bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-lg flex items-center justify-between font-mono text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                <div className="app-subtle-surface p-2.5 bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 rounded-lg flex items-center justify-between font-mono text-sm font-bold text-zinc-900 dark:text-zinc-100">
                   <span>{recoveryTempPassword}</span>
                   <button
                     type="button"
@@ -1699,7 +1704,7 @@ export const CloudStaffGate: React.FC<CloudStaffGateProps> = ({
                     setLoginPassword(recoveryTempPassword);
                     setIsForgotModalOpen(false);
                   }}
-                  className="w-full h-8 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg text-xs"
+                  className="app-primary-btn w-full h-8 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium rounded-lg text-xs cursor-pointer"
                 >
                   Use Code To Sign In
                 </button>

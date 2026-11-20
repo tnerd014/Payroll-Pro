@@ -870,7 +870,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
               <button
                 type="button"
                 onClick={handleOpenAddModal}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors cursor-pointer shadow-none"
+                className="app-primary-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors cursor-pointer shadow-none"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>New Loan / Advance</span>
@@ -883,29 +883,29 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
       {/* ── Stat Cards ── */}
       {showStats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
-            <span className="text-[11px] font-medium text-zinc-500 block">Total Disbursed</span>
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">Total Disbursed</span>
             <div className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-0.5">
               {formatNaira(stats.totalDisbursed)}
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
-            <span className="text-[11px] font-medium text-zinc-500 block">Total Repaid</span>
-            <div className="text-lg font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">Total Repaid</span>
+            <div className="app-money-text text-lg font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
               {formatNaira(stats.totalRepaid)}
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
-            <span className="text-[11px] font-medium text-zinc-500 block">Active Balance</span>
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">Active Balance</span>
             <div className="text-lg font-semibold tracking-tight text-amber-600 dark:text-amber-400 font-mono mt-0.5">
               {formatNaira(stats.activeOutstanding)}
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
-            <span className="text-[11px] font-medium text-zinc-500 block">Active Borrowers</span>
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">Active Borrowers</span>
             <div className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-0.5">
               {stats.activeBorrowersCount} Staff
             </div>
@@ -924,19 +924,19 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
       {/* ── Search & Filters ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="relative flex-1 max-w-sm">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search staff, code, or notes..."
-            className="w-full bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-7 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition"
+            className="app-subtle-surface w-full bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-7 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition p-0.5 rounded cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition p-0.5 rounded cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -947,36 +947,36 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
-            className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none cursor-pointer"
+            className="app-subtle-surface h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none cursor-pointer"
           >
-            <option value="All">All Types</option>
-            <option value="Staff Loan">Staff Loan</option>
-            <option value="Salary Advance">Salary Advance</option>
+            <option value="All" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">All Types</option>
+            <option value="Staff Loan" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Staff Loan</option>
+            <option value="Salary Advance" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Salary Advance</option>
           </select>
 
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none cursor-pointer"
+            className="app-subtle-surface h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none cursor-pointer"
           >
-            <option value="All">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Paused">Paused</option>
-            <option value="Paid">Fully Paid</option>
+            <option value="All" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">All Statuses</option>
+            <option value="Active" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Active</option>
+            <option value="Paused" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Paused</option>
+            <option value="Paid" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Fully Paid</option>
           </select>
 
           {/* Sort Control */}
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value as any)}
-            className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none cursor-pointer font-medium"
+            className="app-subtle-surface h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none cursor-pointer font-medium"
             title="Sort facilities list"
           >
-            <option value="date-desc">Sort: Newest Date First</option>
-            <option value="date-asc">Sort: Oldest Date First</option>
-            <option value="name-asc">Sort: Staff Name (A–Z)</option>
-            <option value="principal-desc">Sort: Highest Principal</option>
-            <option value="balance-desc">Sort: Highest Balance</option>
+            <option value="date-desc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Sort: Newest Date First</option>
+            <option value="date-asc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Sort: Oldest Date First</option>
+            <option value="name-asc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Sort: Staff Name (A–Z)</option>
+            <option value="principal-desc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Sort: Highest Principal</option>
+            <option value="balance-desc" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Sort: Highest Balance</option>
           </select>
 
           {/* Table Density Switcher */}
@@ -985,8 +985,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
             onClick={toggleCompactMode}
             className={`h-8 px-2.5 rounded-md border text-xs font-medium flex items-center gap-1 transition cursor-pointer ${
               isCompactMode 
-                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent' 
-                : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+                ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent' 
+                : 'app-surface-card border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
             }`}
             title="Toggle table row density"
           >
@@ -998,7 +998,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
           <button
             type="button"
             onClick={() => setShowStats(!showStats)}
-            className="h-8 flex items-center gap-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 text-xs font-medium transition cursor-pointer shadow-2xs"
+            className="app-surface-card h-8 flex items-center gap-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 text-xs font-medium transition cursor-pointer shadow-2xs"
             title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
           >
             {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -1008,13 +1008,13 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
       </div>
 
       {/* ── Table Card ── */}
-      <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] shadow-xs overflow-hidden">
+      <div className="app-surface-card rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] shadow-xs overflow-hidden">
         <div className={`overflow-x-auto overflow-y-auto ${showStats ? 'max-h-[calc(100vh-285px)]' : 'max-h-[calc(100vh-185px)]'}`}>
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider select-none shadow-xs">
+            <thead className="app-subtle-surface sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider select-none shadow-xs">
               <tr>
                 <th
-                  className="py-2.5 px-3 sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 rounded-tl-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 select-none transition"
+                  className="app-subtle-surface py-2.5 px-3 sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 rounded-tl-lg cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 select-none transition"
                   onClick={() => setSortOption(prev => prev === 'name-asc' ? 'date-desc' : 'name-asc')}
                   title="Click to sort by Staff Name"
                 >
@@ -1024,18 +1024,18 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                   </div>
                 </th>
                 <th
-                  className="py-2.5 px-3 sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 select-none transition"
+                  className="app-subtle-surface py-2.5 px-3 sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 select-none transition"
                   onClick={() => setSortOption(prev => prev === 'date-desc' ? 'date-asc' : 'date-desc')}
                   title="Click to toggle Newest/Oldest Date"
                 >
                   <div className="flex items-center gap-1">
                     <span>Type & Date</span>
-                    {sortOption === 'date-desc' && <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">▼ Newest</span>}
-                    {sortOption === 'date-asc' && <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">▲ Oldest</span>}
+                    {sortOption === 'date-desc' && <span className="app-accent-text text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">▼ Newest</span>}
+                    {sortOption === 'date-asc' && <span className="app-accent-text text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">▲ Oldest</span>}
                   </div>
                 </th>
                 <th
-                  className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 select-none transition"
+                  className="app-subtle-surface py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 select-none transition"
                   onClick={() => setSortOption(prev => prev === 'principal-desc' ? 'date-desc' : 'principal-desc')}
                   title="Click to sort by Principal"
                 >
@@ -1044,10 +1044,10 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                     {sortOption === 'principal-desc' && <span className="text-[10px] text-zinc-500 font-mono">▼</span>}
                   </div>
                 </th>
-                <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900" title="Automatically deducted from take-home pay each payroll cycle">Auto Deduct</th>
-                <th className="py-2.5 px-3 min-w-[130px] sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Progress</th>
+                <th className="app-subtle-surface py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900" title="Automatically deducted from take-home pay each payroll cycle">Auto Deduct</th>
+                <th className="app-subtle-surface py-2.5 px-3 min-w-[130px] sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Progress</th>
                 <th
-                  className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 select-none transition"
+                  className="app-subtle-surface py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 select-none transition"
                   onClick={() => setSortOption(prev => prev === 'balance-desc' ? 'date-desc' : 'balance-desc')}
                   title="Click to sort by Remaining Balance"
                 >
@@ -1056,8 +1056,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                     {sortOption === 'balance-desc' && <span className="text-[10px] text-zinc-500 font-mono">▼</span>}
                   </div>
                 </th>
-                <th className="py-2.5 px-3 text-center sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Status</th>
-                <th className="py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 rounded-tr-lg">Actions</th>
+                <th className="app-subtle-surface py-2.5 px-3 text-center sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900">Status</th>
+                <th className="app-subtle-surface py-2.5 px-3 text-right sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 rounded-tr-lg">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
@@ -1171,9 +1171,9 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                             </span>
                           </div>
 
-                          <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                          <div className="app-subtle-surface w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                             <div
-                              className={`h-full transition-all duration-300 ${isPaid ? 'bg-emerald-500' : 'bg-zinc-900 dark:bg-zinc-100'
+                              className={`h-full transition-all duration-300 ${isPaid ? 'bg-emerald-500' : 'app-accent-bar bg-zinc-900 dark:bg-zinc-100'
                                 }`}
                               style={{ width: `${percentRepaid}%` }}
                             />
@@ -1268,7 +1268,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                                   bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
                                   right: `${menuCoords.right}px`
                                 }}
-                                className="fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left loan-actions-dropdown"
+                                className="app-surface-card fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left loan-actions-dropdown"
                               >
                                 {/* 0. View Facility */}
                                 <button
@@ -1412,7 +1412,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
         <div
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
         >
-          <div className="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-100 flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="app-surface-card relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-100 flex flex-col max-h-[90vh] overflow-hidden">
             <div className="flex items-center justify-between p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 New Loan or Salary Advance
@@ -1613,7 +1613,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 p-3.5 px-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
+              <div className="app-subtle-surface flex items-center justify-end gap-2 p-3.5 px-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
@@ -1623,7 +1623,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-3.5 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
+                  className="app-primary-btn px-3.5 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
                 >
                   Save
                 </button>
@@ -1636,7 +1636,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
       {/* ================= EDIT LOAN / ADVANCE MODAL ================= */}
       {editingLoan && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-100 flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="app-surface-card relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-100 flex flex-col max-h-[90vh] overflow-hidden">
             <div className="flex items-center justify-between p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <div>
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
@@ -1817,7 +1817,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
 
               </div>
 
-              <div className="flex items-center justify-end gap-2 p-3.5 px-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
+              <div className="app-subtle-surface flex items-center justify-end gap-2 p-3.5 px-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditingLoan(null)}
@@ -1827,7 +1827,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-3.5 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
+                  className="app-primary-btn px-3.5 py-1.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:opacity-90 transition cursor-pointer"
                 >
                   Save Changes
                 </button>
@@ -1860,7 +1860,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
           <div
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
           >
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-2xl w-full shadow-2xl max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-2xl w-full shadow-2xl max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
 
               {/* Header */}
               <div className="flex items-start justify-between p-5 pb-4 border-b border-zinc-100 dark:border-zinc-800/80 shrink-0">
@@ -1877,7 +1877,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                         {currentLoan.type}
                       </span>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${isPaid
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/70 dark:border-emerald-800/60'
+                        ? 'app-positive-badge bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/70 dark:border-emerald-800/60'
                         : isPaused
                           ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200/70 dark:border-amber-800/60'
                           : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200/70 dark:border-blue-800/60'
@@ -1910,7 +1910,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
               <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
 
                 {/* Summary & Progress Card */}
-                <div className="p-4 rounded-xl bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800 space-y-3.5">
+                <div className="app-subtle-surface p-4 rounded-xl bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800 space-y-3.5">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block">Principal</span>
@@ -1948,7 +1948,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                     </div>
                     <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
                       <div
-                        className={`h-full transition-all duration-300 ${isPaid ? 'bg-emerald-500' : 'bg-blue-600 dark:bg-blue-500'
+                        className={`h-full transition-all duration-300 ${isPaid ? 'bg-emerald-500' : 'app-accent-bar bg-blue-600 dark:bg-blue-500'
                           }`}
                         style={{ width: `${percentExact}%` }}
                       />
@@ -2010,8 +2010,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                 )}
 
                 {/* Repayment Schedule & Month Overrides */}
-                <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-[#121215]">
-                  <div className="px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/70 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div className="app-surface-card rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-[#121215]">
+                  <div className="app-subtle-surface px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/70 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200">
                       Repayment Schedule &amp; Month Overrides
                     </span>
@@ -2145,7 +2145,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                                         bottom: scheduleMenuCoords.bottom !== undefined ? `${scheduleMenuCoords.bottom}px` : undefined,
                                         right: `${scheduleMenuCoords.right}px`,
                                       }}
-                                      className="fixed w-72 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden text-xs z-[9999] animate-in fade-in text-left schedule-actions-dropdown"
+                                      className="app-surface-card fixed w-72 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden text-xs z-[9999] animate-in fade-in text-left schedule-actions-dropdown"
                                     >
                                       <div className="px-3.5 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/60 font-semibold text-zinc-500 dark:text-zinc-400 text-[11px]">
                                         {row.label} Actions
@@ -2405,7 +2405,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setViewingLoan(null)}
-                  className="h-8 px-4 rounded-lg text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition whitespace-nowrap cursor-pointer shrink-0"
+                  className="app-primary-btn h-8 px-4 rounded-lg text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition whitespace-nowrap cursor-pointer shrink-0"
                 >
                   Close
                 </button>
@@ -2419,7 +2419,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
       {/* Legacy Repayment Ledger Modal Fallback */}
       {selectedLoanForLedger && !viewingLoan && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-5 shadow-2xl space-y-3.5 max-h-[80vh] flex flex-col">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-5 shadow-2xl space-y-3.5 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <div>
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
@@ -2499,7 +2499,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedLoanForLedger(null)}
-                className="px-3 py-1.5 rounded text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                className="app-primary-btn px-3 py-1.5 rounded text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 cursor-pointer"
               >
                 Close
               </button>
@@ -2522,7 +2522,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
 
         return (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-100 flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-100 flex flex-col max-h-[90vh] overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
                 <div>
@@ -2572,8 +2572,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                           disabled={monthlyAmt <= 0 || remaining <= 0}
                           onClick={() => setPaymentAmount(presetAmt)}
                           className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${isActive
-                            ? 'border-emerald-500 bg-emerald-500 text-white'
-                            : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300'
+                            ? 'app-active-tab border-emerald-500 bg-emerald-500 text-white'
+                            : 'app-subtle-surface border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300'
                             }`}
                         >
                           <Zap className="w-3 h-3" />
@@ -2586,8 +2586,8 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                       disabled={remaining <= 0}
                       onClick={() => setPaymentAmount(remaining)}
                       className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer ${paymentAmount === remaining && remaining > 0
-                        ? 'border-emerald-500 bg-emerald-500 text-white'
-                        : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300'
+                        ? 'app-active-tab border-emerald-500 bg-emerald-500 text-white'
+                        : 'app-subtle-surface border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300'
                         }`}
                     >
                       Pay Full Balance
@@ -2647,7 +2647,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-end gap-2 p-3.5 px-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
+              <div className="app-subtle-surface flex items-center justify-end gap-2 p-3.5 px-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
                 <button
                   type="button"
                   onClick={() => setPaymentModalLoan(null)}
@@ -2659,7 +2659,7 @@ export const LoansAdvancesView: React.FC<LoansAdvancesViewProps> = ({
                   type="button"
                   onClick={handleSubmitManualPayment}
                   disabled={!paymentAmount || Number(paymentAmount) <= 0}
-                  className="px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                  className="app-primary-btn px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
                 >
                   <Banknote className="w-3.5 h-3.5" />
                   Confirm Payment

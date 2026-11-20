@@ -547,8 +547,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
     <div className="space-y-4 pb-6 select-none">
 
       {/* ── 1. Top Controls Bar (Sticky, Minimalist & Tactile) ── */}
-      <div className="sticky -top-3.5 z-30 pt-1 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3 shadow-xs space-y-2.5">
+      <div className="app-shell-bg sticky -top-3.5 z-30 pt-1 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
+        <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3 shadow-xs space-y-2.5">
 
           {/* Title Row & Quick Scope Switcher */}
           <div className="flex items-center justify-between">
@@ -562,13 +562,13 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             </div>
 
             {/* Scope Pill Switcher: Month vs Full Year */}
-            <div className="inline-flex p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200/60 dark:border-zinc-700/60">
+            <div className="app-subtle-surface inline-flex p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200/60 dark:border-zinc-700/60">
               <button
                 type="button"
                 onClick={() => { setRangeMode('single-month'); setCurrentPage(1); }}
                 className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${rangeMode === 'single-month'
-                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs'
-                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400'
+                    ? 'app-active-tab bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
                   }`}
               >
                 Month
@@ -577,8 +577,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                 type="button"
                 onClick={() => { setRangeMode('full-year'); setCurrentPage(1); }}
                 className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${rangeMode === 'full-year'
-                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs'
-                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400'
+                    ? 'app-active-tab bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
                   }`}
               >
                 Year
@@ -591,12 +591,12 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
 
             {/* Period Selector */}
             <div className="relative">
-              <Calendar className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Calendar className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               {rangeMode === 'single-month' ? (
                 <select
                   value={activeMonthKey}
                   onChange={(e) => { setActiveMonthKey(e.target.value); setCurrentPage(1); }}
-                  className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-7 pr-6 text-xs font-medium text-zinc-900 dark:text-zinc-100 appearance-none focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-7 pr-6 text-xs font-medium text-zinc-900 dark:text-zinc-100 appearance-none focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
                   {MONTHS.map(m => (
                     <option key={m.key} value={m.key}>{m.label} {activeYear}</option>
@@ -606,23 +606,23 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                 <select
                   value={activeYear}
                   onChange={(e) => { setActiveYear(Number(e.target.value)); setCurrentPage(1); }}
-                  className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-7 pr-6 text-xs font-medium text-zinc-900 dark:text-zinc-100 appearance-none focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-7 pr-6 text-xs font-medium text-zinc-900 dark:text-zinc-100 appearance-none focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
                   {years.map(y => (
                     <option key={y} value={y}>Year {y}</option>
                   ))}
                 </select>
               )}
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
             {/* Department Dropdown Selector */}
             <div className="relative">
-              <Building2 className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Building2 className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <select
                 value={selectedDept}
                 onChange={(e) => { setSelectedDept(e.target.value); setCurrentPage(1); }}
-                className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-7 pr-6 text-xs font-medium text-zinc-900 dark:text-zinc-100 appearance-none focus:outline-none focus:border-emerald-500 cursor-pointer truncate"
+                className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-7 pr-6 text-xs font-medium text-zinc-900 dark:text-zinc-100 appearance-none focus:outline-none focus:border-emerald-500 cursor-pointer truncate"
               >
                 {availableDepts.map(d => (
                   <option key={d} value={d}>
@@ -630,7 +630,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
           </div>
@@ -639,7 +639,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
       </div>
 
       {/* ── 2. Hero Outflow Card (Minimalist Apple/Revolut Fintech) ── */}
-      <div className="relative overflow-hidden bg-white dark:bg-[#121215] rounded-3xl p-5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+      <div className="app-hero-card relative overflow-hidden bg-white dark:bg-[#121215] rounded-3xl p-5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
 
         {/* Subtle decorative mesh */}
         <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-emerald-100/30 via-teal-50/10 to-transparent dark:from-emerald-950/20 dark:via-transparent pointer-events-none rounded-full blur-2xl" />
@@ -647,40 +647,40 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
         <div className="relative z-10 space-y-2.5">
           {/* Header Row */}
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            <span className="app-hero-label text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
               Total Employer Outflow
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50 font-semibold">
+            <span className="app-hero-chip text-[10px] font-mono px-2 py-0.5 rounded-full border font-semibold">
               {rangeMode === 'single-month' ? `${activeMonthLabel} ${activeYear}` : `12M ${activeYear}`}
             </span>
           </div>
 
           {/* Large Hero Outflow Value */}
-          <div className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-zinc-900 dark:text-zinc-50">
+          <div className="app-hero-value text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-zinc-900 dark:text-zinc-50">
             {formatNaira(totalEmployerCost)}
           </div>
 
           {/* Sleek Proportional Outflow Bar */}
           <div className="space-y-2 pt-0.5">
-            <div className="w-full h-2 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex shadow-inner">
+            <div className="w-full h-2 rounded-full overflow-hidden bg-black/15 dark:bg-white/10 flex shadow-inner">
               <div
                 style={{ width: `${Math.max(1, netRatio)}%` }}
-                className="bg-emerald-500 h-full transition-all duration-300"
+                className="bg-emerald-400 h-full transition-all duration-300"
                 title={`Take-Home: ${netRatio.toFixed(1)}%`}
               />
               <div
                 style={{ width: `${Math.max(1, payeRatio)}%` }}
-                className="bg-amber-500 h-full transition-all duration-300"
+                className="bg-amber-400 h-full transition-all duration-300"
                 title={`PAYE: ${payeRatio.toFixed(1)}%`}
               />
               <div
                 style={{ width: `${Math.max(1, empPensionRatio)}%` }}
-                className="bg-blue-500 h-full transition-all duration-300"
+                className="bg-sky-400 h-full transition-all duration-300"
                 title={`Emp Pension: ${empPensionRatio.toFixed(1)}%`}
               />
               <div
                 style={{ width: `${Math.max(1, emplrPensionRatio)}%` }}
-                className="bg-indigo-500 h-full transition-all duration-300"
+                className="bg-indigo-400 h-full transition-all duration-300"
                 title={`Emplr Pension: ${emplrPensionRatio.toFixed(1)}%`}
               />
             </div>
@@ -689,33 +689,33 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             <div className="grid grid-cols-2 gap-2 pt-0.5 text-[11px]">
 
               {/* Take-Home Pay Pill */}
-              <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/80 dark:border-emerald-900/40 rounded-xl p-2.5">
-                <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
+              <div className="app-hero-chip border rounded-xl p-2.5">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="font-medium text-[10px] uppercase tracking-wide">Take-Home</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="app-hero-label font-medium text-[10px] uppercase tracking-wide">Take-Home</span>
                   </div>
-                  <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <span className="app-hero-label text-[10px] font-mono font-semibold">
                     {netRatio.toFixed(0)}%
                   </span>
                 </div>
-                <div className="text-sm font-bold font-mono text-emerald-700 dark:text-emerald-400 mt-0.5">
+                <div className="app-hero-value text-sm font-bold font-mono mt-0.5">
                   {formatNaira(totalNet)}
                 </div>
               </div>
 
               {/* Statutory Pool Pill */}
-              <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100/80 dark:border-amber-900/40 rounded-xl p-2.5">
-                <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
+              <div className="app-hero-chip border rounded-xl p-2.5">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                    <span className="font-medium text-[10px] uppercase tracking-wide">Statutory</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                    <span className="app-hero-label font-medium text-[10px] uppercase tracking-wide">Statutory</span>
                   </div>
-                  <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-semibold">
+                  <span className="app-hero-label text-[10px] font-mono font-semibold">
                     {(100 - netRatio).toFixed(0)}%
                   </span>
                 </div>
-                <div className="text-sm font-bold font-mono text-amber-700 dark:text-amber-400 mt-0.5">
+                <div className="app-hero-value text-sm font-bold font-mono mt-0.5">
                   {formatNaira(totalStatutory)}
                 </div>
               </div>
@@ -727,13 +727,13 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
       </div>
 
       {/* ── 3. Ergonomic Segmented Switcher (Thumb-Friendly 44px) ── */}
-      <div className="grid grid-cols-5 gap-1 bg-zinc-200/70 dark:bg-zinc-800/80 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700/60 shadow-2xs">
+      <div className="app-subtle-surface grid grid-cols-5 gap-1 bg-zinc-200/70 dark:bg-zinc-800/80 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700/60 shadow-2xs">
         <button
           type="button"
           onClick={() => { setActiveTab('overview'); setCurrentPage(1); }}
           className={`h-10 text-[11px] sm:text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${activeTab === 'overview'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+              ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
             }`}
         >
           <span>Summary</span>
@@ -743,8 +743,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           type="button"
           onClick={() => { setActiveTab('departments'); setCurrentPage(1); }}
           className={`h-10 text-[11px] sm:text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${activeTab === 'departments'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+              ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
             }`}
         >
           <span>Cost</span>
@@ -754,8 +754,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           type="button"
           onClick={() => { setActiveTab('statutory'); setCurrentPage(1); }}
           className={`h-10 text-[11px] sm:text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${activeTab === 'statutory'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+              ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
             }`}
         >
           <span>Statutory</span>
@@ -765,8 +765,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           type="button"
           onClick={() => { setActiveTab('contributions'); setCurrentPage(1); }}
           className={`h-10 text-[11px] sm:text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${activeTab === 'contributions'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+              ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
             }`}
         >
           <span>Welfare</span>
@@ -776,8 +776,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           type="button"
           onClick={() => { setActiveTab('absences'); setCurrentPage(1); }}
           className={`h-10 text-[11px] sm:text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${activeTab === 'absences'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
-              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+              ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+              : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
             }`}
         >
           <span>Absence</span>
@@ -789,7 +789,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
         <div className="space-y-3.5">
 
           {/* Statutory Remittance Obligations Card */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-4 space-y-3">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/60 pb-2.5">
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                 Statutory Remittances
@@ -883,8 +883,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           <div className="grid grid-cols-2 gap-2.5">
 
             {/* Total Gross */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-              <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
                 Gross Payroll
               </span>
               <p className="text-sm sm:text-base font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -893,8 +893,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             </div>
 
             {/* Combined Pension Pool */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-              <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
                 Pension Pool
               </span>
               <p className="text-sm sm:text-base font-bold font-mono tracking-tight text-blue-600 dark:text-blue-400">
@@ -903,8 +903,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             </div>
 
             {/* Employee Pension */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-              <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
                 Employee (8%)
               </span>
               <p className="text-sm sm:text-base font-bold font-mono tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -913,8 +913,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             </div>
 
             {/* Employer Pension Contribution */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-              <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
                 Employer (10%)
               </span>
               <p className="text-sm sm:text-base font-bold font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
@@ -923,8 +923,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             </div>
 
             {/* Staff Loan Repayments */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-              <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
                 Loan Repayments
               </span>
               <p className="text-sm sm:text-base font-bold font-mono tracking-tight text-purple-600 dark:text-purple-400">
@@ -933,8 +933,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             </div>
 
             {/* Staff Welfare & Savings */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-              <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
                 Welfare & Savings
               </span>
               <p className="text-sm sm:text-base font-bold font-mono tracking-tight text-teal-600 dark:text-teal-400">
@@ -951,24 +951,24 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
       {activeTab === 'departments' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Department Cost Share ({deptList.length})
             </span>
-            <span className="text-[11px] text-zinc-500 font-mono">
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
               Total: {formatCompactNaira(totalEmployerCost)}
             </span>
           </div>
 
           {deptList.length === 0 ? (
-            <div className="p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+            <div className="app-surface-card p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl">
               <Building2 className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-2" />
-              <p className="text-xs text-zinc-500">No department records for this period.</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">No department records for this period.</p>
             </div>
           ) : (
             deptList.map(dept => (
               <div
                 key={dept.dept}
-                className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-4 shadow-xs space-y-2.5"
+                className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-4 shadow-xs space-y-2.5"
               >
                 {/* Department Header */}
                 <div className="flex items-center justify-between">
@@ -976,7 +976,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
                       {dept.dept}
                     </h4>
-                    <span className="text-[11px] text-zinc-500">
+                    <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
                       {dept.count} Staff member{dept.count > 1 ? 's' : ''}
                     </span>
                   </div>
@@ -992,10 +992,10 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                 </div>
 
                 {/* Progress Share Bar */}
-                <div className="w-full h-1.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                <div className="app-subtle-surface w-full h-1.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                   <div
                     style={{ width: `${Math.min(100, Math.max(3, dept.costPercentage))}%` }}
-                    className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                    className="app-accent-bar h-full bg-emerald-500 rounded-full transition-all duration-300"
                   />
                 </div>
 
@@ -1031,13 +1031,13 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
         <div className="space-y-3">
 
           {/* Sub-Switch: PAYE Tax Schedule vs Pension Schedule */}
-          <div className="grid grid-cols-2 gap-1 bg-zinc-100 dark:bg-zinc-800/90 p-1 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+          <div className="app-subtle-surface grid grid-cols-2 gap-1 bg-zinc-100 dark:bg-zinc-800/90 p-1 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
             <button
               type="button"
               onClick={() => { setStatutorySubTab('tax'); setCurrentPage(1); }}
               className={`h-9 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${statutorySubTab === 'tax'
-                  ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs'
-                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400'
+                  ? 'app-active-tab bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs'
+                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
                 }`}
             >
               <Landmark className="w-3.5 h-3.5" />
@@ -1048,8 +1048,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
               type="button"
               onClick={() => { setStatutorySubTab('pension'); setCurrentPage(1); }}
               className={`h-9 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${statutorySubTab === 'pension'
-                  ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs'
-                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400'
+                  ? 'app-active-tab bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-2xs'
+                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100'
                 }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
@@ -1065,7 +1065,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
               placeholder={`Search ${statutorySubTab === 'tax' ? 'tax' : 'pension'} records...`}
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-              className="w-full bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-7 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
+              className="app-surface-card w-full bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-7 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
             />
             {searchQuery && (
               <button
@@ -1081,14 +1081,14 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           {/* Employee Schedule Cards */}
           <div className="space-y-2.5">
             {paginatedStatutoryItems.length === 0 ? (
-              <div className="p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl">
-                <p className="text-xs text-zinc-500">No personnel records found matching filters.</p>
+              <div className="app-surface-card p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">No personnel records found matching filters.</p>
               </div>
             ) : (
               paginatedStatutoryItems.map(item => (
                 <div
                   key={item.employeeId}
-                  className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-3.5 shadow-xs space-y-2"
+                  className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-3.5 shadow-xs space-y-2"
                 >
                   {/* Card Header */}
                   <div className="flex items-center justify-between">
@@ -1168,13 +1168,13 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                 type="button"
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                className="h-8 px-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 cursor-pointer"
+                className="app-surface-card h-8 px-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 cursor-pointer"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Prev</span>
               </button>
 
-              <span className="text-[11px] font-medium text-zinc-500 font-mono">
+              <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 font-mono">
                 Page {currentPage} of {totalPages}
               </span>
 
@@ -1182,7 +1182,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                 type="button"
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                className="h-8 px-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 cursor-pointer"
+                className="app-surface-card h-8 px-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 cursor-pointer"
               >
                 <span>Next</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -1197,10 +1197,10 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
       {activeTab === 'contributions' && (
         <div className="space-y-3.5">
           {/* Mobile Controls */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-3.5 space-y-2.5">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-3.5 space-y-2.5">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                   Staff Scope
                 </label>
                 <button
@@ -1208,8 +1208,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                   onClick={() => setContribAllTime(prev => !prev)}
                   className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition cursor-pointer ${
                     contribAllTime
-                      ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100'
-                      : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800'
+                      ? 'app-active-tab bg-zinc-900 text-white border-transparent'
+                      : 'app-subtle-surface bg-zinc-50 text-zinc-600 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800'
                   }`}
                 >
                   {contribAllTime ? 'All-Time ✓' : 'All-Time'}
@@ -1218,7 +1218,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
               <select
                 value={contribScope}
                 onChange={e => setContribScope(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100"
               >
                 <option value="ALL">All Contributing Staff</option>
                 <optgroup label="Select Specific Employee">
@@ -1247,26 +1247,26 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           {selectedContribEmployee ? (
             <div className="space-y-3">
               {/* Summary Card */}
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-4 space-y-3">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-4 space-y-3">
                 <div>
                   <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                     {selectedContribEmployee.firstName} {selectedContribEmployee.lastName}
                   </h3>
-                  <p className="text-[11px] text-zinc-500 font-mono">
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
                     {selectedContribEmployee.code} • {selectedContribEmployee.department}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs">
                   <div>
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Total Inflow</span>
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Total Inflow</span>
                     <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{formatNaira(mobileEmployeeStatement.totalInflow)}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Total Payouts</span>
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Total Payouts</span>
                     <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatNaira(mobileEmployeeStatement.totalOutflow)}</span>
                   </div>
                   <div className="col-span-2 pt-1">
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Current Net Balance</span>
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Current Net Balance</span>
                     <span className="font-mono font-bold text-base text-indigo-600 dark:text-indigo-400">{formatNaira(mobileEmployeeStatement.balance)}</span>
                   </div>
                 </div>
@@ -1274,25 +1274,25 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
 
               {/* Transactions list */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-zinc-500 px-1">
+                <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-1">
                   Statement Lines ({mobileEmployeeStatement.lines.length})
                 </h4>
                 {mobileEmployeeStatement.lines.length === 0 ? (
-                  <div className="p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl text-zinc-400 text-xs">
+                  <div className="app-surface-card p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl text-zinc-500 dark:text-zinc-400 text-xs">
                     No contributions in this timeframe.
                   </div>
                 ) : (
                   mobileEmployeeStatement.lines.map(l => (
-                    <div key={l.id} className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-3 flex justify-between items-center text-xs">
+                    <div key={l.id} className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-3 flex justify-between items-center text-xs">
                       <div>
                         <div className="font-semibold text-zinc-900 dark:text-zinc-100">{l.periodLabel}</div>
-                        <div className="text-[10px] text-zinc-400">{formatDate(l.date)} • {l.type}</div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{formatDate(l.date)} • {l.type}</div>
                       </div>
                       <div className="text-right font-mono">
-                        <div className={`font-bold ${l.type === 'contribution' ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-600'}`}>
+                        <div className={`font-bold ${l.type === 'contribution' ? 'text-zinc-900 dark:text-zinc-100' : 'text-emerald-600 dark:text-emerald-400'}`}>
                           {l.type === 'contribution' ? formatNaira(l.inflow) : `-${formatNaira(l.outflow)}`}
                         </div>
-                        <div className="text-[10px] text-zinc-400">Bal: {formatNaira(l.runningBalance)}</div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400">Bal: {formatNaira(l.runningBalance)}</div>
                       </div>
                     </div>
                   ))
@@ -1302,14 +1302,14 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           ) : (
             /* All Staff Schedule View */
             <div className="space-y-2">
-              <div className="flex justify-between items-center px-1 text-xs text-zinc-500">
+              <div className="flex justify-between items-center px-1 text-xs text-zinc-500 dark:text-zinc-400">
                 <span>Participating Staff ({mobileStaffContribList.length})</span>
                 <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
                   Total: {formatNaira(mobileStaffContribList.reduce((s, r) => s + r.amount, 0))}
                 </span>
               </div>
               {mobileStaffContribList.length === 0 ? (
-                <div className="p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl text-zinc-400 text-xs">
+                <div className="app-surface-card p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl text-zinc-500 dark:text-zinc-400 text-xs">
                   No active contributions logged for this period.
                 </div>
               ) : (
@@ -1318,11 +1318,11 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                     key={r.emp.id}
                     type="button"
                     onClick={() => setContribScope(r.emp.id)}
-                    className="w-full text-left bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-3 flex justify-between items-center text-xs hover:border-zinc-400 transition cursor-pointer"
+                    className="app-surface-card w-full text-left bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-3 flex justify-between items-center text-xs hover:border-zinc-400 transition cursor-pointer"
                   >
                     <div>
                       <div className="font-semibold text-zinc-900 dark:text-zinc-100">{r.emp.firstName} {r.emp.lastName}</div>
-                      <div className="text-[10px] text-zinc-400">{r.emp.code} • {r.emp.department}</div>
+                      <div className="text-[10px] text-zinc-500 dark:text-zinc-400">{r.emp.code} • {r.emp.department}</div>
                     </div>
                     <div className="text-right font-mono">
                       <div className="font-bold text-zinc-900 dark:text-zinc-100">{formatNaira(r.amount)}</div>
@@ -1343,10 +1343,10 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
       {activeTab === 'absences' && (
         <div className="space-y-3.5">
           {/* Controls Card */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-3.5 space-y-3 shadow-2xs">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-3.5 space-y-3 shadow-2xs">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                   Report Scope
                 </label>
                 <button
@@ -1354,8 +1354,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                   onClick={() => setAbsenceAllTime(prev => !prev)}
                   className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition cursor-pointer ${
                     absenceAllTime
-                      ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100'
-                      : 'bg-zinc-50 text-zinc-500 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800'
+                      ? 'app-active-tab bg-zinc-900 text-white border-transparent'
+                      : 'app-subtle-surface bg-zinc-50 text-zinc-600 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800'
                   }`}
                 >
                   {absenceAllTime ? 'All-Time ✓' : 'All-Time'}
@@ -1364,7 +1364,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
               <select
                 value={absenceScope}
                 onChange={e => setAbsenceScope(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100"
               >
                 <option value="ALL">All Affected Staff (Company Schedule)</option>
                 <optgroup label="Select Specific Employee">
@@ -1393,27 +1393,27 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
           {selectedAbsenceEmployee ? (
             <div className="space-y-3">
               {/* Employee Header Card */}
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-4 space-y-3">
+              <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                       {selectedAbsenceEmployee.firstName} {selectedAbsenceEmployee.lastName}
                     </h3>
-                    <p className="text-[11px] text-zinc-500 font-mono">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
                       {selectedAbsenceEmployee.code} • {selectedAbsenceEmployee.department}
                     </p>
                   </div>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                  <span className="app-subtle-surface inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
                     {selectedAbsenceEmployee.workSchedule === '6-day' ? '6-Day Week' : '5-Day Week'}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs">
                   <div>
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Monthly Gross</span>
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Monthly Gross</span>
                     <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{formatNaira(Number(selectedAbsenceEmployee.monthlyGross) || 0)}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Total Docked</span>
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Total Docked</span>
                     <span className="font-mono font-bold text-rose-600 dark:text-rose-400">-{formatNaira(mobileAbsenceData.totalDeductions)}</span>
                   </div>
                 </div>
@@ -1421,21 +1421,21 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
 
               {/* Employee's absence rows */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-zinc-500 px-1">
+                <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-1">
                   Absence Incidents ({mobileAbsenceData.rows.length})
                 </h4>
                 {mobileAbsenceData.rows.length === 0 ? (
-                  <div className="p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl text-zinc-400 text-xs space-y-2">
+                  <div className="app-surface-card p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl text-zinc-500 dark:text-zinc-400 text-xs space-y-2">
                     <CheckCircle2 className="w-7 h-7 text-emerald-500 mx-auto" />
                     <div className="font-medium">No absences recorded in this timeframe.</div>
                   </div>
                 ) : (
                   mobileAbsenceData.rows.map(r => (
-                    <div key={r.id} className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-3.5 space-y-2 text-xs">
+                    <div key={r.id} className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-3.5 space-y-2 text-xs">
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="font-bold text-zinc-900 dark:text-zinc-100">{r.periodLabel}</div>
-                          <div className="text-[10px] text-zinc-400">Daily: {formatNaira(r.dailyRate)}/day</div>
+                          <div className="text-[10px] text-zinc-500 dark:text-zinc-400">Daily: {formatNaira(r.dailyRate)}/day</div>
                         </div>
                         <div className="text-right">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60">
@@ -1447,13 +1447,13 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                         </div>
                       </div>
                       {r.dates && r.dates.length > 0 && (
-                        <div className="text-[10px] bg-zinc-50 dark:bg-zinc-900/60 p-2 rounded-lg text-zinc-600 dark:text-zinc-400">
+                        <div className="app-subtle-surface text-[10px] bg-zinc-50 dark:bg-zinc-900/60 p-2 rounded-lg text-zinc-600 dark:text-zinc-300">
                           <span className="font-semibold block mb-0.5">Dates Absent:</span>
                           <span>{r.dates.join(', ')}</span>
                         </div>
                       )}
                       {r.notes && (
-                        <div className="text-[10px] text-zinc-400 italic">
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 italic">
                           {r.notes}
                         </div>
                       )}
@@ -1466,29 +1466,29 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             /* All Staff Schedule View */
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-semibold text-zinc-500">
+                <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
                   Affected Records ({mobileAbsenceData.rows.length})
                 </span>
-                <span className="text-[10px] text-zinc-400 font-mono">
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
                   Labour Act Sec. 5
                 </span>
               </div>
 
               {mobileAbsenceData.rows.length === 0 ? (
-                <div className="p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl space-y-2">
+                <div className="app-surface-card p-8 text-center bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl space-y-2">
                   <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
                   <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Perfect Attendance Recorded</p>
-                  <p className="text-[11px] text-zinc-400">No unpaid absence deductions for the selected timeframe.</p>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">No unpaid absence deductions for the selected timeframe.</p>
                 </div>
               ) : (
                 mobileAbsenceData.rows.map(r => (
-                  <div key={r.id} className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl p-3.5 space-y-2 text-xs">
+                  <div key={r.id} className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-2xl p-3.5 space-y-2 text-xs">
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="font-semibold text-zinc-900 dark:text-zinc-100">
                           {r.emp ? `${r.emp.firstName} ${r.emp.lastName}` : 'Unknown Staff'}
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono">
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
                           {r.emp?.code} • {r.emp?.department}
                         </div>
                       </div>
@@ -1504,17 +1504,17 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
 
                     <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px]">
                       <div>
-                        <span className="text-[9px] text-zinc-400 uppercase font-semibold block">Period</span>
+                        <span className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Period</span>
                         <span className="font-medium text-zinc-700 dark:text-zinc-300">{r.periodLabel}</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-zinc-400 uppercase font-semibold block">Daily Rate</span>
+                        <span className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Daily Rate</span>
                         <span className="font-mono text-zinc-700 dark:text-zinc-300">{formatNaira(r.dailyRate)}</span>
                       </div>
                     </div>
 
                     {r.dates && r.dates.length > 0 && (
-                      <div className="text-[10px] bg-zinc-50 dark:bg-zinc-900/60 p-2 rounded-lg text-zinc-600 dark:text-zinc-400">
+                      <div className="app-subtle-surface text-[10px] bg-zinc-50 dark:bg-zinc-900/60 p-2 rounded-lg text-zinc-600 dark:text-zinc-300">
                         <span className="font-semibold block mb-0.5">Dates Absent:</span>
                         <span>{r.dates.join(', ')}</span>
                       </div>
@@ -1537,7 +1537,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
       )}
 
       {/* ── 7. Ergonomic Action Dock: Print & Export (Docked flush directly above bottom nav) ── */}
-      <div className="sticky bottom-0 z-30 -mx-4 px-4 py-2 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
+      <div className="app-bottom-nav sticky bottom-0 z-30 -mx-4 px-4 py-2 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
         <div className="flex items-center gap-2 max-w-lg mx-auto">
 
           {/* Print PDF Button */}
@@ -1550,7 +1550,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                 handleOpenPrintModal(activeTab === 'statutory' && statutorySubTab === 'pension' ? 'pension' : activeTab === 'statutory' && statutorySubTab === 'tax' ? 'paye' : 'bank');
               }
             }}
-            className="flex-1 h-11 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-98"
+            className="app-primary-btn flex-1 h-11 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-98"
           >
             <Printer className="w-4 h-4" />
             <span>{activeTab === 'absences' ? 'Print Absence Log' : 'Print Schedule'}</span>
@@ -1561,20 +1561,20 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
             <button
               type="button"
               onClick={handleExportAbsencesCsv}
-              className="h-11 px-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+              className="app-subtle-surface h-11 px-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 hover:opacity-85 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
               title="Download Absence CSV"
             >
-              <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <Download className="w-4 h-4 app-accent-text text-emerald-600 dark:text-emerald-400" />
               <span>CSV</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={handleExportExcel}
-              className="h-11 px-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+              className="app-subtle-surface h-11 px-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 hover:opacity-85 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
               title="Download Full Excel Workbook (.xlsx)"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <FileSpreadsheet className="w-4 h-4 app-accent-text text-emerald-600 dark:text-emerald-400" />
               <span>Excel</span>
             </button>
           )}
@@ -1597,8 +1597,8 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
       {/* Printable Absence Schedule Modal */}
       {isPrintAbsenceModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
-          <div className="bg-white dark:bg-[#121215] w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-zinc-200 dark:border-zinc-800">
-            <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+          <div className="app-surface-card bg-white dark:bg-[#121215] w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-zinc-200 dark:border-zinc-800">
+            <div className="app-subtle-surface p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
               <div className="flex items-center gap-2">
                 <CalendarOff className="w-5 h-5 text-zinc-900 dark:text-zinc-100" />
                 <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
@@ -1609,7 +1609,7 @@ export const MobileAnalyticsView: React.FC<MobileAnalyticsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold text-xs rounded-lg flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                  className="app-primary-btn px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold text-xs rounded-lg flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Print</span>

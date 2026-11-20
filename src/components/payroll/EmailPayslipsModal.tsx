@@ -798,10 +798,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
 
   return createPortal(
     <div className="fixed top-0 md:top-9 inset-x-0 bottom-0 z-50 flex flex-col animate-in fade-in duration-150 overflow-hidden">
-      <div className="bg-white dark:bg-[#121215] flex flex-col w-full h-full overflow-hidden">
+      <div className="app-shell-bg bg-white dark:bg-[#121215] flex flex-col w-full h-full overflow-hidden">
         
         {/* Modal Header */}
-        <div className="px-3 sm:px-5 py-3 sm:py-3.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2 shrink-0 bg-zinc-50/70 dark:bg-zinc-900/40">
+        <div className="app-surface-card px-3 sm:px-5 py-3 sm:py-3.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2 shrink-0 bg-zinc-50/70 dark:bg-zinc-900/40">
 
           {/* Back button */}
           <button
@@ -842,7 +842,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   {isConfigured ? `${emailSettings.provider.toUpperCase()} Ready` : 'Not Configured'}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-500 mt-0.5 hidden sm:block">
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 hidden sm:block">
                 {isMultiMonth 
                   ? `Each employee receives 1 email containing 1 consolidated multi-page PDF covering all ${selectedMonthKeys.length} selected months.`
                   : 'Automatically dispatch official encrypted PDF payslips to employee mailboxes.'}
@@ -854,7 +854,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
             <button
               type="button"
               onClick={() => setShowTemplateModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
+              className="app-subtle-surface flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
               title="Customize Email Subject, Body & PDF Settings"
             >
               <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -867,7 +867,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   onClose();
                   onOpenSettings();
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
+                className="app-subtle-surface flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
                 title="Configure Mail Server (SMTP / Resend)"
               >
                 <Settings className="w-3.5 h-3.5" />
@@ -954,7 +954,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
 
               <div className="w-full bg-blue-200 dark:bg-blue-900/60 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-blue-600 h-full transition-all duration-300 rounded-full"
+                  className="app-accent-bar bg-blue-600 h-full transition-all duration-300 rounded-full"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -973,7 +973,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search staff, code, email..."
-                  className="pl-8 pr-7 py-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-xs text-zinc-900 dark:text-zinc-100 w-48 focus:outline-none focus:border-blue-500"
+                  className="app-subtle-surface pl-8 pr-7 py-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 w-48 focus:outline-none focus:border-blue-500"
                 />
                 {searchQuery && (
                   <button
@@ -987,14 +987,14 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
               </div>
 
               {/* Status Tab Filters */}
-              <div className="flex items-center gap-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60">
+              <div className="app-subtle-surface flex items-center gap-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60">
                 <button
                   type="button"
                   onClick={() => setTabFilter('all')}
-                  className={`px-2 py-1 rounded text-[11px] font-medium transition ${
+                  className={`px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
                     tabFilter === 'all'
-                      ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
-                      : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                      ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                   }`}
                 >
                   All ({totalCount})
@@ -1002,10 +1002,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setTabFilter('pending')}
-                  className={`px-2 py-1 rounded text-[11px] font-medium transition ${
+                  className={`px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
                     tabFilter === 'pending'
-                      ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
-                      : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                      ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                   }`}
                 >
                   Pending ({pendingCount})
@@ -1013,10 +1013,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setTabFilter('sent')}
-                  className={`px-2 py-1 rounded text-[11px] font-medium transition ${
+                  className={`px-2 py-1 rounded text-[11px] font-medium transition cursor-pointer ${
                     tabFilter === 'sent'
-                      ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
-                      : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                      ? 'app-active-tab bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
+                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                   }`}
                 >
                   Sent ({sentCount})
@@ -1025,9 +1025,9 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setTabFilter('revised')}
-                    className={`px-2 py-1 rounded text-[11px] font-medium transition flex items-center gap-1 ${
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition flex items-center gap-1 cursor-pointer ${
                       tabFilter === 'revised'
-                        ? 'bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-2xs font-semibold'
+                        ? 'app-active-tab bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-2xs font-semibold'
                         : 'text-amber-600/80 dark:text-amber-400/80 hover:text-amber-700 dark:hover:text-amber-300'
                     }`}
                   >
@@ -1120,14 +1120,14 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
             {!isMobileSearchOpen ? (
               <div className="flex items-center gap-1">
                 {/* Tab filter pills */}
-                <div className="flex items-center gap-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 flex-1 min-w-0 overflow-x-auto">
+                <div className="app-subtle-surface flex items-center gap-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 flex-1 min-w-0 overflow-x-auto">
                   <button
                     type="button"
                     onClick={() => setTabFilter('all')}
-                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap ${
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap cursor-pointer ${
                       tabFilter === 'all'
-                        ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                        ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                     }`}
                   >
                     All ({totalCount})
@@ -1135,10 +1135,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setTabFilter('pending')}
-                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap ${
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap cursor-pointer ${
                       tabFilter === 'pending'
-                        ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                        ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                     }`}
                   >
                     Pending ({pendingCount})
@@ -1146,10 +1146,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setTabFilter('sent')}
-                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap ${
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap cursor-pointer ${
                       tabFilter === 'sent'
-                        ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                        ? 'app-active-tab bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
                     }`}
                   >
                     Sent ({sentCount})
@@ -1158,9 +1158,9 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setTabFilter('revised')}
-                      className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap ${
+                      className={`px-2 py-1 rounded text-[11px] font-medium transition whitespace-nowrap cursor-pointer ${
                         tabFilter === 'revised'
-                          ? 'bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-2xs font-semibold'
+                          ? 'app-active-tab bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-2xs font-semibold'
                           : 'text-amber-600/80 dark:text-amber-400/80 hover:text-amber-700 dark:hover:text-amber-300'
                       }`}
                     >
@@ -1172,7 +1172,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsMobileSearchOpen(true)}
-                  className="relative shrink-0 p-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition"
+                  className="app-subtle-surface relative shrink-0 p-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
                   title="Search"
                 >
                   <Search className="w-4 h-4" />
@@ -1192,7 +1192,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search staff, code, email..."
                     autoFocus
-                    className="pl-8 pr-7 py-1.5 w-full bg-zinc-50 dark:bg-zinc-900 border border-blue-400 dark:border-blue-600 rounded text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                    className="app-subtle-surface pl-8 pr-7 py-1.5 w-full bg-zinc-50 dark:bg-zinc-900 border border-blue-400 dark:border-blue-600 rounded text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                   />
                   {searchQuery && (
                     <button
@@ -1207,7 +1207,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => { setIsMobileSearchOpen(false); setSearchQuery(''); }}
-                  className="shrink-0 text-[11px] font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 transition"
+                  className="app-subtle-surface shrink-0 text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 px-2 py-1.5 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 transition cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1246,10 +1246,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
           </div>
 
           {/* Desktop Table View */}
-          <div className="hidden md:block border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden bg-white dark:bg-[#121215]">
+          <div className="hidden md:block app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden bg-white dark:bg-[#121215]">
             <div className="max-h-72 overflow-y-auto">
               <table className="w-full text-left text-xs">
-                <thead className="sticky top-0 bg-zinc-100 dark:bg-zinc-900/90 backdrop-blur-xs border-b border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500 uppercase tracking-wider select-none z-10">
+                <thead className="app-subtle-surface sticky top-0 bg-zinc-100 dark:bg-zinc-900/90 backdrop-blur-xs border-b border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400 uppercase tracking-wider select-none z-10">
                   <tr>
                     <th className="py-2.5 pl-3.5 pr-2 w-10">
                       <input
@@ -1463,7 +1463,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                     bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
                                     right: `${menuCoords.right}px`,
                                   }}
-                                  className="fixed w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1 z-[9999] text-xs animate-in fade-in-50 zoom-in-95 text-left"
+                                  className="app-surface-card fixed w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1 z-[9999] text-xs animate-in fade-in-50 zoom-in-95 text-left"
                                 >
                                   {/* WhatsApp Payslip Direct Dispatch */}
                                   <button
@@ -1557,7 +1557,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
           {/* Mobile Intentional Minimalist Cards View */}
           <div className="block md:hidden space-y-2.5 pb-2">
             {filteredRecipients.length === 0 ? (
-              <div className="p-8 text-center text-zinc-400 text-xs bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl">
+              <div className="app-surface-card p-8 text-center text-zinc-500 dark:text-zinc-400 text-xs bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl">
                 No employees match the current filter.
               </div>
             ) : (
@@ -1570,7 +1570,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                     className={`p-3.5 rounded-xl border transition ${
                       r.selected
                         ? 'bg-blue-50/25 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/60'
-                        : 'bg-white dark:bg-[#121215] border-zinc-200 dark:border-zinc-800'
+                        : 'app-surface-card bg-white dark:bg-[#121215] border-zinc-200 dark:border-zinc-800'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -1744,7 +1744,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                                     bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
                                     right: `${menuCoords.right}px`,
                                   }}
-                                  className="fixed w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1 z-[9999] text-xs animate-in fade-in-50 zoom-in-95 text-left"
+                                  className="app-surface-card fixed w-48 rounded-xl bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1 z-[9999] text-xs animate-in fade-in-50 zoom-in-95 text-left"
                                 >
                                   {/* WhatsApp Payslip Direct Dispatch (Mobile Card) */}
                                   <button
@@ -1834,12 +1834,12 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-3.5 sm:px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0 bg-zinc-50/70 dark:bg-zinc-900/40">
-          <div className="text-[11px] text-zinc-500 truncate">
-            {isCancelled && <span className="text-rose-600 font-medium">Dispatch cancelled by user.</span>}
+        <div className="app-subtle-surface px-3.5 sm:px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0 bg-zinc-50/70 dark:bg-zinc-900/40">
+          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+            {isCancelled && <span className="text-rose-600 dark:text-rose-400 font-medium">Dispatch cancelled by user.</span>}
             {!isCancelled && (
               <span>
-                Sending via <strong>{emailSettings.provider === 'smtp' ? (emailSettings.smtp.host || 'SMTP') : 'Resend Cloud'}</strong>
+                Sending via <strong className="text-zinc-800 dark:text-zinc-200">{emailSettings.provider === 'smtp' ? (emailSettings.smtp.host || 'SMTP') : 'Resend Cloud'}</strong>
               </span>
             )}
           </div>
@@ -1849,7 +1849,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isSending}
-              className="px-3 sm:px-3.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition disabled:opacity-40 cursor-pointer"
+              className="app-surface-card px-3 sm:px-3.5 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition disabled:opacity-40 cursor-pointer"
             >
               Close
             </button>
@@ -1860,8 +1860,8 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
               disabled={isSending || selectedCount === 0 || !isConfigured || !canDispatch}
               className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-md text-xs font-semibold shadow-xs transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
                 !canDispatch
-                  ? 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  ? 'app-surface-card bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700'
+                  : 'app-primary-btn bg-blue-600 hover:bg-blue-700 text-white'
               }`}
             >
               {isSending ? (
@@ -1893,10 +1893,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
       {/* Dispatch Version History Modal (Rendered via Portal to avoid any clipping/overlap) */}
       {historyTarget && createPortal(
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150 select-none">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
             
             {/* History Header */}
-            <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/80 dark:bg-zinc-900/60">
+            <div className="app-subtle-surface px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/80 dark:bg-zinc-900/60">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                   <History className="w-4 h-4" />
@@ -1922,7 +1922,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
             </div>
 
             {/* History Overview / Revision Notice */}
-            <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-900/20 text-xs space-y-2">
+            <div className="app-subtle-surface p-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-900/20 text-xs space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-zinc-500">Target Email:</span>
                 <span className="font-mono font-medium text-zinc-800 dark:text-zinc-200">{historyTarget.email}</span>
@@ -1965,7 +1965,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                             : 'border-zinc-400 dark:border-zinc-600'
                         }`} />
 
-                        <div className="p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 space-y-1.5">
+                        <div className="app-subtle-surface p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5">
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300">
@@ -2009,11 +2009,11 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
             </div>
 
             {/* History Footer */}
-            <div className="px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/80 dark:bg-zinc-900/60 shrink-0">
+            <div className="app-subtle-surface px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/80 dark:bg-zinc-900/60 shrink-0">
               <button
                 type="button"
                 onClick={() => setHistoryTarget(null)}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
+                className="app-surface-card px-3.5 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer"
               >
                 Close
               </button>
@@ -2026,7 +2026,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   await handleResendSingle(target);
                 }}
                 disabled={!isLocked || isSending || resendingEmpId === historyTarget.employeeId || !historyTarget.email}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition disabled:opacity-40 cursor-pointer"
+                className="app-primary-btn flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition disabled:opacity-40 cursor-pointer"
               >
                 <RotateCcw className={`w-3.5 h-3.5 ${resendingEmpId === historyTarget.employeeId ? 'animate-spin' : ''}`} />
                 <span>Resend Revision (v{(historyTarget.version || 1) + 1})</span>
@@ -2041,10 +2041,10 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
       {/* Customize Email Template & PDF Pop-Up Modal */}
       {showTemplateModal && createPortal(
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150 select-none">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             
             {/* Template Header */}
-            <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/80 dark:bg-zinc-900/60">
+            <div className="app-subtle-surface px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/80 dark:bg-zinc-900/60">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                   <Sparkles className="w-4 h-4" />
@@ -2075,14 +2075,14 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   type="text"
                   value={subject}
                   onChange={e => setSubject(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                  className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               {/* Message Body */}
               <div>
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 mb-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     Message Body (Markdown / Plain Text)
                   </label>
                   <div className="flex items-center gap-1 overflow-x-auto text-[10px] pb-1 sm:pb-0">
@@ -2092,7 +2092,7 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                         key={t}
                         type="button"
                         onClick={() => insertToken(t)}
-                        className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-600 text-zinc-600 dark:text-zinc-300 font-mono transition shrink-0 cursor-pointer"
+                        className="app-subtle-surface px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-600 text-zinc-600 dark:text-zinc-300 font-mono transition shrink-0 cursor-pointer border border-zinc-200/70 dark:border-zinc-700/70"
                       >
                         +{t}
                       </button>
@@ -2103,12 +2103,12 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                   rows={5}
                   value={body}
                   onChange={e => setBody(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded p-2.5 text-xs font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500 leading-relaxed resize-y"
+                  className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded p-2.5 text-xs font-mono text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500 leading-relaxed resize-y"
                 />
               </div>
 
               {/* Attach PDF Checkbox */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
+              <div className="pt-2 border-t border-zinc-200/70 dark:border-zinc-800/60">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -2124,8 +2124,8 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
               </div>
 
               {/* Send Test Email to Admin */}
-              <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/60 space-y-2">
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+              <div className="pt-3 border-t border-zinc-200/70 dark:border-zinc-800/60 space-y-2">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Send Sample Test Email
                 </label>
                 <div className="flex items-center gap-2">
@@ -2134,13 +2134,13 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
                     value={testEmailAddress}
                     onChange={e => setTestEmailAddress(e.target.value)}
                     placeholder="admin@company.com"
-                    className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100"
+                    className="app-subtle-surface flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100"
                   />
                   <button
                     type="button"
                     onClick={handleSendTest}
                     disabled={testSending || !isConfigured}
-                    className="px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium text-xs transition disabled:opacity-40 whitespace-nowrap flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    className="app-primary-btn px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium text-xs transition disabled:opacity-40 whitespace-nowrap flex items-center gap-1.5 shrink-0 cursor-pointer"
                   >
                     {testSending ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                     <span>{testSending ? 'Sending...' : 'Send Test'}</span>
@@ -2160,11 +2160,11 @@ export const EmailPayslipsModal: React.FC<EmailPayslipsModalProps> = ({
             </div>
 
             {/* Template Footer */}
-            <div className="px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-end gap-2 bg-zinc-50/80 dark:bg-zinc-900/60 shrink-0">
+            <div className="app-subtle-surface px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-end gap-2 bg-zinc-50/80 dark:bg-zinc-900/60 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowTemplateModal(false)}
-                className="px-4 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition cursor-pointer"
+                className="app-primary-btn px-4 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition cursor-pointer"
               >
                 Save &amp; Close
               </button>

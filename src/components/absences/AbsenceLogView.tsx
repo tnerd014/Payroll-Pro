@@ -351,8 +351,8 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
   return (
     <div className="pb-2 select-none">
       {/* Mobile Sticky Compact Top Bar (Single-Row Succinct Minimalist Header) */}
-      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b] mb-3">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
+      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b] app-shell-bg mb-3">
+        <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           {!isMobileSearchOpen ? (
             <div className="flex items-center justify-between gap-2">
               {/* Left: Absence Roster Summary */}
@@ -377,7 +377,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
               {/* Right: Period Dropdown Pill + Search Toggle + Log Action */}
               <div className="flex items-center gap-1.5 shrink-0">
                 {/* Period Selector Pill */}
-                <div className="flex items-center bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200/60 dark:border-zinc-700/60 px-2 py-1 rounded-xl text-xs transition-colors cursor-pointer">
+                <div className="flex items-center bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 app-subtle-surface border border-zinc-200/60 dark:border-zinc-700/60 px-2 py-1 rounded-xl text-xs transition-colors cursor-pointer">
                   <select
                     value={filterMonth}
                     onChange={(e) => {
@@ -432,8 +432,8 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                   onClick={() => setIsMobileSearchOpen(true)}
                   className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer relative ${
                     searchQuery
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
-                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+                      ? 'app-primary-btn shadow-2xs'
+                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 app-subtle-surface text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
                   }`}
                   title="Search Absences"
                   aria-label="Search Absences"
@@ -464,7 +464,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                     setIsMobileSearchOpen(false);
                   }
                 }}
-                className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
               />
               <button
                 type="button"
@@ -493,7 +493,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
 
         {/* Period Selector & Log Button */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="h-8 flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium">
+          <div className="h-8 flex items-center gap-1.5 bg-white dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium">
             <Calendar className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
             <select
               value={filterMonth}
@@ -551,7 +551,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                 setEditingAbsence(null);
                 setIsModalOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium app-primary-btn transition-colors shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Log Absence</span>
@@ -565,8 +565,8 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
       {showStats && (
         <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in duration-150">
           {/* Card 1: Days Docked */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Days Docked ({filterMonth === 'ALL' ? (filterYear === 'ALL' ? 'All Time' : filterYear) : (MONTHS.find(m => m.key.toLowerCase() === filterMonth.toLowerCase())?.label || monthLabel)})
             </span>
             <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
@@ -578,8 +578,8 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
           </div>
 
           {/* Card 2: Unpaid Deductions */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Unpaid Deductions
             </span>
             <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
@@ -591,8 +591,8 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
           </div>
 
           {/* Card 3: Affected Staff */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Affected Staff
             </span>
             <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
@@ -617,7 +617,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
+            className="w-full bg-white dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
           />
         </div>
 
@@ -628,8 +628,8 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
             onClick={toggleCompactMode}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition cursor-pointer shrink-0 ${
               isCompactMode 
-                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent shadow-xs' 
-                : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                ? 'app-active-tab shadow-xs' 
+                : 'bg-white dark:bg-zinc-900 app-surface-card border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
             }`}
             title={isCompactMode ? "Compact table density active (Click for comfortable)" : "Comfortable table density active (Click for compact)"}
           >
@@ -641,7 +641,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
           <button
             type="button"
             onClick={() => setShowStats(!showStats)}
-            className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs shrink-0"
+            className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs shrink-0"
             title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
           >
             {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -651,10 +651,10 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
       </div>
 
       {/* Desktop Absences Table View - Simplified Succinct Layout */}
-      <div className="hidden sm:block bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-2xs">
+      <div className="hidden sm:block bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
-            <thead className="bg-zinc-50/80 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-semibold">
+            <thead className="bg-zinc-50/80 dark:bg-zinc-800/60 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
               <tr>
                 <th className={`px-4 ${isCompactMode ? 'py-2' : 'py-3'}`}>
                   <SortableHeader
@@ -761,7 +761,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
       {/* Mobile Absence Cards Stack - Succinct & Clickable */}
       <div className="sm:hidden space-y-2.5">
         {filteredAbsences.length === 0 ? (
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
             <CalendarOff className="w-8 h-8 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
             <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">No absences recorded</p>
             <p className="text-[11px] text-zinc-400 mt-0.5">All staff have 100% attendance logged for {activePeriodLabel}.</p>
@@ -778,7 +778,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
               <div
                 key={rec.id}
                 onClick={() => setViewingAbsence(rec)}
-                className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-all select-none cursor-pointer active:scale-[0.99] group"
+                className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-all select-none cursor-pointer active:scale-[0.99] group"
               >
                 <div className="flex items-start justify-between gap-2.5">
                   {/* Left: Avatar & Identity */}
@@ -839,7 +839,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
               setEditingAbsence(null);
               setIsModalOpen(true);
             }}
-            className="w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10"
+            className="w-14 h-14 rounded-2xl app-primary-btn active:scale-95 shadow-2xl flex items-center justify-center transition-all cursor-pointer"
             title="Log Absence"
             aria-label="Log Absence"
           >
@@ -873,7 +873,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
             className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
           >
             <div 
-              className="relative bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
+              className="relative bg-white dark:bg-[#121215] app-surface-card border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
             >
               {/* Mobile Pull Handle */}
               <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
@@ -893,7 +893,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
               {/* Scrollable Content Body */}
               <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
                 {/* Specific Dates Pill Grid */}
-                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800/70 space-y-2">
+                <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface border border-zinc-200/70 dark:border-zinc-800/70 space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                       Dates of Absence
@@ -962,8 +962,8 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
 
                 {/* Notes if any */}
                 {viewingAbsence.notes && (
-                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60">
-                    <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-0.5">
+                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface border border-zinc-200/60 dark:border-zinc-800/60">
+                    <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-0.5">
                       Notes
                     </span>
                     <p className="text-xs text-zinc-700 dark:text-zinc-300 italic">
@@ -974,7 +974,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
               </div>
 
               {/* Modal Actions Footer - Pinned to bottom */}
-              <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 z-10 select-none">
+              <div className="shrink-0 bg-white dark:bg-[#121215] app-surface-card border-t border-zinc-100 dark:border-zinc-800 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 z-10 select-none">
                 {canEdit ? (
                   <div className="flex items-center gap-1.5">
                     <button
@@ -1009,7 +1009,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setViewingAbsence(null)}
-                  className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition cursor-pointer"
+                  className="px-4 py-1.5 rounded-xl text-xs font-semibold app-primary-btn active:scale-95 transition cursor-pointer"
                 >
                   Close
                 </button>
@@ -1020,7 +1020,7 @@ export const AbsenceLogView: React.FC<AbsenceLogViewProps> = ({
       })()}
 
       {filteredAbsences.length > 0 && (
-        <div className="mt-3 bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden">
+        <div className="mt-3 bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden">
           <TablePagination
             currentPage={currentPage}
             pageSize={pageSize}

@@ -731,7 +731,7 @@ export const WhatsAppPayslipsModal: React.FC<WhatsAppPayslipsModalProps> = ({
 
   return createPortal(
     <div className="fixed top-0 md:top-9 inset-x-0 bottom-0 z-50 flex flex-col animate-in fade-in duration-150 overflow-hidden">
-      <div className="bg-white dark:bg-[#121215] flex flex-col w-full h-full overflow-hidden">
+      <div className="app-surface-card bg-white dark:bg-[#121215] flex flex-col w-full h-full overflow-hidden">
         
         {/* Modal Header */}
         <div className="px-3 sm:px-5 py-3 sm:py-3.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2 shrink-0 bg-zinc-50/70 dark:bg-zinc-900/40">
@@ -1150,7 +1150,7 @@ export const WhatsAppPayslipsModal: React.FC<WhatsAppPayslipsModalProps> = ({
           </div>
 
           {/* Desktop Table View */}
-          <div className="hidden md:block border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden bg-white dark:bg-[#121215]">
+          <div className="app-surface-card hidden md:block border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden bg-white dark:bg-[#121215]">
             <div className="max-h-72 overflow-y-auto">
               <table className="w-full text-left text-xs">
                 <thead className="sticky top-0 bg-zinc-100 dark:bg-zinc-900/90 backdrop-blur-xs border-b border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500 uppercase tracking-wider select-none z-10">
@@ -1627,7 +1627,7 @@ export const WhatsAppPayslipsModal: React.FC<WhatsAppPayslipsModalProps> = ({
       {/* Dispatch History Modal */}
       {historyTarget && createPortal(
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150 select-none">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
             
             <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/80 dark:bg-zinc-900/60">
               <div className="flex items-center gap-3 min-w-0">
@@ -1704,7 +1704,7 @@ export const WhatsAppPayslipsModal: React.FC<WhatsAppPayslipsModalProps> = ({
       {/* Customize Template Modal */}
       {showTemplateModal && createPortal(
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150 select-none">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             
             <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/80 dark:bg-zinc-900/60 shrink-0">
               <div className="flex items-center gap-3">

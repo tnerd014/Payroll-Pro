@@ -87,9 +87,9 @@ export class ErrorBoundary extends Component<Props, State> {
         window.matchMedia?.('(prefers-color-scheme: dark)').matches;
 
       return (
-        <div className={`${isRoot ? 'min-h-screen w-screen' : 'flex-1 min-h-[420px]'} flex flex-col items-center justify-center p-6 bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 select-none animate-fade-in`}>
+        <div className={`app-shell-bg ${isRoot ? 'min-h-screen w-screen' : 'flex-1 min-h-[420px]'} flex flex-col items-center justify-center p-6 bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 select-none animate-fade-in`}>
           
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 text-center">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 text-center">
             
             {/* Top Icon Badge */}
             <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto shadow-inner">

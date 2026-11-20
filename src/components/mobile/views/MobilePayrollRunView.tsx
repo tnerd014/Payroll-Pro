@@ -147,8 +147,8 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
     <div className="space-y-3.5 pb-2 select-none">
       
       {/* ── Top Period Banner & Search Filter Bar (Sticky & Compact) ── */}
-      <div className="sticky -top-3.5 z-30 pt-1 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
+      <div className="app-shell-bg sticky -top-3.5 z-30 pt-1 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
+        <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           {!isSearchOpen ? (
             <div className="flex items-center justify-between gap-2.5">
               {/* Left: Count & Lock Status */}
@@ -157,7 +157,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                   {filteredItems.length} Enrolled{selectedDept !== 'ALL' ? ` • ${selectedDept}` : ''}
                 </p>
                 {isLocked && (
-                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border bg-amber-500/10 border-amber-500/20 shrink-0" title="Payroll Locked">
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border bg-amber-500/15 border-amber-500/30 shrink-0" title="Payroll Locked">
                     <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
                   </span>
                 )}
@@ -166,8 +166,8 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
               {/* Right: Compact Net Amount & Action Icons */}
               <div className="flex items-center gap-1.5 shrink-0">
                 {/* Total Net Pill */}
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-mono font-bold text-xs shrink-0">
-                  <span className="text-[8px] uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70 font-semibold">Net</span>
+                <div className="app-money-chip flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-mono font-bold text-xs shrink-0">
+                  <span className="text-[8px] uppercase tracking-wider opacity-75 font-semibold">Net</span>
                   <span>{formatCompactNaira(totalNet)}</span>
                 </div>
 
@@ -182,17 +182,17 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsSearchOpen(true)}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                  className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
                     searchQuery
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
-                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+                      ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
+                      : 'app-subtle-surface bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
                   }`}
                   title="Search Personnel"
                   aria-label="Search Personnel"
                 >
                   <Search className="w-3.5 h-3.5" />
                   {searchQuery && (
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400 ring-1 ring-black/20" />
                   )}
                 </button>
 
@@ -200,20 +200,20 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                 {/* Finalize & Lock / Unlock Quick Action */}
                 {isWriteDisabled ? (
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60"
+                    className="app-subtle-surface w-8 h-8 rounded-xl flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60"
                     title={
                       isReadOnly
                         ? (isLocked ? 'Payroll Locked (Offline Read-Only)' : 'Payroll Draft (Offline Read-Only)')
                         : (isLocked ? 'Payroll Locked (Auditor View - Read Only)' : 'Payroll Draft (Auditor View - Read Only)')
                     }
                   >
-                    {isLocked ? <Lock className="w-3.5 h-3.5 text-zinc-400" /> : <Unlock className="w-3.5 h-3.5 text-zinc-400" />}
+                    {isLocked ? <Lock className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" /> : <Unlock className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />}
                   </div>
                 ) : !isLocked ? (
                   <button
                     type="button"
                     onClick={() => setIsLockModalOpen(true)}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all active:scale-95 cursor-pointer"
+                    className="w-8 h-8 rounded-xl flex items-center justify-center bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 border border-amber-500/30 transition-all active:scale-95 cursor-pointer"
                     title={`Finalize & Lock Cycle (${formatCompactNaira(totalNet)})`}
                     aria-label="Finalize & Lock Cycle"
                   >
@@ -223,11 +223,11 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsUnlockModalOpen(true)}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60 transition-colors cursor-pointer"
+                    className="app-subtle-surface w-8 h-8 rounded-xl flex items-center justify-center bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60 transition-colors cursor-pointer"
                     title="Unlock Cycle"
                     aria-label="Unlock Cycle"
                   >
-                    <Unlock className="w-3.5 h-3.5 text-amber-500" />
+                    <Unlock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                   </button>
                 )}
               </div>
@@ -248,7 +248,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                     setIsSearchOpen(false);
                   }
                 }}
-                className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
               />
               <button
                 type="button"
@@ -256,7 +256,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                   setSearchQuery('');
                   setIsSearchOpen(false);
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 title="Cancel search"
                 aria-label="Cancel search"
               >
@@ -270,12 +270,12 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
       {/* ── Employee Payroll Cards Stack ── */}
       <div className="space-y-2.5">
         {filteredItems.length === 0 ? (
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center space-y-2">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center space-y-2">
             <Calculator className="w-8 h-8 text-zinc-400 mx-auto" />
             <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
               No matching payroll records found
             </h4>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               Try adjusting your search query or department filter.
             </p>
           </div>
@@ -290,7 +290,7 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                 isEmailed={Boolean(emailedPayslips?.[`${periodKey}_${item.employeeId}`])}
               />
             ))}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden mt-2">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden mt-2">
               <TablePagination
                 currentPage={currentPage}
                 totalItems={filteredItems.length}
@@ -327,10 +327,10 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
                 }}
                 className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
               >
-                <span className="px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+                <span className="app-surface-card px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
                   Bank Schedule
                 </span>
-                <div className="w-10 h-10 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                <div className="app-primary-btn w-10 h-10 rounded-2xl bg-emerald-600 text-white shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
                   <FileSpreadsheet className="w-4 h-4" />
                 </div>
               </button>
@@ -345,11 +345,11 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
               }}
               className="flex items-center gap-2.5 group cursor-pointer active:scale-95 transition-all outline-none"
             >
-              <span className="px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
+              <span className="app-surface-card px-2.5 py-1 rounded-xl bg-white/95 dark:bg-[#18181b]/95 border border-zinc-200/80 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 text-[11px] font-medium shadow-sm backdrop-blur-md">
                 View Payslips
               </span>
-              <div className="w-10 h-10 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-emerald-400 dark:text-emerald-600 border border-zinc-700/50 dark:border-zinc-200/50 shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
-                <FileText className="w-4 h-4" />
+              <div className="app-surface-card w-10 h-10 rounded-2xl bg-white dark:bg-[#18181b] text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-700/60 shadow-md flex items-center justify-center transition-transform group-hover:scale-105">
+                <FileText className="w-4 h-4 app-accent-text" />
               </div>
             </button>
           </div>
@@ -365,10 +365,10 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
               setIsSpeedDialOpen(!isSpeedDialOpen);
             }
           }}
-          className={`relative w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-90 outline-none focus:outline-none focus:ring-0 select-none ${
+          className={`app-primary-btn relative w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-90 outline-none focus:outline-none focus:ring-0 select-none ${
             isSpeedDialOpen && hasMultipleActions
-              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rotate-90 shadow-2xl'
-              : 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 border border-zinc-700/50 dark:border-zinc-200/50'
+              ? 'rotate-90 shadow-2xl'
+              : ''
           }`}
           title={
             hasMultipleActions
@@ -385,9 +385,9 @@ export const MobilePayrollRunView: React.FC<MobilePayrollRunViewProps> = ({
             <X className="w-5 h-5 transition-transform" />
           ) : (
             <div className="relative flex items-center justify-center">
-              <FileText className="w-5 h-5 text-emerald-400 dark:text-emerald-600" />
+              <FileText className="w-5 h-5" />
               {emailedCountForPeriod > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-zinc-900 dark:ring-zinc-100" />
+                <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-black/25" />
               )}
             </div>
           )}

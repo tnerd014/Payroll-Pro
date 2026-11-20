@@ -333,7 +333,7 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
       className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex flex-col justify-end sm:items-center sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200"
     >
       <div 
-        className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-5 shadow-2xl space-y-4 text-xs max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-250 ease-out"
+        className="app-surface-card bg-white dark:bg-[#121215] border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 sm:p-5 shadow-2xl space-y-4 text-xs max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-250 ease-out"
       >
         {/* Android Drag Handle Pill (Mobile only) */}
         <div className="sm:hidden w-full flex justify-center -mt-2 pb-1.5 cursor-grab">
@@ -373,7 +373,7 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
               <button
                 type="button"
                 onClick={toggleSelectAll}
-                className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                className="font-semibold app-accent-text text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
               >
                 {selectedCount === inspectionItems.length ? 'Deselect All' : 'Select All'}
               </button>
@@ -390,8 +390,8 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                     key={item.company.id}
                     className={`p-3 rounded-xl border transition space-y-2 ${
                       isSelected
-                        ? 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900/60 shadow-2xs'
-                        : 'border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/50 dark:bg-zinc-900/20 opacity-80'
+                        ? 'app-surface-card border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900/60 shadow-2xs'
+                        : 'app-subtle-surface border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/50 dark:bg-zinc-900/20 opacity-80'
                     }`}
                   >
                     <div 
@@ -401,7 +401,7 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                       {/* Checkbox */}
                       <div className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center border transition shrink-0 ${
                         isSelected
-                          ? 'bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 text-white dark:text-zinc-900'
+                          ? 'app-primary-btn bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 text-white dark:text-zinc-900'
                           : 'border-zinc-300 dark:border-zinc-700 bg-transparent'
                       }`}>
                         {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
@@ -502,7 +502,7 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                 type="button"
                 onClick={handleExecutePushSelected}
                 disabled={selectedCount === 0 || isSyncing}
-                className="h-9 px-4 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition disabled:opacity-40 cursor-pointer shadow-xs flex items-center gap-1.5"
+                className="app-primary-btn h-9 px-4 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition disabled:opacity-40 cursor-pointer shadow-xs flex items-center gap-1.5"
               >
                 {isSyncing ? (
                   <>
@@ -558,7 +558,7 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                   value={url}
                   onChange={e => setUrl(e.target.value)}
                   placeholder="https://your-server.co"
-                  className="w-full h-[35px] px-3 font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                  className="app-subtle-surface w-full h-[35px] px-3 font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
                 />
               </div>
 
@@ -570,7 +570,7 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowKey(!showKey)}
-                    className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                    className="text-[11px] font-medium app-accent-text text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
                   >
                     {showKey ? 'Hide' : 'Reveal'}
                   </button>
@@ -580,7 +580,7 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                   value={anonKey}
                   onChange={e => setAnonKey(e.target.value)}
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                  className="w-full h-[35px] px-3 font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                  className="app-subtle-surface w-full h-[35px] px-3 font-mono rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
                 />
               </div>
 
@@ -615,7 +615,7 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                     type="button"
                     onClick={handleTest}
                     disabled={isTesting || !url || !anonKey}
-                    className="h-9 px-3.5 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition disabled:opacity-50 cursor-pointer shadow-2xs"
+                    className="app-subtle-surface h-9 px-3.5 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-700 dark:text-zinc-200 transition disabled:opacity-50 cursor-pointer shadow-2xs"
                   >
                     {isTesting ? 'Testing...' : 'Test'}
                   </button>
@@ -643,7 +643,7 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                     type="button"
                     onClick={handleSaveAndConnect}
                     disabled={isSyncing || !url || !anonKey}
-                    className="h-9 px-4 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow-xs"
+                    className="app-primary-btn h-9 px-4 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition disabled:opacity-50 cursor-pointer shadow-xs"
                   >
                     {isSyncing ? 'Connecting...' : 'Connect'}
                   </button>
@@ -657,10 +657,10 @@ export const GlobalCloudModal: React.FC<GlobalCloudModalProps> = ({
                     type="button"
                     onClick={handlePullFromCloud}
                     disabled={isSyncing}
-                    className="w-full h-[38px] flex items-center justify-center gap-1.5 px-3 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition cursor-pointer shadow-2xs"
+                    className="app-subtle-surface w-full h-[38px] flex items-center justify-center gap-1.5 px-3 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-700 dark:text-zinc-300 transition cursor-pointer shadow-2xs"
                     title="Refresh company list from cloud"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 text-blue-500 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 app-accent-text text-blue-500 ${isSyncing ? 'animate-spin' : ''}`} />
                     <span>Refresh Cloud</span>
                   </button>
                 </div>

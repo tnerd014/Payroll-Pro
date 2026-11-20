@@ -159,9 +159,9 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
         {/* Export Card */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 flex flex-col justify-between space-y-5">
+        <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 flex flex-col justify-between space-y-5">
           <div className="space-y-3">
-            <div className="w-8 h-8 rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center text-zinc-900 dark:text-zinc-100">
+            <div className="w-8 h-8 rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 app-subtle-surface flex items-center justify-center text-zinc-900 dark:text-zinc-100">
               <Download className="w-4 h-4" />
             </div>
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
@@ -169,7 +169,7 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
             </h2>
             <div className="flex flex-wrap gap-1.5 pt-1">
               {['Summary KPI', 'Payroll Register', 'Bank Schedule', 'PAYE & Pension', 'Staff Loans', 'Welfare & Savings', 'Absence Log', 'Annual Matrix', 'Staff Directory'].map(item => (
-                <span key={item} className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium">
+                <span key={item} className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 app-subtle-surface text-zinc-600 dark:text-zinc-300 font-medium">
                   {item}
                 </span>
               ))}
@@ -179,14 +179,14 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
           <div className="flex flex-col sm:flex-row gap-2">
             <button
               onClick={handleDownloadWorkbook}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded text-xs font-medium app-primary-btn transition-colors shadow-none"
             >
               <Download className="w-3.5 h-3.5" />
               <span>{downloadSuccess ? 'Downloaded!' : 'Quick Export (.xlsx)'}</span>
             </button>
             <button
               onClick={() => setIsExportModalOpen(true)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded text-xs font-medium app-surface-card border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>Configure &amp; Export...</span>
@@ -195,22 +195,22 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
         </div>
 
         {/* Import Card */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 flex flex-col justify-between space-y-5">
+        <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 flex flex-col justify-between space-y-5">
           <div className="space-y-3">
-            <div className="w-8 h-8 rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center text-zinc-900 dark:text-zinc-100">
+            <div className="w-8 h-8 rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 app-subtle-surface flex items-center justify-center text-zinc-900 dark:text-zinc-100">
               <Upload className="w-4 h-4" />
             </div>
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
               Import & Sync from Excel
             </h2>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium">
+              <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 app-subtle-surface text-zinc-600 dark:text-zinc-300 font-medium">
                 Smart Merge
               </span>
-              <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium">
+              <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 app-subtle-surface text-zinc-600 dark:text-zinc-300 font-medium">
                 Complete Overwrite
               </span>
-              <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-mono">
+              <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 app-subtle-surface text-zinc-500 dark:text-zinc-400 font-mono">
                 .xlsx, .csv
               </span>
             </div>
@@ -227,7 +227,7 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
             />
             <label
               htmlFor="excel-file-upload"
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded text-xs font-medium app-surface-card border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
               <span>Select Excel File to Upload</span>
@@ -240,7 +240,7 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
       {/* Confirmation Modal */}
       {isImportModalOpen && parsedData && (
         <div className="fixed top-9 inset-x-0 bottom-0 z-40 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg w-full max-w-lg p-5 space-y-4 shadow-xl">
+          <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg w-full max-w-lg p-5 space-y-4 shadow-xl">
             <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-2.5">
               <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
                 <FileSpreadsheet className="w-4 h-4" />
@@ -249,9 +249,9 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
               <button onClick={() => setIsImportModalOpen(false)} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">✕</button>
             </div>
 
-            <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded border border-zinc-200 dark:border-zinc-800 space-y-1 text-xs">
+            <div className="bg-zinc-50 dark:bg-zinc-950 app-subtle-surface p-3 rounded border border-zinc-200 dark:border-zinc-800 space-y-1 text-xs">
               <div className="flex justify-between">
-                <span className="text-zinc-500">Records Detected:</span>
+                <span className="text-zinc-500 dark:text-zinc-400">Records Detected:</span>
                 <span className="font-mono text-zinc-900 dark:text-zinc-100 font-semibold">{parsedData.length} Staff</span>
               </div>
               {importErrors.length > 0 && (
@@ -272,8 +272,8 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
                   onClick={() => setImportMode('merge')}
                   className={`flex items-start gap-2.5 p-3 rounded border cursor-pointer transition-colors ${
                     importMode === 'merge' 
-                      ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100' 
-                      : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-850 text-zinc-500 hover:border-zinc-300'
+                      ? 'bg-zinc-100 dark:bg-zinc-800 app-subtle-surface border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100' 
+                      : 'bg-white dark:bg-zinc-950 app-surface-card border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:border-zinc-300'
                   }`}
                 >
                   <input
@@ -297,8 +297,8 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
                   onClick={() => setImportMode('overwrite')}
                   className={`flex items-start gap-2.5 p-3 rounded border cursor-pointer transition-colors ${
                     importMode === 'overwrite' 
-                      ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100' 
-                      : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-850 text-zinc-500 hover:border-zinc-300'
+                      ? 'bg-zinc-100 dark:bg-zinc-800 app-subtle-surface border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100' 
+                      : 'bg-white dark:bg-zinc-950 app-surface-card border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:border-zinc-300'
                   }`}
                 >
                   <input
@@ -330,7 +330,7 @@ export const ExcelHubView: React.FC<ExcelHubViewProps> = ({
               </button>
               <button
                 onClick={handleConfirmImport}
-                className="px-4 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none"
+                className="px-4 py-1.5 rounded text-xs font-medium app-primary-btn transition-colors shadow-none"
               >
                 Apply Import ({parsedData.length} records)
               </button>

@@ -145,15 +145,15 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#f4f4f5] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden print-modal-root select-none animate-in fade-in duration-150">
+    <div className="app-shell-bg fixed inset-0 z-50 flex flex-col bg-[#f4f4f5] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 overflow-hidden print-modal-root select-none animate-in fade-in duration-150">
       
       {/* ── 1. Top Full-Page Header Bar with Back Button (Full Screen Room) ── */}
-      <header className="no-print shrink-0 h-14 bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 px-3 flex items-center justify-between z-10 shadow-xs">
+      <header className="no-print app-header shrink-0 h-14 bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 px-3 flex items-center justify-between z-10 shadow-xs">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             type="button"
             onClick={onClose}
-            className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors shrink-0 cursor-pointer active:scale-95"
+            className="app-header-pill app-header-text flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200/70 dark:border-zinc-700/60 font-semibold text-xs transition-colors shrink-0 cursor-pointer active:scale-95"
             title="Back to Payroll Run"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -162,17 +162,17 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
 
           <div className="min-w-0 pr-1">
             <div className="flex items-center gap-1.5 truncate">
-              <h3 className="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate">
+              <h3 className="app-header-text font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate">
                 {item.fullName}
               </h3>
               {isLocked && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/60 shrink-0">
+                <span className="app-header-pill app-header-text inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border border-emerald-200/70 dark:border-emerald-800/60 shrink-0">
                   <Lock className="w-2.5 h-2.5" />
                   <span>Locked</span>
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
+            <p className="app-header-subtext text-[10px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
               {item.employeeCode} &bull; {monthLabel} {year} &bull; {item.department || 'General'}
             </p>
           </div>
@@ -182,17 +182,17 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
         <button
           type="button"
           onClick={() => setZoomMode(z => z === 'fit' ? 'full' : 'fit')}
-          className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors border border-zinc-200/70 dark:border-zinc-700/60 shadow-2xs shrink-0 cursor-pointer active:scale-95 ml-2"
+          className="app-header-pill app-header-text flex items-center gap-1.5 py-1.5 px-2.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors border border-zinc-200/70 dark:border-zinc-700/60 shadow-2xs shrink-0 cursor-pointer active:scale-95 ml-2"
           title={zoomMode === 'fit' ? 'Zoom to 100% full scale' : 'Fit to screen width'}
         >
           {zoomMode === 'fit' ? (
             <>
-              <ZoomIn className="w-3.5 h-3.5 text-zinc-500" />
+              <ZoomIn className="w-3.5 h-3.5 opacity-80" />
               <span>100%</span>
             </>
           ) : (
             <>
-              <Minimize2 className="w-3.5 h-3.5 text-zinc-500" />
+              <Minimize2 className="w-3.5 h-3.5 opacity-80" />
               <span>Fit</span>
             </>
           )}
@@ -201,7 +201,7 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
         <button
           type="button"
           onClick={onClose}
-          className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shrink-0 ml-1.5"
+          className="app-header-icon p-1.5 rounded-xl border border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shrink-0 ml-1.5"
           title="Close"
         >
           <X className="w-4 h-4" />
@@ -210,7 +210,7 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
 
       {/* ── 2. Interactive Mobile Workspace with Hand Gesture Zoom (Pinch / Pan / Double-Tap) ── */}
       <main 
-        className="no-print flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain p-2 sm:p-4 pb-24 flex flex-col items-center justify-start bg-zinc-100/90 dark:bg-[#0c0c0e]"
+        className="no-print app-shell-bg flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain p-2 sm:p-4 pb-24 flex flex-col items-center justify-start bg-zinc-100/90 dark:bg-[#0c0c0e]"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <PinchZoomContainer
@@ -243,13 +243,13 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
       </div>
 
       {/* ── 4. Bottom Fixed Action Dock ── */}
-      <footer className="no-print shrink-0 p-3.5 bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800/80 z-20">
+      <footer className="no-print app-bottom-nav shrink-0 p-3.5 bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-zinc-800/80 z-20">
         <div className="flex items-center justify-between gap-3 max-w-sm mx-auto w-full">
           {/* Primary Print Button */}
           <button
             type="button"
             onClick={handlePrint}
-            className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+            className="app-primary-btn flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
             title="Print Official Payslip"
             aria-label="Print Official Payslip"
           >
@@ -261,11 +261,11 @@ export const MobilePayslipPreviewSheet: React.FC<MobilePayslipPreviewSheetProps>
           <button
             type="button"
             onClick={onClose}
-            className="h-12 px-5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs shrink-0"
+            className="app-subtle-surface h-12 px-5 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/80 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs shrink-0"
             title="Close Preview"
             aria-label="Close Preview"
           >
-            <Check className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+            <Check className="w-4 h-4" />
             <span>Done</span>
           </button>
         </div>

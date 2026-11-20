@@ -78,7 +78,7 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
             onClick={() => setShowDeleteConfirm(false)}
           />
           {/* Modal Card */}
-          <div className="relative w-full max-w-xs bg-white dark:bg-[#18181b] rounded-2xl shadow-2xl border border-rose-200 dark:border-rose-800/60 p-5 space-y-3 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
+          <div className="app-surface-card relative w-full max-w-xs bg-white dark:bg-[#18181b] text-zinc-900 dark:text-zinc-100 rounded-2xl shadow-2xl border border-rose-200 dark:border-rose-800/60 p-5 space-y-3 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
             {/* Header */}
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center shrink-0">
@@ -98,7 +98,7 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-semibold transition-colors cursor-pointer active:scale-95"
+                className="app-subtle-surface flex-1 py-2.5 px-3 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold transition-colors cursor-pointer active:scale-95"
               >
                 Cancel
               </button>
@@ -137,7 +137,7 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
             <button
               type="button"
               onClick={handleStartEdit}
-              className="flex-1 h-12 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+              className="app-primary-btn flex-1 h-12 rounded-2xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
             >
               <Edit3 className="w-4 h-4" />
               <span>Edit Profile</span>
@@ -151,7 +151,7 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
         {/* ── 1. Clean Minimalist Profile Header (Spacious, Apple Contacts Style) ── */}
         <div className="flex flex-col items-center text-center space-y-2 pt-1">
           {/* Avatar */}
-          <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 font-extrabold text-xl flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shadow-2xs">
+          <div className="app-subtle-surface w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 font-extrabold text-xl flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/80 shadow-2xs">
             {initials}
           </div>
 
@@ -164,7 +164,7 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
                 isActive
                   ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/70 dark:border-emerald-800/60'
-                  : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
+                  : 'app-subtle-surface bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
                 <span>{employee.status}</span>
@@ -176,10 +176,10 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
             </p>
 
             <div className="flex items-center justify-center gap-1.5 mt-2">
-              <span className="font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded-md text-zinc-700 dark:text-zinc-300 font-bold border border-zinc-200/60 dark:border-zinc-700/60">
+              <span className="app-subtle-surface font-mono text-[10px] bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded-md text-zinc-700 dark:text-zinc-300 font-bold border border-zinc-200/60 dark:border-zinc-700/60">
                 {employee.code || 'NO-ID'}
               </span>
-              <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded-md text-zinc-600 dark:text-zinc-300 font-medium border border-zinc-200/60 dark:border-zinc-700/60">
+              <span className="app-subtle-surface text-[10px] bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded-md text-zinc-600 dark:text-zinc-300 font-medium border border-zinc-200/60 dark:border-zinc-700/60">
                 {employee.employmentType || 'Full-Time'}
               </span>
             </div>
@@ -191,9 +191,9 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
               {employee.phone && (
                 <a
                   href={`tel:${employee.phone}`}
-                  className="flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition"
+                  className="app-subtle-surface flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200/70 dark:border-zinc-700/70 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition"
                 >
-                  <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <Phone className="w-3.5 h-3.5 app-accent-text text-emerald-600 dark:text-emerald-400" />
                   <span className="truncate">{employee.phone}</span>
                 </a>
               )}
@@ -201,9 +201,9 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
               {employee.email && (
                 <a
                   href={`mailto:${employee.email}`}
-                  className="flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition"
+                  className="app-subtle-surface flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl border border-zinc-200/70 dark:border-zinc-700/70 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition"
                 >
-                  <Mail className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <Mail className="w-3.5 h-3.5 app-accent-text text-indigo-600 dark:text-indigo-400" />
                   <span className="truncate">Email</span>
                 </a>
               )}
@@ -212,25 +212,25 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
         </div>
 
         {/* ── 2. Prominent Minimalist Compensation Card ── */}
-        <div className="bg-zinc-50 dark:bg-zinc-900/70 border border-zinc-200/70 dark:border-zinc-800 rounded-2xl p-4 text-center space-y-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+        <div className="app-subtle-surface bg-zinc-50 dark:bg-zinc-900/70 border border-zinc-200/70 dark:border-zinc-800 rounded-2xl p-4 text-center space-y-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             Monthly Gross Salary
           </span>
           <div className="text-2xl sm:text-3xl font-extrabold font-mono text-zinc-900 dark:text-zinc-50 tracking-tight">
             {formatNaira(employee.monthlyGross)}
           </div>
-          <div className="text-xs text-zinc-500 font-mono pt-0.5">
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 font-mono pt-0.5">
             Annual: {formatNaira(employee.monthlyGross * 12)} / year
           </div>
         </div>
 
         {/* ── 3. Direct Transfer & Bank Details (Clean List Rows) ── */}
         <div className="space-y-2.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-1">
             Bank Transfer Details
           </span>
 
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs shadow-2xs">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs shadow-2xs">
             
             {/* Bank Name */}
             <div className="flex items-center justify-between p-3.5">
@@ -268,11 +268,11 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
 
         {/* ── 4. Employment Tenure Dates ── */}
         <div className="space-y-2.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-1">
             Employment Tenure &amp; Dates
           </span>
 
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs shadow-2xs">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs shadow-2xs">
             {/* Start Date / Hire Date */}
             <div className="flex items-center justify-between p-3.5">
               <span className="text-zinc-500 dark:text-zinc-400">Start Date (Hire)</span>
@@ -291,14 +291,14 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
 
             {/* Multi-stint History */}
             {employee.stints && employee.stints.length > 0 && (
-              <div className="p-3.5 space-y-1.5 bg-zinc-50/50 dark:bg-zinc-900/40">
+              <div className="app-subtle-surface p-3.5 space-y-1.5 bg-zinc-50/50 dark:bg-zinc-900/40 rounded-b-2xl">
                 <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                   Tenure History ({employee.stints.length} stints)
                 </span>
                 {employee.stints.map((st, idx) => (
                   <div key={st.stintId || idx} className="flex items-center justify-between text-[11px] text-zinc-600 dark:text-zinc-400 font-mono">
                     <span>#{idx + 1}: {formatDate(st.startDate)} → {st.endDate ? formatDate(st.endDate) : 'Active'}</span>
-                    {st.exitReason && <span className="text-zinc-400 text-[10px] font-sans">({st.exitReason})</span>}
+                    {st.exitReason && <span className="text-zinc-500 dark:text-zinc-400 text-[10px] font-sans">({st.exitReason})</span>}
                   </div>
                 ))}
               </div>
@@ -308,11 +308,11 @@ export const MobileStaffDetailSheet: React.FC<MobileStaffDetailSheetProps> = ({
 
         {/* ── 5. Statutory & Tax Registration (Clean List Rows) ── */}
         <div className="space-y-2.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-1">
             Statutory Credentials &amp; Tax IDs
           </span>
 
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs shadow-2xs">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800 rounded-2xl divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs shadow-2xs">
             {/* State of Residence */}
             <div className="flex items-center justify-between p-3.5">
               <span className="text-zinc-500 dark:text-zinc-400">State of Residence (IRS)</span>

@@ -813,7 +813,7 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
       {/* ── 7. Columns & Fields to Display Modal (Desktop Feature in Non-Disruptive Mobile Modal) ── */}
       {isColumnsModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150 select-none">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-4 space-y-3.5 shadow-2xl max-h-[85vh] flex flex-col">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-4 space-y-3.5 shadow-2xl max-h-[85vh] flex flex-col">
             
             {/* Header */}
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
@@ -931,7 +931,7 @@ export const MobilePayslipPrintView: React.FC<MobilePayslipPrintViewProps> = ({
       {/* ── 8. Staff Selection Drawer with Check & Uncheck & Fixed Height Done Button ── */}
       {isStaffPickerOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center sm:items-center sm:p-4 select-none animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-4 space-y-3.5 shadow-2xl max-h-[85vh] flex flex-col">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-4 space-y-3.5 shadow-2xl max-h-[85vh] flex flex-col">
             
             {/* Header */}
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800 shrink-0">

@@ -157,7 +157,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
 
   if (isDesignerOpen) {
     return createPortal(
-      <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-zinc-100 dark:bg-[#09090b] flex flex-col select-none overflow-hidden print:top-0 print:inset-0">
+      <div className="app-shell-bg fixed top-9 inset-x-0 bottom-0 z-50 bg-zinc-100 dark:bg-[#09090b] flex flex-col select-none overflow-hidden print:top-0 print:inset-0">
         <PayslipDesignerPage
           company={company}
           employees={employees && employees.length > 0 ? employees : []}
@@ -184,14 +184,14 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-[#f4f4f5] dark:bg-[#09090b] flex flex-col overflow-hidden text-zinc-900 dark:text-zinc-100 print:top-0 print:inset-0 print:bg-white print:z-auto">
+    <div className="app-shell-bg fixed top-9 inset-x-0 bottom-0 z-50 bg-[#f4f4f5] dark:bg-[#09090b] flex flex-col overflow-hidden text-zinc-900 dark:text-zinc-100 print:top-0 print:inset-0 print:bg-white print:z-auto">
       
       {/* Flush Top Header Bar - Directly below desktop menu bar */}
-      <div className="no-print h-11 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 px-4 sm:px-6 flex items-center justify-between shrink-0">
+      <div className="no-print app-surface-card h-11 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 px-4 sm:px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors"
+            className="app-subtle-surface flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
             title="Back to Payroll (Esc)"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -201,8 +201,8 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
               Employee Payslip
             </span>
-            <span className="text-xs text-zinc-400 font-mono">[{item.employeeCode}]</span>
-            <span className="text-xs text-zinc-500 font-medium hidden sm:inline">&bull; {item.fullName}</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">[{item.employeeCode}]</span>
+            <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium hidden sm:inline">&bull; {item.fullName}</span>
           </div>
         </div>
 
@@ -217,7 +217,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
           <button
             type="button"
             onClick={() => setIsDesignerOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer"
+            className="app-subtle-surface flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer"
             title="Design Payslip Layout & Theme"
           >
             <Palette className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
@@ -228,7 +228,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             <button
               type="button"
               onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-2xs cursor-pointer"
+              className="app-primary-btn flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-2xs cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print</span>
@@ -236,7 +236,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
             </button>
 
             {isActionMenuOpen && (
-              <div className="absolute right-0 mt-1.5 w-32 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95">
+              <div className="app-surface-card absolute right-0 mt-1.5 w-32 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95">
                 <button
                   type="button"
                   onClick={() => {
@@ -312,7 +312,7 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
       </div>
 
       {/* Scrollable Canvas for the Payslip */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-10 flex justify-center items-start bg-zinc-100/90 dark:bg-[#0c0c0e]">
+      <div className="app-shell-bg flex-1 overflow-y-auto p-4 sm:p-6 pb-10 flex justify-center items-start bg-zinc-100/90 dark:bg-[#0c0c0e] print:bg-white">
         <div className="w-full max-w-3xl my-3 mb-8 overflow-hidden flex flex-col">
           <CustomizablePayslipView
             item={item}

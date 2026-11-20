@@ -420,7 +420,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
               Payroll Processing
             </h1>
-            <p className="text-xs text-zinc-500 mt-0.5">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Active cycle for {monthLabel} {year} &bull; {items.length} Employees enrolled
             </p>
           </div>
@@ -428,15 +428,15 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           {/* Action Controls Toolbar */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Unified Period Selector */}
-            <div className="h-8 flex items-center gap-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium text-zinc-700 dark:text-zinc-200">
-              <Calendar className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+            <div className="app-subtle-surface h-8 flex items-center gap-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium text-zinc-700 dark:text-zinc-200">
+              <Calendar className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
               <select
                 value={selectedMonth}
                 onChange={(e) => onPeriodChange(e.target.value, year)}
                 className="bg-transparent font-medium text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
               >
                 {MONTHS.map(m => (
-                  <option key={m.key} value={m.key} className="dark:bg-[#121215]">{m.label}</option>
+                  <option key={m.key} value={m.key} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">{m.label}</option>
                 ))}
               </select>
               <select
@@ -452,7 +452,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                   const yearList: number[] = [];
                   for (let y = minYear; y <= maxYear; y++) yearList.push(y);
                   return yearList.map(y => (
-                    <option key={y} value={y} className="dark:bg-[#121215]">{y}</option>
+                    <option key={y} value={y} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">{y}</option>
                   ));
                 })()}
               </select>
@@ -465,7 +465,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                   ? 'border-blue-300 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold'
                   : isLocked
                     ? 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-semibold'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-700 dark:text-zinc-300'
+                    : 'app-surface-card border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-700 dark:text-zinc-300'
                   }`}>
                   {isViewingArchived ? (
                     <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
@@ -544,10 +544,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsLockModalOpen(true)}
-                  className={`flex items-center gap-1.5 px-3 h-8 rounded-md font-medium text-xs transition shadow-xs whitespace-nowrap cursor-pointer ${snapshotsForPeriod.length > 0
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90'
-                    }`}
+                  className="app-primary-btn flex items-center gap-1.5 px-3 h-8 rounded-md font-medium text-xs transition shadow-xs whitespace-nowrap cursor-pointer bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90"
                 >
                   <Lock className="w-3.5 h-3.5" />
                   <span>Finalize &amp; Lock (v{nextVersion})</span>
@@ -563,7 +560,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             {/* Payslips Button */}
             <button
               onClick={() => setIsBulkPrintOpen(true)}
-              className="h-8 px-2.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-100 dark:hover:bg-zinc-800/60 flex items-center gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 transition whitespace-nowrap cursor-pointer"
+              className="app-surface-card h-8 px-2.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-100 dark:hover:bg-zinc-800/60 flex items-center gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 transition whitespace-nowrap cursor-pointer"
               title="Open Bulk Payslip Studio"
             >
               <Printer className="w-3.5 h-3.5 shrink-0" />
@@ -612,7 +609,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
       )}
 
       {/* 3 Sub-Tabs Navigation */}
-      <div className="flex bg-zinc-100 dark:bg-zinc-900/60 p-1 rounded-md border border-zinc-200 dark:border-zinc-800/80 items-center overflow-x-auto gap-1">
+      <div className="app-subtle-surface flex bg-zinc-100 dark:bg-zinc-900/60 p-1 rounded-md border border-zinc-200 dark:border-zinc-800/80 items-center overflow-x-auto gap-1">
         {[
           { id: 'processing', label: 'Master Register' },
           { id: 'paye', label: 'PAYE Schedule' },
@@ -623,9 +620,9 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             <button
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id as any)}
-              className={`px-3 py-1.5 rounded text-xs transition-all whitespace-nowrap ${isActive
-                ? 'bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 font-medium shadow-xs'
-                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+              className={`px-3 py-1.5 rounded text-xs transition-all whitespace-nowrap cursor-pointer ${isActive
+                ? 'app-active-tab bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 font-medium shadow-xs'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`}
             >
               {tab.label}
@@ -664,10 +661,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
           {/* Card 1: Gross */}
           <div
-            className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between"
+            className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between"
             title={`Gross Compensation: ${formatNaira(totalGross)}${totalAbsenceDeduction > 0 ? ` (after ${formatNaira(totalAbsenceDeduction)} unpaid absence adjustment)` : ''}`}
           >
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Total Gross Compensation
             </span>
             <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
@@ -684,10 +681,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
           {/* Card 2: Deductions */}
           <div
-            className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between"
+            className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between"
             title={`PAYE: ${formatNaira(totalPaye)} | Pension: ${formatNaira(totalEmpPension)} | Loans: ${formatNaira(totalLoansDeduction)} | Welfare: ${formatNaira(totalContributions)}`}
           >
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Total Deductions
             </span>
             <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
@@ -697,8 +694,8 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
               {totalLoansDeduction > 0 || totalContributions > 0 ? (
                 <span>
                   Statutory
-                  {totalLoansDeduction > 0 ? ` &bull; Loans: ${formatCompactNaira(totalLoansDeduction)}` : ''}
-                  {totalContributions > 0 ? ` &bull; Welfare: ${formatCompactNaira(totalContributions)}` : ''}
+                  {totalLoansDeduction > 0 ? ` • Loans: ${formatCompactNaira(totalLoansDeduction)}` : ''}
+                  {totalContributions > 0 ? ` • Welfare: ${formatCompactNaira(totalContributions)}` : ''}
                 </span>
               ) : (
                 <span>PAYE tax &bull; Pension remittances</span>
@@ -706,18 +703,18 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
             </div>
           </div>
 
-          {/* Card 3: Net */}
+          {/* Card 3: Net (Hero Card) */}
           <div
-            className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between"
+            className="app-hero-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800 rounded-lg p-3.5 flex flex-col justify-between"
             title={`Total Net Take-Home: ${formatNaira(totalNet)}`}
           >
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            <span className="app-hero-label text-[11px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Total Net Payout (Take-Home)
             </span>
-            <div className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
+            <div className="app-hero-value text-xl sm:text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono mt-1.5 mb-2">
               {formatNaira(totalNet)}
             </div>
-            <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate pt-1.5 border-t border-zinc-100 dark:border-zinc-800/60">
+            <div className="app-hero-divider app-hero-label text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate pt-1.5 border-t border-zinc-100 dark:border-zinc-800/60">
               <span>{totalGross > 0 ? `${((totalNet / totalGross) * 100).toFixed(1)}% of gross` : '0%'} &bull; Disbursed to {displayItems.length} staff</span>
             </div>
           </div>
@@ -730,19 +727,19 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
         {/* Search Input */}
         <div className="relative flex-1 max-w-sm">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search employee name or code..."
-            className="w-full bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-7 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition"
+            className="app-subtle-surface w-full bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-7 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition p-0.5 rounded cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition p-0.5 rounded cursor-pointer"
               title="Clear search"
             >
               <X className="w-3.5 h-3.5" />
@@ -755,10 +752,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           <select
             value={selectedDeptFilter}
             onChange={(e) => setSelectedDeptFilter(e.target.value)}
-            className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none cursor-pointer"
+            className="app-subtle-surface h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] px-2.5 text-xs text-zinc-700 dark:text-zinc-300 outline-none cursor-pointer"
           >
             {departments.map(d => (
-              <option key={d} value={d}>{d === 'ALL' ? 'All Departments' : d}</option>
+              <option key={d} value={d} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">{d === 'ALL' ? 'All Departments' : d}</option>
             ))}
           </select>
 
@@ -766,8 +763,8 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           <button
             onClick={toggleCompactMode}
             className={`h-8 px-2.5 rounded-md border text-xs font-medium flex items-center gap-1 transition cursor-pointer ${isCompactMode
-              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent'
-              : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+              ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent'
+              : 'app-surface-card border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
               }`}
           >
             <SlidersHorizontal className="w-3 h-3" />
@@ -778,7 +775,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
           <button
             type="button"
             onClick={() => setShowStats(!showStats)}
-            className="h-8 flex items-center gap-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 text-xs font-medium transition cursor-pointer shadow-2xs"
+            className="app-surface-card h-8 flex items-center gap-1.5 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 text-xs font-medium transition cursor-pointer shadow-2xs"
             title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
           >
             {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -789,12 +786,12 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
       </div>
 
       {/* Master Data Register Table */}
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xs overflow-hidden">
+      <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xs overflow-hidden">
         <div className={`overflow-x-auto overflow-y-auto ${showStats ? 'max-h-[calc(100vh-285px)]' : 'max-h-[calc(100vh-185px)]'}`}>
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 shadow-xs">
-              <tr className="bg-zinc-50 dark:bg-zinc-900">
-                <th className="w-20 px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-tl-lg">
+            <thead className="app-subtle-surface sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 shadow-xs">
+              <tr className="app-subtle-surface bg-zinc-50 dark:bg-zinc-900">
+                <th className="app-subtle-surface w-20 px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900 rounded-tl-lg">
                   <SortableHeader
                     label="Code"
                     field="code"
@@ -804,7 +801,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                     align="left"
                   />
                 </th>
-                <th className="px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900">
+                <th className="app-subtle-surface px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900">
                   <SortableHeader
                     label="Employee"
                     field="name"
@@ -814,7 +811,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                     align="left"
                   />
                 </th>
-                <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                <th className="app-subtle-surface px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                   <SortableHeader
                     label="Gross"
                     field="gross"
@@ -826,7 +823,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                 </th>
                 {activeSubTab === 'processing' && (
                   <>
-                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="PAYE"
                         field="paye"
@@ -836,7 +833,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Pension"
                         field="pension"
@@ -846,7 +843,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Loans"
                         field="loans"
@@ -856,7 +853,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Contribution"
                         field="contribution"
@@ -866,7 +863,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Payout"
                         field="payout"
@@ -876,7 +873,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Net Pay"
                         field="net"
@@ -890,7 +887,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                 )}
                 {activeSubTab === 'paye' && (
                   <>
-                    <th className="px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Annual Gross"
                         field="annualGross"
@@ -900,7 +897,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Total CRA"
                         field="totalCra"
@@ -910,7 +907,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Taxable Income"
                         field="taxableIncome"
@@ -920,7 +917,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Monthly PAYE"
                         field="paye"
@@ -934,7 +931,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                 )}
                 {activeSubTab === 'pension' && (
                   <>
-                    <th className="px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Employee (8%)"
                         field="pension"
@@ -944,7 +941,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Employer (10%)"
                         field="employerPension"
@@ -954,7 +951,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                         align="right"
                       />
                     </th>
-                    <th className="px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
+                    <th className="app-subtle-surface px-3.5 py-2.5 text-right bg-zinc-50 dark:bg-zinc-900">
                       <SortableHeader
                         label="Total Remittance"
                         field="totalPension"
@@ -1087,7 +1084,7 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
                           <span className="text-zinc-300 dark:text-zinc-600 font-light">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                      <td className="app-money-text px-3 py-2 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">
                         {formatNaira(item.netTakeHome)}
                       </td>
                     </>
@@ -1095,10 +1092,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
                   {activeSubTab === 'paye' && (
                     <>
-                      <td className="px-3 py-2 text-right font-mono text-zinc-500">
+                      <td className="px-3 py-2 text-right font-mono text-zinc-600 dark:text-zinc-400">
                         {formatNaira(item.monthlyGross * 12)}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-zinc-500">
+                      <td className="px-3 py-2 text-right font-mono text-zinc-600 dark:text-zinc-400">
                         {formatNaira(item.totalCra)}
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-zinc-700 dark:text-zinc-300">
@@ -1112,10 +1109,10 @@ export const PayrollProcessingView: React.FC<PayrollProcessingViewProps> = ({
 
                   {activeSubTab === 'pension' && (
                     <>
-                      <td className="px-3 py-2 text-right font-mono text-zinc-500">
+                      <td className="px-3 py-2 text-right font-mono text-zinc-600 dark:text-zinc-400">
                         {formatNaira(item.employeePension)}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-zinc-500">
+                      <td className="px-3 py-2 text-right font-mono text-zinc-600 dark:text-zinc-400">
                         {formatNaira(item.employerPension)}
                       </td>
                       <td className="px-3 py-2 text-right font-mono font-medium text-zinc-900 dark:text-zinc-100">

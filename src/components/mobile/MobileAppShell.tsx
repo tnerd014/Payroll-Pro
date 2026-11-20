@@ -48,6 +48,7 @@ import { AbsenceLogView } from '../absences/AbsenceLogView';
 import { isStandaloneOfflineMode, getSavedCloudConfig } from '../../services/supabaseClient';
 import { EmailPayslipsModal } from '../payroll/EmailPayslipsModal';
 import { WhatsAppPayslipsModal } from '../payroll/WhatsAppPayslipsModal';
+import { AppThemeId } from '../../constants/appThemes';
 
 interface MobileAppShellProps {
     activeView: AppView;
@@ -62,6 +63,8 @@ interface MobileAppShellProps {
     monthLabel: string;
     onPeriodChange: (month: string, year: number) => void;
     isLocked: boolean;
+    appTheme?: AppThemeId;
+    onSelectTheme?: (themeId: AppThemeId) => void;
     isDarkTheme: boolean;
     onToggleTheme: () => void;
     currentUser: TeamMember | null;
@@ -151,6 +154,8 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
     monthLabel,
     onPeriodChange,
     isLocked,
+    appTheme,
+    onSelectTheme,
     isDarkTheme,
     onToggleTheme,
     currentUser,
@@ -413,7 +418,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
             <main
                 ref={mainScrollRef}
                 key={activeView}
-                className={`flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain ${(activeView === 'payslip-designer' || activeView === 'payslips' || activeView === 'profile') ? 'p-0' : activeView === 'analytics' ? 'px-3.5 pt-3 pb-0' : 'px-3.5 pt-3 pb-3'}`}
+                className={`app-shell-bg flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain ${(activeView === 'payslip-designer' || activeView === 'payslips' || activeView === 'profile') ? 'p-0' : activeView === 'analytics' ? 'px-3.5 pt-3 pb-0' : 'px-3.5 pt-3 pb-3'}`}
                 style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             >
                 {activeView === 'dashboard' ? (
@@ -650,6 +655,10 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
                         onUpdateCurrentUser={onUpdateCurrentUser}
                         onSignOut={onSignOut}
                         isMobileView={true}
+                        appTheme={appTheme}
+                        onSelectTheme={onSelectTheme}
+                        isDarkTheme={isDarkTheme}
+                        onToggleTheme={onToggleTheme}
                     />
                 ) : (
                     <MobileDashboardView

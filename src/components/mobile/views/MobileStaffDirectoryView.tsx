@@ -122,8 +122,8 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
     <div className="space-y-3.5 pb-2 select-none relative">
       
       {/* ── Top Search & Filter Bar (Sticky & Compact) ── */}
-      <div className="sticky -top-3.5 z-30 pt-1 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
+      <div className="app-shell-bg sticky -top-3.5 z-30 pt-1 pb-1 bg-[#fbfbfb] dark:bg-[#09090b]">
+        <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           {!isSearchOpen ? (
             <div className="flex items-center justify-between gap-2">
               {/* Left: Title & Status Count */}
@@ -131,7 +131,7 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight truncate">
                   Staff Directory
                 </h3>
-                <p className="text-[10px] text-zinc-400 font-mono truncate">
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
                   {filteredEmployees.length} shown &bull; {activeCount} active{selectedDept !== 'ALL' ? ` • ${selectedDept}` : ''}
                 </p>
               </div>
@@ -143,8 +143,8 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
                   onClick={() => setSelectedStatus(selectedStatus === 'Active' ? 'ALL' : 'Active')}
                   className={`px-2 py-1 rounded-xl text-[10px] font-semibold border transition-colors cursor-pointer ${
                     selectedStatus === 'Active'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200/60 dark:border-zinc-700/60'
+                      ? 'app-active-tab bg-emerald-600 text-white border-transparent'
+                      : 'app-subtle-surface bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200/60 dark:border-zinc-700/60'
                   }`}
                 >
                   {selectedStatus === 'Active' ? 'Active' : 'All'}
@@ -161,17 +161,17 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
                 <button
                   type="button"
                   onClick={() => setIsSearchOpen(true)}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                  className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
                     searchQuery
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
-                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+                      ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
+                      : 'app-subtle-surface bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
                   }`}
                   title="Search Directory"
                   aria-label="Search Directory"
                 >
                   <Search className="w-3.5 h-3.5" />
                   {searchQuery && (
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400 ring-1 ring-black/20" />
                   )}
                 </button>
               </div>
@@ -192,7 +192,7 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
                     setIsSearchOpen(false);
                   }
                 }}
-                className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
               />
               <button
                 type="button"
@@ -200,7 +200,7 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
                   setSearchQuery('');
                   setIsSearchOpen(false);
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 title="Cancel search"
                 aria-label="Cancel search"
               >
@@ -214,12 +214,12 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
       {/* ── Staff Cards Stack ── */}
       <div className="space-y-2.5">
         {filteredEmployees.length === 0 ? (
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center space-y-2">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center space-y-2">
             <Users className="w-8 h-8 text-zinc-400 mx-auto" />
             <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
               No staff members found
             </h4>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               Try adjusting your search criteria or tap "+" to enroll new staff.
             </p>
           </div>
@@ -232,7 +232,7 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
                 onView={(e) => setSelectedStaff(e)}
               />
             ))}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden mt-2">
+            <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden mt-2">
               <TablePagination
                 currentPage={currentPage}
                 totalItems={filteredEmployees.length}
@@ -252,7 +252,7 @@ export const MobileStaffDirectoryView: React.FC<MobileStaffDirectoryViewProps> =
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10"
+            className="app-primary-btn w-14 h-14 rounded-2xl bg-emerald-600 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer"
             title="Add Staff Member"
             aria-label="Add Staff Member"
           >

@@ -962,7 +962,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="space-y-6">
 
       {/* Sticky Header & Tabs Container with Persistent Save Button */}
-      <div className="sticky top-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md pt-3.5 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 border-b border-zinc-200/80 dark:border-zinc-800/80 space-y-2.5 transition-all">
+      <div className="sticky top-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 app-shell-bg backdrop-blur-md pt-3.5 pb-3 -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 border-b border-zinc-200/80 dark:border-zinc-800/80 space-y-2.5 transition-all">
 
         {/* Top Row: Title + Persistent Action */}
         <div className="flex justify-between items-center gap-3">
@@ -990,15 +990,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed ${isReadOnly
                     ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
                     : isBrandingDirty
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25 cursor-pointer'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
+                      ? 'app-primary-btn cursor-pointer'
+                      : 'app-subtle-surface text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
                     }`}
                   title={isReadOnly ? 'Saving is disabled while offline' : isBrandingDirty ? 'Unsaved modifications ready to save' : 'Save branding'}
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save Changes</span>
                   {isBrandingDirty && !isReadOnly && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-85 animate-pulse" />
                   )}
                 </button>
               </>
@@ -1019,15 +1019,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed ${isReadOnly
                     ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
                     : isTaxDirty
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25 cursor-pointer'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
+                      ? 'app-primary-btn cursor-pointer'
+                      : 'app-subtle-surface text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
                     }`}
                   title={isReadOnly ? 'Saving is disabled while offline' : isTaxDirty ? 'Unsaved modifications ready to save' : 'Save tax variables'}
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save Variables</span>
                   {isTaxDirty && !isReadOnly && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-85 animate-pulse" />
                   )}
                 </button>
               </>
@@ -1048,15 +1048,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed ${isReadOnly
                     ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
                     : isEmailDirty
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 ring-2 ring-blue-500/25 cursor-pointer'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
+                      ? 'app-primary-btn cursor-pointer'
+                      : 'app-subtle-surface text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
                     }`}
                   title={isReadOnly ? 'Saving is disabled while offline' : isEmailDirty ? 'Unsaved modifications ready to save' : 'Save email settings'}
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save Email Settings</span>
                   {isEmailDirty && !isReadOnly && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-85 animate-pulse" />
                   )}
                 </button>
               </>
@@ -1077,15 +1077,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs disabled:opacity-40 disabled:cursor-not-allowed ${isReadOnly
                     ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
                     : isWhatsAppDirty
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-500 ring-2 ring-emerald-500/25 cursor-pointer'
-                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
+                      ? 'app-primary-btn cursor-pointer'
+                      : 'app-subtle-surface text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer'
                     }`}
                   title={isReadOnly ? 'Saving is disabled while offline' : isWhatsAppDirty ? 'Unsaved modifications ready to save' : 'Save WhatsApp settings'}
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save WhatsApp Settings</span>
                   {isWhatsAppDirty && !isReadOnly && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-85 animate-pulse" />
                   )}
                 </button>
               </>
@@ -1098,7 +1098,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             onClick={() => handleTabChange('branding')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${activeTab === 'branding'
-              ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
+              ? 'app-active-tab font-semibold shadow-2xs'
               : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
               }`}
           >
@@ -1112,7 +1112,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             onClick={() => handleTabChange('tax')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${activeTab === 'tax'
-              ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
+              ? 'app-active-tab font-semibold shadow-2xs'
               : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
               }`}
           >
@@ -1126,7 +1126,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             onClick={() => handleTabChange('excel')}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${activeTab === 'excel'
-              ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
+              ? 'app-active-tab font-semibold shadow-2xs'
               : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
               }`}
           >
@@ -1138,7 +1138,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               onClick={() => handleTabChange('email')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${activeTab === 'email'
-                ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
+                ? 'app-active-tab font-semibold shadow-2xs'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
                 }`}
             >
@@ -1154,14 +1154,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               onClick={() => handleTabChange('whatsapp')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${activeTab === 'whatsapp'
-                ? 'bg-zinc-200/80 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 font-semibold shadow-2xs'
+                ? 'app-active-tab font-semibold shadow-2xs'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
                 }`}
             >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <MessageCircle className={`w-3.5 h-3.5 ${activeTab === 'whatsapp' ? '' : 'text-emerald-600 dark:text-emerald-400'}`} />
               <span>WhatsApp</span>
               {isWhatsAppDirty && (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Unsaved modifications" />
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" title="Unsaved modifications" />
               )}
             </button>
           )}
@@ -1170,7 +1170,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               onClick={() => handleTabChange('audit_team')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition shrink-0 cursor-pointer focus:outline-none ${activeTab === 'audit_team'
-                ? 'bg-zinc-200/80 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs'
+                ? 'app-active-tab font-semibold shadow-2xs'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
                 }`}
             >
@@ -1199,13 +1199,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <form onSubmit={handleSaveBranding} className="space-y-6 max-w-3xl">
 
           {/* Logo Card */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-4">
               Company Logo &amp; Print Header
             </h2>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-              <div className="w-24 h-24 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 overflow-hidden shrink-0">
+              <div className="w-24 h-24 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 app-subtle-surface overflow-hidden shrink-0">
                 {companyForm.logoUrl ? (
                   <img src={companyForm.logoUrl} alt="Logo" className="w-full h-full object-contain p-1.5" />
                 ) : (
@@ -1232,7 +1232,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="flex items-center gap-2 pt-2">
                     <label
                       htmlFor="settings-logo-upload"
-                      className="px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs cursor-pointer hover:opacity-90 inline-flex items-center gap-1.5 transition"
+                      className="px-3 py-1.5 app-primary-btn rounded font-medium text-xs cursor-pointer inline-flex items-center gap-1.5 transition"
                     >
                       <Upload className="w-3.5 h-3.5" />
                       <span>Upload Logo</span>
@@ -1276,8 +1276,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Company Details Card */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
               Organization Details
             </h2>
 
@@ -1290,7 +1290,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   value={companyForm.name}
                   onChange={e => setCompanyForm({ ...companyForm, name: e.target.value })}
                   placeholder="e.g. DEWATERING CONSTRUCTION ETC LIMITED"
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
                 />
               </div>
 
@@ -1301,7 +1301,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   value={companyForm.subtitle}
                   onChange={e => setCompanyForm({ ...companyForm, subtitle: e.target.value })}
                   placeholder="e.g. Ground Water Control & Engineering Specialist"
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
                 />
               </div>
 
@@ -1312,7 +1312,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   value={companyForm.address}
                   onChange={e => setCompanyForm({ ...companyForm, address: e.target.value })}
                   placeholder="e.g. Plot 12, Commercial Avenue, Victoria Island, Lagos, Nigeria"
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
                 />
               </div>
 
@@ -1323,7 +1323,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   value={companyForm.phone}
                   onChange={e => setCompanyForm({ ...companyForm, phone: e.target.value })}
                   placeholder="e.g. +234 800 339 2837"
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
                 />
               </div>
 
@@ -1334,17 +1334,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   value={companyForm.email}
                   onChange={e => setCompanyForm({ ...companyForm, email: e.target.value })}
                   placeholder="e.g. info@dewateringconstruction.com"
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
                 />
               </div>
             </div>
           </div>
 
           {/* Software Updates & App Information */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Software Updates
                 </h3>
                 <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-1">
@@ -1362,7 +1362,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="button"
                   onClick={handleManualCheckUpdates}
                   disabled={isCheckingUpdate}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition cursor-pointer disabled:opacity-50 shrink-0"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium app-subtle-surface border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition cursor-pointer disabled:opacity-50 shrink-0"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
                   <span>{isCheckingUpdate ? 'Checking GitHub…' : 'Check for Updates'}</span>
@@ -1377,7 +1377,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="submit"
               disabled={isAuditor || isReadOnly}
               title={isReadOnly ? 'Saving is disabled while offline' : isAuditor ? 'Auditor role has read-only access' : undefined}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 app-primary-btn rounded font-medium text-xs transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save Company Branding</span>
@@ -1399,9 +1399,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="space-y-6 max-w-4xl">
 
           {/* Salary Calculation Model (Minimalist) */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Salary Calculation Mode
               </h2>
             </div>
@@ -1482,11 +1482,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Mid-Month Proration Setting */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     Mid-Month Proration (Joiners &amp; Leavers)
                   </h2>
                   <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${pv.prorateMidMonth
@@ -1518,14 +1518,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Company Departments & Cost Centers */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     Company Departments &amp; Cost Centers
                   </h2>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 app-subtle-surface text-zinc-600 dark:text-zinc-300">
                     {departments.length} Departments
                   </span>
                 </div>
@@ -1546,13 +1546,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 value={newDepartmentName}
                 onChange={e => setNewDepartmentName(e.target.value)}
                 placeholder="Enter department name (e.g. MARKETING, AUDIT, LOGISTICS)..."
-                className="flex-1 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-zinc-400 uppercase tracking-wide placeholder:normal-case"
+                className="flex-1 bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-zinc-400 uppercase tracking-wide placeholder:normal-case"
               />
               <button
                 type="submit"
                 disabled={isAuditor || isReadOnly || !newDepartmentName.trim()}
                 title={isReadOnly ? 'Adding departments is disabled while offline' : undefined}
-                className="flex items-center gap-1.5 px-3 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition whitespace-nowrap cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 app-primary-btn rounded font-medium text-xs disabled:opacity-40 disabled:cursor-not-allowed transition whitespace-nowrap cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Department</span>
@@ -1658,14 +1658,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Employment Types & Statutory Demarcation Rules */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     Employment Types &amp; Statutory Demarcation Rules
                   </h2>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 app-subtle-surface text-zinc-600 dark:text-zinc-300">
                     {activeEmploymentRules.length} Rules Active
                   </span>
                 </div>
@@ -1720,7 +1720,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           onClick={() => handleToggleRulePaye(rule.id)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition ${rule.hasPayeDefault
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60'
-                            : 'bg-zinc-100 dark:bg-zinc-850 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-750 hover:bg-zinc-200 dark:hover:bg-zinc-800'
+                            : 'bg-zinc-100 dark:bg-zinc-800/80 app-subtle-surface text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800'
                             }`}
                           title={`Click to ${rule.hasPayeDefault ? 'exempt' : 'enable'} PAYE tax by default for ${rule.name}`}
                         >
@@ -1743,7 +1743,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           onClick={() => handleToggleRulePension(rule.id)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition ${rule.hasPensionDefault
                             ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/60'
-                            : 'bg-zinc-100 dark:bg-zinc-850 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-750 hover:bg-zinc-200 dark:hover:bg-zinc-800'
+                            : 'bg-zinc-100 dark:bg-zinc-800/80 app-subtle-surface text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800'
                             }`}
                           title={`Click to ${rule.hasPensionDefault ? 'exempt' : 'enable'} statutory pension by default for ${rule.name}`}
                         >
@@ -1780,7 +1780,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             {/* Add Custom Employment Category Form */}
             {!isAuditor && (
-              <form onSubmit={handleAddEmploymentRule} className="bg-zinc-50/70 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-2.5">
+              <form onSubmit={handleAddEmploymentRule} className="bg-zinc-50/70 dark:bg-zinc-900/40 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-2.5">
                 <span className="font-semibold text-zinc-700 dark:text-zinc-300 text-xs flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5 text-zinc-500" />
                   Add Custom Employment Category
@@ -1792,7 +1792,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     value={newTypeName}
                     onChange={e => setNewTypeName(e.target.value)}
                     placeholder="Category Name (e.g. Expatriate, Consultant)..."
-                    className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                    className="bg-white dark:bg-zinc-800 app-surface-card border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
                   />
 
                   <div className="flex items-center gap-4">
@@ -1821,7 +1821,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <button
                       type="submit"
                       disabled={!newTypeName.trim()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 disabled:opacity-40 transition"
+                      className="flex items-center gap-1.5 px-3 py-1.5 app-primary-btn rounded font-medium text-xs disabled:opacity-40 transition"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add Category</span>
@@ -1833,10 +1833,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Staff Contribution & Welfare Schemes */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
               <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Staff Contribution &amp; Welfare Schemes
                 </h2>
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
@@ -1915,7 +1915,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleSaveEditScheme(scheme)}
-                                className="px-2.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded text-xs font-medium hover:opacity-90 transition cursor-pointer"
+                                className="px-2.5 py-1.5 app-primary-btn rounded text-xs font-medium transition cursor-pointer"
                               >
                                 Save
                               </button>
@@ -2001,7 +2001,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             {/* Add New Contribution Scheme Form */}
             {!isAuditor && !isReadOnly && (
-              <form onSubmit={handleAddScheme} className="bg-zinc-50/70 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-2.5">
+              <form onSubmit={handleAddScheme} className="bg-zinc-50/70 dark:bg-zinc-900/40 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-2.5">
                 <span className="font-semibold text-zinc-700 dark:text-zinc-300 text-xs flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5 text-zinc-500" />
                   Add Contribution Scheme
@@ -2013,7 +2013,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     value={newSchemeName}
                     onChange={e => setNewSchemeName(e.target.value)}
                     placeholder="Scheme Name (e.g. Staff Cooperative Society, Thrift / Ajo)..."
-                    className="sm:col-span-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                    className="sm:col-span-4 bg-white dark:bg-zinc-800 app-surface-card border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
                   />
 
                   <input
@@ -2021,7 +2021,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     value={newSchemeDesc}
                     onChange={e => setNewSchemeDesc(e.target.value)}
                     placeholder="Description (optional)..."
-                    className="sm:col-span-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                    className="sm:col-span-4 bg-white dark:bg-zinc-800 app-surface-card border border-zinc-200 dark:border-zinc-700 rounded px-2.5 py-1.5 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400"
                   />
 
                   <div className="sm:col-span-2 relative flex items-center">
@@ -2033,7 +2033,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       onChange={e => setNewSchemeDefaultAmt(e.target.value)}
                       placeholder="Default"
                       title="Default Monthly Amount (₦)"
-                      className="w-full pl-6 pr-2 py-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded text-zinc-900 dark:text-zinc-100 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                      className="w-full pl-6 pr-2 py-1.5 bg-white dark:bg-zinc-800 app-surface-card border border-zinc-200 dark:border-zinc-700 rounded text-zinc-900 dark:text-zinc-100 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-zinc-400"
                     />
                   </div>
 
@@ -2041,7 +2041,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <button
                       type="submit"
                       disabled={!newSchemeName.trim()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 disabled:opacity-40 transition cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 app-primary-btn rounded font-medium text-xs disabled:opacity-40 transition cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add Scheme</span>
@@ -2053,10 +2053,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Statutory Allowances Ratio */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
               <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Gross Remuneration Allowance Structure
                 </h2>
               </div>
@@ -2079,7 +2079,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   max="100"
                   value={pv.basic}
                   onChange={e => setPv({ ...pv, basic: Number(e.target.value) || 0 })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
                 />
               </div>
 
@@ -2092,7 +2092,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   max="100"
                   value={pv.housing}
                   onChange={e => setPv({ ...pv, housing: Number(e.target.value) || 0 })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
                 />
               </div>
 
@@ -2105,7 +2105,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   max="100"
                   value={pv.transport}
                   onChange={e => setPv({ ...pv, transport: Number(e.target.value) || 0 })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
                 />
               </div>
 
@@ -2118,16 +2118,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   max="100"
                   value={pv.otherAllowances}
                   onChange={e => setPv({ ...pv, otherAllowances: Number(e.target.value) || 0 })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
                 />
               </div>
             </div>
           </div>
 
           {/* Pension Statutory Contribution Rates */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Pension Reform Act 2014 Contribution Rates
               </h2>
             </div>
@@ -2143,7 +2143,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     max="1"
                     value={pv.employeePensionRate}
                     onChange={e => setPv({ ...pv, employeePensionRate: Number(e.target.value) || 0 })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">
                     {(pv.employeePensionRate * 100).toFixed(0)}%
@@ -2161,7 +2161,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     max="1"
                     value={pv.employerPensionRate}
                     onChange={e => setPv({ ...pv, employerPensionRate: Number(e.target.value) || 0 })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">
                     {(pv.employerPensionRate * 100).toFixed(0)}%
@@ -2172,9 +2172,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Consolidated Relief & Rent Relief */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 PITA Tax Relief Parameters
               </h2>
             </div>
@@ -2187,7 +2187,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   step="any"
                   value={tv.craBase}
                   onChange={e => setTv({ ...tv, craBase: Number(e.target.value) || 0 })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
                 />
               </div>
 
@@ -2198,7 +2198,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   step="any"
                   value={tv.rentReliefRate}
                   onChange={e => setTv({ ...tv, rentReliefRate: Number(e.target.value) || 0 })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
                 />
               </div>
 
@@ -2209,17 +2209,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   step="any"
                   value={tv.rentReliefCap}
                   onChange={e => setTv({ ...tv, rentReliefCap: Number(e.target.value) || 0 })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono"
                 />
               </div>
             </div>
           </div>
 
           {/* Progressive PAYE Brackets Table */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Progressive PAYE Tax Brackets (Sixth Schedule)
                 </h2>
               </div>
@@ -2227,7 +2227,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleAddBracket}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs border border-zinc-200 dark:border-zinc-800 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition"
+                className="flex items-center gap-1 px-2.5 py-1 text-xs app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Tier</span>
@@ -2236,7 +2236,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <div className="border border-zinc-200 dark:border-zinc-800 rounded overflow-hidden">
               <table className="w-full text-xs text-left">
-                <thead className="bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 font-semibold text-zinc-500">
+                <thead className="bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 font-semibold text-zinc-500 dark:text-zinc-400">
                   <tr>
                     <th className="p-2.5">Tier Description</th>
                     <th className="p-2.5">Band Chunk (₦)</th>
@@ -2314,7 +2314,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={handleSaveTax}
                 disabled={isAuditor || isReadOnly}
                 title={isReadOnly ? 'Saving is disabled while offline' : isAuditor ? 'Auditor role has read-only access' : undefined}
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 app-primary-btn rounded font-medium text-xs transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>Save Tax Variables</span>
@@ -2350,7 +2350,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
             {/* Export Card */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 flex flex-col justify-between shadow-2xs">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 flex flex-col justify-between shadow-2xs">
               <div className="space-y-3">
                 <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <Download className="w-4 h-4" />
@@ -2370,7 +2370,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={handleOpenExportModal}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-xs shadow-2xs transition cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 app-primary-btn rounded-lg font-medium text-xs shadow-2xs transition cursor-pointer"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
                   <span>Configure &amp; Export...</span>
@@ -2384,7 +2384,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             {/* Import Card */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 flex flex-col justify-between shadow-2xs">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 flex flex-col justify-between shadow-2xs">
               <div className="space-y-3">
                 <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/80 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                   <Upload className="w-4 h-4" />
@@ -2413,7 +2413,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   {!isAuditor && (
                     <label
                       htmlFor="settings-excel-import-file"
-                      className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 rounded-lg font-medium text-xs cursor-pointer transition text-center"
+                      className="flex items-center justify-center gap-1.5 px-3 py-2.5 app-primary-btn rounded-lg font-medium text-xs cursor-pointer transition text-center"
                     >
                       <Upload className="w-3.5 h-3.5 shrink-0" />
                       <span>Upload File</span>
@@ -2423,7 +2423,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <button
                     type="button"
                     onClick={handleDownloadTemplate}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 rounded-lg font-medium text-xs transition cursor-pointer text-center"
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 app-subtle-surface border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 rounded-lg font-medium text-xs transition cursor-pointer text-center"
                   >
                     <Download className="w-3.5 h-3.5 shrink-0 text-zinc-400" />
                     <span>Template (.xlsx)</span>
@@ -2443,7 +2443,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {/* Import Preview Modal */}
           {isImportModalOpen && parsedData && (
             <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg max-w-xl w-full p-5 space-y-4 shadow-xl">
+              <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg max-w-xl w-full p-5 space-y-4 shadow-xl">
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   Confirm Staff Excel Import ({parsedData.length} Found)
                 </h3>
@@ -2580,7 +2580,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <button
                     type="button"
                     onClick={handleConfirmImport}
-                    className="px-4 py-1.5 text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded hover:opacity-90"
+                    className="px-4 py-1.5 text-xs font-medium app-primary-btn rounded"
                   >
                     Apply Import
                   </button>
@@ -2617,7 +2617,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={saveEmail}
                 disabled={isAuditor || isReadOnly || !isEmailDirty}
                 title={isReadOnly ? 'Saving is disabled while offline' : isAuditor ? 'Auditor role has read-only access' : !isEmailDirty ? 'No changes to save' : undefined}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-medium text-xs hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+                className="flex items-center gap-1.5 px-4 py-1.5 app-primary-btn rounded font-medium text-xs transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>Save Email Settings</span>
@@ -2626,9 +2626,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Section 1: Provider Selection */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Delivery Provider Method
               </h3>
             </div>
@@ -2688,10 +2688,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           {/* Section 2A: SMTP Server Configuration */}
           {emailForm.provider === 'smtp' && (
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     SMTP Server Configuration
                   </h3>
                   <p className="text-xs text-zinc-500 mt-0.5">
@@ -2851,7 +2851,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
 
               {/* Security Hint */}
-              <div className="p-3 bg-zinc-50 dark:bg-zinc-900/60 rounded-md border border-zinc-200/80 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed flex items-start gap-2">
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface rounded-md border border-zinc-200/80 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed flex items-start gap-2">
                 <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                 <div>
                   <strong>Tip for Gmail &amp; Microsoft 365 Users:</strong><br />
@@ -2864,9 +2864,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           {/* Section 2B: Resend API Configuration */}
           {emailForm.provider === 'resend' && (
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Resend Cloud API Credentials
                 </h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
@@ -2920,9 +2920,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
 
           {/* Section 3: Default Templates */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Default Email Templates &amp; PDF Rules
               </h3>
               <p className="text-xs text-zinc-500 mt-0.5">
@@ -2972,10 +2972,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Section 4: Diagnostics & Test Connection */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Connection Diagnostics &amp; Handshake Test
                 </h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
@@ -2987,7 +2987,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="button"
                 onClick={handleTestEmailConnection}
                 disabled={isTestingEmail}
-                className="flex items-center gap-1.5 px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded font-medium text-xs transition disabled:opacity-50 shrink-0 cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 app-subtle-surface text-zinc-800 dark:text-zinc-200 rounded font-medium text-xs transition disabled:opacity-50 shrink-0 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>{isTestingEmail ? 'Testing Handshake...' : 'Test Mail Handshake'}</span>
@@ -3018,7 +3018,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="space-y-6 max-w-4xl select-none">
 
           {/* Header banner */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -3035,7 +3035,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800">
                   <input
                     type="checkbox"
                     checked={Boolean(whatsappForm.enabled ?? whatsappForm.isActive ?? true)}
@@ -3054,9 +3054,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Section 1: Provider Selection */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 1. Select WhatsApp Dispatch Method
               </h3>
 
@@ -3151,9 +3151,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           {/* Section 2: Provider Credentials & Server Parameters */}
           {whatsappForm.provider === 'cloud_api' && (
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   2. Meta WhatsApp Cloud API Credentials
                 </h3>
 
@@ -3222,9 +3222,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
 
           {whatsappForm.provider === 'ultramsg' && (
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   2. UltraMsg Gateway Parameters
                 </h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
@@ -3279,9 +3279,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
 
           {whatsappForm.provider === 'termii' && (
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   2. Termii Nigeria Gateway Credentials
                 </h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
@@ -3336,9 +3336,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           )}
 
           {/* Section 3: Message Template & Dynamic Tags */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 3. WhatsApp Message Content &amp; Formatting
               </h3>
               <p className="text-xs text-zinc-500 mt-0.5">
@@ -3403,10 +3403,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Section 4: Diagnostics & Handshake Test */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-3">
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Connection Diagnostics &amp; Gateway Validation
                 </h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
@@ -3508,7 +3508,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           {/* Minimalist Unified Modules Checklist */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl divide-y divide-zinc-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-xl divide-y divide-zinc-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
 
             {/* 1. Employee Directory */}
             <div
@@ -3756,7 +3756,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* ================= RESET CONFIRMATION MODAL ================= */}
       {isResetModalOpen && isAdmin && (
         <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-rose-300 dark:border-rose-900/60 rounded-lg max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-rose-300 dark:border-rose-900/60 rounded-lg max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in duration-150">
 
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
@@ -3822,7 +3822,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 value={resetConfirmationText}
                 onChange={e => setResetConfirmationText(e.target.value)}
                 placeholder="Type RESET to confirm"
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-3 py-2 text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-rose-500 dark:focus:border-rose-500"
+                className="w-full bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-300 dark:border-zinc-700 rounded px-3 py-2 text-xs font-mono font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-rose-500 dark:focus:border-rose-500"
               />
             </div>
 

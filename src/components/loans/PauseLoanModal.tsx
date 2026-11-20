@@ -114,7 +114,7 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
       className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
     >
       <div
-        className="relative bg-white dark:bg-[#111113] border-t sm:border border-zinc-200/80 dark:border-zinc-800/80 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+        className="app-surface-card relative bg-white dark:bg-[#111113] border-t sm:border border-zinc-200/80 dark:border-zinc-800/80 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
       >
         {/* Pull Handle */}
         <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
@@ -134,7 +134,7 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
         {/* Body */}
         {isAlreadyPaused ? (
           <div className="p-4 space-y-4">
-            <div className="rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3.5 space-y-2 text-xs">
+            <div className="app-subtle-surface rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3.5 space-y-2 text-xs">
               <div className="flex justify-between text-zinc-500">
                 <span>Paused reason</span>
                 <span className="font-medium text-zinc-800 dark:text-zinc-200 text-right max-w-[55%] truncate">{loan.pausedReason || '—'}</span>
@@ -155,14 +155,14 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="app-subtle-surface flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:opacity-90 transition cursor-pointer"
               >
                 Keep Paused
               </button>
               <button
                 type="button"
                 onClick={handleResumeSubmit}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                className="app-primary-btn flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <PlayCircle className="w-3.5 h-3.5" />
                 Resume
@@ -184,8 +184,8 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
                       onClick={() => setResumeMode(opt.key)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                         resumeMode === opt.key
-                          ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
-                          : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                          ? 'app-active-tab shadow-xs'
+                          : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:opacity-90'
                       }`}
                     >
                       {opt.label}
@@ -197,8 +197,8 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
                     onClick={() => setResumeMode('indefinite')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                       resumeMode === 'indefinite'
-                        ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
-                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                        ? 'app-active-tab shadow-xs'
+                        : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:opacity-90'
                     }`}
                   >
                     Indefinite
@@ -209,8 +209,8 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
                     onClick={() => setResumeMode('custom')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                       resumeMode === 'custom'
-                        ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
-                        : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                        ? 'app-active-tab shadow-xs'
+                        : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:opacity-90'
                     }`}
                   >
                     Custom
@@ -219,12 +219,12 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
 
                 {/* Custom Month + Year Dropdowns */}
                 {resumeMode === 'custom' && (
-                  <div className="mt-2.5 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
+                  <div className="app-subtle-surface mt-2.5 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
                     <span className="text-[11px] text-zinc-400 font-medium pl-1">Resume:</span>
                     <select
                       value={customMonthKey}
                       onChange={(e) => setCustomMonthKey(e.target.value)}
-                      className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-1 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-amber-500"
+                      className="app-surface-card bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-1 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none"
                     >
                       {MONTHS.map(m => (
                         <option key={m.key} value={m.key}>{m.label}</option>
@@ -233,7 +233,7 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
                     <select
                       value={customYear}
                       onChange={(e) => setCustomYear(parseInt(e.target.value, 10))}
-                      className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-1 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-amber-500"
+                      className="app-surface-card bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-1 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none"
                     >
                       {availableYears.map(y => (
                         <option key={y} value={y}>{y}</option>
@@ -254,8 +254,8 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
                       onClick={() => setReasonCategory(r)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                         reasonCategory === r
-                          ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                          : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                          ? 'app-active-tab shadow-xs'
+                          : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:opacity-90'
                       }`}
                     >
                       {r}
@@ -270,7 +270,7 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
                     placeholder="Type custom reason..."
                     value={customReasonText}
                     onChange={(e) => setCustomReasonText(e.target.value)}
-                    className="w-full mt-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-amber-500"
+                    className="app-subtle-surface w-full mt-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 focus:outline-none"
                     autoFocus
                   />
                 )}
@@ -291,13 +291,13 @@ export const PauseLoanModal: React.FC<PauseLoanModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="app-subtle-surface flex-1 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:opacity-90 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+                className="app-primary-btn flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
               >
                 <PauseCircle className="w-3.5 h-3.5" />
                 Pause

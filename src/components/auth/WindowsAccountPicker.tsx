@@ -682,31 +682,31 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
   });
 
   return (
-    <div className={`relative w-full h-full overflow-hidden select-none flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
+    <div className={`app-shell-bg relative w-full h-full overflow-hidden select-none flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
       
       {/* Header: Android Material 3 Mobile Bar OR Desktop Native Title Bar */}
       {isMobile ? (
-        <header className="no-print bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 select-none shrink-0 z-40 shadow-xs">
+        <header className="app-header no-print bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 select-none shrink-0 z-40 shadow-xs">
           {/* Android Top App Bar */}
           <div className="h-12 px-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center p-1 border border-emerald-500/20">
+              <div className="app-header-pill w-7 h-7 rounded-lg flex items-center justify-center p-1 border">
                 <img src={appLogo} alt="Payroll Pro" className="w-full h-full object-contain shrink-0" />
               </div>
               <div>
-                <span className="font-bold text-xs tracking-tight text-zinc-900 dark:text-zinc-100 block">
+                <span className="app-header-text font-bold text-xs tracking-tight text-zinc-900 dark:text-zinc-100 block">
                   Payroll Pro
                 </span>
-                <p className="text-[10px] text-zinc-400 font-medium">Select Company</p>
+                <p className="app-header-subtext text-[10px] text-zinc-400 font-medium">Select Company</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={handleCheckForUpdates}
                 title="Check for updates"
-                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="app-header-icon w-8 h-8 rounded-full border flex items-center justify-center transition cursor-pointer"
               >
                 <Download className="w-4 h-4" />
               </button>
@@ -717,13 +717,13 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                     type="button"
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     title={`${currentUser.name} (${currentUser.role})`}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+                    className="app-header-icon w-8 h-8 rounded-full border flex items-center justify-center transition cursor-pointer"
                   >
                     <User className="w-4 h-4" />
                   </button>
 
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                    <div className="app-surface-card absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
                       <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
                         <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 truncate">
                           {currentUser.name || currentUser.username || currentUser.email}
@@ -738,7 +738,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                           }}
                           className="w-full text-left px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
                         >
-                          <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                          <UserCircle className="w-3.5 h-3.5 app-accent-text text-emerald-500" />
                           <span>Profile</span>
                         </button>
                       )}
@@ -762,7 +762,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 type="button"
                 onClick={onToggleTheme}
                 title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="app-header-icon w-8 h-8 rounded-full border flex items-center justify-center transition cursor-pointer"
               >
                 {isDarkTheme ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
@@ -772,22 +772,22 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
       ) : (
         /* Top Windows Native-Style Bar for Desktop */
         <header 
-          className="no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-3 select-none relative z-50 shrink-0 transition-colors"
+          className="app-header app-titlebar no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-3 select-none relative z-50 shrink-0 transition-colors"
           style={{ WebkitAppRegion: 'drag' } as any}
         >
           {/* Left: App Title */}
           <div className="flex items-center gap-2">
             <img src={appLogo} alt="Payroll Pro" className="w-4 h-4 rounded object-contain shrink-0" />
-            <span className="font-semibold text-xs tracking-tight text-zinc-800 dark:text-zinc-200">Payroll Pro</span>
+            <span className="app-header-text font-semibold text-xs tracking-tight text-zinc-800 dark:text-zinc-200">Payroll Pro</span>
           </div>
 
           {/* Center: Quiet Clock */}
-          <div className="hidden sm:flex items-center gap-2 text-xs font-normal text-zinc-400 pointer-events-none">
-            <span className="font-mono text-zinc-600 dark:text-zinc-400">
+          <div className="hidden sm:flex items-center gap-2 text-xs font-normal pointer-events-none">
+            <span className="app-header-text font-mono opacity-90">
               {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
-            <span className="text-zinc-300 dark:text-zinc-700">&bull;</span>
-            <span className="text-zinc-400 text-[11px]">
+            <span className="app-header-subtext opacity-60">&bull;</span>
+            <span className="app-header-subtext text-[11px]">
               {currentTime.toLocaleDateString('en-GB', { weekday: 'short' })} &bull; {formatDate(currentTime)}
             </span>
           </div>
@@ -799,9 +799,9 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 type="button"
                 onClick={onToggleSimulator}
                 title={isSimulatorMode ? "Exit Android Phone Frame" : "Preview in Android Phone Frame"}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer"
               >
-                <Smartphone className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
+                <Smartphone className="w-3.5 h-3.5" />
                 <span className="hidden md:inline">Android View</span>
               </button>
             )}
@@ -812,13 +812,15 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                   type="button"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   title={`${currentUser.name} (${currentUser.role})`}
-                  className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+                  className={`w-6 h-6 rounded-md flex items-center justify-center transition cursor-pointer ${
+                    isUserMenuOpen ? 'app-header-pill' : ''
+                  }`}
                 >
                   <User className="w-3.5 h-3.5" />
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                  <div className="app-surface-card absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
                     <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
                       <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 truncate">
                         {currentUser.name || currentUser.username || currentUser.email}
@@ -833,7 +835,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                         }}
                         className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
                       >
-                        <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                        <UserCircle className="w-3.5 h-3.5 app-accent-text text-emerald-500" />
                         <span>Profile</span>
                       </button>
                     )}
@@ -857,7 +859,9 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
               <button
                 type="button"
                 onClick={() => setHelpMenuOpen((open) => !open)}
-                className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                  helpMenuOpen ? 'app-header-pill' : ''
+                }`}
                 title="Help"
               >
                 <HelpCircle className="w-3.5 h-3.5" />
@@ -865,7 +869,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
               </button>
 
               {helpMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-60 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
+                <div className="app-surface-card absolute right-0 top-full mt-1 w-60 bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
                   <button
                     type="button"
                     onClick={handleCheckForUpdates}
@@ -937,30 +941,33 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
             <button
               onClick={onToggleTheme}
               title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-              className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              className="p-1 rounded transition cursor-pointer"
             >
               {isDarkTheme ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
 
             {isElectron && (
-              <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1">
+              <div
+                className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1"
+                style={{ borderColor: 'var(--theme-header-border)' }}
+              >
                 <button 
                   onClick={() => (window as any).electronAPI?.windowMinimize?.()}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
+                  className="w-6 h-6 flex items-center justify-center rounded transition cursor-pointer"
                   title="Minimize"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
                 <button 
                   onClick={() => (window as any).electronAPI?.windowMaximize?.()}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition cursor-pointer"
+                  className="w-6 h-6 flex items-center justify-center rounded transition cursor-pointer"
                   title="Maximize"
                 >
                   <Square className="w-2.5 h-2.5" />
                 </button>
                 <button 
                   onClick={() => (window as any).electronAPI?.windowClose?.()}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition cursor-pointer"
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white transition cursor-pointer"
                   title="Close"
                 >
                   <X className="w-3 h-3" />
@@ -1022,7 +1029,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
               {/* Company Avatar */}
               <div className="relative mb-3">
-                <div className="w-16 h-16 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-xs">
+                <div className="app-surface-card w-16 h-16 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-xs">
                   {selectedForPassword.logoUrl ? (
                     <img 
                       src={selectedForPassword.logoUrl} 
@@ -1030,12 +1037,12 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       className="w-full h-full object-contain p-1"
                     />
                   ) : (
-                    <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-bold text-lg">
+                    <div className="app-subtle-surface w-full h-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-bold text-lg">
                       {getInitials(selectedForPassword.name)}
                     </div>
                   )}
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 flex items-center justify-center shadow-xs">
+                <div className="app-surface-card absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 flex items-center justify-center shadow-xs">
                   {isRecoveringPassword ? <ShieldAlert className="w-2.5 h-2.5 text-blue-500" /> : <Lock className="w-2.5 h-2.5" />}
                 </div>
               </div>
@@ -1063,7 +1070,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                         setPasswordInput(e.target.value);
                         if (authError) setAuthError(null);
                       }}
-                      className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 pr-16 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
+                      className="app-surface-card w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 pr-16 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
                     />
 
                     <div className="absolute right-1.5 flex items-center gap-1">
@@ -1078,7 +1085,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       <button
                         type="submit"
                         disabled={Boolean(openingCompanyId)}
-                        className="p-1 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded transition shadow-xs cursor-pointer active:scale-95"
+                        className="app-primary-btn p-1 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded transition shadow-xs cursor-pointer active:scale-95"
                         title="Enter"
                       >
                         {openingCompanyId === selectedForPassword.id ? (
@@ -1139,9 +1146,9 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                   {recoveryStep === 'answer' ? (
                     <form onSubmit={handleVerifyRecoveryAnswer} className="w-full space-y-3">
                       {/* Security Question Box */}
-                      <div className="w-full text-left p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-1">
+                      <div className="app-subtle-surface w-full text-left p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-1">
                         <div className="flex items-center gap-1.5 text-[10px] uppercase font-semibold text-zinc-400 tracking-wider">
-                          <HelpCircle className="w-3 h-3 text-blue-500" />
+                          <HelpCircle className="w-3 h-3 app-accent-text text-blue-500" />
                           <span>Security Question</span>
                         </div>
                         <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
@@ -1162,7 +1169,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                             setRecoveryAnswerInput(e.target.value);
                             if (recoveryError) setRecoveryError(null);
                           }}
-                          className="w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
+                          className="app-surface-card w-full h-9 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-zinc-300 rounded-lg px-3 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition shadow-xs"
                         />
                       </div>
 
@@ -1181,7 +1188,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
                       <button
                         type="submit"
-                        className="w-full py-2 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer mt-1"
+                        className="app-primary-btn w-full py-2 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer mt-1"
                       >
                         Verify Answer
                       </button>
@@ -1207,7 +1214,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                             setNewPasswordInput(e.target.value);
                             if (recoveryError) setRecoveryError(null);
                           }}
-                          className="w-full h-8 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-zinc-900 dark:focus:border-zinc-300"
+                          className="app-surface-card w-full h-8 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-zinc-900 dark:focus:border-zinc-300"
                         />
                       </div>
 
@@ -1223,7 +1230,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                             setConfirmNewPasswordInput(e.target.value);
                             if (recoveryError) setRecoveryError(null);
                           }}
-                          className="w-full h-8 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-zinc-900 dark:focus:border-zinc-300"
+                          className="app-surface-card w-full h-8 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-zinc-900 dark:focus:border-zinc-300"
                         />
                       </div>
 
@@ -1236,7 +1243,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                           placeholder="New hint (optional)"
                           value={newPasswordHintInput}
                           onChange={(e) => setNewPasswordHintInput(e.target.value)}
-                          className="w-full h-8 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-zinc-900 dark:focus:border-zinc-300"
+                          className="app-surface-card w-full h-8 bg-white dark:bg-[#121215] border border-zinc-300 dark:border-zinc-700 rounded-lg px-2.5 text-xs text-zinc-900 dark:text-white outline-none focus:border-zinc-900 dark:focus:border-zinc-300"
                         />
                       </div>
 
@@ -1256,7 +1263,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
                       <button
                         type="submit"
-                        className="w-full py-2 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer mt-1"
+                        className="app-primary-btn w-full py-2 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer mt-1"
                       >
                         Save & Unlock Workspace
                       </button>
@@ -1287,7 +1294,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
           <div className="flex-1 flex flex-col min-h-0 w-full animate-in fade-in duration-150">
             
             {/* Pinned Minimalist Toolbar (always visible at top, never scrolls) */}
-            <div className="shrink-0 pt-3 pb-3 bg-[#fbfbfb] dark:bg-[#09090b] z-20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+            <div className="app-shell-bg shrink-0 pt-3 pb-3 bg-[#fbfbfb] dark:bg-[#09090b] z-20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
               
               {/* Left: Search Bar */}
               <div className="relative w-full sm:w-64">
@@ -1297,7 +1304,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                   placeholder="Search company..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-9 sm:h-8 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-lg pl-8 pr-7 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
+                  className="app-surface-card w-full h-9 sm:h-8 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-lg pl-8 pr-7 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
                 />
                 {searchQuery && (
                   <button
@@ -1316,17 +1323,17 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsTeamPageOpen(true)}
-                    className="flex-1 sm:flex-none h-9 sm:h-8 px-3 rounded-lg bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                    className="app-surface-card flex-1 sm:flex-none h-9 sm:h-8 px-3 rounded-lg bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-700 dark:text-zinc-200 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                     title="Manage authorized staff and operator accounts"
                   >
-                    <Users className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                    <Users className="w-3.5 h-3.5 app-accent-text text-zinc-500 dark:text-zinc-400" />
                     <span>Authorized Staff</span>
                   </button>
                 )}
                 {canAddCompany && (
                   <button
                     onClick={openCreateModal}
-                    className="flex-1 sm:flex-none h-9 sm:h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                    className="app-primary-btn flex-1 sm:flex-none h-9 sm:h-8 px-3 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Add Company</span>
@@ -1346,7 +1353,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       <p className="text-xs text-zinc-500">No company found matching "{searchQuery}"</p>
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        className="text-xs app-accent-text text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                       >
                         Clear search
                       </button>
@@ -1357,9 +1364,9 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Create a company to get started.</p>
                     </div>
                   ) : (
-                    <div className="p-6 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3 w-full">
-                      <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center mx-auto">
-                        <Building2 className="w-5 h-5" />
+                    <div className="app-surface-card p-6 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3 w-full">
+                      <div className="app-subtle-surface w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center mx-auto">
+                        <Building2 className="w-5 h-5 app-accent-text" />
                       </div>
                       <div>
                         <h3 className="text-xs font-semibold text-zinc-900 dark:text-white">No Companies Found</h3>
@@ -1370,7 +1377,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       {canAddCompany && (
                         <button
                           onClick={openCreateModal}
-                          className="w-full py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-semibold hover:opacity-90 transition cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5"
+                          className="app-primary-btn w-full py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-lg text-xs font-semibold hover:opacity-90 transition cursor-pointer shadow-xs inline-flex items-center justify-center gap-1.5"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           <span>Add First Company</span>
@@ -1388,7 +1395,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                   return (
                     <div
                       key={comp.id}
-                      className={`group bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-700 rounded-xl p-3.5 flex flex-col justify-between transition hover:shadow-2xs cursor-pointer relative min-h-[155px] ${openingCompanyId ? 'pointer-events-none' : ''}`}
+                      className={`app-surface-card group bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-700 rounded-xl p-3.5 flex flex-col justify-between transition hover:shadow-sm cursor-pointer relative min-h-[155px] ${openingCompanyId ? 'pointer-events-none' : ''}`}
                       onClick={() => handleCompanyClick(comp)}
                     >
                       {/* Top Action Options Button */}
@@ -1406,7 +1413,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                           </button>
 
                           {isMenuOpen && (
-                            <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs text-left z-30 animate-in fade-in">
+                            <div className="app-surface-card absolute right-0 top-full mt-1 w-40 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs text-left z-30 animate-in fade-in">
                               <button
                                 onClick={() => openEditModal(comp)}
                                 className="w-full px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 flex items-center gap-2 cursor-pointer"
@@ -1448,7 +1455,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
 
                       {/* Header Avatar & Details */}
                       <div>
-                        <div className="w-9 h-9 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/60 flex items-center justify-center overflow-hidden mb-2.5 shrink-0">
+                        <div className="app-subtle-surface w-9 h-9 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/60 flex items-center justify-center overflow-hidden mb-2.5 shrink-0">
                           {comp.logoUrl ? (
                             <img 
                               src={comp.logoUrl} 
@@ -1456,7 +1463,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                               className="w-full h-full object-contain p-0.5"
                             />
                           ) : (
-                            <span className="text-zinc-700 dark:text-zinc-300 font-bold text-xs">
+                            <span className="app-accent-text text-zinc-700 dark:text-zinc-300 font-bold text-xs">
                               {getInitials(comp.name)}
                             </span>
                           )}
@@ -1473,12 +1480,12 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                       {/* Footer Status */}
                       <div className="mt-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between text-[10px]">
                         {comp.hasPassword ? (
-                          <span className="inline-flex items-center gap-1 text-zinc-400 dark:text-zinc-500 font-medium">
+                          <span className="inline-flex items-center gap-1 text-zinc-500 dark:text-zinc-400 font-medium">
                             <Lock className="w-2.5 h-2.5 text-amber-500" />
                             <span>Protected</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-zinc-400 dark:text-zinc-500 font-medium">
+                          <span className="inline-flex items-center gap-1 text-zinc-500 dark:text-zinc-400 font-medium">
                             <Unlock className="w-2.5 h-2.5 text-zinc-400" />
                             <span>Open</span>
                           </span>
@@ -1490,7 +1497,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                             <span>Opening...</span>
                           </span>
                         ) : (
-                          <span className="text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition inline-flex items-center gap-0.5 font-medium">
+                          <span className="app-accent-text transition inline-flex items-center gap-0.5 font-semibold">
                             <span>Enter</span>
                             <ArrowRight className="w-2.5 h-2.5 transition-transform group-hover:translate-x-0.5" />
                           </span>
@@ -1505,15 +1512,15 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 {canAddCompany && (
                   <div
                     onClick={openCreateModal}
-                    className="border border-dashed border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/40 rounded-xl p-3.5 flex flex-col items-center justify-center text-center transition cursor-pointer min-h-[155px]"
+                    className="app-subtle-surface border border-dashed border-zinc-300 dark:border-zinc-800 hover:opacity-90 rounded-xl p-3.5 flex flex-col items-center justify-center text-center transition cursor-pointer min-h-[155px]"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 flex items-center justify-center mb-1.5">
+                    <div className="app-surface-card app-accent-text w-8 h-8 rounded-lg border flex items-center justify-center mb-1.5">
                       <Plus className="w-4 h-4" />
                     </div>
-                    <h3 className="font-semibold text-xs text-zinc-700 dark:text-zinc-300 tracking-tight">
+                    <h3 className="font-semibold text-xs text-zinc-800 dark:text-zinc-200 tracking-tight">
                       Add Company
                     </h3>
-                    <p className="text-[10px] text-zinc-400">
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
                       New workspace
                     </p>
                   </div>
@@ -1533,13 +1540,13 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
       {/* MODAL: CREATE OR EDIT COMPANY */}
       {(isCreateModalOpen || editingCompany) && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
             
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 flex items-center justify-center">
-                  <Building2 className="w-3.5 h-3.5" />
+                <div className="app-subtle-surface w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 flex items-center justify-center">
+                  <Building2 className="w-3.5 h-3.5 app-accent-text" />
                 </div>
                 <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                   {editingCompany ? 'Edit Company Profile' : 'Add New Company'}
@@ -1601,8 +1608,8 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                   <label className="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Logo
                   </label>
-                  <div className="flex items-center gap-3 p-2.5 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                    <div className="w-12 h-12 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="app-subtle-surface flex items-center gap-3 p-2.5 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <div className="app-surface-card w-12 h-12 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shrink-0">
                       {formLogoUrl ? (
                         <img src={formLogoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
                       ) : (
@@ -1612,7 +1619,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                     <div className="flex-1 space-y-1">
                       <p className="text-[10px] text-zinc-400">Used for company tile &amp; payslips</p>
                       <div className="flex items-center gap-2">
-                        <label className="px-2 py-0.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 rounded text-[10px] font-medium transition inline-flex items-center gap-1 cursor-pointer">
+                        <label className="app-primary-btn px-2 py-0.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 rounded text-[10px] font-medium transition inline-flex items-center gap-1 cursor-pointer">
                           <Upload className="w-2.5 h-2.5" />
                           <span>Upload</span>
                           <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
@@ -1782,7 +1789,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-2 p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60">
+              <div className="app-subtle-surface flex items-center justify-end gap-2 p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60">
                 <button
                   type="button"
                   onClick={() => {
@@ -1795,7 +1802,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-3.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 rounded text-xs font-semibold shadow-xs transition active:scale-95 cursor-pointer"
+                  className="app-primary-btn px-3.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 rounded text-xs font-semibold shadow-xs transition active:scale-95 cursor-pointer"
                 >
                   {editingCompany ? 'Save Changes' : 'Create Company'}
                 </button>
@@ -1809,7 +1816,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
       {/* MODAL: DELETE COMPANY CONFIRMATION */}
       {deletingCompany && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-sm shadow-2xl p-5 text-center animate-in fade-in zoom-in-95">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-sm shadow-2xl p-5 text-center animate-in fade-in zoom-in-95">
             <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center mb-2.5">
               <AlertTriangle className="w-5 h-5" />
             </div>
@@ -1872,12 +1879,12 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
       {/* MODAL: DEDICATED SET / CHANGE PASSWORD */}
       {passwordModalCompany && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-sm shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-sm shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
 
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center">
+                <div className="app-primary-btn w-6 h-6 rounded-md bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center">
                   <KeyRound className="w-3.5 h-3.5" />
                 </div>
                 <div>
@@ -2103,7 +2110,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-end gap-2 p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 shrink-0">
+              <div className="app-subtle-surface flex items-center justify-end gap-2 p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 shrink-0">
                 <button
                   type="button"
                   onClick={() => setPasswordModalCompany(null)}
@@ -2113,7 +2120,7 @@ export const WindowsAccountPicker: React.FC<WindowsAccountPickerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-3.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 rounded text-xs font-semibold shadow-xs transition active:scale-95 cursor-pointer"
+                  className="app-primary-btn px-3.5 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 rounded text-xs font-semibold shadow-xs transition active:scale-95 cursor-pointer"
                 >
                   {pwdModalHasPassword ? 'Save Password' : 'Remove Protection'}
                 </button>

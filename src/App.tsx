@@ -21,6 +21,7 @@ import { CloudStaffGate } from './components/auth/CloudStaffGate';
 import { MobileAppShell } from './components/mobile/MobileAppShell';
 import { AndroidDeviceFrame } from './components/mobile/AndroidDeviceFrame';
 import { UserProfilePage } from './components/profile/UserProfilePage';
+import { applyAppThemeToDocument } from './constants/appThemes';
 import { Capacitor } from '@capacitor/core';
 import { 
   getActiveTeamMember, 
@@ -347,6 +348,8 @@ export const App: React.FC = () => {
     activeEmployees,
     currentPayrollItems,
     activeSnapshot,
+    appTheme,
+    setAppTheme,
     isDarkTheme,
     toggleTheme,
     updateCompanyProfile,
@@ -518,16 +521,10 @@ export const App: React.FC = () => {
     handleRequestNavigate('settings', 'whatsapp');
   };
 
-  // Sync dark class on document root and body for bulletproof dark/light mode switching
+  // Sync active theme attribute, dark class, and Android status-bar color on document root
   useEffect(() => {
-    if (isDarkTheme) {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark');
-    }
-  }, [isDarkTheme]);
+    applyAppThemeToDocument(appTheme, isDarkTheme);
+  }, [appTheme, isDarkTheme]);
 
   // --- RESPONSIVE & MOBILE SIMULATOR STATE ---
   const isElectron = typeof window !== 'undefined' && (Boolean((window as any).electronAPI) || /electron/i.test(navigator.userAgent));
@@ -649,7 +646,7 @@ export const App: React.FC = () => {
   // ─── ANDROID MOBILE VIEW OR SIMULATOR MODE ──────────────────────────────────
   if (isMobileViewport || isSimulatorMode) {
     return (
-      <div className={`fixed inset-0 w-full h-full overflow-hidden flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
+      <div className={`app-shell-bg fixed inset-0 w-full h-full overflow-hidden flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
         {/* Mobile Offline Read-Only Banner */}
         {isCloudOffline && (
           <div className="no-print bg-amber-500 text-white dark:bg-amber-600 px-3 py-1.5 text-[11px] font-semibold flex items-center justify-between shadow-xs shrink-0 z-30">
@@ -699,6 +696,8 @@ export const App: React.FC = () => {
           monthLabel={monthLabel}
           onPeriodChange={setSelectedPeriod}
           isLocked={Boolean(activeSnapshot?.isLocked)}
+          appTheme={appTheme}
+          onSelectTheme={setAppTheme}
           isDarkTheme={isDarkTheme}
           onToggleTheme={toggleTheme}
           currentUser={effectiveMember}
@@ -773,7 +772,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className={`h-screen w-screen flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
+    <div className={`app-shell-bg h-screen w-screen flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans ${isDarkTheme ? 'dark' : ''}`}>
       
 
 
@@ -885,7 +884,7 @@ export const App: React.FC = () => {
         <ErrorBoundary onResetView={() => setActiveView('dashboard')}>
           <main 
             key={refreshTick} 
-            className={`flex-1 ${
+            className={`app-shell-bg flex-1 ${
               state.activeView === 'analytics'
                 ? 'flex flex-col overflow-hidden bg-[#fbfbfb] dark:bg-[#09090b]'
                 : state.activeView === 'profile'
@@ -900,6 +899,10 @@ export const App: React.FC = () => {
                 onUpdateCurrentUser={handleUpdateCurrentUser}
                 onSignOut={handleSignOut}
                 isMobileView={false}
+                appTheme={appTheme}
+                onSelectTheme={setAppTheme}
+                isDarkTheme={isDarkTheme}
+                onToggleTheme={toggleTheme}
               />
             ) : state.activeView === 'analytics' ? (
               <AnalyticsView

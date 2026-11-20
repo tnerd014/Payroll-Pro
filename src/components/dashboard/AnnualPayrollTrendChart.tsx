@@ -101,32 +101,32 @@ export const AnnualPayrollTrendChart: React.FC<AnnualPayrollTrendChartProps> = (
   const hoveredPointGross = hoveredIndex !== null ? pointsGross[hoveredIndex] : null;
 
   return (
-    <div className="rounded-xl p-4 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
+    <div className="app-surface-card rounded-xl p-4 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+          <div className="app-subtle-surface app-accent-text p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
             <TrendingUp className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
               Annual Payroll Trend &bull; {year} Full Year
             </h3>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               Monthly outflow progression across all 12 operating cycles
             </p>
           </div>
         </div>
 
         {/* View mode toggle pills */}
-        <div className="flex items-center gap-1 p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 text-xs">
+        <div className="app-subtle-surface flex items-center gap-1 p-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 text-xs">
           <button
             type="button"
             onClick={() => setViewMode('both')}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
               viewMode === 'both'
-                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
           >
             Both
@@ -134,10 +134,10 @@ export const AnnualPayrollTrendChart: React.FC<AnnualPayrollTrendChartProps> = (
           <button
             type="button"
             onClick={() => setViewMode('gross-only')}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
               viewMode === 'gross-only'
-                ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-2xs font-semibold'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                ? 'app-active-tab bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-2xs font-semibold'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
           >
             Gross Only
@@ -145,10 +145,10 @@ export const AnnualPayrollTrendChart: React.FC<AnnualPayrollTrendChartProps> = (
           <button
             type="button"
             onClick={() => setViewMode('net-only')}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${
+            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
               viewMode === 'net-only'
-                ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+                ? 'app-active-tab bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-2xs font-semibold'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
           >
             Net Only
@@ -186,14 +186,14 @@ export const AnnualPayrollTrendChart: React.FC<AnnualPayrollTrendChartProps> = (
                 y2={t.y}
                 stroke="currentColor"
                 strokeDasharray="4 4"
-                className="text-zinc-200 dark:text-zinc-800"
+                className="text-zinc-300/80 dark:text-zinc-700/70"
                 strokeWidth="1"
               />
               <text
                 x={paddingLeft - 10}
                 y={t.y + 4}
                 textAnchor="end"
-                className="fill-zinc-400 dark:fill-zinc-500 font-mono text-[10px]"
+                className="fill-zinc-500 dark:fill-zinc-400 font-mono text-[10px]"
               >
                 {formatCompactNaira(t.value)}
               </text>
@@ -207,7 +207,7 @@ export const AnnualPayrollTrendChart: React.FC<AnnualPayrollTrendChartProps> = (
             x2={svgWidth - paddingRight}
             y2={paddingTop + plotHeight}
             stroke="currentColor"
-            className="text-zinc-200 dark:text-zinc-800"
+            className="text-zinc-300/90 dark:text-zinc-700/80"
             strokeWidth="1.5"
           />
 
@@ -223,7 +223,7 @@ export const AnnualPayrollTrendChart: React.FC<AnnualPayrollTrendChartProps> = (
                 className={`text-[10px] font-mono transition-colors ${
                   hoveredIndex === idx
                     ? 'fill-zinc-900 dark:fill-zinc-100 font-semibold'
-                    : 'fill-zinc-400 dark:fill-zinc-500'
+                    : 'fill-zinc-500 dark:fill-zinc-400'
                 }`}
               >
                 {item.shortLabel}
@@ -330,7 +330,7 @@ export const AnnualPayrollTrendChart: React.FC<AnnualPayrollTrendChartProps> = (
         {/* Hover Tooltip Card */}
         {hoveredItem && hoveredPointGross && (
           <div
-            className="absolute z-30 pointer-events-none transition-all duration-100 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-700/80 rounded-lg shadow-xl p-3 text-xs w-56 text-left"
+            className="app-surface-card absolute z-30 pointer-events-none transition-all duration-100 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-md border border-zinc-200 dark:border-zinc-700/80 rounded-lg shadow-xl p-3 text-xs w-56 text-left"
             style={{
               left: `${Math.min(Math.max(hoveredPointGross.x - 110, 10), svgWidth - 240)}px`,
               top: '15px',
@@ -338,10 +338,10 @@ export const AnnualPayrollTrendChart: React.FC<AnnualPayrollTrendChartProps> = (
           >
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-1.5 mb-2">
               <span className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-zinc-400" />
+                <Calendar className="w-3 h-3 text-zinc-500 dark:text-zinc-400" />
                 {hoveredItem.label} {year}
               </span>
-              <span className="font-mono text-[10px] text-zinc-400">
+              <span className="font-mono text-[10px] text-zinc-500 dark:text-zinc-400">
                 {hoveredItem.headcount} staff
               </span>
             </div>
@@ -349,24 +349,24 @@ export const AnnualPayrollTrendChart: React.FC<AnnualPayrollTrendChartProps> = (
             <div className="space-y-1 font-mono text-[11px]">
               {(viewMode === 'both' || viewMode === 'gross-only') && (
                 <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
-                  <span className="font-sans font-medium text-zinc-500">Gross:</span>
+                  <span className="font-sans font-medium text-zinc-600 dark:text-zinc-400">Gross:</span>
                   <span className="font-semibold">{formatNaira(hoveredItem.gross)}</span>
                 </div>
               )}
 
               {(viewMode === 'both' || viewMode === 'net-only') && (
                 <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
-                  <span className="font-sans font-medium text-zinc-500">Net:</span>
+                  <span className="font-sans font-medium text-zinc-600 dark:text-zinc-400">Net:</span>
                   <span className="font-semibold">{formatNaira(hoveredItem.net)}</span>
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-zinc-500 text-[10px] pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+              <div className="flex items-center justify-between text-zinc-600 dark:text-zinc-400 text-[10px] pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
                 <span className="font-sans">PAYE:</span>
                 <span>{formatNaira(hoveredItem.paye)}</span>
               </div>
 
-              <div className="flex items-center justify-between text-zinc-500 text-[10px]">
+              <div className="flex items-center justify-between text-zinc-600 dark:text-zinc-400 text-[10px]">
                 <span className="font-sans">Pension:</span>
                 <span>{formatNaira(hoveredItem.pension)}</span>
               </div>

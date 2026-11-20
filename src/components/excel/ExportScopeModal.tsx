@@ -124,26 +124,26 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
 
   return (
     <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-lg shadow-2xl overflow-hidden animate-fade-in flex flex-col">
+      <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-lg shadow-2xl overflow-hidden animate-fade-in flex flex-col">
         
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <div className="app-subtle-surface app-accent-text w-8 h-8 rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-center">
               <FileSpreadsheet className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 Export to Excel
               </h3>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                 Generate and download formatted .xlsx spreadsheets
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+            className="p-1 rounded text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -161,10 +161,10 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
               <button
                 type="button"
                 onClick={() => setScope('current-month')}
-                className={`px-3 py-2 rounded-lg border text-xs font-medium transition text-center ${
+                className={`px-3 py-2 rounded-lg border text-xs font-medium transition text-center cursor-pointer ${
                   scope === 'current-month'
-                    ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-500 font-semibold'
-                    : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 text-zinc-700 dark:text-zinc-300'
+                    ? 'app-active-tab font-semibold shadow-2xs'
+                    : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-700 dark:text-zinc-300'
                 }`}
               >
                 Single Month
@@ -173,10 +173,10 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
               <button
                 type="button"
                 onClick={() => setScope('full-year')}
-                className={`px-3 py-2 rounded-lg border text-xs font-medium transition text-center ${
+                className={`px-3 py-2 rounded-lg border text-xs font-medium transition text-center cursor-pointer ${
                   scope === 'full-year'
-                    ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-500 font-semibold'
-                    : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 text-zinc-700 dark:text-zinc-300'
+                    ? 'app-active-tab font-semibold shadow-2xs'
+                    : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-700 dark:text-zinc-300'
                 }`}
               >
                 Full Year (12 Mo.)
@@ -185,10 +185,10 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
               <button
                 type="button"
                 onClick={() => setScope('all-history')}
-                className={`px-3 py-2 rounded-lg border text-xs font-medium transition text-center ${
+                className={`px-3 py-2 rounded-lg border text-xs font-medium transition text-center cursor-pointer ${
                   scope === 'all-history'
-                    ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-500 font-semibold'
-                    : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 text-zinc-700 dark:text-zinc-300'
+                    ? 'app-active-tab font-semibold shadow-2xs'
+                    : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-700 dark:text-zinc-300'
                 }`}
               >
                 All History
@@ -206,7 +206,7 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
                 value={selectedMonth}
                 onChange={e => setSelectedMonth(e.target.value)}
                 disabled={scope === 'full-year'}
-                className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
+                className="app-subtle-surface w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400 disabled:opacity-50"
               >
                 {MONTHS.map(m => (
                   <option key={m.key} value={m.key}>{m.label}</option>
@@ -221,7 +221,7 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
               <select
                 value={selectedYear}
                 onChange={e => setSelectedYear(Number(e.target.value))}
-                className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="app-subtle-surface w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400"
               >
                 {years.map(y => (
                   <option key={y} value={y}>{y}</option>
@@ -238,7 +238,7 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
             <select
               value={informationScope}
               onChange={e => setInformationScope(e.target.value as ExportInformationScope)}
-              className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 font-medium focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="app-subtle-surface w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 font-medium focus:outline-none focus:ring-1 focus:ring-zinc-400"
             >
               <option value="all">All Schedules &amp; Registers</option>
               <option value="payroll-register">Master Payroll Register Only</option>
@@ -259,7 +259,7 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
               <select
                 value={departmentFilter}
                 onChange={e => setDepartmentFilter(e.target.value)}
-                className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="app-subtle-surface w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400"
               >
                 <option value="ALL">All Departments</option>
                 {departments.map(dept => (
@@ -277,7 +277,7 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
               <select
                 value={employmentTypeFilter}
                 onChange={e => setEmploymentTypeFilter(e.target.value)}
-                className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="app-subtle-surface w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-400"
               >
                 {availableTypes.map(type => (
                   <option key={type.id} value={type.id}>
@@ -306,12 +306,12 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="px-5 py-3.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex items-center justify-end gap-2">
+        <div className="app-subtle-surface px-5 py-3.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
             disabled={isExporting}
-            className="px-3.5 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 transition"
+            className="app-surface-card px-3.5 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:opacity-90 border border-zinc-200 dark:border-zinc-700 transition cursor-pointer"
           >
             Cancel
           </button>
@@ -319,7 +319,7 @@ export const ExportScopeModal: React.FC<ExportScopeModalProps> = ({
             type="button"
             onClick={handleExport}
             disabled={isExporting}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 font-medium text-xs transition shadow-2xs"
+            className="app-primary-btn flex items-center gap-1.5 px-4 py-1.5 rounded-md font-medium text-xs transition shadow-2xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>{isExporting ? 'Generating...' : 'Download .xlsx'}</span>

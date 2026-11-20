@@ -496,10 +496,10 @@ Password: ${createdCredentials.pass}`;
   const pagedMembers = filteredMembers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 w-full animate-in fade-in duration-150">
+    <div className="app-shell-bg flex-1 flex flex-col min-h-0 w-full animate-in fade-in duration-150">
       
       {/* Pinned Top Toolbar */}
-      <div className="shrink-0 pt-3 pb-3 bg-[#fbfbfb] dark:bg-[#09090b] z-20 flex flex-col gap-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80">
+      <div className="app-shell-bg shrink-0 pt-3 pb-3 bg-[#fbfbfb] dark:bg-[#09090b] z-20 flex flex-col gap-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80">
         
         {/* Top Row: Back Action, Title, & Live Presence Badges */}
         <div className="flex items-center justify-between gap-2">
@@ -507,7 +507,7 @@ Password: ${createdCredentials.pass}`;
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer shadow-2xs shrink-0"
+              className="app-surface-card flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:opacity-90 transition cursor-pointer shadow-2xs shrink-0"
               title="Return to workspaces"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -522,7 +522,7 @@ Password: ${createdCredentials.pass}`;
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200/50 dark:border-zinc-700/50">
+            <span className="app-subtle-surface px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200/50 dark:border-zinc-700/50">
               {members.length} {members.length === 1 ? 'Operator' : 'Operators'}
             </span>
             {currentUser?.role === 'Admin' && onlineMembers.length > 0 && (
@@ -546,7 +546,7 @@ Password: ${createdCredentials.pass}`;
               placeholder="Filter staff by name or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-xl pl-9 pr-8 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
+              className="app-surface-card w-full h-10 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 rounded-xl pl-9 pr-8 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none transition shadow-2xs"
             />
             {searchQuery && (
               <button
@@ -563,7 +563,7 @@ Password: ${createdCredentials.pass}`;
             type="button"
             onClick={() => loadMembers(false)}
             disabled={isLoading || isRefreshing}
-            className="h-10 w-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+            className="app-surface-card h-10 w-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:opacity-90 text-zinc-600 dark:text-zinc-300 transition flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
             title="Refresh list"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
@@ -573,10 +573,10 @@ Password: ${createdCredentials.pass}`;
             <button
               type="button"
               onClick={() => setIsAuditModalOpen(true)}
-              className="h-10 w-10 sm:w-auto px-0 sm:px-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer whitespace-nowrap shrink-0"
+              className="app-surface-card h-10 w-10 sm:w-auto px-0 sm:px-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] hover:opacity-90 text-zinc-700 dark:text-zinc-200 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer whitespace-nowrap shrink-0"
               title="All Companies Audit Trail"
             >
-              <History className="w-4 h-4 text-emerald-500" />
+              <History className="w-4 h-4 app-accent-text text-emerald-500" />
               <span className="hidden sm:inline">Audit Trail</span>
             </button>
           )}
@@ -584,7 +584,7 @@ Password: ${createdCredentials.pass}`;
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="h-10 w-10 sm:w-auto px-0 sm:px-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+            className="app-primary-btn h-10 w-10 sm:w-auto px-0 sm:px-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap shrink-0"
             title="Add Member"
           >
             <Plus className="w-4 h-4" />
@@ -595,8 +595,8 @@ Password: ${createdCredentials.pass}`;
       </div>
 
       {/* Sticky Table Header — visible ONLY on sm+ screens */}
-      <div className="hidden sm:block shrink-0 bg-white dark:bg-[#121215] border-x border-t border-zinc-200 dark:border-zinc-800 rounded-t-xl mt-4 mx-0">
-        <div className="grid grid-cols-12 gap-3 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 rounded-t-xl">
+      <div className="app-surface-card hidden sm:block shrink-0 bg-white dark:bg-[#121215] border-x border-t border-zinc-200 dark:border-zinc-800 rounded-t-xl mt-4 mx-0">
+        <div className="app-subtle-surface grid grid-cols-12 gap-3 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 rounded-t-xl">
           <div className="col-span-5 sm:col-span-4">Operator Name &amp; ID</div>
           <div className="col-span-4 sm:col-span-3">Work Email</div>
           <div className="col-span-3 sm:col-span-2">Access Role</div>
@@ -648,7 +648,7 @@ Password: ${createdCredentials.pass}`;
                   <div
                     key={member.id}
                     onClick={() => setViewMember(member)}
-                    className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3.5 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition cursor-pointer"
+                    className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3.5 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99] transition cursor-pointer"
                   >
                     {/* Header Row: Avatar with Live Pulse, Name, Username, and Actions */}
                     <div className="flex items-start justify-between gap-2.5">
@@ -710,7 +710,7 @@ Password: ${createdCredentials.pass}`;
                     </div>
 
                     {/* Email Strip */}
-                    <div className="mt-2.5 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl px-2.5 py-1.5 border border-zinc-200/60 dark:border-zinc-800/60">
+                    <div className="app-subtle-surface mt-2.5 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl px-2.5 py-1.5 border border-zinc-200/60 dark:border-zinc-800/60">
                       <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                       <span className="truncate select-all">{member.email || 'No email registered'}</span>
                     </div>
@@ -721,7 +721,7 @@ Password: ${createdCredentials.pass}`;
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-semibold text-[11px] ${
                           member.role === 'Admin'
-                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                            ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
                             : member.role === 'Auditor'
                               ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                               : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
@@ -759,7 +759,7 @@ Password: ${createdCredentials.pass}`;
             </div>
 
             {/* ── DESKTOP VIEW: Ledger Table Card (>= sm screens) ── */}
-            <div className="hidden sm:block bg-white dark:bg-[#121215] border-x border-b border-zinc-200 dark:border-zinc-800 rounded-b-xl overflow-hidden shadow-2xs">
+            <div className="app-surface-card hidden sm:block bg-white dark:bg-[#121215] border-x border-b border-zinc-200 dark:border-zinc-800 rounded-b-xl overflow-hidden shadow-2xs">
               <div className="divide-y divide-zinc-200 dark:divide-zinc-800 text-xs">
                 {pagedMembers.map(member => {
                   const isSelf = Boolean(
@@ -780,7 +780,7 @@ Password: ${createdCredentials.pass}`;
                     >
                       {/* Col 1: Operator Name & Avatar */}
                       <div className="col-span-5 sm:col-span-4 flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-semibold text-xs shrink-0 border border-zinc-200 dark:border-zinc-700/60">
+                        <div className="app-subtle-surface w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-semibold text-xs shrink-0 border border-zinc-200 dark:border-zinc-700/60">
                           {member.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0 space-y-0.5">
@@ -817,7 +817,7 @@ Password: ${createdCredentials.pass}`;
                             onChange={(e) => handleRoleChange(member, e.target.value as TeamMemberRole)}
                             className={`h-7 text-[11px] px-2 py-0 rounded font-medium border focus:outline-none cursor-pointer transition shadow-2xs ${
                               member.role === 'Admin'
-                                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                                ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
                                 : member.role === 'Auditor'
                                   ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                                   : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
@@ -879,7 +879,7 @@ Password: ${createdCredentials.pass}`;
                             </button>
 
                             {openMenuId === member.id && (
-                              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white dark:bg-[#1a1a1e] border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 text-xs overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
+                              <div className="app-surface-card absolute right-0 top-full mt-1 z-50 w-44 bg-white dark:bg-[#1a1a1e] border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 text-xs overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
                                 <button
                                   type="button"
                                   onClick={() => { setOpenMenuId(null); handleOpenEdit(member); }}
@@ -933,7 +933,7 @@ Password: ${createdCredentials.pass}`;
       </div>
 
       {/* Pinned Pagination Footer */}
-      <div className="shrink-0 border-t border-zinc-200 dark:border-zinc-800 bg-[#fbfbfb] dark:bg-[#09090b] px-4 py-2.5 flex items-center justify-between gap-3">
+      <div className="app-shell-bg shrink-0 border-t border-zinc-200 dark:border-zinc-800 bg-[#fbfbfb] dark:bg-[#09090b] px-4 py-2.5 flex items-center justify-between gap-3">
         {/* Left: count info */}
         <span className="text-[11px] text-zinc-400">
           {filteredMembers.length === 0
@@ -949,7 +949,7 @@ Password: ${createdCredentials.pass}`;
               type="button"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="h-7 w-7 flex items-center justify-center rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition text-xs cursor-pointer"
+              className="app-surface-card h-7 w-7 flex items-center justify-center rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-500 dark:text-zinc-400 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition text-xs cursor-pointer"
               title="Previous page"
             >
               &#8249;
@@ -972,8 +972,8 @@ Password: ${createdCredentials.pass}`;
                     onClick={() => setCurrentPage(p as number)}
                     className={`h-7 min-w-[28px] px-1.5 flex items-center justify-center rounded border text-xs font-medium transition cursor-pointer ${
                       currentPage === p
-                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                        : 'bg-white dark:bg-[#121215] border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                        ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                        : 'app-surface-card bg-white dark:bg-[#121215] border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:opacity-90'
                     }`}
                   >
                     {p}
@@ -986,7 +986,7 @@ Password: ${createdCredentials.pass}`;
               type="button"
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="h-7 w-7 flex items-center justify-center rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition text-xs cursor-pointer"
+              className="app-surface-card h-7 w-7 flex items-center justify-center rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121215] text-zinc-500 dark:text-zinc-400 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition text-xs cursor-pointer"
               title="Next page"
             >
               &#8250;
@@ -1001,14 +1001,14 @@ Password: ${createdCredentials.pass}`;
           className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
         >
           <div 
-            className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
+            className="app-surface-card w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden mt-2 shrink-0" />
 
             <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shrink-0 shadow-2xs">
+                <div className="app-primary-btn w-7 h-7 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shrink-0 shadow-2xs">
                   <Edit3 className="w-3.5 h-3.5" />
                 </div>
                 <div className="min-w-0">
@@ -1121,7 +1121,7 @@ Password: ${createdCredentials.pass}`;
 
               </div>
 
-              <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800 p-3 sm:p-4 px-4 sm:px-5 flex items-center justify-between gap-2 z-10 select-none">
+              <div className="app-surface-card shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800 p-3 sm:p-4 px-4 sm:px-5 flex items-center justify-between gap-2 z-10 select-none">
                 {editingMember.id !== currentUser?.id ? (
                   <button
                     type="button"
@@ -1150,7 +1150,7 @@ Password: ${createdCredentials.pass}`;
                   <button
                     type="submit"
                     disabled={isSavingEdit}
-                    className="px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-xl font-semibold text-xs hover:opacity-90 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                    className="app-primary-btn px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-xl font-semibold text-xs hover:opacity-90 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
                   >
                     {isSavingEdit && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                     <span>Save Changes</span>
@@ -1169,14 +1169,14 @@ Password: ${createdCredentials.pass}`;
           className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
         >
           <div 
-            className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
+            className="app-surface-card w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden mt-2 shrink-0" />
 
             <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shrink-0 shadow-2xs">
+                <div className="app-primary-btn w-7 h-7 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shrink-0 shadow-2xs">
                   <Plus className="w-3.5 h-3.5" />
                 </div>
                 <div className="min-w-0">
@@ -1319,7 +1319,7 @@ Password: ${createdCredentials.pass}`;
               </div>
             </div>
 
-            <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800 p-3 sm:p-4 px-4 sm:px-5 flex justify-end gap-2 z-10 select-none">
+            <div className="app-surface-card shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800 p-3 sm:p-4 px-4 sm:px-5 flex justify-end gap-2 z-10 select-none">
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
@@ -1330,7 +1330,7 @@ Password: ${createdCredentials.pass}`;
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-xl font-semibold text-xs hover:opacity-90 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                className="app-primary-btn px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-xl font-semibold text-xs hover:opacity-90 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
               >
                 {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 <span>Save Member</span>
@@ -1348,7 +1348,7 @@ Password: ${createdCredentials.pass}`;
           className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
         >
           <div 
-            className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-3.5 text-xs animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+            className="app-surface-card w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-3.5 text-xs animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
@@ -1362,10 +1362,10 @@ Password: ${createdCredentials.pass}`;
               Share these credentials with your colleague to sign in from their computer:
             </p>
 
-            <div className="p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 font-mono text-xs space-y-1.5">
+            <div className="app-subtle-surface p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 font-mono text-xs space-y-1.5">
               <div><span className="text-zinc-400 font-sans">Email:</span> {createdCredentials.email}</div>
               <div><span className="text-zinc-400 font-sans">Username:</span> {createdCredentials.username}</div>
-              <div><span className="text-zinc-400 font-sans">Initial Password:</span> <strong className="text-blue-500 font-mono">{createdCredentials.pass}</strong></div>
+              <div><span className="text-zinc-400 font-sans">Initial Password:</span> <strong className="app-accent-text text-blue-500 font-mono">{createdCredentials.pass}</strong></div>
               <div><span className="text-zinc-400 font-sans">Role:</span> {createdCredentials.role}</div>
             </div>
 
@@ -1373,7 +1373,7 @@ Password: ${createdCredentials.pass}`;
               <button
                 type="button"
                 onClick={handleCopyCredentials}
-                className="px-3.5 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200"
+                className="app-subtle-surface px-3.5 py-2 bg-zinc-100 dark:bg-zinc-800 hover:opacity-90 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -1381,7 +1381,7 @@ Password: ${createdCredentials.pass}`;
               <button
                 type="button"
                 onClick={() => setCreatedCredentials(null)}
-                className="px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-xl text-xs font-semibold cursor-pointer hover:opacity-90 shadow-2xs"
+                className="app-primary-btn px-4 py-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded-xl text-xs font-semibold cursor-pointer hover:opacity-90 shadow-2xs"
               >
                 Done
               </button>
@@ -1397,14 +1397,14 @@ Password: ${createdCredentials.pass}`;
           className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
         >
           <div
-            className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 text-xs max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
+            className="app-surface-card w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 text-xs max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
 
             {/* Avatar + Name header */}
             <div className="px-6 pt-6 pb-4 flex items-center gap-4 border-b border-zinc-100 dark:border-zinc-800">
-              <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-bold text-lg border border-zinc-200 dark:border-zinc-700 shrink-0">
+              <div className="app-subtle-surface w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 font-bold text-lg border border-zinc-200 dark:border-zinc-700 shrink-0">
                 {viewMember.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
@@ -1501,14 +1501,14 @@ Password: ${createdCredentials.pass}`;
                 <div className="px-6 pb-5 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-2 flex-wrap">
                   {canManageViewed ? (
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <button
+                        <button
                         type="button"
                         onClick={() => {
                           const m = viewMember;
                           setViewMember(null);
                           handleOpenEdit(m);
                         }}
-                        className="px-2.5 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer"
+                        className="app-primary-btn px-2.5 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Edit</span>
@@ -1568,7 +1568,7 @@ Password: ${createdCredentials.pass}`;
           className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
         >
           <div 
-            className="w-full sm:max-w-md bg-white dark:bg-[#121215] rounded-t-3xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 sm:p-6 shadow-2xl space-y-3.5 animate-in slide-in-from-bottom duration-200"
+            className="app-surface-card w-full sm:max-w-md bg-white dark:bg-[#121215] rounded-t-3xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 sm:p-6 shadow-2xl space-y-3.5 animate-in slide-in-from-bottom duration-200"
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
@@ -1650,7 +1650,7 @@ Password: ${createdCredentials.pass}`;
           className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
         >
           <div 
-            className="w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
+            className="app-surface-card w-full sm:max-w-md bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
           >
             {/* Mobile Drag Indicator */}
             <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />

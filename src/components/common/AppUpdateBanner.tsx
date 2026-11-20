@@ -220,7 +220,7 @@ export const AppUpdateBanner: React.FC = () => {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm w-full mx-4 sm:mx-0 animate-in slide-in-from-bottom-3 duration-300 pointer-events-auto">
-      <div className="bg-white/95 dark:bg-[#121215]/95 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg p-4 text-zinc-900 dark:text-zinc-100 select-none relative overflow-hidden backdrop-blur-md">
+      <div className="app-surface-card bg-white/95 dark:bg-[#121215]/95 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg p-4 text-zinc-900 dark:text-zinc-100 select-none relative overflow-hidden backdrop-blur-md">
 
         {/* STATE 1: Update Available */}
         {updateState.status === 'available' && (
@@ -259,7 +259,7 @@ export const AppUpdateBanner: React.FC = () => {
               <button
                 type="button"
                 onClick={handleStartDownload}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 transition-colors shadow-2xs cursor-pointer"
+                className="app-primary-btn flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 transition-colors shadow-2xs cursor-pointer"
               >
                 <DownloadCloud className="w-3.5 h-3.5" />
                 <span>Download and Prepare Update</span>
@@ -335,7 +335,7 @@ export const AppUpdateBanner: React.FC = () => {
                 type="button"
                 disabled={isInstalling}
                 onClick={handleRestartToInstall}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                className="app-primary-btn flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
               >
                 <RotateCw className={`w-3.5 h-3.5 ${isInstalling ? 'animate-spin' : ''}`} />
                 <span>{isInstalling ? 'Restarting…' : 'Restart to Update'}</span>

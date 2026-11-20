@@ -97,7 +97,7 @@ export const CompanyAuditAndTeamTab: React.FC<CompanyAuditAndTeamTabProps> = ({ 
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
+      <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-5 space-y-4">
         
         {/* Header & Actions */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
@@ -106,11 +106,11 @@ export const CompanyAuditAndTeamTab: React.FC<CompanyAuditAndTeamTabProps> = ({ 
               <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 Workspace Audit Trail
               </h2>
-              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+              <span className="app-subtle-surface px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
                 {filteredLogs.length} Events
               </span>
             </div>
-            <p className="text-xs text-zinc-500 mt-0.5">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Historical activity ledger of changes, approvals, and actions recorded for {company.name}.
             </p>
           </div>
@@ -120,7 +120,7 @@ export const CompanyAuditAndTeamTab: React.FC<CompanyAuditAndTeamTabProps> = ({ 
               <button
                 type="button"
                 onClick={exportLogsAsCSV}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded hover:bg-zinc-50 dark:hover:bg-zinc-900 transition cursor-pointer"
+                className="app-subtle-surface flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded hover:opacity-90 transition cursor-pointer"
                 title="Download CSV"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -131,7 +131,7 @@ export const CompanyAuditAndTeamTab: React.FC<CompanyAuditAndTeamTabProps> = ({ 
               type="button"
               onClick={loadAuditLogs}
               disabled={isLoadingLogs}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded hover:bg-zinc-50 dark:hover:bg-zinc-900 transition cursor-pointer"
+              className="app-subtle-surface flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded hover:opacity-90 transition cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoadingLogs ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -147,12 +147,12 @@ export const CompanyAuditAndTeamTab: React.FC<CompanyAuditAndTeamTabProps> = ({ 
             placeholder="Search by action, operator, or details..."
             value={logSearchQuery}
             onChange={(e) => setLogSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition"
+            className="app-subtle-surface w-full pl-9 pr-3 py-1.5 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition"
           />
         </div>
 
         {/* Audit Log Entries List */}
-        <div className="border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden">
+        <div className="app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden">
           {isLoadingLogs ? (
             <div className="py-12 flex items-center justify-center text-zinc-400 text-xs gap-2">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />

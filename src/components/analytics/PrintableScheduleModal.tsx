@@ -420,14 +420,14 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
   if (!isOpen || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="print-modal-root fixed top-9 inset-x-0 bottom-0 z-50 bg-[#f4f4f5] dark:bg-[#09090b] flex flex-col overflow-hidden text-zinc-900 dark:text-zinc-100 print:top-0 print:inset-0 print:bg-white print:z-auto">
+    <div className="print-modal-root app-shell-bg fixed top-9 inset-x-0 bottom-0 z-50 bg-[#f4f4f5] dark:bg-[#09090b] flex flex-col overflow-hidden text-zinc-900 dark:text-zinc-100 print:top-0 print:inset-0 print:bg-white print:z-auto">
       
       {/* Top Application Header Bar - no-print */}
-      <div className="no-print h-12 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-6 flex items-center justify-between shrink-0">
+      <div className="no-print app-surface-card h-12 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors shrink-0 cursor-pointer"
+            className="app-subtle-surface flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:opacity-90 text-zinc-700 dark:text-zinc-300 transition-colors shrink-0 cursor-pointer"
             title="Back to Reports (Esc)"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -439,18 +439,18 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
               Official Schedule
             </span>
             <span className="text-xs text-zinc-400 hidden sm:inline">&bull; {monthLabel} {year}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-500 shrink-0">
+            <span className="app-subtle-surface text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 shrink-0">
               {totalPages} {totalPages === 1 ? 'Page' : 'Pages'}
             </span>
           </div>
 
           {/* Schedule Switcher */}
-          <div className="hidden md:flex items-center bg-zinc-100 dark:bg-zinc-800/60 p-0.5 rounded-lg ml-2 text-xs">
+          <div className="app-subtle-surface hidden md:flex items-center bg-zinc-100 dark:bg-zinc-800/60 p-0.5 rounded-lg ml-2 text-xs">
             <button
               onClick={() => setSelectedType('bank')}
               className={`px-3 py-1 rounded text-xs transition cursor-pointer ${
                 selectedType === 'bank'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-xs'
+                  ? 'app-active-tab font-semibold shadow-xs'
                   : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
               }`}
             >
@@ -460,7 +460,7 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
               onClick={() => setSelectedType('paye')}
               className={`px-3 py-1 rounded text-xs transition cursor-pointer ${
                 selectedType === 'paye'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-xs'
+                  ? 'app-active-tab font-semibold shadow-xs'
                   : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
               }`}
             >
@@ -470,7 +470,7 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
               onClick={() => setSelectedType('pension')}
               className={`px-3 py-1 rounded text-xs transition cursor-pointer ${
                 selectedType === 'pension'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-xs'
+                  ? 'app-active-tab font-semibold shadow-xs'
                   : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
               }`}
             >
@@ -485,7 +485,7 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
             <button
               type="button"
               onClick={() => setZoomFit(!zoomFit)}
-              className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition"
+              className="app-subtle-surface px-2.5 py-1 text-xs font-semibold rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:opacity-90 text-zinc-700 dark:text-zinc-300 transition"
               title="Toggle Zoom Fit"
             >
               {zoomFit ? '100%' : 'Fit'}
@@ -494,7 +494,7 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
 
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shadow-xs cursor-pointer active:scale-95"
+            className="app-primary-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors shadow-xs cursor-pointer active:scale-95"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Print / Save PDF</span>
@@ -512,13 +512,13 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
       </div>
 
       {/* Mobile Schedule Switcher Bar */}
-      <div className="md:hidden no-print bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 p-1.5 flex items-center justify-around text-xs">
+      <div className="md:hidden no-print app-surface-card bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 p-1.5 flex items-center justify-around gap-1 text-xs">
         <button
           onClick={() => setSelectedType('bank')}
           className={`flex-1 py-1 rounded text-center font-medium transition ${
             selectedType === 'bank'
-              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold'
-              : 'text-zinc-500'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-500 dark:text-zinc-400'
           }`}
         >
           Bank
@@ -527,8 +527,8 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
           onClick={() => setSelectedType('paye')}
           className={`flex-1 py-1 rounded text-center font-medium transition ${
             selectedType === 'paye'
-              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold'
-              : 'text-zinc-500'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-500 dark:text-zinc-400'
           }`}
         >
           PAYE Tax
@@ -537,8 +537,8 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
           onClick={() => setSelectedType('pension')}
           className={`flex-1 py-1 rounded text-center font-medium transition ${
             selectedType === 'pension'
-              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold'
-              : 'text-zinc-500'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-500 dark:text-zinc-400'
           }`}
         >
           Pension
@@ -546,7 +546,7 @@ export const PrintableScheduleModal: React.FC<PrintableScheduleModalProps> = ({
       </div>
 
       {/* ── Screen Preview Canvas (Interactive zoom, pan, mobile preview - NEVER PRINTED) ── */}
-      <div className="no-print flex-1 overflow-y-auto p-2 sm:p-6 flex flex-col items-center bg-zinc-100/90 dark:bg-[#0c0c0e]">
+      <div className="no-print app-shell-bg flex-1 overflow-y-auto p-2 sm:p-6 flex flex-col items-center bg-zinc-100/90 dark:bg-[#0c0c0e]">
         {isMobile ? (
           <div className="w-full flex flex-col items-center">
             <PinchZoomContainer

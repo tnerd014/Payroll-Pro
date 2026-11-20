@@ -45,30 +45,30 @@ export const MobileDepartmentPicker: React.FC<MobileDepartmentPickerProps> = ({
         onClick={() => setIsOpen(prev => !prev)}
         className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer relative ${
           isFiltered
-            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
-            : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+            ? 'app-primary-btn bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
+            : 'app-subtle-surface bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
         }`}
         title={isFiltered ? `Filtered: ${selectedDept}` : 'Filter by Department'}
         aria-label="Filter by Department"
       >
         <Building2 className="w-3.5 h-3.5" />
         {isFiltered && (
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-current opacity-85" />
         )}
       </button>
 
       {/* Minimalist Department Dropdown Popover */}
       {/* Anchored cleanly below the button without clipping outside the mobile viewport edge */}
       {isOpen && (
-        <div className={`absolute ${
+        <div className={`app-surface-card text-zinc-900 dark:text-zinc-100 absolute ${
           align === 'left' 
             ? 'left-0' 
             : align === 'center' 
             ? 'left-1/2 -translate-x-1/2' 
             : 'right-0'
         } top-full mt-2 w-56 max-w-[calc(100vw-2.5rem)] bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-2 z-50 text-xs space-y-1 animate-in fade-in zoom-in-95 duration-150`}>
-          <div className="px-2 py-1 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400">
+          <div className="px-2 py-1 flex items-center justify-between border-b border-zinc-200/70 dark:border-zinc-800 pb-1.5">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-500 dark:text-zinc-400">
               Department
             </span>
             {isFiltered && (
@@ -78,7 +78,7 @@ export const MobileDepartmentPicker: React.FC<MobileDepartmentPickerProps> = ({
                   onSelectDept('ALL');
                   setIsOpen(false);
                 }}
-                className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                className="app-accent-text text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
               >
                 Reset Filter
               </button>
@@ -100,12 +100,12 @@ export const MobileDepartmentPicker: React.FC<MobileDepartmentPickerProps> = ({
                   }}
                   className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between gap-2 transition-colors cursor-pointer text-xs ${
                     isSelected
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-800'
-                      : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                      ? 'app-active-tab font-bold shadow-2xs'
+                      : 'hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-200'
                   }`}
                 >
                   <span className="truncate">{displayLabel}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                 </button>
               );
             })}

@@ -37,26 +37,26 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-200/80 dark:border-zinc-800 flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
+            <div className="app-subtle-surface p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700">
               <History className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 Payroll Snapshot Version History
               </h3>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 {monthLabel} {year} &bull; {snapshots.length} {snapshots.length === 1 ? 'Snapshot' : 'Snapshots'} Preserved
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+            className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -80,13 +80,13 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                 key={snap.id}
                 className={`p-4 rounded-xl border transition-all ${
                   isCurrentlySelected
-                    ? 'border-blue-500/80 bg-blue-50/40 dark:bg-blue-950/20 shadow-xs'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#151518] hover:border-zinc-300 dark:hover:border-zinc-700'
+                    ? 'app-subtle-surface border-blue-500/80 bg-blue-50/40 dark:bg-blue-950/20 shadow-xs'
+                    : 'app-surface-card border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#151518] hover:border-zinc-300 dark:hover:border-zinc-700'
                 }`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-zinc-100 dark:border-zinc-800/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-zinc-200/70 dark:border-zinc-800/80">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+                    <span className="app-active-tab font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
                       v{snap.version}
                     </span>
 
@@ -96,7 +96,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                         Active Lock
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-[11px] font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                      <span className="app-subtle-surface flex items-center gap-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
                         <Clock className="w-3 h-3" />
                         Archived Snapshot
                       </span>
@@ -110,7 +110,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                     )}
                   </div>
 
-                  <div className="text-[11px] text-zinc-400 font-mono">
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
                     {formattedDate} {snap.finalizedBy && `by ${snap.finalizedBy}`}
                   </div>
                 </div>
@@ -196,7 +196,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                           onSelectVersion(String(snap.version));
                           onClose();
                         }}
-                        className="px-3 py-1 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 transition flex items-center gap-1.5 shadow-2xs"
+                        className="app-primary-btn px-3 py-1 rounded-md text-xs font-medium bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         View Version {snap.version}
@@ -220,7 +220,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setConfirmDeleteId(null)}
-                        className="px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-[11px] font-medium transition"
+                        className="app-surface-card px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-[11px] font-medium transition cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -230,7 +230,7 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
                           if (onDeleteSnapshot) onDeleteSnapshot(snap.id);
                           setConfirmDeleteId(null);
                         }}
-                        className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-semibold transition shadow-2xs"
+                        className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-semibold transition shadow-2xs cursor-pointer"
                       >
                         Yes, Delete
                       </button>
@@ -242,21 +242,21 @@ export const VersionHistoryModal: React.FC<VersionHistoryModalProps> = ({
           })}
 
           {sortedSnapshots.length === 0 && (
-            <div className="py-12 text-center text-zinc-400 text-xs">
+            <div className="py-12 text-center text-zinc-500 dark:text-zinc-400 text-xs">
               No historical versions saved for this payroll cycle yet.
             </div>
           )}
         </div>
 
         {/* Modal Bottom Footer */}
-        <div className="p-3 bg-zinc-50 dark:bg-zinc-900/80 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-xs text-zinc-500 flex-shrink-0">
+        <div className="app-subtle-surface p-3 bg-zinc-50 dark:bg-zinc-900/80 border-t border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400 flex-shrink-0">
           <span>
             {snapshots.length > 1 ? `${snapshots.length} versions in audit history` : '1 version available'}
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-medium transition"
+            className="app-surface-card px-3 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-medium transition cursor-pointer"
           >
             Close
           </button>

@@ -221,7 +221,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
   return (
     <div className="space-y-5 max-w-3xl pb-10">
       {/* Header Banner */}
-      <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="app-surface-card p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <Cloud className="w-4 h-4" />
@@ -237,7 +237,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
                   Live
                 </span>
               ) : (
-                <span className="text-[10px] font-medium text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.2 rounded">
+                <span className="app-subtle-surface text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.2 rounded">
                   Local Mode
                 </span>
               )}
@@ -259,10 +259,10 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
       </div>
 
       {/* Step 1: Database Setup Script */}
-      <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 shadow-xs space-y-3">
+      <div className="app-surface-card p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold text-[10px] flex items-center justify-center">
+            <span className="app-active-tab w-4 h-4 rounded-full font-bold text-[10px] flex items-center justify-center">
               1
             </span>
             <h4 className="font-medium text-xs text-zinc-900 dark:text-zinc-100">
@@ -281,16 +281,16 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
           <button
             type="button"
             onClick={handleCopySchema}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 transition shadow-xs"
+            className="app-primary-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-xs cursor-pointer"
           >
-            {copiedSchema ? <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+            {copiedSchema ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{copiedSchema ? 'Copied!' : 'Copy Setup Script'}</span>
           </button>
 
           <button
             type="button"
             onClick={handleDownloadSchemaFile}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-800 bg-white hover:bg-zinc-50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition shadow-xs"
+            className="app-subtle-surface flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-800 dark:text-zinc-200 transition shadow-xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-zinc-400" />
             <span>Download .sql</span>
@@ -299,7 +299,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
           <button
             type="button"
             onClick={() => setShowSchemaPreview(!showSchemaPreview)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer"
           >
             <Code className="w-3 h-3" />
             <span>{showSchemaPreview ? 'Hide SQL' : 'Preview SQL'}</span>
@@ -316,10 +316,10 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
       </div>
 
       {/* Step 2: Server Credentials */}
-      <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 shadow-xs space-y-3">
+      <div className="app-surface-card p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-4 h-4 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold text-[10px] flex items-center justify-center">
+            <span className="app-active-tab w-4 h-4 rounded-full font-bold text-[10px] flex items-center justify-center">
               2
             </span>
             <h4 className="font-medium text-xs text-zinc-900 dark:text-zinc-100">
@@ -340,7 +340,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://your-cloud-database.co"
-              className="w-full px-2.5 py-1.5 text-xs font-mono rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+              className="app-subtle-surface w-full px-2.5 py-1.5 text-xs font-mono rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
             />
           </div>
 
@@ -353,7 +353,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                className="text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
               >
                 {showKey ? 'Hide' : 'Reveal'}
               </button>
@@ -363,7 +363,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
               value={anonKey}
               onChange={(e) => setAnonKey(e.target.value)}
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              className="w-full px-2.5 py-1.5 text-xs font-mono rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+              className="app-subtle-surface w-full px-2.5 py-1.5 text-xs font-mono rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
             />
             
             <div className="flex items-center gap-1.5 mt-1 text-[11px] text-zinc-400">
@@ -397,7 +397,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
             type="button"
             onClick={handleTestConnection}
             disabled={isTesting || !url || !anonKey}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-800 bg-white hover:bg-zinc-50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition disabled:opacity-50"
+            className="app-subtle-surface flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-800 dark:text-zinc-200 transition disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-3 h-3 ${isTesting ? 'animate-spin' : ''}`} />
             <span>{isTesting ? 'Testing...' : 'Test'}</span>
@@ -407,7 +407,7 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
             type="button"
             onClick={handleSaveAndEnable}
             disabled={!url || !anonKey}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs disabled:opacity-50"
+            className="app-primary-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-xs disabled:opacity-50 cursor-pointer"
           >
             <Cloud className="w-3.5 h-3.5" />
             <span>Save &amp; Connect</span>
@@ -417,10 +417,10 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
 
       {/* Step 3: Migration & Sync (When Connected) */}
       {config.isEnabled && (
-        <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 shadow-xs space-y-3">
+        <div className="app-surface-card p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-4 h-4 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center">
+              <span className="app-active-tab w-4 h-4 rounded-full font-bold text-[10px] flex items-center justify-center">
                 3
               </span>
               <h4 className="font-medium text-xs text-zinc-900 dark:text-zinc-100">
@@ -433,38 +433,38 @@ export const CloudSyncSettings: React.FC<CloudSyncSettingsProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
-            <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 space-y-1.5">
+            <div className="app-subtle-surface p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 space-y-1.5">
               <div className="flex items-center gap-1.5 font-medium text-xs text-zinc-900 dark:text-zinc-100">
                 <UploadCloud className="w-3.5 h-3.5 text-emerald-500" />
                 <span>Upload to Cloud</span>
               </div>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                 Pushes {employees.length} employees and {snapshots.length} historical runs to the cloud database.
               </p>
               <button
                 type="button"
                 onClick={handleUploadLocalToCloud}
                 disabled={isUploading}
-                className="w-full mt-1.5 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 transition disabled:opacity-50"
+                className="app-primary-btn w-full mt-1.5 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition disabled:opacity-50 cursor-pointer"
               >
                 {isUploading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UploadCloud className="w-3 h-3" />}
                 <span>{isUploading ? 'Uploading...' : 'Upload Data'}</span>
               </button>
             </div>
 
-            <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 space-y-1.5">
+            <div className="app-subtle-surface p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 space-y-1.5">
               <div className="flex items-center gap-1.5 font-medium text-xs text-zinc-900 dark:text-zinc-100">
                 <DownloadCloud className="w-3.5 h-3.5 text-blue-500" />
                 <span>Pull from Cloud</span>
               </div>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                 Downloads fresh updates made by colleagues on other computers.
               </p>
               <button
                 type="button"
                 onClick={handleDownloadCloudToLocal}
                 disabled={isDownloading}
-                className="w-full mt-1.5 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850 text-zinc-800 dark:text-zinc-200 transition disabled:opacity-50"
+                className="app-surface-card w-full mt-1.5 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:opacity-90 text-zinc-800 dark:text-zinc-200 transition disabled:opacity-50 cursor-pointer"
               >
                 {isDownloading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <DownloadCloud className="w-3 h-3" />}
                 <span>{isDownloading ? 'Pulling...' : 'Pull Latest'}</span>

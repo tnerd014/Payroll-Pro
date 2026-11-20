@@ -621,8 +621,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
   return (
     <div className="pb-2 select-none">
       {/* ── Mobile View: Compact Single-Row Sticky Top Bar (Minimalist Style) ── */}
-      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b] mb-3">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
+      <div className="sm:hidden sticky -top-3 z-30 pt-0.5 pb-1 bg-[#fbfbfb] dark:bg-[#09090b] app-shell-bg mb-3">
+        <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
@@ -646,7 +646,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             </div>
 
             {/* Month & Year Picker Pill */}
-            <div className="flex items-center bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200/60 dark:border-zinc-700/60 px-2 py-1 rounded-xl text-xs transition-colors cursor-pointer shrink-0">
+            <div className="flex items-center bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 app-subtle-surface border border-zinc-200/60 dark:border-zinc-700/60 px-2 py-1 rounded-xl text-xs transition-colors cursor-pointer shrink-0">
               <select
                 value={selectedMonth}
                 onChange={(e) => onPeriodChange(e.target.value, selectedYear)}
@@ -686,7 +686,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
         {/* Period & Top Actions */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Period Selector */}
-          <div className="h-8 flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium">
+          <div className="h-8 flex items-center gap-1.5 bg-white dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 px-2.5 rounded-md text-xs font-medium">
             <Calendar className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
             <select
               value={selectedMonth}
@@ -721,7 +721,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             <>
               <button
                 onClick={openBulkModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-xs cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium app-primary-btn transition-colors shadow-xs cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Bulk Log Month</span>
@@ -732,7 +732,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   setPayoutAmount(0);
                   setIsPayoutModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium app-surface-card border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
               >
                 <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Log Payout</span>
@@ -746,8 +746,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       {/* Minimalist Stat Cards (Desktop Only - Hidden on Mobile to prevent clutter) */}
       {showStats && (
       <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+        <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
             <span>Deducted ({monthLabel})</span>
             <DollarSign className="w-3.5 h-3.5 text-zinc-400" />
           </div>
@@ -756,8 +756,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+        <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
             <span>Participation</span>
             <Users className="w-3.5 h-3.5 text-zinc-400" />
           </div>
@@ -766,8 +766,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+        <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
             <span>Total Paid Out</span>
             <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
           </div>
@@ -776,8 +776,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+        <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
             <span>Pool Balance</span>
             <PiggyBank className="w-3.5 h-3.5 text-indigo-500" />
           </div>
@@ -789,18 +789,18 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       )}
 
       {/* Mobile Segmented Switcher (Thumb-Friendly 40px) */}
-      <div className="sm:hidden grid grid-cols-3 gap-1 bg-zinc-200/70 dark:bg-zinc-800/80 p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700/60 shadow-2xs">
+      <div className="sm:hidden grid grid-cols-3 gap-1 bg-zinc-200/70 dark:bg-zinc-800/80 app-subtle-surface p-1 rounded-2xl border border-zinc-200 dark:border-zinc-700/60 shadow-2xs">
         <button
           type="button"
           onClick={() => setActiveTab('monthly')}
           className={`h-9 text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
             activeTab === 'monthly'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+              ? 'app-active-tab shadow-xs'
               : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
           }`}
         >
           <span>Deductions</span>
-          <span className="text-[10px] font-mono px-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+          <span className={`text-[10px] font-mono px-1 rounded-full ${activeTab === 'monthly' ? 'bg-black/15' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
             {monthlyContributors.length}
           </span>
         </button>
@@ -809,12 +809,12 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           onClick={() => setActiveTab('ledger')}
           className={`h-9 text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
             activeTab === 'ledger'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+              ? 'app-active-tab shadow-xs'
               : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
           }`}
         >
           <span>Ledgers</span>
-          <span className="text-[10px] font-mono px-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+          <span className={`text-[10px] font-mono px-1 rounded-full ${activeTab === 'ledger' ? 'bg-black/15' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
             {activeLedgers.length}
           </span>
         </button>
@@ -823,12 +823,12 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           onClick={() => setActiveTab('payouts')}
           className={`h-9 text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 ${
             activeTab === 'payouts'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+              ? 'app-active-tab shadow-xs'
               : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
           }`}
         >
           <span>Payouts</span>
-          <span className="text-[10px] font-mono px-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+          <span className={`text-[10px] font-mono px-1 rounded-full ${activeTab === 'payouts' ? 'bg-black/15' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
             {filteredPayouts.length}
           </span>
         </button>
@@ -842,7 +842,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             onClick={() => setActiveTab('monthly')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'monthly'
-                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                ? 'app-active-tab'
                 : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
             }`}
           >
@@ -852,7 +852,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             onClick={() => setActiveTab('ledger')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'ledger'
-                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                ? 'app-active-tab'
                 : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
             }`}
           >
@@ -862,7 +862,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             onClick={() => setActiveTab('payouts')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'payouts'
-                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                ? 'app-active-tab'
                 : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
             }`}
           >
@@ -873,13 +873,13 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
         {/* Right Controls: Payout Scope (when in Payouts tab) & Search Bar */}
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
           {activeTab === 'payouts' && (
-            <div className="hidden sm:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-lg border border-zinc-200/80 dark:border-zinc-700/60 text-xs shrink-0">
+            <div className="hidden sm:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 app-subtle-surface p-0.5 rounded-lg border border-zinc-200/80 dark:border-zinc-700/60 text-xs shrink-0">
               <button
                 type="button"
                 onClick={() => setPayoutPeriodScope('all')}
                 className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
                   payoutPeriodScope === 'all'
-                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    ? 'app-active-tab shadow-2xs font-semibold'
                     : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 font-medium'
                 }`}
                 title="Show all historical disbursements"
@@ -891,7 +891,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 onClick={() => setPayoutPeriodScope('year')}
                 className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
                   payoutPeriodScope === 'year'
-                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    ? 'app-active-tab shadow-2xs font-semibold'
                     : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 font-medium'
                 }`}
                 title={`Show disbursements in ${selectedYear}`}
@@ -903,7 +903,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 onClick={() => setPayoutPeriodScope('month')}
                 className={`px-2.5 py-1 rounded-md text-xs transition cursor-pointer ${
                   payoutPeriodScope === 'month'
-                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    ? 'app-active-tab shadow-2xs font-semibold'
                     : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 font-medium'
                 }`}
                 title={`Show disbursements in ${monthLabel} ${selectedYear}`}
@@ -921,7 +921,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               placeholder="Search by name, code, dept..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
+              className="w-full bg-white dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
             />
           </div>
 
@@ -931,8 +931,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             onClick={toggleCompactMode}
             className={`hidden sm:flex items-center gap-1 h-8 px-2.5 rounded-md border text-xs font-medium transition cursor-pointer shrink-0 ${
               isCompactMode 
-                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent' 
-                : 'border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+                ? 'app-active-tab' 
+                : 'app-surface-card border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
             }`}
             title="Toggle table row density"
           >
@@ -944,7 +944,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           <button
             type="button"
             onClick={() => setShowStats(!showStats)}
-            className="hidden sm:flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+            className="hidden sm:flex items-center gap-1.5 bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-md px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
             title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
           >
             {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -957,10 +957,10 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       {activeTab === 'monthly' && (
         <div>
           {/* Desktop Table View */}
-          <div className="hidden sm:block bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+          <div className="hidden sm:block bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
-                <thead className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                <thead className="bg-zinc-50 dark:bg-zinc-800/60 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
                   <tr>
                     <th className="px-3 py-2.5">Code</th>
                     <th className="px-3 py-2.5">Staff Name</th>
@@ -1049,7 +1049,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                                       bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
                                       right: `${menuCoords.right}px` 
                                     }}
-                                    className="fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left contrib-action-dropdown"
+                                    className="fixed w-48 bg-white dark:bg-[#18181d] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left contrib-action-dropdown"
                                   >
                                     {/* 1. Edit Amount */}
                                     <button
@@ -1129,7 +1129,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           {/* Mobile Card Stack (Minimalist: Name and Monthly Contribution Amount) */}
           <div className="sm:hidden space-y-1.5">
             {monthlyContributors.length === 0 ? (
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
+              <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
                 <PiggyBank className="w-8 h-8 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
                 <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">No active contributions logged</p>
                 <p className="text-[11px] text-zinc-400 mt-0.5">Tap "Bulk Log" above to record contributions for {monthLabel} {selectedYear}.</p>
@@ -1141,7 +1141,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 return (
                   <div
                     key={emp.id}
-                    className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl px-3.5 py-2.5 flex items-center justify-between shadow-2xs hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition"
+                    className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl px-3.5 py-2.5 flex items-center justify-between shadow-2xs hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition"
                   >
                     <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate pr-2">
                       {emp.firstName} {emp.lastName}
@@ -1258,10 +1258,10 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       {activeTab === 'ledger' && (
         <div>
           {/* Desktop Table View */}
-          <div className="hidden sm:block bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+          <div className="hidden sm:block bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
-                <thead className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                <thead className="bg-zinc-50 dark:bg-zinc-800/60 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
                   <tr>
                     <th className="px-3 py-2.5">Code</th>
                     <th className="px-3 py-2.5">Staff Name</th>
@@ -1341,7 +1341,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                                     bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
                                     right: `${menuCoords.right}px` 
                                   }}
-                                  className="fixed w-44 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left contrib-action-dropdown"
+                                  className="fixed w-44 bg-white dark:bg-[#18181d] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left contrib-action-dropdown"
                                 >
                                   <button
                                     type="button"
@@ -1388,7 +1388,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           {/* Mobile Card Stack */}
           <div className="sm:hidden space-y-2.5">
             {activeLedgers.length === 0 ? (
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
+              <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
                 <PiggyBank className="w-8 h-8 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
                 <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">No staff savings ledgers yet</p>
                 <p className="text-[11px] text-zinc-400 mt-0.5">Staff savings and pool balances will appear here as contributions accumulate.</p>
@@ -1405,7 +1405,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 return (
                   <div
                     key={summary.employeeId}
-                    className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs"
+                    className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs"
                   >
                     {/* Identity */}
                     <div className="flex items-start justify-between gap-2.5">
@@ -1500,10 +1500,10 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       {activeTab === 'payouts' && (
         <div>
           {/* Desktop Table View */}
-          <div className="hidden sm:block bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+          <div className="hidden sm:block bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
-                <thead className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                <thead className="bg-zinc-50 dark:bg-zinc-800/60 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
                   <tr>
                     {(
                       [
@@ -1656,7 +1656,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                                       bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
                                       right: `${menuCoords.right}px` 
                                     }}
-                                    className="fixed w-44 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left contrib-action-dropdown"
+                                    className="fixed w-44 bg-white dark:bg-[#18181d] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left contrib-action-dropdown"
                                   >
                                     <button
                                       type="button"
@@ -1702,13 +1702,13 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           {/* Mobile Card Stack */}
           <div className="sm:hidden space-y-2.5">
             {/* Mobile Payout Scope Selector */}
-            <div className="flex items-center justify-between gap-1 bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60 text-xs">
+            <div className="flex items-center justify-between gap-1 bg-zinc-100 dark:bg-zinc-800/80 app-subtle-surface p-1 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60 text-xs">
               <button
                 type="button"
                 onClick={() => setPayoutPeriodScope('all')}
                 className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition text-center cursor-pointer ${
                   payoutPeriodScope === 'all'
-                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    ? 'app-active-tab shadow-2xs font-semibold'
                     : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
                 }`}
               >
@@ -1719,7 +1719,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 onClick={() => setPayoutPeriodScope('year')}
                 className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition text-center cursor-pointer ${
                   payoutPeriodScope === 'year'
-                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    ? 'app-active-tab shadow-2xs font-semibold'
                     : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
                 }`}
               >
@@ -1730,7 +1730,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 onClick={() => setPayoutPeriodScope('month')}
                 className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition text-center cursor-pointer ${
                   payoutPeriodScope === 'month'
-                    ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                    ? 'app-active-tab shadow-2xs font-semibold'
                     : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
                 }`}
               >
@@ -1739,7 +1739,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             </div>
 
             {filteredPayouts.length === 0 ? (
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
+              <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-6 text-center shadow-xs">
                 <ArrowUpRight className="w-8 h-8 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
                 <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                   {payoutPeriodScope === 'month'
@@ -1769,7 +1769,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                   <div
                     key={payout.id}
                     onClick={() => setReceiptPayout(payout)}
-                    className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs cursor-pointer active:scale-[0.99] transition"
+                    className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs cursor-pointer active:scale-[0.99] transition"
                   >
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -1894,8 +1894,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             <button
               type="button"
               onClick={() => setIsSpeedDialOpen(!isSpeedDialOpen)}
-              className={`w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10 ${
-                isSpeedDialOpen ? 'rotate-45 !bg-zinc-900 dark:!bg-zinc-100 dark:!text-zinc-900 !ring-zinc-500/20' : ''
+              className={`w-14 h-14 rounded-2xl app-primary-btn active:scale-95 shadow-2xl flex items-center justify-center transition-all cursor-pointer ${
+                isSpeedDialOpen ? 'rotate-45' : ''
               }`}
               title="Add / Log Contribution"
               aria-label="Add / Log Contribution"
@@ -1912,7 +1912,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
         >
           <div 
-            className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+            className="bg-white dark:bg-[#121215] app-surface-card border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
           >
             {/* Mobile Drag Handle */}
             <div className="sm:hidden pt-3 pb-1 flex justify-center">
@@ -2002,7 +2002,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                                 onClick={() => setSingleAmount(val)}
                                 className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold border transition-colors cursor-pointer ${
                                   singleAmount === val
-                                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs'
+                                    ? 'app-active-tab shadow-xs'
                                     : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
                                 }`}
                               >
@@ -2026,7 +2026,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                                   onClick={() => setSingleAmount(amt)}
                                   className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold border transition-colors cursor-pointer ${
                                     singleAmount === amt
-                                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs'
+                                      ? 'app-active-tab shadow-xs'
                                       : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
                                   }`}
                                   title={`${pct}% of ${formatNaira(takeHome)} = ${formatNaira(amt)}`}
@@ -2044,7 +2044,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               </div>
             </div>
 
-            <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800/80 px-4 sm:px-5 py-3 flex items-center justify-end gap-2 z-10 select-none">
+            <div className="shrink-0 bg-white dark:bg-[#121215] app-surface-card border-t border-zinc-100 dark:border-zinc-800/80 px-4 sm:px-5 py-3 flex items-center justify-end gap-2 z-10 select-none">
               <button
                 type="button"
                 onClick={() => setEditingSingleEmp(null)}
@@ -2054,7 +2054,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               </button>
               <button
                 type="submit"
-                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition shadow-sm cursor-pointer"
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold app-primary-btn active:scale-95 transition shadow-sm cursor-pointer"
               >
                 Save Deduction
               </button>
@@ -2067,7 +2067,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
       {/* BULK DEDUCTIONS MODAL */}
       {isBulkModalOpen && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             {/* Mobile Drag Handle */}
             <div className="sm:hidden pt-2.5 pb-1 flex justify-center">
               <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
@@ -2093,7 +2093,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             </div>
 
             {/* Quick Batch Toolbar */}
-            <div className="px-4 py-2.5 bg-zinc-50/70 dark:bg-zinc-900/50 border-b border-zinc-100 dark:border-zinc-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs">
+            <div className="px-4 py-2.5 bg-zinc-50/70 dark:bg-zinc-900/50 app-subtle-surface border-b border-zinc-100 dark:border-zinc-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider shrink-0">Scheme:</span>
                 <select
@@ -2145,7 +2145,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 <button
                   type="button"
                   onClick={handleApplyBatchToChecked}
-                  className="px-3 py-1.5 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-semibold hover:opacity-90 active:scale-95 transition cursor-pointer shadow-2xs shrink-0"
+                  className="px-3 py-1.5 rounded-xl app-primary-btn text-xs font-semibold active:scale-95 transition cursor-pointer shadow-2xs shrink-0"
                 >
                   Apply
                 </button>
@@ -2155,7 +2155,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             {/* DESKTOP TABLE VIEW */}
             <div className="hidden sm:block flex-1 overflow-y-auto">
               <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
-                <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-[10px] uppercase tracking-wider text-zinc-400 font-semibold sticky top-0 border-b border-zinc-100 dark:border-zinc-800 z-10">
+                <thead className="bg-zinc-50 dark:bg-zinc-900/80 app-subtle-surface text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold sticky top-0 border-b border-zinc-100 dark:border-zinc-800 z-10">
                   <tr>
                     <th className="p-3 w-10 text-center">
                       <input
@@ -2344,7 +2344,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-900/60">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-900/60 app-subtle-surface">
               <div className="text-xs">
                 <div className="text-zinc-500 dark:text-zinc-400 text-[11px]">
                   <span>{bulkRows.filter(r => r.isSelected).length} of {bulkRows.length} selected</span>
@@ -2364,7 +2364,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 <button
                   type="button"
                   onClick={handleSaveBulk}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition shadow-sm"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold app-primary-btn active:scale-95 transition shadow-sm"
                 >
                   Save Deductions
                 </button>
@@ -2380,7 +2380,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
         >
           <div 
-            className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+            className="bg-white dark:bg-[#121215] app-surface-card border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
           >
             {/* Mobile Drag Handle */}
             <div className="sm:hidden pt-3 pb-1 flex justify-center">
@@ -2513,8 +2513,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               </div>
 
               {/* Settlement Mode: Paid Separately vs Paid with Salary */}
-              <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 space-y-2.5">
-                <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+              <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 app-subtle-surface space-y-2.5">
+                <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                   Settlement Mode
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -2523,8 +2523,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                     onClick={() => setPayoutDisbursementMode('separate')}
                     className={`px-3 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                       payoutDisbursementMode === 'separate'
-                        ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100'
-                        : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                        ? 'app-active-tab'
+                        : 'bg-white dark:bg-zinc-900 app-surface-card text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                     }`}
                   >
                     Paid Separately
@@ -2534,8 +2534,8 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                     onClick={() => setPayoutDisbursementMode('with_salary')}
                     className={`px-3 py-2 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                       payoutDisbursementMode === 'with_salary'
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                        ? 'app-active-tab'
+                        : 'bg-white dark:bg-zinc-900 app-surface-card text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                     }`}
                   >
                     Paid with Salary
@@ -2604,7 +2604,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
               </div>
 
               {/* Fixed Footer Actions */}
-              <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800/80 px-4 sm:px-5 py-3 flex items-center justify-end gap-2 z-10 select-none">
+              <div className="shrink-0 bg-white dark:bg-[#121215] app-surface-card border-t border-zinc-100 dark:border-zinc-800/80 px-4 sm:px-5 py-3 flex items-center justify-end gap-2 z-10 select-none">
                 <button
                   type="button"
                   onClick={() => setIsPayoutModalOpen(false)}
@@ -2615,7 +2615,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                 <button
                   type="submit"
                   disabled={isWriteDisabled || !payoutEmpId || payoutAmount <= 0}
-                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition shadow-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold app-primary-btn active:scale-95 transition shadow-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Record Disbursement
                 </button>
@@ -2631,7 +2631,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
           className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
         >
           <div 
-            className="bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+            className="bg-white dark:bg-[#121215] app-surface-card border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
           >
             {/* Mobile Drag Handle */}
             <div className="sm:hidden pt-3 pb-1 flex justify-center">
@@ -2713,7 +2713,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
 
                   <div className="p-4 space-y-3 flex-1 overflow-y-auto text-xs">
                     {/* Summary Card */}
-                    <div className="grid grid-cols-3 gap-2 p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-lg border border-zinc-200 dark:border-zinc-800 text-center">
+                    <div className="grid grid-cols-3 gap-2 p-3 bg-zinc-50 dark:bg-zinc-800/40 app-subtle-surface rounded-lg border border-zinc-200 dark:border-zinc-800 text-center">
                       <div>
                         <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium">Total Saved</div>
                         <div className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm mt-0.5">
@@ -2736,7 +2736,7 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
 
                     {/* Transactions Table */}
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-zinc-100 dark:bg-zinc-800 text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                      <thead className="bg-zinc-100 dark:bg-zinc-800 app-subtle-surface text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
                         <tr>
                           <th className="p-2">Date</th>
                           <th className="p-2">Description</th>
@@ -2776,10 +2776,10 @@ export const ContributionsView: React.FC<ContributionsViewProps> = ({
                     </table>
                   </div>
 
-                  <div className="p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-end">
+                  <div className="p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface flex justify-end">
                     <button
                       onClick={() => setSelectedLedgerEmpId(null)}
-                      className="px-4 py-1.5 rounded text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90"
+                      className="px-4 py-1.5 rounded text-xs font-medium app-primary-btn"
                     >
                       Close Statement
                     </button>

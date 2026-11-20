@@ -65,7 +65,7 @@ export const MobileLoanCard: React.FC<MobileLoanCardProps> = ({
   return (
     <div 
       onClick={() => onViewDetails(loan)}
-      className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs space-y-3 select-none relative cursor-pointer active:scale-[0.99] transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
+      className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs space-y-3 select-none relative cursor-pointer active:scale-[0.99] transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
     >
       {/* Top Header */}
       <div className="flex items-start justify-between gap-2">
@@ -109,7 +109,7 @@ export const MobileLoanCard: React.FC<MobileLoanCardProps> = ({
           {/* Minimalist 3-dot dropdown matching Desktop & Mobile standards */}
           {isMenuOpen && (
             <div 
-              className="absolute right-0 top-9 w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100 text-left"
+              className="app-surface-card absolute right-0 top-9 w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100 text-left"
               onClick={(e) => e.stopPropagation()}
             >
               {/* 1. Edit Facility */}
@@ -192,28 +192,26 @@ export const MobileLoanCard: React.FC<MobileLoanCardProps> = ({
           <span className="text-zinc-500 dark:text-zinc-400 text-[11px]">Repayment Progress</span>
           <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100 text-[11px]">{percentRepaid}%</span>
         </div>
-        <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+        <div className="app-subtle-surface h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              isPaid ? 'bg-emerald-500' : 'bg-emerald-600 dark:bg-emerald-400'
-            }`}
+            className="app-accent-bar h-full rounded-full transition-all duration-300 bg-emerald-600 dark:bg-emerald-400"
             style={{ width: `${percentRepaid}%` }}
           />
         </div>
       </div>
 
       {/* Numbers Grid */}
-      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800/80 text-xs">
+      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-zinc-200/60 dark:border-zinc-800/80 text-xs">
         <div>
-          <span className="text-[10px] text-zinc-400 uppercase font-medium">Remaining</span>
+          <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-medium">Remaining</span>
           <p className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
             {formatNaira(loan.remainingBalance)}
           </p>
         </div>
         <div className="text-right">
-          <span className="text-[10px] text-zinc-400 uppercase font-medium">Monthly Rate</span>
+          <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-medium">Monthly Rate</span>
           <p className="font-mono font-semibold text-zinc-800 dark:text-zinc-200">
-            {formatNaira(loan.monthlyDeduction)} <span className="text-[10px] text-zinc-400 font-normal">/ mo</span>
+            {formatNaira(loan.monthlyDeduction)} <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal">/ mo</span>
           </p>
         </div>
       </div>

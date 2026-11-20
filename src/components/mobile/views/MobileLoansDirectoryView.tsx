@@ -330,23 +330,26 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
       
       {/* ── Top Summary Metric Cards ── */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-3.5 shadow-xs col-span-2">
-          <span className="text-[10px] uppercase font-semibold text-zinc-400 block">
+        <div className="app-hero-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 shadow-xs col-span-2">
+          <span className="app-hero-label text-[10px] uppercase font-semibold tracking-wider text-zinc-500 dark:text-zinc-400 block">
             Outstanding Loan Portfolio
           </span>
-          <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+          <div className="app-hero-value text-2xl font-extrabold font-mono text-zinc-900 dark:text-zinc-50 mt-1">
             {formatNaira(totalOutstanding)}
           </div>
-          <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1.5">
-            <span>Disbursed: <strong>{formatCompactNaira(totalDisbursed)}</strong></span>
-            <span>&bull;</span>
-            <span>Repaid: <strong>{formatCompactNaira(totalRepaid)}</strong></span>
+          <div className="flex items-center gap-2 text-xs mt-2.5 flex-wrap">
+            <span className="app-hero-chip px-2 py-0.5 rounded-lg border text-[11px] font-medium">
+              Disbursed: <strong className="font-mono">{formatCompactNaira(totalDisbursed)}</strong>
+            </span>
+            <span className="app-hero-chip px-2 py-0.5 rounded-lg border text-[11px] font-medium">
+              Repaid: <strong className="font-mono">{formatCompactNaira(totalRepaid)}</strong>
+            </span>
           </div>
         </div>
       </div>
 
       {/* ── Filter & Search Header (Compressed Single Row) ── */}
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
+      <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-2.5 px-3 shadow-xs">
         {!isSearchOpen ? (
           <div className="flex items-center justify-between gap-2">
             {/* Left: Title & Count */}
@@ -368,8 +371,8 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   onClick={() => setIsStatusPickerOpen(prev => !prev)}
                   className={`h-8 px-2.5 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                     filterStatus !== 'All' || filterType !== 'All'
-                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
-                      : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+                      ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
+                      : 'app-subtle-surface bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
                   }`}
                   title={`Filter (${filterStatus}, ${filterType})`}
                   aria-label="Filter by status and type"
@@ -388,8 +391,8 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                 </button>
 
                 {isStatusPickerOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-44 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 z-50 text-xs space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-2 py-1 text-[9px] uppercase tracking-wider font-bold text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 mb-1">
+                  <div className="app-surface-card absolute right-0 top-full mt-2 w-44 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 z-50 text-xs space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-2 py-1 text-[9px] uppercase tracking-wider font-bold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200/70 dark:border-zinc-800 mb-1">
                       Filter Status
                     </div>
                     {(['All', 'Active', 'Paid', 'Paused'] as const).map((st) => {
@@ -404,17 +407,17 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                           }}
                           className={`w-full px-2.5 py-1.5 rounded-xl text-left flex items-center justify-between text-xs transition-colors cursor-pointer ${
                             isSelected
-                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-800'
-                              : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                              ? 'app-active-tab font-bold'
+                              : 'hover:bg-black/5 dark:hover:bg-white/5 text-zinc-700 dark:text-zinc-300'
                           }`}
                         >
                           <span>{st}</span>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                         </button>
                       );
                     })}
 
-                    <div className="px-2 pt-2 pb-1 text-[9px] uppercase tracking-wider font-bold text-zinc-400 border-b border-zinc-100 dark:border-zinc-800 mb-1">
+                    <div className="px-2 pt-2 pb-1 text-[9px] uppercase tracking-wider font-bold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200/70 dark:border-zinc-800 mb-1">
                       Filter Type
                     </div>
                     {(['All', 'Staff Loan', 'Salary Advance'] as const).map((tp) => {
@@ -429,12 +432,12 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                           }}
                           className={`w-full px-2.5 py-1.5 rounded-xl text-left flex items-center justify-between text-xs transition-colors cursor-pointer ${
                             isSelected
-                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-800'
-                              : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                              ? 'app-active-tab font-bold'
+                              : 'hover:bg-black/5 dark:hover:bg-white/5 text-zinc-700 dark:text-zinc-300'
                           }`}
                         >
                           <span>{tp === 'All' ? 'All Types' : tp}</span>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                         </button>
                       );
                     })}
@@ -448,15 +451,15 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                 onClick={() => setIsSearchOpen(true)}
                 className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors cursor-pointer relative ${
                   searchQuery
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
-                    : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
+                    ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs'
+                    : 'app-subtle-surface bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60'
                 }`}
                 title="Search employee loan"
                 aria-label="Search employee loan"
               >
                 <Search className="w-3.5 h-3.5" />
                 {searchQuery && (
-                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-400 ring-1 ring-black/20" />
                 )}
               </button>
             </div>
@@ -477,7 +480,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   setIsSearchOpen(false);
                 }
               }}
-              className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+              className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-9 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
             />
             <button
               type="button"
@@ -485,7 +488,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                 setSearchQuery('');
                 setIsSearchOpen(false);
               }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
               title="Close search"
               aria-label="Close search"
             >
@@ -498,12 +501,12 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
       {/* ── Loans List ── */}
       <div className="space-y-2.5">
         {filteredLoans.length === 0 ? (
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center space-y-2">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-center space-y-2">
             <Landmark className="w-8 h-8 text-zinc-400 mx-auto" />
             <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
               No loans or salary advances found
             </h4>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               Tap the "+" button below to issue an advance or company loan.
             </p>
           </div>
@@ -530,7 +533,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
           <button
             type="button"
             onClick={() => setIsAddOpen(true)}
-            className="w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer border border-emerald-500/40 ring-4 ring-emerald-500/10"
+            className="app-primary-btn w-14 h-14 rounded-2xl bg-emerald-600 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all cursor-pointer"
             title="Issue New Loan"
             aria-label="Issue New Loan"
           >
@@ -565,9 +568,9 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               <div className="space-y-4 text-xs select-none pb-2">
                 
                 {/* Employee Card & Header 3-Dot Actions */}
-                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3">
+                <div className="app-subtle-surface p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 font-bold flex items-center justify-center text-sm shrink-0">
+                    <div className="app-surface-card w-11 h-11 rounded-xl border bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100 font-bold flex items-center justify-center text-sm shrink-0">
                       {initials}
                     </div>
                     <div className="min-w-0">
@@ -596,7 +599,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                     <button
                       type="button"
                       onClick={() => setIsDetailsMenuOpen(prev => !prev)}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                       title="Facility Actions"
                     >
                       <MoreVertical className="w-4 h-4" />
@@ -604,7 +607,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
 
                     {isDetailsMenuOpen && (
                       <div 
-                        className="absolute right-0 top-9 w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100 text-left"
+                        className="app-surface-card absolute right-0 top-9 w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100 text-left"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {!isWriteDisabled && (
@@ -678,16 +681,14 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                 </div>
 
                 {/* Progress Card */}
-                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
+                <div className="app-subtle-surface p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-zinc-500 font-medium">Repayment Progress</span>
+                    <span className="text-zinc-500 dark:text-zinc-400 font-medium">Repayment Progress</span>
                     <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{percentRepaid}% Repaid</span>
                   </div>
-                  <div className="h-2.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-2.5 w-full bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        isPaid ? 'bg-emerald-500' : 'bg-emerald-600 dark:bg-emerald-400'
-                      }`}
+                      className="app-accent-bar h-full rounded-full transition-all duration-300 bg-emerald-600 dark:bg-emerald-400"
                       style={{ width: `${percentRepaid}%` }}
                     />
                   </div>
@@ -695,44 +696,44 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
 
                 {/* Financial Summary Grid */}
                 <div className="grid grid-cols-2 gap-2.5">
-                  <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Principal Facility</span>
+                  <div className="app-subtle-surface p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Principal Facility</span>
                     <span className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100 mt-0.5 block">
                       {formatNaira(activeDetailsLoan.principalAmount)}
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Total Repaid</span>
+                  <div className="app-subtle-surface p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Total Repaid</span>
                     <span className="font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400 mt-0.5 block">
                       {formatNaira(activeDetailsLoan.totalRepaid || 0)}
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Remaining Balance</span>
+                  <div className="app-subtle-surface p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Remaining Balance</span>
                     <span className="font-mono font-bold text-sm text-zinc-900 dark:text-zinc-100 mt-0.5 block">
                       {formatNaira(activeDetailsLoan.remainingBalance || 0)}
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] text-zinc-400 uppercase font-semibold block">Monthly Deduction</span>
+                  <div className="app-subtle-surface p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-semibold block">Monthly Deduction</span>
                     <span className="font-mono font-bold text-sm text-zinc-800 dark:text-zinc-200 mt-0.5 block">
-                      {formatNaira(activeDetailsLoan.monthlyDeduction)} <span className="text-[10px] text-zinc-400 font-normal">/ mo</span>
+                      {formatNaira(activeDetailsLoan.monthlyDeduction)} <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal">/ mo</span>
                     </span>
                   </div>
                 </div>
 
                 {/* Dates & Purpose List */}
-                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2.5 text-xs">
+                <div className="app-subtle-surface p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2.5 text-xs">
                   <div className="flex justify-between items-center py-0.5 border-b border-zinc-200/60 dark:border-zinc-800/60">
-                    <span className="text-zinc-400">Facility Type</span>
+                    <span className="text-zinc-500 dark:text-zinc-400">Facility Type</span>
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200">{activeDetailsLoan.type}</span>
                   </div>
 
                   <div className="flex justify-between items-center py-0.5 border-b border-zinc-200/60 dark:border-zinc-800/60">
-                    <span className="text-zinc-400">Disbursed / Started</span>
+                    <span className="text-zinc-500 dark:text-zinc-400">Disbursed / Started</span>
                     <span className="font-mono text-zinc-800 dark:text-zinc-200">
                       {activeDetailsLoan.disbursementDate ? formatDate(activeDetailsLoan.disbursementDate) : (activeDetailsLoan.createdAt ? formatDate(activeDetailsLoan.createdAt) : 'Initial')}
                     </span>
@@ -740,7 +741,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
 
                   {activeDetailsLoan.repaymentDate && (
                     <div className="flex justify-between items-center py-0.5 border-b border-zinc-200/60 dark:border-zinc-800/60">
-                      <span className="text-zinc-400">Target Repayment Date</span>
+                      <span className="text-zinc-500 dark:text-zinc-400">Target Repayment Date</span>
                       <span className="font-mono text-zinc-800 dark:text-zinc-200">
                         {formatDate(activeDetailsLoan.repaymentDate)}
                       </span>
@@ -748,7 +749,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   )}
 
                   <div className="flex justify-between items-start py-0.5">
-                    <span className="text-zinc-400 shrink-0">Notes / Purpose</span>
+                    <span className="text-zinc-500 dark:text-zinc-400 shrink-0">Notes / Purpose</span>
                     <span className="text-zinc-700 dark:text-zinc-300 text-right max-w-[60%] truncate">
                       {activeDetailsLoan.notes || activeDetailsLoan.description || 'Standard facility deduction'}
                     </span>
@@ -760,9 +761,9 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   <button
                     type="button"
                     onClick={() => setSelectedLoanForLedger(activeDetailsLoan)}
-                    className="w-full h-11 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="app-subtle-surface w-full h-11 rounded-xl border bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
-                    <History className="w-4 h-4 text-zinc-500" />
+                    <History className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
                     <span>View Repayment Ledger</span>
                   </button>
 
@@ -770,7 +771,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                     <button
                       type="button"
                       onClick={() => setPayingLoan(activeDetailsLoan)}
-                      className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+                      className="app-primary-btn w-full h-11 rounded-xl bg-emerald-600 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
                     >
                       <PlusCircle className="w-4 h-4" />
                       <span>Record Manual Repayment</span>
@@ -796,14 +797,14 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               <button
                 type="button"
                 onClick={() => setEditingLoan(null)}
-                className="flex-1 py-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-colors cursor-pointer"
+                className="app-subtle-surface flex-1 py-3 rounded-xl border bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-all cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 form="mobile-edit-loan-form"
-                className="flex-1 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs shadow-md transition-all cursor-pointer"
+                className="app-primary-btn flex-1 py-3 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold text-xs shadow-md transition-all cursor-pointer"
               >
                 Save Changes
               </button>
@@ -821,10 +822,10 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                     key={t}
                     type="button"
                     onClick={() => setEditType(t)}
-                    className={`py-2 px-3 rounded-xl text-xs font-medium border transition-colors ${
+                    className={`py-2 px-3 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
                       editType === t
-                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-500'
-                        : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600'
+                        ? 'app-active-tab font-bold'
+                        : 'app-subtle-surface bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
                     }`}
                   >
                     {t}
@@ -840,7 +841,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               <select
                 value={editStatus}
                 onChange={(e) => setEditStatus(e.target.value as LoanStatus)}
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
               >
                 <option value="Active">Active</option>
                 <option value="Paused">Paused</option>
@@ -858,7 +859,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   step="any"
                   value={editPrincipal}
                   onChange={(e) => setEditPrincipal(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 font-mono font-bold text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                  className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 font-mono font-bold text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                   required
                 />
               </div>
@@ -872,7 +873,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   step="any"
                   value={editRemaining}
                   onChange={(e) => setEditRemaining(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 font-mono font-bold text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                  className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 font-mono font-bold text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                   required
                 />
               </div>
@@ -887,7 +888,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                 step="any"
                 value={editMonthly}
                 onChange={(e) => setEditMonthly(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 font-mono font-bold text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 font-mono font-bold text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                 required
               />
             </div>
@@ -901,7 +902,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   type="date"
                   value={editDisbursedDate}
                   onChange={(e) => setEditDisbursedDate(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                 />
               </div>
 
@@ -913,9 +914,9 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   type="date"
                   value={editRepaymentDate}
                   onChange={(e) => setEditRepaymentDate(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
                 />
-                <p className="text-[10px] text-zinc-400 mt-1">
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1">
                   {editType === 'Salary Advance'
                     ? 'Month when full advance is deducted.'
                     : 'Payroll deductions begin from this month.'}
@@ -932,7 +933,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                 placeholder="e.g. Relocation, Medical loan"
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
               />
             </div>
           </form>
@@ -949,21 +950,21 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
         >
           <div className="space-y-3.5 text-xs pb-2">
             {/* 3 Metric Pills */}
-            <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs">
+            <div className="app-subtle-surface grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs">
               <div>
-                <span className="text-[10px] text-zinc-400 block">Principal</span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block">Principal</span>
                 <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
                   {formatNaira(activeLedgerLoan.principalAmount)}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-zinc-400 block">Repaid</span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block">Repaid</span>
                 <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                   {formatNaira(activeLedgerLoan.totalRepaid || 0)}
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-zinc-400 block">Balance</span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block">Balance</span>
                 <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
                   {formatNaira(activeLedgerLoan.remainingBalance || 0)}
                 </span>
@@ -973,21 +974,21 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
             {/* Repayment History List */}
             <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
               {(!activeLedgerLoan.history || activeLedgerLoan.history.length === 0) ? (
-                <div className="py-8 text-center text-zinc-400 text-xs bg-zinc-50/50 dark:bg-zinc-900/30 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50">
+                <div className="app-subtle-surface py-8 text-center text-zinc-500 dark:text-zinc-400 text-xs bg-zinc-50/50 dark:bg-zinc-900/30 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50">
                   No repayment history recorded yet.
                 </div>
               ) : (
                 activeLedgerLoan.history.map((record, idx) => (
                   <div 
                     key={record.id || idx}
-                    className="p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 flex items-center justify-between text-xs gap-3"
+                    className="app-subtle-surface p-3 rounded-xl border border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 flex items-center justify-between text-xs gap-3"
                   >
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="font-medium text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5 truncate">
                         <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                         <span className="truncate">{record.notes || 'Repayment recorded'}</span>
                       </div>
-                      <div className="text-[10px] text-zinc-400 font-mono">
+                      <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
                         {record.paidAt ? formatDate(record.paidAt) : 'Recorded'}
                       </div>
                     </div>
@@ -996,7 +997,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                         +{formatNaira(record.amount)}
                       </span>
                       {record.periodKey && (
-                        <div className="text-[10px] text-zinc-400 font-mono">
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
                           {record.periodKey}
                         </div>
                       )}
@@ -1014,7 +1015,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   setSelectedLoanForLedger(null);
                   setPayingLoan(activeLedgerLoan);
                 }}
-                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                className="app-primary-btn w-full py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Record Manual Repayment</span>
@@ -1035,14 +1036,14 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
             <button
               type="button"
               onClick={() => setPayingLoan(null)}
-              className="flex-1 py-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-colors cursor-pointer"
+              className="app-subtle-surface flex-1 py-3 rounded-xl border bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-all cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleConfirmPayment}
-              className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer"
+              className="app-primary-btn flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
             >
               Confirm Repayment
             </button>
@@ -1060,7 +1061,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               placeholder="e.g. 50000"
               value={paymentAmount}
               onChange={(e) => setPaymentAmount(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-sm font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+              className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-sm font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
             />
           </div>
 
@@ -1073,7 +1074,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               placeholder="e.g. Direct bank transfer ref 4928"
               value={paymentNotes}
               onChange={(e) => setPaymentNotes(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+              className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
             />
           </div>
         </div>
@@ -1089,14 +1090,14 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
             <button
               type="button"
               onClick={() => setIsAddOpen(false)}
-              className="flex-1 py-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-colors cursor-pointer"
+              className="app-subtle-surface flex-1 py-3 rounded-xl border bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold text-xs transition-all cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleCreateLoan}
-              className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer"
+              className="app-primary-btn flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
             >
               Create Loan Record
             </button>
@@ -1111,7 +1112,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
             <select
               value={newEmpId}
               onChange={(e) => setNewEmpId(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
+              className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none"
             >
               <option value="">Select Employee...</option>
               {employees.map((e) => (
@@ -1132,10 +1133,10 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
                   key={t}
                   type="button"
                   onClick={() => setNewLoanType(t)}
-                  className={`py-2 px-3 rounded-xl text-xs font-medium border transition-colors ${
+                  className={`py-2 px-3 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
                     newLoanType === t
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-500'
-                      : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600'
+                      ? 'app-active-tab font-bold'
+                      : 'app-subtle-surface bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
                   }`}
                 >
                   {t}
@@ -1154,7 +1155,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               placeholder="e.g. 200000"
               value={newPrincipal}
               onChange={(e) => setNewPrincipal(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+              className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
             />
           </div>
 
@@ -1168,7 +1169,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
               placeholder="e.g. 50000"
               value={newMonthly}
               onChange={(e) => setNewMonthly(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+              className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
             />
           </div>
         </div>
@@ -1181,7 +1182,7 @@ export const MobileLoansDirectoryView: React.FC<MobileLoansDirectoryViewProps> =
             className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
             onClick={() => setDeleteConfirmLoan(null)}
           />
-          <div className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 text-left">
+          <div className="app-surface-card relative w-full max-w-sm rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 text-left">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-200/60 dark:border-rose-900/40">
                 <AlertTriangle className="w-5 h-5" />

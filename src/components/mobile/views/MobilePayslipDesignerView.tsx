@@ -283,7 +283,7 @@ export const MobilePayslipDesignerView: React.FC<MobilePayslipDesignerViewProps>
     <div className="flex flex-col min-h-screen bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 pb-6 select-none">
 
       {/* ── 1. Top Minimalist App Header ── */}
-      <header className="sticky top-0 z-30 bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md px-3.5 py-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between gap-2 shadow-2xs">
+      <header className="app-surface-card sticky top-0 z-30 bg-white/95 dark:bg-[#121215]/95 backdrop-blur-md px-3.5 py-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between gap-2 shadow-2xs">
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"

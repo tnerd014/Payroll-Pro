@@ -554,7 +554,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
   if (isDesignerOpen) {
     return createPortal(
-      <div className="fixed top-9 inset-x-0 bottom-0 z-50 bg-zinc-100 dark:bg-[#09090b] flex flex-col select-none overflow-hidden print:top-0 print:inset-0">
+      <div className="app-shell-bg fixed top-9 inset-x-0 bottom-0 z-50 bg-zinc-100 dark:bg-[#09090b] flex flex-col select-none overflow-hidden print:top-0 print:inset-0">
         <PayslipDesignerPage
           company={company}
           employees={fallbackEmployees}
@@ -577,10 +577,10 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
   }
 
   return createPortal(
-    <div className="print-modal-root fixed top-9 inset-x-0 bottom-0 z-50 bg-zinc-100 dark:bg-[#09090b] flex flex-col select-none print:top-0 print:inset-0">
+    <div className="print-modal-root app-shell-bg fixed top-9 inset-x-0 bottom-0 z-50 bg-zinc-100 dark:bg-[#09090b] flex flex-col select-none print:top-0 print:inset-0">
       
       {/* ── Minimalist Top Header Bar ── */}
-      <div className="no-print h-11 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 flex items-center gap-2 text-zinc-900 dark:text-zinc-100 shrink-0">
+      <div className="no-print app-surface-card h-11 bg-white dark:bg-[#121215] border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 flex items-center gap-2 text-zinc-900 dark:text-zinc-100 shrink-0">
 
         {/* Back */}
         <button
@@ -602,7 +602,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
           <button
             type="button"
             onClick={() => setIsDatePickerOpen(v => !v)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition cursor-pointer ${
+            className={`app-subtle-surface flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition cursor-pointer ${
               isDatePickerOpen
                 ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
                 : 'border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -615,9 +615,9 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
           </button>
 
           {isDatePickerOpen && (
-            <div className="absolute left-0 top-full mt-1.5 z-50 w-64 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden">
+            <div className="app-surface-card absolute left-0 top-full mt-1.5 z-50 w-64 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden">
               {/* Year Nav */}
-              <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200/70 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setPrintYear(y => y - 1)}
@@ -647,16 +647,16 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                       onClick={() => toggleMonthKey(m.key)}
                       className={`relative flex items-center justify-center py-1.5 rounded-md text-[11px] font-medium transition cursor-pointer ${
                         active
-                          ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold'
+                          ? 'app-active-tab bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold'
                           : isCurrent
-                          ? 'border border-zinc-400 dark:border-zinc-500 text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/40'
+                          ? 'app-subtle-surface border border-zinc-400 dark:border-zinc-500 text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/40'
                           : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100'
                       }`}
                       title={isCurrent ? `${m.label} (Current Month)` : m.label}
                     >
                       {m.label.slice(0, 3)}
                       {active && selectedMonthKeys.length > 1 && (
-                        <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-white dark:bg-zinc-900" />
+                        <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-current opacity-80" />
                       )}
                     </button>
                   );
@@ -736,7 +736,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
           <button
             type="button"
             onClick={() => setIsDesignerOpen(true)}
-            className="p-1.5 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-md transition cursor-pointer"
+            className="app-subtle-surface p-1.5 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/60 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-md transition cursor-pointer"
             title="Design & customize payslip layout"
           >
             <Palette className="w-3.5 h-3.5" />
@@ -748,7 +748,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
               type="button"
               onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
               disabled={totalPrintCount === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-xs font-medium transition cursor-pointer shadow-2xs"
+              className="app-primary-btn flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-xs font-medium transition cursor-pointer shadow-2xs"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print</span>
@@ -756,7 +756,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
             </button>
 
             {isActionMenuOpen && (
-              <div className="absolute right-0 mt-1.5 w-32 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95">
+              <div className="app-surface-card absolute right-0 mt-1.5 w-32 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95">
                 <button
                   type="button"
                   onClick={() => {
@@ -836,16 +836,16 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
       <div className="flex-1 flex overflow-hidden">
         
         {/* Left Control Sidebar */}
-        <aside className="no-print w-80 bg-white dark:bg-[#121215] border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 text-zinc-700 dark:text-zinc-300">
+        <aside className="no-print app-surface-card w-80 bg-white dark:bg-[#121215] border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0 text-zinc-700 dark:text-zinc-300">
           
           {/* Tab Navigation: Staff Selection vs Sections & Style */}
           <div className="grid grid-cols-2 border-b border-zinc-200 dark:border-zinc-800 text-xs font-medium">
             <button
               onClick={() => setActiveTab('employees')}
-              className={`py-2.5 flex items-center justify-center gap-2 border-b-2 transition ${
+              className={`py-2.5 flex items-center justify-center gap-2 border-b-2 transition cursor-pointer ${
                 activeTab === 'employees'
-                  ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100 bg-zinc-50/50 dark:bg-zinc-800/40'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  ? 'app-subtle-surface app-accent-text border-current font-semibold'
+                  : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
@@ -853,10 +853,10 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
             </button>
             <button
               onClick={() => setActiveTab('sections')}
-              className={`py-2.5 flex items-center justify-center gap-2 border-b-2 transition ${
+              className={`py-2.5 flex items-center justify-center gap-2 border-b-2 transition cursor-pointer ${
                 activeTab === 'sections'
-                  ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100 bg-zinc-50/50 dark:bg-zinc-800/40'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  ? 'app-subtle-surface app-accent-text border-current font-semibold'
+                  : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
@@ -869,7 +869,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
             <div className="flex-1 flex flex-col overflow-hidden">
               
               {/* Search & Dept Controls */}
-              <div className="p-3 border-b border-zinc-100 dark:border-zinc-800/80 space-y-2">
+              <div className="p-3 border-b border-zinc-200/70 dark:border-zinc-800/80 space-y-2">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-zinc-400" />
                   <input
@@ -877,7 +877,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Filter by name, code or role..."
-                    className="w-full pl-8 pr-7 py-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400"
+                    className="app-subtle-surface w-full pl-8 pr-7 py-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400"
                   />
                   {searchQuery && (
                     <button
@@ -895,7 +895,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                 <select
                   value={deptFilter}
                   onChange={e => setDeptFilter(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2.5 py-1.5 text-zinc-700 dark:text-zinc-300 text-xs focus:outline-none focus:border-zinc-400 cursor-pointer"
+                  className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2.5 py-1.5 text-zinc-700 dark:text-zinc-300 text-xs focus:outline-none focus:border-zinc-400 cursor-pointer"
                 >
                   {departments.map(dept => (
                     <option key={dept} value={dept}>
@@ -906,7 +906,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
                 {/* Selection Counter & Batch Selection Actions */}
                 <div className="flex items-center justify-between text-xs pt-0.5">
-                  <span className="px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                  <span className="app-subtle-surface px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200/70 dark:border-zinc-700/70">
                     {selectedEmployees.length}/{safeItems.length} selected
                   </span>
 
@@ -947,7 +947,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                       }}
                       className={`group flex items-center justify-between p-2 rounded-md cursor-pointer border text-xs transition ${
                         isCurrentPreview 
-                          ? 'border-zinc-400 dark:border-zinc-600 bg-zinc-100/70 dark:bg-zinc-800/60 shadow-2xs' 
+                          ? 'app-subtle-surface border-zinc-400 dark:border-zinc-600 bg-zinc-100/70 dark:bg-zinc-800/60 shadow-2xs' 
                           : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
                       }`}
                     >
@@ -1046,7 +1046,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                     return (
                       <div 
                         key={sec.id}
-                        className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden bg-white dark:bg-zinc-900/60"
+                        className="app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden bg-white dark:bg-zinc-900/60"
                       >
                         {/* Section Header Row */}
                         <div className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition">
@@ -1064,7 +1064,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
                           <div className="flex items-center gap-1.5 shrink-0 ml-2">
                             {hasSubCols && (
-                              <span className="text-[10px] text-zinc-400 font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                              <span className="app-subtle-surface text-[10px] text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
                                 {checkedColsCount}/{sectionCols.length}
                               </span>
                             )}
@@ -1083,7 +1083,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
 
                         {/* Collapsible Column Checkboxes */}
                         {hasSubCols && isExpanded && (
-                          <div className="border-t border-zinc-100 dark:border-zinc-800/70 bg-zinc-50/60 dark:bg-zinc-900/30 p-2 pl-4 space-y-1.5">
+                          <div className="app-subtle-surface border-t border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/60 dark:bg-zinc-900/30 p-2 pl-4 space-y-1.5">
                             {sectionCols.map(col => {
                               const isChecked = selectedColumns.includes(col.id);
                               return (
@@ -1121,10 +1121,10 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                         key={densityOption}
                         type="button"
                         onClick={() => handleUpdateConfig({ density: densityOption })}
-                        className={`py-1.5 px-2 text-center rounded text-[11px] font-medium capitalize border transition ${
+                        className={`py-1.5 px-2 text-center rounded text-[11px] font-medium capitalize border transition cursor-pointer ${
                           config.density === densityOption
-                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                            : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                            ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                            : 'app-subtle-surface border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                         }`}
                       >
                         {densityOption}
@@ -1142,10 +1142,10 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleUpdateConfig({ breakdownLayout: 'two-column' })}
-                      className={`py-1.5 px-2 text-center rounded text-[11px] font-medium border transition ${
+                      className={`py-1.5 px-2 text-center rounded text-[11px] font-medium border transition cursor-pointer ${
                         config.breakdownLayout !== 'single-column'
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                          : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                          ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                          : 'app-subtle-surface border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                       }`}
                     >
                       2 Columns
@@ -1153,10 +1153,10 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleUpdateConfig({ breakdownLayout: 'single-column' })}
-                      className={`py-1.5 px-2 text-center rounded text-[11px] font-medium border transition ${
+                      className={`py-1.5 px-2 text-center rounded text-[11px] font-medium border transition cursor-pointer ${
                         config.breakdownLayout === 'single-column'
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                          : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                          ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                          : 'app-subtle-surface border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                       }`}
                     >
                       Stacked
@@ -1206,23 +1206,23 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
         </aside>
 
         {/* Right Preview Area */}
-        <div className="flex-1 bg-zinc-100 dark:bg-[#09090b] overflow-y-auto p-6 flex justify-center print:p-0 print:bg-white print:overflow-visible">
+        <div className="app-shell-bg flex-1 bg-zinc-100 dark:bg-[#09090b] overflow-y-auto p-6 flex justify-center print:p-0 print:bg-white print:overflow-visible">
           {totalPrintCount === 0 ? (
             <div className="w-full max-w-sm mx-auto py-24 text-center flex flex-col items-center justify-center">
-              <div className="w-14 h-14 rounded-full bg-zinc-200/50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 mb-3.5">
+              <div className="app-subtle-surface w-14 h-14 rounded-full bg-zinc-200/50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 mb-3.5">
                 <FileText className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                 No Employee Selected
               </h3>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 max-w-xs leading-relaxed">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-xs leading-relaxed">
                 Select one or more employees from the list on the left to preview and print their payslips.
               </p>
               {items.length > 0 && (
                 <button
                   type="button"
                   onClick={handleSelectAllEmployees}
-                  className="mt-4 px-3 py-1.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                  className="app-primary-btn mt-4 px-3 py-1.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
                 >
                   Select All Staff ({items.length})
                 </button>
@@ -1287,7 +1287,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                 return (
                 <div className="flex flex-col items-center gap-8 print:gap-0">
                   {activePeriod.items.length > PREVIEW_PAGE_SIZE && (
-                    <div className="no-print w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs text-zinc-600 dark:text-zinc-300 shadow-xs">
+                    <div className="no-print app-surface-card w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs text-zinc-600 dark:text-zinc-300 shadow-xs">
                       <span>
                         Showing <strong>{pageStart + 1}–{Math.min(pageStart + PREVIEW_PAGE_SIZE, activePeriod.items.length)}</strong> of <strong>{activePeriod.items.length}</strong> payslips
                       </span>
@@ -1296,7 +1296,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                           type="button"
                           disabled={safePage === 0}
                           onClick={() => setPreviewPage(Math.max(0, safePage - 1))}
-                          className="px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                          className="app-subtle-surface px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
                         >
                           Prev
                         </button>
@@ -1307,7 +1307,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                           type="button"
                           disabled={safePage >= totalPages - 1}
                           onClick={() => setPreviewPage(Math.min(totalPages - 1, safePage + 1))}
-                          className="px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                          className="app-subtle-surface px-2.5 py-1 rounded border border-zinc-200 dark:border-zinc-700 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
                         >
                           Next
                         </button>
@@ -1323,7 +1323,7 @@ export const BulkPrintPayslipsModal: React.FC<BulkPrintPayslipsModalProps> = ({
                     >
                       {/* Per-payslip indicator — only shown when multiple employees */}
                       {activePeriod.items.length > 1 && (
-                        <div className="no-print w-full flex items-center justify-between px-3 py-1.5 mb-2 text-[11px] text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-200/60 dark:bg-zinc-800/60 rounded border border-zinc-300/40 dark:border-zinc-700/50">
+                        <div className="no-print app-subtle-surface w-full flex items-center justify-between px-3 py-1.5 mb-2 text-[11px] text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-200/60 dark:bg-zinc-800/60 rounded border border-zinc-300/40 dark:border-zinc-700/50">
                           <strong className="text-zinc-800 dark:text-zinc-200 font-sans">{item.fullName}</strong>
                           <span className="text-[10px] uppercase tracking-wider">{item.employeeCode} • {item.department}</span>
                         </div>

@@ -531,10 +531,10 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                 <button
                   type="button"
                   onClick={handleSaveAndAddAnother}
-                  className="h-12 px-3.5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors shrink-0 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  className="app-subtle-surface h-12 px-3.5 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/80 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors shrink-0 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                   title="Save this staff member and immediately add another"
                 >
-                  <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <Plus className="w-4 h-4 app-accent-text text-emerald-600 dark:text-emerald-400" />
                   <span>Save &amp; Add Next</span>
                 </button>
               )}
@@ -542,7 +542,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
               <button
                 type="button"
                 onClick={() => handleSaveSingle()}
-                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer"
+                className="app-primary-btn flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-all cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>{isEditing ? 'Update Profile' : 'Save Staff Member'}</span>
@@ -553,9 +553,9 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
               <button
                 type="button"
                 onClick={handleAddBatchRow}
-                className="h-12 px-4 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer"
+                className="app-subtle-surface h-12 px-4 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/80 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer"
               >
-                <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <Plus className="w-4 h-4 app-accent-text text-emerald-600 dark:text-emerald-400" />
                 <span>Add Row</span>
               </button>
 
@@ -563,7 +563,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                 type="button"
                 onClick={handleSaveBatch}
                 disabled={validBatchRows.length === 0}
-                className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer"
+                className="app-primary-btn flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-98 transition-all cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>
@@ -584,25 +584,25 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
           <div className="min-w-0">
             <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
               <span>{isEditing ? 'Edit Staff Profile' : 'Add Personnel'}</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-medium">
+              <span className="app-subtle-surface text-[10px] font-mono px-2 py-0.5 rounded-md border border-zinc-200/70 dark:border-zinc-700/70 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium">
                 {code}
               </span>
             </h2>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
               {isEditing ? 'Modify payroll, compensation & role details' : 'Enroll staff into company payroll'}
             </p>
           </div>
 
           {/* Mode Switcher (Single Staff vs Quick Batch) */}
           {!isEditing && (
-            <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60 shrink-0">
+            <div className="app-subtle-surface flex items-center bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-xl border border-zinc-200/80 dark:border-zinc-700/60 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveMode('single')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   activeMode === 'single'
-                    ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
+                    ? 'app-active-tab shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
                 }`}
               >
                 Single
@@ -612,8 +612,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                 onClick={() => setActiveMode('batch')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   activeMode === 'batch'
-                    ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
-                    : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
+                    ? 'app-active-tab shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
                 }`}
               >
                 Multi-Add
@@ -637,13 +637,13 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
           <form onSubmit={handleSaveSingle} className="space-y-3.5">
             
             {/* ── CARD 1: Identity & Role ── */}
-            <div className="bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-xs">
-              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/60 pb-2.5">
+            <div className="app-surface-card bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-xs">
+              <div className="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-800/60 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <div className="app-subtle-surface app-accent-text w-6 h-6 rounded-lg border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center">
                     <User className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                     Identity &amp; Role
                   </span>
                 </div>
@@ -652,7 +652,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                 <button
                   type="button"
                   onClick={handleRegenerateCode}
-                  className="flex items-center gap-1 text-[11px] font-mono text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-[11px] font-mono text-zinc-500 hover:opacity-80 dark:text-zinc-400 transition-colors cursor-pointer"
                   title="Generate New Staff ID"
                 >
                   <RefreshCw className="w-3 h-3" />
@@ -672,7 +672,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                     placeholder="e.g. Babatunde"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-medium text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
+                    className="app-subtle-surface w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-medium text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div>
@@ -685,7 +685,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                     placeholder="e.g. Adeleke"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-medium text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
+                    className="app-subtle-surface w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-medium text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -699,7 +699,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                   <select
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 pr-8 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
+                    className="app-subtle-surface w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 pr-8 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
                   >
                     {deptOptions.map((dept) => (
                       <option key={dept} value={dept}>
@@ -721,7 +721,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                   placeholder="e.g. Senior Accountant / Logistics Lead"
                   value={position}
                   onChange={(e) => setPosition(e.target.value)}
-                  className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-medium text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
+                  className="app-subtle-surface w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-medium text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -740,12 +740,12 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                         onClick={() => handleEmploymentTypeChange(rule.name)}
                         className={`h-9 px-2.5 rounded-xl text-xs font-medium border text-left flex items-center justify-between transition-colors cursor-pointer ${
                           isSelected
-                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/50 text-emerald-700 dark:text-emerald-400 font-semibold'
-                            : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
+                            ? 'app-active-tab font-semibold shadow-2xs'
+                            : 'app-subtle-surface bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
                         }`}
                       >
                         <span className="truncate">{rule.name}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                        {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                       </button>
                     );
                   })}
@@ -764,9 +764,9 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
                         status === s
                           ? s === 'Active'
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                            : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border-transparent'
-                          : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-400 border-transparent'
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40'
+                            : 'app-active-tab'
+                          : 'app-subtle-surface bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border-transparent'
                       }`}
                     >
                       {s}
@@ -786,8 +786,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       onClick={() => setWorkSchedule(ws)}
                       className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
                         workSchedule === ws
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                          : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-400 border-transparent'
+                          ? 'app-active-tab shadow-2xs'
+                          : 'app-subtle-surface bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border-transparent'
                       }`}
                     >
                       {ws === '5-day' ? '5-Day (Mon–Fri)' : '6-Day (Mon–Sat)'}
@@ -797,13 +797,13 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
               </div>
 
               {/* Employment Tenure & Dates */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60 space-y-2">
+              <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <Calendar className="w-3.5 h-3.5 app-accent-text text-emerald-600 dark:text-emerald-400" />
                     <span>Tenure Dates</span>
                   </span>
-                  <span className="text-[10px] text-zinc-400">Controls payroll inclusion</span>
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Controls payroll inclusion</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
@@ -815,7 +815,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                      className="app-subtle-surface w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
                     />
                   </div>
 
@@ -833,7 +833,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                           setStatus('Inactive');
                         }
                       }}
-                      className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                      className="app-subtle-surface w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
                     />
                   </div>
                 </div>
@@ -845,14 +845,14 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                 ) : null}
 
                 {editingEmployee?.stints && editingEmployee.stints.length > 0 && (
-                  <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 rounded-xl p-2.5 text-[10px] space-y-1">
+                  <div className="app-subtle-surface bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 rounded-xl p-2.5 text-[10px] space-y-1">
                     <span className="font-semibold text-zinc-600 dark:text-zinc-400 block">
                       Previous Tenures ({editingEmployee.stints.length})
                     </span>
                     {editingEmployee.stints.map((st, idx) => (
-                      <div key={st.stintId || idx} className="flex justify-between text-zinc-500">
+                      <div key={st.stintId || idx} className="flex justify-between text-zinc-500 dark:text-zinc-400">
                         <span>Stint #{idx + 1}: {st.startDate || '—'} → {st.endDate || 'Active'}</span>
-                        {st.exitReason && <span className="text-zinc-400">({st.exitReason})</span>}
+                        {st.exitReason && <span className="text-zinc-500 dark:text-zinc-400">({st.exitReason})</span>}
                       </div>
                     ))}
                   </div>
@@ -862,19 +862,19 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
             </div>
 
             {/* ── CARD 2: Compensation ── */}
-            <div className="bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-xs">
-              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/60 pb-2.5">
+            <div className="app-surface-card bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-xs">
+              <div className="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-800/60 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <div className="app-subtle-surface app-accent-text w-6 h-6 rounded-lg border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center">
                     <Banknote className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                     Compensation
                   </span>
                 </div>
 
                 {/* Formatted Live Currency Preview */}
-                <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="app-accent-text text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
                   ₦{formatNaira(Number(monthlyGross) || 0)} / mo
                 </span>
               </div>
@@ -896,14 +896,14 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                     placeholder="350000"
                     value={monthlyGross}
                     onChange={(e) => setMonthlyGross(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full h-12 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-3 text-sm font-mono font-bold text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
+                    className="app-subtle-surface w-full h-12 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-3 text-sm font-mono font-bold text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
 
               {/* Quick Salary Preset Chips */}
               <div className="space-y-1">
-                <span className="text-[10px] text-zinc-400 block">Quick Presets:</span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block">Quick Presets:</span>
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                   {salaryPresets.map((amt) => (
                     <button
@@ -912,8 +912,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       onClick={() => setMonthlyGross(amt)}
                       className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold border transition-colors shrink-0 cursor-pointer ${
                         Number(monthlyGross) === amt
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                          : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
+                          ? 'app-active-tab shadow-2xs'
+                          : 'app-subtle-surface bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300'
                       }`}
                     >
                       ₦{amt >= 1000000 ? `${amt / 1000000}M` : `${amt / 1000}k`}
@@ -923,18 +923,18 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
               </div>
 
               {/* ── Annual Housing / Rent Relief Section ── */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
+              <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
                 {!showHousingField ? (
                   <button
                     type="button"
                     onClick={() => setShowHousingField(true)}
-                    className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1.5 cursor-pointer py-1"
+                    className="app-accent-text text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1.5 cursor-pointer py-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Add Annual Housing / Rent Relief (Tax Deductible)</span>
                   </button>
                 ) : (
-                  <div className="space-y-2.5 bg-zinc-50 dark:bg-zinc-900/60 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
+                  <div className="app-subtle-surface space-y-2.5 bg-zinc-50 dark:bg-zinc-900/60 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <label className="text-[11px] font-bold text-zinc-700 dark:text-zinc-200">
@@ -950,7 +950,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                               setAnnualRent(annualRents[newYear]);
                             }
                           }}
-                          className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-1.5 py-0.5 text-[10px] font-mono font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none cursor-pointer"
+                          className="app-surface-card bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-1.5 py-0.5 text-[10px] font-mono font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none cursor-pointer"
                         >
                           {yearsOptions.map((y) => (
                             <option key={y} value={y}>
@@ -966,7 +966,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                           setYearRent(activeYear, '');
                           setShowHousingField(false);
                         }}
-                        className="text-[10px] text-zinc-400 hover:text-rose-500 font-medium cursor-pointer"
+                        className="text-[10px] text-zinc-500 hover:text-rose-500 font-medium cursor-pointer"
                       >
                         Remove
                       </button>
@@ -987,20 +987,20 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                             : annualRent
                         }
                         onChange={(e) => setYearRent(activeYear, e.target.value)}
-                        className="w-full h-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-7 pr-3 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                        className="app-surface-card w-full h-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-7 pr-3 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
                     {/* Breakdown Pills: Monthly Equivalent + 20% CRA Relief */}
                     {activeRentVal > 0 && (
                       <div className="grid grid-cols-2 gap-2 pt-1">
-                        <div className="bg-white dark:bg-zinc-900/90 border border-zinc-200/70 dark:border-zinc-800 rounded-lg p-2">
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block mb-0.5">
+                        <div className="app-surface-card bg-white dark:bg-zinc-900/90 border border-zinc-200/70 dark:border-zinc-800 rounded-lg p-2">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-0.5">
                             Monthly Rent
                           </span>
                           <span className="text-xs font-mono font-bold text-zinc-800 dark:text-zinc-200">
                             ₦{formatNaira(monthlyRentVal)}
-                            <span className="text-[10px] font-normal text-zinc-400"> / mo</span>
+                            <span className="text-[10px] font-normal text-zinc-500 dark:text-zinc-400"> / mo</span>
                           </span>
                         </div>
 
@@ -1016,7 +1016,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       </div>
                     )}
 
-                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 leading-tight">
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
                       💡 Under Nigerian tax law, staff qualify for 20% tax-free relief on actual annual rent paid (capped at ₦500,000/yr). You can switch years above to configure rent for future or past tax years.
                     </p>
                   </div>
@@ -1024,7 +1024,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
               </div>
 
               {/* ── 12-Month Schedule Breakdown Drawer ── */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
+              <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
                 <button
                   type="button"
                   onClick={() => setShowMonthlyBreakdown((prev) => !prev)}
@@ -1034,7 +1034,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                     <Calendar className="w-3.5 h-3.5 text-zinc-400" />
                     <span>12-Month Salary Schedule ({activeYear})</span>
                   </div>
-                  <div className="flex items-center gap-1 text-zinc-400 text-[10px]">
+                  <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400 text-[10px]">
                     <span>{showMonthlyBreakdown ? 'Hide' : 'Expand'}</span>
                     <ChevronDown
                       className={`w-3.5 h-3.5 transition-transform duration-200 ${
@@ -1045,11 +1045,11 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                 </button>
 
                 {showMonthlyBreakdown && (
-                  <div className="mt-2.5 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800/80 space-y-3 animate-in fade-in duration-150">
+                  <div className="app-subtle-surface mt-2.5 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800/80 space-y-3 animate-in fade-in duration-150">
                     {/* Header Controls: Year Selector & Quick Actions */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                           Year
                         </span>
                         <select
@@ -1061,7 +1061,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                               setAnnualRent(annualRents[newYear]);
                             }
                           }}
-                          className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer"
+                          className="app-surface-card bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer"
                         >
                           {yearsOptions.map((y) => (
                             <option key={y} value={y}>
@@ -1075,14 +1075,14 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                         <button
                           type="button"
                           onClick={handleCopyBaseToAllMonths}
-                          className="text-[10px] px-2.5 py-1 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold transition active:scale-95 cursor-pointer"
+                          className="app-primary-btn text-[10px] px-2.5 py-1 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold transition active:scale-95 cursor-pointer"
                         >
                           Copy Base to All
                         </button>
                         <button
                           type="button"
                           onClick={handleCopyJanToAllMonths}
-                          className="text-[10px] px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-semibold transition active:scale-95 cursor-pointer"
+                          className="app-surface-card text-[10px] px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-200 font-semibold transition active:scale-95 cursor-pointer"
                         >
                           Copy Jan
                         </button>
@@ -1109,7 +1109,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                             className={`p-1.5 rounded-lg border transition ${
                               isCustom
                                 ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/60'
-                                : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
+                                : 'app-surface-card bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
                             }`}
                           >
                             <div className="flex justify-between items-center mb-0.5">
@@ -1140,8 +1140,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
 
                     {/* Key Metrics Strip (With Directly Editable Annual Rent Input) */}
                     <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-zinc-200/70 dark:border-zinc-800/70 text-center">
-                      <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/60 dark:border-zinc-800/60 rounded-lg p-2 flex flex-col justify-between">
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-zinc-400 block mb-0.5">
+                      <div className="app-surface-card bg-white dark:bg-zinc-950/80 border border-zinc-200/60 dark:border-zinc-800/60 rounded-lg p-2 flex flex-col justify-between">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-0.5">
                           Annual Gross
                         </span>
                         <span className="text-[11px] font-mono font-bold text-zinc-900 dark:text-zinc-100 truncate block">
@@ -1150,8 +1150,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       </div>
 
                       {/* Directly Editable Annual Rent for Active Year */}
-                      <div className="bg-white dark:bg-zinc-950/80 border border-emerald-500/30 dark:border-emerald-500/30 rounded-lg p-2 text-left focus-within:border-emerald-500 ring-1 ring-emerald-500/10 flex flex-col justify-between">
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block mb-0.5">
+                      <div className="app-surface-card bg-white dark:bg-zinc-950/80 border border-emerald-500/30 dark:border-emerald-500/30 rounded-lg p-2 text-left focus-within:border-emerald-500 ring-1 ring-emerald-500/10 flex flex-col justify-between">
+                        <span className="app-accent-text text-[8px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block mb-0.5">
                           {activeYear} Rent (Edit)
                         </span>
                         <div className="flex items-center gap-0.5">
@@ -1173,8 +1173,8 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                         </div>
                       </div>
 
-                      <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/60 dark:border-zinc-800/60 rounded-lg p-2 flex flex-col justify-between">
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-zinc-400 block mb-0.5">
+                      <div className="app-surface-card bg-white dark:bg-zinc-950/80 border border-zinc-200/60 dark:border-zinc-800/60 rounded-lg p-2 flex flex-col justify-between">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-0.5">
                           Monthly Avg
                         </span>
                         <span className="text-[11px] font-mono font-bold text-zinc-900 dark:text-zinc-100 truncate block">
@@ -1189,30 +1189,30 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
             </div>
 
             {/* ── CARD 3: Statutory Rules & Tax Registration ── */}
-            <div className="bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3.5 shadow-xs">
-              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/60 pb-2.5">
+            <div className="app-surface-card bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3.5 shadow-xs">
+              <div className="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-800/60 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <div className="app-subtle-surface app-accent-text w-6 h-6 rounded-lg border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center">
                     <ShieldCheck className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                     Statutory Rules &amp; Tax IDs
                   </span>
                 </div>
 
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold border border-zinc-200/60 dark:border-zinc-700/60">
+                <span className="app-subtle-surface text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold border border-zinc-200/60 dark:border-zinc-700/60">
                   {employmentType} Rule
                 </span>
               </div>
 
               {/* PAYE Income Tax Block */}
-              <div className="space-y-2 bg-zinc-50/70 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
+              <div className="app-subtle-surface space-y-2 bg-zinc-50/70 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
                       PAYE Income Tax
                     </span>
-                    <span className="text-[10px] text-zinc-400">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
                       CRA Reliefs &amp; Statutory PITA Tax Brackets
                     </span>
                   </div>
@@ -1220,7 +1220,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                     type="button"
                     onClick={() => setHasPaye(!hasPaye)}
                     className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                      hasPaye ? 'bg-emerald-600' : 'bg-zinc-200 dark:bg-zinc-700'
+                      hasPaye ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'
                     }`}
                   >
                     <div
@@ -1240,7 +1240,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                     <select
                       value={stateOfResidence}
                       onChange={(e) => setStateOfResidence(e.target.value)}
-                      className="w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                      className="app-surface-card w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                     >
                       {NIGERIAN_STATES.map((st) => (
                         <option key={st} value={st}>
@@ -1259,20 +1259,20 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       placeholder="e.g. N-1849204"
                       value={payeNumber}
                       onChange={(e) => setPayeNumber(e.target.value)}
-                      className="w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                      className="app-surface-card w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Pension Scheme Block */}
-              <div className="space-y-2 bg-zinc-50/70 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
+              <div className="app-subtle-surface space-y-2 bg-zinc-50/70 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">
                       Pension Scheme (8% RSA)
                     </span>
-                    <span className="text-[10px] text-zinc-400">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
                       Statutory 8% Employee + 10% Employer
                     </span>
                   </div>
@@ -1280,7 +1280,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                     type="button"
                     onClick={() => setHasPension(!hasPension)}
                     className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                      hasPension ? 'bg-emerald-600' : 'bg-zinc-200 dark:bg-zinc-700'
+                      hasPension ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'
                     }`}
                   >
                     <div
@@ -1300,7 +1300,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                     <select
                       value={pfaName}
                       onChange={(e) => setPfaName(e.target.value)}
-                      className="w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                      className="app-surface-card w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                     >
                       <option value="">Select PFA...</option>
                       {NIGERIAN_PFAS.map((pfa) => (
@@ -1320,7 +1320,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       placeholder="e.g. PEN100829104"
                       value={pensionNumber}
                       onChange={(e) => setPensionNumber(e.target.value)}
-                      className="w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                      className="app-surface-card w-full h-10 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
@@ -1329,21 +1329,21 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
             </div>
 
             {/* ── CARD 4: Bank Details & Contact (Collapsible / Expandable) ── */}
-            <div className="bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-xs">
+            <div className="app-surface-card bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-xs">
               <button
                 type="button"
                 onClick={() => setShowBankDetails(!showBankDetails)}
                 className="w-full flex items-center justify-between text-left cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <div className="app-subtle-surface app-accent-text w-6 h-6 rounded-lg border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-center">
                     <Landmark className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
+                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 block">
                       Bank &amp; Contact Information
                     </span>
-                    <span className="text-[10px] text-zinc-400 font-normal">
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal">
                       {accountNumber ? `${bankName} • ${accountNumber}` : 'Direct disbursement & payslip dispatch'}
                     </span>
                   </div>
@@ -1356,7 +1356,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
               </button>
 
               {showBankDetails && (
-                <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60 space-y-3 animate-in fade-in duration-150">
+                <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-3 animate-in fade-in duration-150">
                   {/* Bank Name */}
                   <div>
                     <label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 block mb-1">
@@ -1366,7 +1366,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       <select
                         value={bankName}
                         onChange={(e) => setBankName(e.target.value)}
-                        className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 pr-8 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
+                        className="app-subtle-surface w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 pr-8 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
                       >
                         {NIGERIAN_BANKS.map((b) => (
                           <option key={b} value={b}>
@@ -1385,7 +1385,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                         NUBAN Account Number (10 Digits)
                       </label>
                       <span className={`text-[10px] font-mono ${
-                        accountNumber.length === 10 ? 'text-emerald-600 font-bold' : 'text-zinc-400'
+                        accountNumber.length === 10 ? 'app-accent-text font-bold' : 'text-zinc-500 dark:text-zinc-400'
                       }`}>
                         {accountNumber.length}/10
                       </span>
@@ -1397,7 +1397,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       placeholder="e.g. 0123456789"
                       value={accountNumber}
                       onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                      className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
+                      className="app-subtle-surface w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
@@ -1412,7 +1412,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                         placeholder="0803 000 0000"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                        className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
 
@@ -1425,7 +1425,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                         placeholder="staff@company.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                        className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                   </div>
@@ -1440,17 +1440,17 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
           ══════════════════════════════════════════════════════ */
           <div className="space-y-3">
             {/* Batch Helper Bar */}
-            <div className="flex items-center justify-between gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs text-emerald-800 dark:text-emerald-300">
+            <div className="app-subtle-surface flex items-center justify-between gap-2 border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-3 text-xs text-zinc-900 dark:text-zinc-100">
               <div>
                 <span className="font-bold block">Mobile Quick Add</span>
-                <span className="text-[11px] opacity-80">
+                <span className="text-[11px] text-zinc-600 dark:text-zinc-400">
                   {validBatchRows.length} ready • Total: ₦{formatNaira(batchTotalGross)}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowPasteModal(true)}
-                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+                className="app-primary-btn px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
               >
                 <Clipboard className="w-3.5 h-3.5" />
                 <span>Paste List</span>
@@ -1462,10 +1462,10 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
               {batchRows.map((row, index) => (
                 <div
                   key={row.id}
-                  className="bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-2.5 shadow-xs"
+                  className="app-surface-card bg-white dark:bg-[#151518] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-3.5 space-y-2.5 shadow-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-zinc-400 font-mono">
+                    <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 font-mono">
                       #{index + 1} PERSONNEL
                     </span>
                     {batchRows.length > 1 && (
@@ -1487,7 +1487,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       placeholder="Full Name (e.g. Babatunde Adeleke)"
                       value={row.fullName}
                       onChange={(e) => handleUpdateBatchRow(row.id, 'fullName', e.target.value)}
-                      className="w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-semibold text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
+                      className="app-subtle-surface w-full h-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 text-xs font-semibold text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
@@ -1505,7 +1505,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                           placeholder="Salary"
                           value={row.monthlySalary}
                           onChange={(e) => handleUpdateBatchRow(row.id, 'monthlySalary', e.target.value)}
-                          className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-6 pr-2 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
+                          className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-6 pr-2 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                     </div>
@@ -1514,7 +1514,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
                       <select
                         value={row.department}
                         onChange={(e) => handleUpdateBatchRow(row.id, 'department', e.target.value)}
-                        className="w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                        className="app-subtle-surface w-full h-10 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none"
                       >
                         {deptOptions.map((d) => (
                           <option key={d} value={d}>
@@ -1532,7 +1532,7 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
             <button
               type="button"
               onClick={handleAddBatchRow}
-              className="w-full py-3 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 text-zinc-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              className="w-full py-3 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 hover:border-emerald-500 text-zinc-600 dark:text-zinc-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Add Another Personnel Row</span>
@@ -1545,20 +1545,20 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
       {/* ── Paste Raw Batch Text Modal ── */}
       {showPasteModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end justify-center">
-          <div className="bg-white dark:bg-[#151518] border-t border-zinc-200 dark:border-zinc-800 rounded-t-3xl p-5 w-full max-h-[85vh] flex flex-col space-y-3 animate-in slide-in-from-bottom duration-200">
+          <div className="app-sheet bg-white dark:bg-[#151518] text-zinc-900 dark:text-zinc-100 border-t border-zinc-200 dark:border-zinc-800 rounded-t-3xl p-5 w-full max-h-[85vh] flex flex-col space-y-3 animate-in slide-in-from-bottom duration-200">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                   Paste Staff List
                 </h3>
-                <p className="text-[11px] text-zinc-400">
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                   One per line: "Full Name, Salary, Department"
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowPasteModal(false)}
-                className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100"
+                className="app-subtle-surface w-7 h-7 rounded-full border border-zinc-200/70 dark:border-zinc-700/70 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -1569,21 +1569,21 @@ export const MobileEmployeeFormSheet: React.FC<MobileEmployeeFormSheetProps> = (
               value={pasteRawText}
               onChange={(e) => setPasteRawText(e.target.value)}
               placeholder="Babatunde Adeleke, 350000, Operations&#10;Ngozi Okonjo, 450000, Finance&#10;Chidi Anozie, 280000, Admin"
-              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs font-mono text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
+              className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs font-mono text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-emerald-500"
             />
 
             <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setShowPasteModal(false)}
-                className="h-11 px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold text-xs"
+                className="app-subtle-surface h-11 px-4 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 font-semibold text-xs cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleParsePastedBatch}
-                className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+                className="app-primary-btn flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer"
               >
                 Import to Cards
               </button>

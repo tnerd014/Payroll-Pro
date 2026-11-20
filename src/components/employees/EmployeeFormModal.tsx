@@ -434,7 +434,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         }
       }}
     >
-      <div className={`relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full ${
+      <div className={`app-surface-card relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full ${
         activeTab === 'quick' && !editingEmployee ? 'max-w-4xl' : 'max-w-2xl'
       } overflow-hidden shadow-2xl flex flex-col max-h-[calc(100vh-4.5rem)] transition-all duration-150`}>
         
@@ -446,20 +446,20 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 {editingEmployee ? 'Edit Staff Profile' : 'Add Employee'}
               </span>
               {editingEmployee && (
-                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                <span className="app-subtle-surface text-[11px] text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
                   {formData.code}
                 </span>
               )}
             </div>
 
             {!editingEmployee && (
-              <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <div className="app-subtle-surface flex items-center bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setActiveTab('quick')}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                     activeTab === 'quick'
-                      ? 'bg-white dark:bg-zinc-800 text-emerald-700 dark:text-emerald-400 shadow-xs font-semibold'
+                      ? 'app-active-tab shadow-xs font-semibold'
                       : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
                   }`}
                 >
@@ -471,7 +471,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   onClick={() => setActiveTab('standard')}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                     activeTab === 'standard'
-                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs font-semibold'
+                      ? 'app-active-tab shadow-xs font-semibold'
                       : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
                   }`}
                 >
@@ -493,7 +493,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
         {/* Section Segmented Navigation for Detailed Form */}
         {(activeTab === 'standard' || editingEmployee) && (
-          <div className="flex items-center gap-1.5 px-5 py-2 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/50 shrink-0 overflow-x-auto no-scrollbar">
+          <div className="app-subtle-surface flex items-center gap-1.5 px-5 py-2 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/50 shrink-0 overflow-x-auto no-scrollbar">
             <span className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mr-1 shrink-0">
               Section:
             </span>
@@ -513,11 +513,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   onClick={() => setActiveSection(sec.id as any)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors shrink-0 cursor-pointer ${
                     isActive
-                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs border border-zinc-200/80 dark:border-zinc-700/80 font-semibold'
+                      ? 'app-active-tab shadow-xs font-semibold'
                       : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
                   }`}
                 >
-                  {Icon && <Icon className="w-3 h-3 text-zinc-400" />}
+                  {Icon && <Icon className={`w-3 h-3 ${isActive ? '' : 'text-zinc-400'}`} />}
                   <span>{sec.label}</span>
                 </button>
               );
@@ -542,7 +542,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
           <div className="p-5 space-y-4 overflow-y-auto flex-1">
           
             {/* Section 1: Employee Details */}
-            <div className={activeSection === 'all' || activeSection === 'identity' ? 'bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3' : 'hidden'}>
+            <div className={activeSection === 'all' || activeSection === 'identity' ? 'app-subtle-surface bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3' : 'hidden'}>
               <div className="flex items-center gap-2 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
                 <User className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
                 <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
@@ -558,7 +558,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     type="text" 
                     value={formData.firstName} 
                     onChange={e => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     placeholder="First name"
                     required
                   />
@@ -571,7 +571,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     type="text" 
                     value={formData.lastName} 
                     onChange={e => setFormData({ ...formData, lastName: e.target.value })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     placeholder="Last name"
                     required
                   />
@@ -583,7 +583,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   <select 
                     value={selectedDepartment} 
                     onChange={e => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
+                    className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
                     required
                   >
                     {deptOptions.map(dept => (
@@ -601,7 +601,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     type="text" 
                     value={formData.position} 
                     onChange={e => setFormData({ ...formData, position: e.target.value })}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                    className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     placeholder="e.g. Senior Specialist"
                   />
                 </div>
@@ -612,7 +612,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   <select
                     value={formData.employmentType || 'Full-Time'}
                     onChange={e => handleEmploymentTypeChange(e.target.value)}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
+                    className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
                   >
                     {activeRules.map(rule => (
                       <option key={rule.id} value={rule.name}>
@@ -635,7 +635,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                         endDate: newStatus === 'Active' ? '' : prev.endDate,
                       }));
                     }}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
+                    className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -648,7 +648,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   <select
                     value={formData.workSchedule || '5-day'}
                     onChange={e => setFormData(prev => ({ ...prev, workSchedule: e.target.value as '5-day' | '6-day' }))}
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
+                    className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-medium cursor-pointer"
                   >
                     <option value="5-day">5-Day (Mon–Fri Office)</option>
                     <option value="6-day">6-Day (Mon–Sat Operations)</option>
@@ -663,7 +663,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                       type="email" 
                       value={formData.email} 
                       onChange={e => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                       placeholder="name@company.com"
                     />
                   </div>
@@ -675,7 +675,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                       type="tel" 
                       value={formData.phone} 
                       onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                       placeholder="080..."
                     />
                   </div>
@@ -690,7 +690,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                       type="date" 
                       value={formData.startDate || ''} 
                       onChange={e => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     />
                   </div>
                   <div>
@@ -708,7 +708,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                           status: newEnd ? 'Inactive' : 'Active'
                         }));
                       }}
-                      className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+                      className="app-surface-card w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     />
                   </div>
                 </div>
@@ -720,7 +720,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 ) : null}
 
                 {formData.stints && formData.stints.length > 0 && (
-                  <div className="sm:col-span-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 rounded-lg p-2.5 text-[11px]">
+                  <div className="app-surface-card sm:col-span-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800 rounded-lg p-2.5 text-[11px]">
                     <div className="font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                       Employment Tenure History ({formData.stints.length} {formData.stints.length === 1 ? 'stint' : 'stints'})
                     </div>
@@ -738,7 +738,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
             </div>
 
             {/* Section 2: Compensation & Rent Relief */}
-            <div className={activeSection === 'all' || activeSection === 'compensation' ? 'bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3' : 'hidden'}>
+            <div className={activeSection === 'all' || activeSection === 'compensation' ? 'app-subtle-surface bg-zinc-50/40 dark:bg-zinc-900/30 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-4 space-y-3' : 'hidden'}>
               <div className="flex items-center justify-between pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
                 <div className="flex items-center gap-2">
                   <Wallet className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />

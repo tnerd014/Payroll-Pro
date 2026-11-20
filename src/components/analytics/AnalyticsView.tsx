@@ -1259,7 +1259,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     <div className="flex flex-col h-full overflow-hidden select-none">
       
       {/* Top Header - Pinned above scroll container so the vertical scrollbar starts below this header */}
-      <div className="shrink-0 bg-[#fbfbfb] dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 px-6 pt-3.5 pb-3 md:px-8 z-20">
+      <div className="shrink-0 bg-[#fbfbfb] dark:bg-[#09090b] app-shell-bg border-b border-zinc-200 dark:border-zinc-800 px-6 pt-3.5 pb-3 md:px-8 z-20">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 flex-wrap min-w-0">
             <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight shrink-0">
@@ -1282,24 +1282,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer ${
                 isFilterOpen || hasActiveFilters
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs'
-                  : 'bg-white dark:bg-[#121215] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                  ? 'app-active-tab shadow-xs'
+                  : 'bg-white dark:bg-[#121215] app-surface-card text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
               }`}
             >
-              <Filter className={`w-3.5 h-3.5 ${hasActiveFilters ? 'text-emerald-400 dark:text-emerald-600' : 'text-zinc-500 dark:text-zinc-400'}`} />
+              <Filter className={`w-3.5 h-3.5 ${isFilterOpen || hasActiveFilters ? 'opacity-90' : 'text-zinc-500 dark:text-zinc-400'}`} />
               <span>Filter</span>
               {hasActiveFilters && (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-400/30" />
+                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
               )}
               <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-200 ${isFilterOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Floating Filter Popover */}
             {isFilterOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-4 z-40 space-y-3.5 animate-in fade-in zoom-in-95 duration-100 text-xs">
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-4 z-40 space-y-3.5 animate-in fade-in zoom-in-95 duration-100 text-xs">
                 <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
                   <span className="font-semibold text-xs text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                    <Filter className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <Filter className="w-3.5 h-3.5 app-accent-text" />
                     Report Filters
                   </span>
                   {hasActiveFilters && (
@@ -1316,16 +1316,16 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 {/* Scope: Single Month / Whole Year / All Records */}
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1.5">
                     Reporting Scope
                   </label>
-                  <div className="grid grid-cols-3 gap-1 bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="grid grid-cols-3 gap-1 bg-zinc-100 dark:bg-zinc-900 app-subtle-surface p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
                     <button
                       type="button"
                       onClick={() => setRangeMode('single-month')}
                       className={`px-2 py-1 text-[11px] font-medium rounded transition cursor-pointer ${
                         rangeMode === 'single-month'
-                          ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                          ? 'app-active-tab shadow-2xs font-semibold'
                           : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
                       }`}
                     >
@@ -1336,7 +1336,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       onClick={() => setRangeMode('full-year')}
                       className={`px-2 py-1 text-[11px] font-medium rounded transition cursor-pointer ${
                         rangeMode === 'full-year'
-                          ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                          ? 'app-active-tab shadow-2xs font-semibold'
                           : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
                       }`}
                     >
@@ -1347,7 +1347,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       onClick={() => setRangeMode('all-history')}
                       className={`px-2 py-1 text-[11px] font-medium rounded transition cursor-pointer ${
                         rangeMode === 'all-history'
-                          ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                          ? 'app-active-tab shadow-2xs font-semibold'
                           : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
                       }`}
                     >
@@ -1359,10 +1359,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 {/* Month & Year Selectors */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                       Month
                     </label>
-                    <div className={`h-8 flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 ${rangeMode !== 'single-month' ? 'opacity-40 pointer-events-none' : ''}`}>
+                    <div className={`h-8 flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 ${rangeMode !== 'single-month' ? 'opacity-40 pointer-events-none' : ''}`}>
                       <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                       <select
                         value={activeMonthKey}
@@ -1378,10 +1378,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                       Year
                     </label>
-                    <div className="h-8 flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2">
+                    <div className="h-8 flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-lg px-2">
                       <select
                         value={activeYear}
                         onChange={e => setActiveYear(Number(e.target.value))}
@@ -1397,10 +1397,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 {/* Department Filter */}
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                     Department
                   </label>
-                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5">
+                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5">
                     <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                     <select
                       value={selectedDept}
@@ -1418,10 +1418,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 {/* Employment Type Filter */}
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                     Employment Type
                   </label>
-                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5">
+                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5">
                     <Users className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                     <select
                       value={selectedEmpType}
@@ -1445,7 +1445,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <button
               type="button"
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium app-primary-btn transition shadow-xs cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print &amp; Export</span>
@@ -1453,7 +1453,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             </button>
 
             {isExportMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-60 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 w-60 bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 text-xs z-50 animate-in fade-in zoom-in-95 duration-100">
                 <button
                   type="button"
                   onClick={() => {
@@ -1539,14 +1539,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       <div className="max-w-6xl mx-auto space-y-5">
 
         {/* Tabs - Shortened labels with full title tooltips so all tabs fit seamlessly in view */}
-      <div className="flex items-center gap-1 border-b border-zinc-200 dark:border-zinc-800 text-xs overflow-x-auto pb-0.5">
+      <div className="flex items-center gap-1 border-b border-zinc-200 dark:border-zinc-800 text-xs overflow-x-auto pb-2">
         <button
           onClick={() => setActiveTab('overview')}
           title="Executive Summary & Obligations"
-          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md font-medium transition whitespace-nowrap cursor-pointer ${
             activeTab === 'overview'
-              ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800'
           }`}
         >
           Overview
@@ -1554,10 +1554,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <button
           onClick={() => setActiveTab('departments')}
           title="Department Cost Centers & Breakdown"
-          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md font-medium transition whitespace-nowrap cursor-pointer ${
             activeTab === 'departments'
-              ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800'
           }`}
         >
           Departments ({deptList.length})
@@ -1565,10 +1565,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <button
           onClick={() => setActiveTab('tax')}
           title="PAYE Tax Schedule & State Remittance"
-          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md font-medium transition whitespace-nowrap cursor-pointer ${
             activeTab === 'tax'
-              ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800'
           }`}
         >
           PAYE Tax
@@ -1576,10 +1576,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <button
           onClick={() => setActiveTab('pension')}
           title="Pension Remittance Schedule (Employee 8% + Employer 10%)"
-          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md font-medium transition whitespace-nowrap cursor-pointer ${
             activeTab === 'pension'
-              ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800'
           }`}
         >
           Pension
@@ -1587,10 +1587,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <button
           onClick={() => setActiveTab('bank')}
           title="Bank Disbursement Schedule & NUBAN Details"
-          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md font-medium transition whitespace-nowrap cursor-pointer ${
             activeTab === 'bank'
-              ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800'
           }`}
         >
           Disbursements
@@ -1598,10 +1598,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <button
           onClick={() => setActiveTab('contributions')}
           title="Staff Contributions, Savings & Welfare Deductions"
-          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md font-medium transition whitespace-nowrap cursor-pointer ${
             activeTab === 'contributions'
-              ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800'
           }`}
         >
           Contributions
@@ -1609,10 +1609,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <button
           onClick={() => setActiveTab('absences')}
           title="Employee Absence & Attendance Docking Log"
-          className={`px-2.5 py-2 font-medium border-b-2 transition whitespace-nowrap cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md font-medium transition whitespace-nowrap cursor-pointer ${
             activeTab === 'absences'
-              ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-semibold'
-              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+              ? 'app-active-tab font-semibold'
+              : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800'
           }`}
         >
           Absences
@@ -1623,7 +1623,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {activeTab === 'overview' && (
         <div className="space-y-4">
           {/* Minimalist Payroll Outflow Composition Bar (Proportional, Sleek & Simple) */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between text-xs">
               <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">
                 Payroll Outflow &amp; Deductions Composition
@@ -1723,7 +1723,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             
             {/* Statutory Remittance Obligations */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
                   Statutory Remittances
@@ -1751,7 +1751,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             </div>
 
             {/* Staff Loans & Welfare Obligations */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
                   Loans &amp; Welfare Deductions
@@ -1779,7 +1779,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             </div>
 
             {/* Employment Type Distribution Card */}
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
                   Employment Demarcation
@@ -1815,7 +1815,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
 
           {/* Department Cost Distribution */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between text-xs border-b border-zinc-100 dark:border-zinc-800/60 pb-2">
               <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">
                 Department Cost Allocation
@@ -1846,9 +1846,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         </span>
                       </div>
                     </div>
-                    <div className="w-full bg-zinc-100 dark:bg-zinc-800/80 h-1 rounded-full overflow-hidden">
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-800/80 h-1.5 rounded-full overflow-hidden">
                       <div 
-                        className="bg-zinc-800 dark:bg-zinc-300 h-1 rounded-full transition-all duration-300"
+                        className="app-accent-bar h-1.5 rounded-full transition-all duration-300"
                         style={{ width: `${percent}%` }}
                       />
                     </div>
@@ -1860,7 +1860,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           {/* 12-Month Trajectory Table (When in Full-Year Mode) */}
           {rangeMode === 'full-year' && (
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <div>
                   <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">
@@ -1875,7 +1875,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-mono">
-                  <thead className="bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px]">
+                  <thead className="bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="py-2 px-3 font-medium font-sans">Month</th>
                       <th className="py-2 px-3 font-medium text-center font-sans">Staff</th>
@@ -1903,7 +1903,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-zinc-50/80 dark:bg-zinc-900/80 border-t-2 border-zinc-200 dark:border-zinc-800 font-bold">
+                  <tfoot className="bg-zinc-50/80 dark:bg-zinc-900/80 app-subtle-surface border-t-2 border-zinc-200 dark:border-zinc-800 font-bold">
                     <tr>
                       <td className="py-2.5 px-3 font-sans text-zinc-900 dark:text-zinc-100">Annual Total</td>
                       <td className="py-2.5 px-3 text-center text-zinc-600 dark:text-zinc-400">{activeItems.length}</td>
@@ -1926,16 +1926,16 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* ================= TAB 2: DEPARTMENTS ================= */}
       {activeTab === 'departments' && (
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
-          <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+        <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
+          <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface flex justify-between items-center text-xs">
             <span className="font-semibold text-zinc-900 dark:text-zinc-100">
               Department Cost Center Breakdown &bull; {periodSubtitle}
             </span>
-            <span className="font-mono text-zinc-400">Total Units: {deptList.length}</span>
+            <span className="font-mono text-zinc-500 dark:text-zinc-400">Total Units: {deptList.length}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-50 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px]">
+              <thead className="bg-zinc-50 dark:bg-zinc-900/40 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="py-2.5 px-3 font-medium">
                     <SortableHeader label="Department" field="dept" currentSortField={deptSortField} sortDirection={deptSortDir} onSort={handleDeptSort} align="left" />
@@ -1990,8 +1990,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* ================= TAB 3: TAX SCHEDULE ================= */}
       {activeTab === 'tax' && (
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
-          <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+        <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
+          <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface flex justify-between items-center text-xs">
             <span className="font-semibold text-zinc-900 dark:text-zinc-100">
               State IRS PAYE Tax Remittance Schedule &bull; {periodSubtitle}
             </span>
@@ -1999,7 +1999,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">Total Tax: {formatNaira(totalPaye)}</span>
               <button
                 onClick={() => { setPrintModalType('paye'); setIsPrintModalOpen(true); }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition"
+                className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium app-surface-card border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition"
               >
                 <Printer className="w-3 h-3" />
                 <span>Print Schedule (PDF)</span>
@@ -2008,27 +2008,27 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
           <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)]">
             <table className="w-full text-left text-xs">
-              <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] shadow-xs">
+              <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] shadow-xs">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Code" field="code" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Employee Name" field="name" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Employment Type" field="type" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Gross Remuneration" field="gross" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Total CRA Relief" field="cra" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Taxable Income" field="taxable" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="PAYE Deducted" field="paye" currentSortField={taxSortField} sortDirection={taxSortDir} onSort={handleTaxSort} align="right" />
                   </th>
                 </tr>
@@ -2061,8 +2061,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* ================= TAB 4: PENSION ================= */}
       {activeTab === 'pension' && (
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
-          <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+        <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
+          <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface flex justify-between items-center text-xs">
             <span className="font-semibold text-zinc-900 dark:text-zinc-100">
               Pension Reform Act Schedule (Employee 8% + Employer 10%) &bull; {periodSubtitle}
             </span>
@@ -2070,7 +2070,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">Total Pool: {formatNaira(totalPensionPool)}</span>
               <button
                 onClick={() => { setPrintModalType('pension'); setIsPrintModalOpen(true); }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition"
+                className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium app-surface-card border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition"
               >
                 <Printer className="w-3 h-3" />
                 <span>Print Schedule (PDF)</span>
@@ -2079,27 +2079,27 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
           <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)]">
             <table className="w-full text-left text-xs">
-              <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] shadow-xs">
+              <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] shadow-xs">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Code" field="code" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Employee Name" field="name" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="PFA / RSA PIN" field="pfa" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Pensionable Base (BHT)" field="base" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Employee (8%)" field="employee" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Employer (10%)" field="employer" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Total Remittance" field="total" currentSortField={pensionSortField} sortDirection={pensionSortDir} onSort={handlePensionSort} align="right" />
                   </th>
                 </tr>
@@ -2132,8 +2132,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* ================= TAB 5: BANK DISBURSEMENT ================= */}
       {activeTab === 'bank' && (
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
-          <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+        <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
+          <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface flex justify-between items-center text-xs">
             <span className="font-semibold text-zinc-900 dark:text-zinc-100">
               Commercial Bank Batch Disbursement Schedule &bull; {periodSubtitle}
             </span>
@@ -2141,7 +2141,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">Total Net: {formatNaira(totalNet)}</span>
               <button
                 onClick={() => { setPrintModalType('bank'); setIsPrintModalOpen(true); }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition shadow-2xs"
+                className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium app-primary-btn transition shadow-2xs"
               >
                 <Printer className="w-3 h-3" />
                 <span>Print Bank Schedule (PDF)</span>
@@ -2150,25 +2150,25 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
           <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)]">
             <table className="w-full text-left text-xs">
-              <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase tracking-wider text-[10px] shadow-xs">
+              <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] shadow-xs">
                 <tr>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
-                    <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500">S/N</span>
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
+                    <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500 dark:text-zinc-400">S/N</span>
                   </th>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Beneficiary" field="name" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Bank" field="bank" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="NUBAN Account" field="account" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="left" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900">
+                  <th className="py-2.5 px-3 font-medium text-right bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
                     <SortableHeader label="Net Amount" field="net" currentSortField={bankSortField} sortDirection={bankSortDir} onSort={handleBankSort} align="right" />
                   </th>
-                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900">
-                    <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500">Narration</span>
+                  <th className="py-2.5 px-3 font-medium bg-zinc-50 dark:bg-zinc-900 app-subtle-surface">
+                    <span className="font-semibold uppercase tracking-wider text-[10px] text-zinc-500 dark:text-zinc-400">Narration</span>
                   </th>
                 </tr>
               </thead>
@@ -2203,11 +2203,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {activeTab === 'contributions' && (
         <div className="space-y-4">
           {/* Minimalist Filter Ribbon */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 shadow-2xs space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 shadow-2xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
               {/* Left: Staff Selector Dropdown */}
               <div className="flex items-center gap-2 flex-1 min-w-[260px]">
-                <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider shrink-0 flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Scope:</span>
                 </span>
@@ -2217,7 +2217,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     setContribScope(e.target.value);
                     setContribPage(1);
                   }}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus:outline-none focus:ring-0 focus:border-zinc-400 cursor-pointer"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus:outline-none focus:ring-0 focus:border-zinc-400 cursor-pointer"
                 >
                   <option value="ALL">All Contributing Staff (Company Schedule)</option>
                   <optgroup label="Select Specific Employee Statement">
@@ -2231,13 +2231,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
 
               {/* Center: Timeframe Scope Mode (Monthly / Full Year / All History) */}
-              <div className="flex items-center bg-zinc-100 dark:bg-zinc-900/90 p-0.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800 text-xs">
+              <div className="flex items-center bg-zinc-100 dark:bg-zinc-900/90 app-subtle-surface p-0.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800 text-xs">
                 <button
                   type="button"
                   onClick={() => { setContribTimeframe('month'); setContribPage(1); }}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
                     contribTimeframe === 'month'
-                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      ? 'app-active-tab shadow-2xs font-semibold'
                       : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                   }`}
                 >
@@ -2248,7 +2248,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   onClick={() => { setContribTimeframe('year'); setContribPage(1); }}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
                     contribTimeframe === 'year'
-                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      ? 'app-active-tab shadow-2xs font-semibold'
                       : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                   }`}
                 >
@@ -2259,7 +2259,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   onClick={() => { setContribTimeframe('all'); setContribPage(1); }}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
                     contribTimeframe === 'all'
-                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      ? 'app-active-tab shadow-2xs font-semibold'
                       : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                   }`}
                 >
@@ -2270,7 +2270,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               {/* Right: Year and Month Selectors */}
               <div className="flex items-center gap-2 shrink-0">
                 {/* Year Dropdown */}
-                <div className={`h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 ${contribTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div className={`h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-md px-2 ${contribTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
                   <span className="text-[10px] text-zinc-400 uppercase font-semibold">Year:</span>
                   <select
                     value={contribYear}
@@ -2289,7 +2289,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 {/* Month Dropdown (active when 'month') */}
                 {contribTimeframe === 'month' && (
-                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2">
+                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-md px-2">
                     <Calendar className="w-3 h-3 text-zinc-400" />
                     <select
                       value={contribMonthKey}
@@ -2310,7 +2310,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsPrintStatementModalOpen(true)}
-                  className="h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                  className="h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-md app-primary-btn transition cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>{selectedContribEmployee ? 'Print Statement' : 'Print Schedule'}</span>
@@ -2328,7 +2328,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     placeholder="Search contributing staff by name, code, department..."
                     value={contribSearchQuery}
                     onChange={(e) => setContribSearchQuery(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
                   />
                 </div>
                 {contribSearchQuery && (
@@ -2348,7 +2348,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           {selectedContribEmployee ? (
             <div className="space-y-4">
               {/* Employee Summary Card */}
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
@@ -2369,7 +2369,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setContribScope('ALL')}
-                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md app-subtle-surface border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition cursor-pointer"
                 >
                   <RotateCcw className="w-3 h-3" />
                   <span>Return to All Staff Schedule</span>
@@ -2378,8 +2378,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
               {/* 4 Minimalist Stat Cards for this employee */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                     Total Deducted ({contribTimeframe === 'month' ? `${MONTHS.find(m => m.key === contribMonthKey)?.label}` : contribTimeframe === 'year' ? `FY ${contribYear}` : 'All-Time'})
                   </span>
                   <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -2387,8 +2387,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                     Disbursed Payouts
                   </span>
                   <p className="text-base sm:text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
@@ -2396,8 +2396,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                     Net Added in Period
                   </span>
                   <p className="text-base sm:text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">
@@ -2405,8 +2405,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                     Current Balance Held
                   </span>
                   <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -2416,8 +2416,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
 
               {/* Statement Itemized Ledger Table */}
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
-                <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+              <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
+                <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface flex justify-between items-center text-xs">
                   <div className="flex items-center gap-2">
                     <FileText className="w-3.5 h-3.5 text-zinc-500" />
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200">
@@ -2431,7 +2431,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
-                    <thead className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                    <thead className="bg-zinc-50 dark:bg-zinc-800/60 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
                       <tr>
                         <th className="px-3 py-2.5">Period / Month</th>
                         <th className="px-3 py-2.5">Transaction Date</th>
@@ -2532,8 +2532,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 {contribTimeframe === 'month' && (
                   <>
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Deducted ({MONTHS.find(m => m.key === contribMonthKey)?.label} {contribYear})
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -2541,8 +2541,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Contributing Staff
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -2550,8 +2550,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Average Deduction
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -2559,8 +2559,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Total Fund Pool Balance
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">
@@ -2572,8 +2572,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 {contribTimeframe === 'year' && (
                   <>
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Total {contribYear} Deductions
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -2581,8 +2581,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Total {contribYear} Payouts
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
@@ -2590,8 +2590,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Net Savings Added in {contribYear}
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">
@@ -2599,8 +2599,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Annual Contributors
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -2612,8 +2612,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 {contribTimeframe === 'all' && (
                   <>
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         All-Time Deductions
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -2621,8 +2621,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         All-Time Payouts
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
@@ -2630,8 +2630,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Current Pool Balance Held
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-indigo-600 dark:text-indigo-400">
@@ -2639,8 +2639,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-                      <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider block">
+                    <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+                      <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                         Enrolled Staff
                       </span>
                       <p className="text-base sm:text-lg font-bold font-mono text-zinc-900 dark:text-zinc-100">
@@ -2652,8 +2652,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
 
               {/* All Staff Schedule Table */}
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
-                <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+              <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-2xs">
+                <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface flex justify-between items-center text-xs">
                   <div className="flex items-center gap-2">
                     <PiggyBank className="w-3.5 h-3.5 text-zinc-500" />
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200">
@@ -2671,7 +2671,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
-                    <thead className="bg-zinc-50 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                    <thead className="bg-zinc-50 dark:bg-zinc-800/60 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
                       <tr>
                         <th className="px-3 py-2.5 w-10">#</th>
                         <th className="px-3 py-2.5">Code</th>
@@ -2826,11 +2826,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {activeTab === 'absences' && (
         <div className="space-y-4">
           {/* Minimalist Filter Ribbon */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 shadow-2xs space-y-3">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 shadow-2xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
               {/* Left: Staff Selector Dropdown */}
               <div className="flex items-center gap-2 flex-1 min-w-[260px]">
-                <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider shrink-0 flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Scope:</span>
                 </span>
@@ -2840,7 +2840,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     setAbsenceScope(e.target.value);
                     setAbsencePage(1);
                   }}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus:outline-none focus:ring-0 focus:border-zinc-400 cursor-pointer"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-md px-2.5 py-1.5 text-xs font-medium outline-none focus:outline-none focus:ring-0 focus:border-zinc-400 cursor-pointer"
                 >
                   <option value="ALL">All Affected Staff (Company Absence Schedule)</option>
                   <optgroup label="Select Specific Employee Attendance Statement">
@@ -2854,13 +2854,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
 
               {/* Center: Timeframe Scope Mode (Monthly / Full Year / All History) */}
-              <div className="flex items-center bg-zinc-100 dark:bg-zinc-900/90 p-0.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800 text-xs">
+              <div className="flex items-center bg-zinc-100 dark:bg-zinc-900/90 app-subtle-surface p-0.5 rounded-lg border border-zinc-200/80 dark:border-zinc-800 text-xs">
                 <button
                   type="button"
                   onClick={() => { setAbsenceTimeframe('month'); setAbsencePage(1); }}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
                     absenceTimeframe === 'month'
-                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      ? 'app-active-tab shadow-2xs font-semibold'
                       : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                   }`}
                 >
@@ -2871,7 +2871,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   onClick={() => { setAbsenceTimeframe('year'); setAbsencePage(1); }}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
                     absenceTimeframe === 'year'
-                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      ? 'app-active-tab shadow-2xs font-semibold'
                       : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                   }`}
                 >
@@ -2882,7 +2882,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   onClick={() => { setAbsenceTimeframe('all'); setAbsencePage(1); }}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition cursor-pointer ${
                     absenceTimeframe === 'all'
-                      ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold'
+                      ? 'app-active-tab shadow-2xs font-semibold'
                       : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
                   }`}
                 >
@@ -2892,7 +2892,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
               {/* Right: Year and Month Selectors */}
               <div className="flex items-center gap-2 shrink-0">
-                <div className={`h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2 ${absenceTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
+                <div className={`h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-md px-2 ${absenceTimeframe === 'all' ? 'opacity-40 pointer-events-none' : ''}`}>
                   <span className="text-[10px] text-zinc-400 uppercase font-semibold">Year:</span>
                   <select
                     value={absenceYear}
@@ -2910,7 +2910,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 </div>
 
                 {absenceTimeframe === 'month' && (
-                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md px-2">
+                  <div className="h-8 flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-md px-2">
                     <Calendar className="w-3 h-3 text-zinc-400" />
                     <select
                       value={absenceMonthKey}
@@ -2930,7 +2930,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsPrintAbsenceModalOpen(true)}
-                  className="h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                  className="h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-md app-primary-btn transition cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>{selectedAbsenceEmployee ? 'Print Statement' : 'Print Schedule'}</span>
@@ -2950,7 +2950,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       setAbsenceSearchQuery(e.target.value);
                       setAbsencePage(1);
                     }}
-                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:outline-none focus:ring-0 focus:border-zinc-400"
                   />
                 </div>
                 <div className="text-[11px] text-zinc-400">
@@ -2962,8 +2962,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           {/* 3 Minimalist Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                 <span>Total Days Docked</span>
                 <Clock className="w-3.5 h-3.5 text-zinc-400" />
               </div>
@@ -2972,8 +2972,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </p>
             </div>
 
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                 <span>Unpaid Deductions</span>
                 <span className="text-rose-500 font-bold text-xs">₦</span>
               </div>
@@ -2982,8 +2982,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </p>
             </div>
 
-            <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
-              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+            <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                 <span>Affected Staff</span>
                 <Users className="w-3.5 h-3.5 text-zinc-400" />
               </div>
@@ -2994,8 +2994,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
 
           {/* Minimalist Absence Table View */}
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-2xs">
-            <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 flex justify-between items-center text-xs">
+          <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-2xs">
+            <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface flex justify-between items-center text-xs">
               <div className="flex items-center gap-2">
                 <CalendarOff className="w-3.5 h-3.5 text-zinc-500" />
                 <span className="font-semibold text-zinc-800 dark:text-zinc-200">
@@ -3015,7 +3015,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-zinc-600 dark:text-zinc-300">
-                <thead className="bg-zinc-50/80 dark:bg-zinc-800/60 border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-semibold">
+                <thead className="bg-zinc-50/80 dark:bg-zinc-800/60 app-subtle-surface border-b border-zinc-200 dark:border-zinc-800 text-[11px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold">
                   <tr>
                     <th className="px-4 py-3">Date / Period</th>
                     {!selectedAbsenceEmployee && <th className="px-4 py-3">Staff Name</th>}
@@ -3093,7 +3093,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   )}
                 </tbody>
                 {absenceReportData.rows.length > 0 && (
-                  <tfoot className="bg-zinc-50 dark:bg-zinc-800/80 font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 border-t border-zinc-200 dark:border-zinc-800">
+                  <tfoot className="bg-zinc-50 dark:bg-zinc-800/80 app-subtle-surface font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 border-t border-zinc-200 dark:border-zinc-800">
                     <tr>
                       <td colSpan={selectedAbsenceEmployee ? 1 : 2} className="px-4 py-2.5 font-sans uppercase text-[11px] text-zinc-500 font-semibold">
                         Total for Selected Scope
@@ -3126,7 +3126,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           {/* Succinct Absence View Modal */}
           {viewingAbsenceRow && (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-              <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+              <div className="bg-white dark:bg-[#121215] app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
                 {/* Header */}
                 <div className="flex items-start justify-between">
                   <div>
@@ -3147,7 +3147,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 </div>
 
                 {/* Specific Dates Pill Grid */}
-                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/70 dark:border-zinc-800/70 space-y-2">
+                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface border border-zinc-200/70 dark:border-zinc-800/70 space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                       Dates / Period
@@ -3218,8 +3218,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
                 {/* Notes if any */}
                 {viewingAbsenceRow.notes && (
-                  <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/60">
-                    <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-0.5">
+                  <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface border border-zinc-200/60 dark:border-zinc-800/60">
+                    <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-0.5">
                       Notes
                     </span>
                     <p className="text-xs text-zinc-700 dark:text-zinc-300 italic">
@@ -3233,7 +3233,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setViewingAbsenceRow(null)}
-                    className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition cursor-pointer"
+                    className="px-4 py-1.5 rounded-xl text-xs font-semibold app-primary-btn active:scale-95 transition cursor-pointer"
                   >
                     Close
                   </button>
@@ -3247,9 +3247,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {/* Printable Statement / Schedule Modal */}
       {isPrintStatementModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
             {/* Modal Top Bar */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 print:hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface print:hidden">
               <div className="flex items-center gap-2">
                 <Printer className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                 <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
@@ -3260,7 +3260,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium app-primary-btn transition cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Print Document</span>
@@ -3395,9 +3395,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {/* Printable Absence Schedule / Statement Modal */}
       {isPrintAbsenceModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
             {/* Modal Top Bar */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 print:hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 app-subtle-surface print:hidden">
               <div className="flex items-center gap-2">
                 <Printer className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                 <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
@@ -3408,7 +3408,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium app-primary-btn transition cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Print Document</span>

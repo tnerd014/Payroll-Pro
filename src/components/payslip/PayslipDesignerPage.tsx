@@ -753,7 +753,7 @@ export const PayslipDesignerPage: React.FC<PayslipDesignerPageProps> = ({
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 p-2 sm:p-5 overflow-hidden">
 
         {/* Left Control Panel (5 Cols) - Scrollable independently */}
-        <div className={`lg:col-span-5 h-full overflow-y-auto bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 space-y-4 shadow-2xs no-print pr-3 ${mobileViewMode === 'controls' ? 'block' : 'hidden lg:block'
+        <div className={`app-surface-card lg:col-span-5 h-full overflow-y-auto bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 space-y-4 shadow-2xs no-print pr-3 ${mobileViewMode === 'controls' ? 'block' : 'hidden lg:block'
           }`}>
 
           {/* Sub Navigation Tabs */}

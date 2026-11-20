@@ -228,20 +228,20 @@ export const TeamAuditModal: React.FC<TeamAuditModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-5 animate-in fade-in duration-150">
-      <div className="w-full max-w-4xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col h-[90vh] max-h-[820px] overflow-hidden">
+      <div className="app-surface-card w-full max-w-4xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col h-[90vh] max-h-[820px] overflow-hidden">
         
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-xs shrink-0">
-              <ShieldCheck className="w-5 h-5 text-emerald-400 dark:text-emerald-600" />
+            <div className="app-primary-btn w-9 h-9 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center shadow-xs shrink-0">
+              <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
                   Global Audit Trail
                 </h2>
-                <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800">
+                <span className="app-positive-badge hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800">
                   Admin Exclusive
                 </span>
               </div>
@@ -278,7 +278,7 @@ export const TeamAuditModal: React.FC<TeamAuditModalProps> = ({
         </div>
 
         {/* Filter Controls Row */}
-        <div className="p-3 sm:px-6 bg-zinc-50/70 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center gap-2 shrink-0">
+        <div className="app-subtle-surface p-3 sm:px-6 bg-zinc-50/70 dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center gap-2 shrink-0">
           
           {/* Search Input */}
           <div className="relative flex-1 min-w-[200px]">

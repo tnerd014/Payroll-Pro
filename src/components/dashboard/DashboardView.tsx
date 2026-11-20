@@ -312,7 +312,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="space-y-5 select-none max-w-6xl mx-auto">
       
       {/* Top Header - Sticky */}
-      <div className="sticky top-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md pt-3.5 pb-3 border-b border-zinc-200 dark:border-zinc-800 -mx-6 px-6 md:-mx-8 md:px-8">
+      <div className="app-shell-bg sticky top-0 z-30 bg-[#fbfbfb]/95 dark:bg-[#09090b]/95 backdrop-blur-md pt-3.5 pb-3 border-b border-zinc-200 dark:border-zinc-800 -mx-6 px-6 md:-mx-8 md:px-8">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -325,8 +325,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
             )}
           </div>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Active view for <strong>{isAllMonths ? `All Months ${filterYear} (Full Year)` : `${activeMonthLabel} ${filterYear}`}</strong> &bull; {activeItems.length} Enrolled Personnel
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            Active view for <strong className="text-zinc-700 dark:text-zinc-200">{isAllMonths ? `All Months ${filterYear} (Full Year)` : `${activeMonthLabel} ${filterYear}`}</strong> &bull; {activeItems.length} Enrolled Personnel
           </p>
         </div>
 
@@ -335,32 +335,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="relative" ref={filterMenuRef}>
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all flex items-center gap-2 ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all flex items-center gap-2 cursor-pointer ${
               isFilterOpen || hasActiveFilters
-                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs'
-                : 'bg-white dark:bg-[#121215] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-xs'
+                : 'app-surface-card bg-white dark:bg-[#121215] text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
             }`}
           >
-            <Filter className={`w-3.5 h-3.5 ${hasActiveFilters ? 'text-emerald-400 dark:text-emerald-600' : 'text-zinc-500 dark:text-zinc-400'}`} />
+            <Filter className={`w-3.5 h-3.5 ${isFilterOpen || hasActiveFilters ? 'text-current' : 'text-zinc-500 dark:text-zinc-400'}`} />
             <span>Filter</span>
             {hasActiveFilters && (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-400/30" />
+              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-90" />
             )}
-            <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-200 ${isFilterOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 opacity-70 transition-transform duration-200 ${isFilterOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {/* Floating Minimalist Filter Popover */}
           {isFilterOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-4 z-40 space-y-3.5">
+            <div className="app-surface-card absolute right-0 top-full mt-2 w-80 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-4 z-40 space-y-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
                 <span className="font-semibold text-xs text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                  <Filter className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <Filter className="w-3.5 h-3.5 app-accent-text text-emerald-600 dark:text-emerald-400" />
                   Dashboard Filters
                 </span>
                 {hasActiveFilters && (
                   <button
                     onClick={handleResetFilters}
-                    className="text-[11px] font-medium text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1"
+                    className="text-[11px] font-medium text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                     Reset
@@ -371,21 +371,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {/* Month & Year Selectors */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                     Month
                   </label>
-                  <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <div className="app-subtle-surface flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
                     <select
                       value={filterMonth}
                       onChange={e => handleMonthChange(e.target.value)}
                       className="bg-transparent text-zinc-800 dark:text-zinc-200 text-xs font-medium focus:outline-none cursor-pointer w-full"
                     >
-                      <option value="ALL" className="dark:bg-zinc-900 font-semibold text-emerald-600 dark:text-emerald-400">
+                      <option value="ALL" className="bg-white dark:bg-zinc-900 font-semibold text-emerald-600 dark:text-emerald-400">
                         All Months (Full Year)
                       </option>
                       {MONTHS.map(m => (
-                        <option key={m.key} value={m.key} className="dark:bg-zinc-900">
+                        <option key={m.key} value={m.key} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
                           {m.label}{m.key === currentRealMonthKey ? ' (Current)' : ''}
                         </option>
                       ))}
@@ -394,17 +394,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                     Year
                   </label>
-                  <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5">
+                  <div className="app-subtle-surface flex items-center gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2 py-1.5">
                     <select
                       value={filterYear}
                       onChange={e => handleYearChange(Number(e.target.value))}
                       className="bg-transparent text-zinc-800 dark:text-zinc-200 text-xs font-medium focus:outline-none cursor-pointer w-full"
                     >
                       {years.map(y => (
-                        <option key={y} value={y} className="dark:bg-zinc-900">
+                        <option key={y} value={y} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
                           {y}{y === currentRealYear ? ' (Current)' : ''}
                         </option>
                       ))}
@@ -422,7 +422,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       handleMonthChange(currentRealMonthKey);
                       handleYearChange(currentRealYear);
                     }}
-                    className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                    className="app-accent-text text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
                   >
                     Reset to Current Period ({MONTHS.find(m => m.key === currentRealMonthKey)?.label} {currentRealYear})
                   </button>
@@ -431,18 +431,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               {/* Department Filter */}
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                   Department
                 </label>
-                <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <div className="app-subtle-surface flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
                   <select
                     value={filterDept}
                     onChange={e => setFilterDept(e.target.value)}
                     className="bg-transparent text-zinc-800 dark:text-zinc-200 text-xs font-medium focus:outline-none cursor-pointer w-full truncate"
                   >
                     {availableDepts.map(d => (
-                      <option key={d} value={d} className="dark:bg-zinc-900">
+                      <option key={d} value={d} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
                         {d === 'ALL' ? 'All Departments' : d}
                       </option>
                     ))}
@@ -452,18 +452,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               {/* Employment Type Filter */}
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                   Personnel Type
                 </label>
-                <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5">
-                  <Users className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <div className="app-subtle-surface flex items-center gap-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5">
+                  <Users className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
                   <select
                     value={filterEmpType}
                     onChange={e => setFilterEmpType(e.target.value)}
                     className="bg-transparent text-zinc-800 dark:text-zinc-200 text-xs font-medium focus:outline-none cursor-pointer w-full truncate"
                   >
                     {availableEmpTypes.map(t => (
-                      <option key={t} value={t} className="dark:bg-zinc-900">
+                      <option key={t} value={t} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
                         {t === 'ALL' ? 'All Staff Types' : t}
                       </option>
                     ))}
@@ -472,11 +472,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Footer */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-zinc-500">
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400">
                 <span>Matching: <strong className="text-zinc-800 dark:text-zinc-200 font-mono">{activeItems.length} staff</strong></span>
                 <button
                   onClick={() => setIsFilterOpen(false)}
-                  className="px-2.5 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-medium transition"
+                  className="app-primary-btn px-2.5 py-1 rounded bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium transition cursor-pointer"
                 >
                   Apply
                 </button>
@@ -491,7 +491,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         
         {/* Card 1: Gross */}
-        <div className="p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs">
+        <div className="app-surface-card p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs transition-colors">
           <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1">Total Gross Payroll</span>
           <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono">
             {formatNaira(totalGross)}
@@ -499,15 +499,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Card 2: Net */}
-        <div className="p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs">
-          <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1">Net Disbursement</span>
-          <div className="text-xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
+        <div className="app-hero-card p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs transition-colors">
+          <span className="app-hero-label text-xs text-zinc-500 dark:text-zinc-400 block mb-1">Net Disbursement</span>
+          <div className="app-hero-value text-xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 font-mono">
             {formatNaira(totalNet)}
           </div>
         </div>
 
         {/* Card 3: Deductions */}
-        <div className="p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs">
+        <div className="app-surface-card p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs transition-colors">
           <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1">Total Statutory Deductions</span>
           <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono">
             {formatNaira(totalDeductions)}
@@ -515,28 +515,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Card 4: Workforce */}
-        <div className="p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs">
+        <div className="app-surface-card p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs transition-colors">
           <span className="text-xs text-zinc-500 dark:text-zinc-400 block mb-1">Filtered Workforce</span>
           <div className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            {activeItems.length} <span className="text-xs font-normal text-zinc-400">Personnel</span>
+            {activeItems.length} <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">Personnel</span>
           </div>
         </div>
 
       </div>
 
       {/* ================= MINIMALIST OUTFLOW COMPOSITION BAR ================= */}
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-3 shadow-2xs">
+      <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-3 shadow-2xs transition-colors">
         <div className="flex items-center justify-between text-xs">
           <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider text-[11px]">
             Payroll Outflow Composition
           </h3>
-          <span className="text-zinc-400 font-mono text-[11px]">
+          <span className="text-zinc-500 dark:text-zinc-400 font-mono text-[11px]">
             Gross: {formatNaira(totalGross)}
           </span>
         </div>
 
         {/* Minimal Stacked Bar */}
-        <div className="w-full h-2.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex shadow-inner">
+        <div className="app-subtle-surface w-full h-2.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex shadow-inner">
           <div 
             style={{ width: `${netRatio}%` }} 
             className="bg-emerald-500 h-full transition-all duration-300" 
@@ -591,12 +591,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
         {/* Department Distribution */}
-        <div className="p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-3">
+        <div className="app-surface-card p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-3 transition-colors">
           <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-2.5">
             <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
               Department Allocation
             </h3>
-            <span className="text-xs text-zinc-400 font-mono">{deptList.length} Units</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">{deptList.length} Units</span>
           </div>
 
           <div className="space-y-2.5 text-xs">
@@ -607,20 +607,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span className="font-medium text-zinc-800 dark:text-zinc-200 uppercase tracking-wide">
                       {dept.name}
                     </span>
-                    <span className="text-[11px] text-zinc-400 font-mono">({dept.count} staff)</span>
+                    <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">({dept.count} staff)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
                       {formatNaira(dept.gross)}
                     </span>
-                    <span className="text-[11px] font-mono text-zinc-400 w-10 text-right">
+                    <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 w-10 text-right">
                       {dept.percentage}%
                     </span>
                   </div>
                 </div>
-                <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                <div className="app-subtle-surface w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                   <div 
-                    className="bg-zinc-900 dark:bg-zinc-300 h-1.5 rounded-full transition-all duration-300"
+                    className="app-accent-bar bg-zinc-900 dark:bg-zinc-300 h-1.5 rounded-full transition-all duration-300"
                     style={{ width: `${dept.percentage}%` }}
                   />
                 </div>
@@ -628,18 +628,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             ))}
 
             {deptList.length === 0 && (
-              <div className="py-4 text-center text-zinc-400 text-xs">No records available for selected filters.</div>
+              <div className="py-4 text-center text-zinc-500 dark:text-zinc-400 text-xs">No records available for selected filters.</div>
             )}
           </div>
         </div>
 
         {/* Employment Type Demarcation */}
-        <div className="p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-3">
+        <div className="app-surface-card p-4 rounded-xl bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-3 transition-colors">
           <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-2.5">
             <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
               Employment Demarcation
             </h3>
-            <span className="text-xs text-zinc-400 font-mono">{empTypeList.length} Categories</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">{empTypeList.length} Categories</span>
           </div>
 
           <div className="space-y-2.5 text-xs">
@@ -647,24 +647,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div key={type.name} className="space-y-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-zinc-500 dark:bg-zinc-400" />
+                    <span className="app-accent-bar w-2 h-2 rounded-full bg-zinc-500 dark:bg-zinc-400" />
                     <span className="font-medium text-zinc-800 dark:text-zinc-200">
                       {type.name}
                     </span>
-                    <span className="text-[11px] text-zinc-400 font-mono">({type.count} staff)</span>
+                    <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">({type.count} staff)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-medium text-zinc-900 dark:text-zinc-100">
                       {formatNaira(type.gross)}
                     </span>
-                    <span className="text-[11px] font-mono text-zinc-400 w-10 text-right">
+                    <span className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 w-10 text-right">
                       {type.percentage}%
                     </span>
                   </div>
                 </div>
-                <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                <div className="app-subtle-surface w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
                   <div 
-                    className="bg-zinc-700 dark:bg-zinc-400 h-1.5 rounded-full transition-all duration-300"
+                    className="app-accent-bar bg-zinc-700 dark:bg-zinc-400 h-1.5 rounded-full transition-all duration-300"
                     style={{ width: `${type.percentage}%` }}
                   />
                 </div>
@@ -672,7 +672,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             ))}
 
             {empTypeList.length === 0 && (
-              <div className="py-4 text-center text-zinc-400 text-xs">No records available for selected filters.</div>
+              <div className="py-4 text-center text-zinc-500 dark:text-zinc-400 text-xs">No records available for selected filters.</div>
             )}
           </div>
         </div>

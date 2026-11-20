@@ -36,6 +36,13 @@ import {
   isEmployeeActiveForPeriod,
   getScheduleWorkdays
 } from '../engine/payePensionEngine';
+import {
+  AppThemeId,
+  getSavedAppTheme,
+  getSavedDarkMode,
+  saveAppTheme,
+  saveDarkMode,
+} from '../constants/appThemes';
 import { 
   getSupabaseClient, 
   downloadCompanyDataFromSupabase,
@@ -866,9 +873,8 @@ export function usePayrollStore() {
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
-  const [isDarkTheme, setIsDarkTheme] = useState<boolean>(() => {
-    return localStorage.getItem(THEME_PREFERENCE_KEY) === 'dark';
-  });
+  const [appTheme, setAppThemeState] = useState<AppThemeId>(() => getSavedAppTheme());
+  const [isDarkTheme, setIsDarkTheme] = useState<boolean>(() => getSavedDarkMode());
 
   const [state, setState] = useState<AppState>(() => {
     const list = loadCompaniesRegistry();
@@ -1676,10 +1682,15 @@ export function usePayrollStore() {
 
   const monthLabel = MONTHS.find(m => m.key === state.selectedMonth)?.label || (MONTHS[new Date().getMonth()]?.label || 'October');
 
+  const setAppTheme = (themeId: AppThemeId) => {
+    saveAppTheme(themeId);
+    setAppThemeState(themeId);
+  };
+
   const toggleTheme = () => {
     setIsDarkTheme(prev => {
       const next = !prev;
-      localStorage.setItem(THEME_PREFERENCE_KEY, next ? 'dark' : 'light');
+      saveDarkMode(next);
       setState(s => ({ ...s, isDarkTheme: next }));
       return next;
     });
@@ -3487,6 +3498,8 @@ export function usePayrollStore() {
     activeEmployees,
     currentPayrollItems,
     activeSnapshot,
+    appTheme,
+    setAppTheme,
     isDarkTheme,
     toggleTheme,
     updateCompanyProfile,

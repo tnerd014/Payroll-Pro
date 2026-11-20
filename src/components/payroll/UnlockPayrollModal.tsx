@@ -35,10 +35,10 @@ export const UnlockPayrollModal: React.FC<UnlockPayrollModalProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+      <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-200/80 dark:border-zinc-800 shrink-0">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40">
               <Unlock className="w-4 h-4" />
@@ -47,7 +47,7 @@ export const UnlockPayrollModal: React.FC<UnlockPayrollModalProps> = ({
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 Unlock Payroll for Revision
               </h3>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                 {monthLabel} {year} &bull; Currently Locked (v{currentVersion})
               </p>
             </div>
@@ -85,23 +85,23 @@ export const UnlockPayrollModal: React.FC<UnlockPayrollModalProps> = ({
                 value={reason}
                 onChange={e => setReason(e.target.value)}
                 placeholder="e.g. Salary adjustment, new hire additions, correction..."
-                className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-zinc-400"
+                className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-3 py-2 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 text-xs focus:outline-none focus:border-zinc-400"
               />
             </div>
           </div>
 
           {/* Sticky Actions */}
-          <div className="flex items-center justify-end gap-2 p-3 px-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
+          <div className="app-subtle-surface flex items-center justify-end gap-2 p-3 px-4 border-t border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 transition cursor-pointer"
+              className="app-surface-card px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 transition cursor-pointer"
             >
               Keep Locked
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition shadow-xs cursor-pointer"
+              className="app-primary-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition shadow-xs cursor-pointer"
             >
               <Unlock className="w-3.5 h-3.5" />
               <span>Unlock Payroll (Enable Edits)</span>

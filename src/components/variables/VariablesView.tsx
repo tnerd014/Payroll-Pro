@@ -82,14 +82,14 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handleResetDefaults}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium app-surface-card border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Defaults</span>
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium app-primary-btn transition-colors shadow-none"
           >
             {savedMessage ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
             <span>{savedMessage ? 'Saved' : 'Save Changes'}</span>
@@ -98,7 +98,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
       </div>
 
       {/* Section 1: Salary Breakdown Percentages */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+      <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
@@ -107,7 +107,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
           </div>
           <span className={`text-xs font-mono font-medium px-2 py-0.5 rounded border ${
             isPercentageValid 
-              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700' 
+              ? 'bg-zinc-100 dark:bg-zinc-800 app-subtle-surface text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700' 
               : 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900'
           }`}>
             Total: {percentageSum}%
@@ -122,7 +122,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               step="any"
               value={pv.basic}
               onChange={e => setPv({ ...pv, basic: Number(e.target.value) })}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+              className="w-full bg-white dark:bg-zinc-950 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
           <div>
@@ -132,7 +132,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               step="any"
               value={pv.housing}
               onChange={e => setPv({ ...pv, housing: Number(e.target.value) })}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+              className="w-full bg-white dark:bg-zinc-950 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
           <div>
@@ -142,7 +142,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               step="any"
               value={pv.transport}
               onChange={e => setPv({ ...pv, transport: Number(e.target.value) })}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+              className="w-full bg-white dark:bg-zinc-950 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
           <div>
@@ -152,14 +152,14 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               step="any"
               value={pv.otherAllowances}
               onChange={e => setPv({ ...pv, otherAllowances: Number(e.target.value) })}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+              className="w-full bg-white dark:bg-zinc-950 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
         </div>
       </div>
 
       {/* Section 2: Pension & Employer Statutory Rates */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+      <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
         <h2 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
           2. Statutory Pension Rates
         </h2>
@@ -171,7 +171,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               step="any"
               value={pv.employeePensionRate}
               onChange={e => setPv({ ...pv, employeePensionRate: Number(e.target.value) })}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+              className="w-full bg-white dark:bg-zinc-950 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
           <div>
@@ -181,14 +181,14 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               step="any"
               value={pv.employerPensionRate}
               onChange={e => setPv({ ...pv, employerPensionRate: Number(e.target.value) })}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+              className="w-full bg-white dark:bg-zinc-950 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
         </div>
       </div>
 
       {/* Section: Mid-Month Proration */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-4">
+      <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4">
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -221,7 +221,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
       </div>
 
       {/* Section 3: CRA & Rent Relief */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+      <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
         <h2 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
           3. Consolidated Relief Allowance (CRA) & Rent Relief
         </h2>
@@ -233,7 +233,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               step="any"
               value={tv.craBase}
               onChange={e => setTv({ ...tv, craBase: Number(e.target.value) })}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+              className="w-full bg-white dark:bg-zinc-950 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
           <div>
@@ -243,7 +243,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               step="any"
               value={tv.rentReliefRate * 100}
               onChange={e => setTv({ ...tv, rentReliefRate: Number(e.target.value) / 100 })}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+              className="w-full bg-white dark:bg-zinc-950 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
           <div>
@@ -253,14 +253,14 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
               step="any"
               value={tv.rentReliefCap}
               onChange={e => setTv({ ...tv, rentReliefCap: Number(e.target.value) })}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+              className="w-full bg-white dark:bg-zinc-950 app-subtle-surface border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
             />
           </div>
         </div>
       </div>
 
       {/* Section 4: Dynamic Progressive Tax Brackets */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+      <div className="bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
@@ -269,7 +269,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
           </div>
           <button
             onClick={handleAddBracket}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium app-surface-card border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Bracket Tier</span>
@@ -278,7 +278,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
 
         <div className="space-y-2">
           {tv.taxBrackets.map((bracket, index) => (
-            <div key={bracket.id} className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded border border-zinc-200 dark:border-zinc-800">
+            <div key={bracket.id} className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-950 app-subtle-surface p-2.5 rounded border border-zinc-200 dark:border-zinc-800">
               <span className="w-5 h-5 rounded border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 flex items-center justify-center text-[10px] font-mono">
                 {index + 1}
               </span>
@@ -305,7 +305,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
                     const updated = tv.taxBrackets.map(b => b.id === bracket.id ? { ...b, upTo: val } : b);
                     setTv({ ...tv, taxBrackets: updated });
                   }}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-xs font-mono text-zinc-900 dark:text-zinc-100"
+                  className="w-full bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-xs font-mono text-zinc-900 dark:text-zinc-100"
                 />
               </div>
               <div className="w-20">
@@ -318,7 +318,7 @@ export const VariablesView: React.FC<VariablesViewProps> = ({
                       const updated = tv.taxBrackets.map(b => b.id === bracket.id ? { ...b, rate: Number(e.target.value) / 100 } : b);
                       setTv({ ...tv, taxBrackets: updated });
                     }}
-                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100"
+                    className="w-full bg-white dark:bg-zinc-900 app-surface-card border border-zinc-200 dark:border-zinc-800 rounded px-2 py-1 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100"
                   />
                   <span className="text-xs text-zinc-500 font-mono">%</span>
                 </div>

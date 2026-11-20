@@ -41,7 +41,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   const pages = getPageNumbers();
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 text-xs text-zinc-500 select-none">
+    <div className="app-subtle-surface flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/40 text-xs text-zinc-500 dark:text-zinc-400 select-none">
       
       {/* Left: Range and Count */}
       <div className="flex items-center gap-3">
@@ -61,7 +61,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
               onPageSizeChange(Number(e.target.value));
               onPageChange(1);
             }}
-            className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded px-1.5 py-0.5 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-medium focus:outline-none cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700"
+            className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded px-1.5 py-0.5 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-medium focus:outline-none cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700"
           >
             {pageSizeOptions.map(opt => (
               <option key={opt} value={opt}>
@@ -106,7 +106,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
               onClick={() => onPageChange(page)}
               className={`w-6 h-6 rounded text-xs font-medium flex items-center justify-center transition ${
                 currentPage === page
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs font-semibold'
+                  ? 'app-active-tab bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xs font-semibold'
                   : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800'
               }`}
             >

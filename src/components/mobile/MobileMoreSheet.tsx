@@ -62,7 +62,7 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
       bodyClassName="px-4 py-2 space-y-2"
     >
       <div className="select-none space-y-1.5 pb-2">
-        <div className="bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800/80 shadow-xs">
+        <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden divide-y divide-zinc-200/60 dark:divide-zinc-800/80 shadow-xs">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isCurrent = activeView === item.id;
@@ -72,15 +72,15 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => handleItemClick(item.id)}
-                className={`w-full flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 active:bg-zinc-100/80 dark:active:bg-zinc-800/70 transition-colors text-left cursor-pointer ${
-                  isCurrent ? 'bg-zinc-50/90 dark:bg-zinc-800/50' : ''
+                className={`w-full flex items-center justify-between px-4 py-3.5 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] active:bg-black/[0.06] dark:active:bg-white/[0.07] transition-colors text-left cursor-pointer ${
+                  isCurrent ? 'app-subtle-surface' : ''
                 }`}
               >
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                     isCurrent 
-                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' 
-                      : 'bg-zinc-100 dark:bg-zinc-850 text-zinc-600 dark:text-zinc-400'
+                      ? 'app-active-tab bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' 
+                      : 'app-subtle-surface bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
                   }`}>
                     <Icon className="w-4 h-4" />
                   </div>
@@ -95,9 +95,9 @@ export const MobileMoreSheet: React.FC<MobileMoreSheetProps> = ({
 
                 <div className="flex items-center gap-2 shrink-0 pl-2">
                   {isCurrent && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" />
+                    <span className="app-accent-bar w-2 h-2 rounded-full" />
                   )}
-                  <ChevronRight className="w-4 h-4 text-zinc-400/80 dark:text-zinc-600" />
+                  <ChevronRight className="w-4 h-4 text-zinc-400 dark:text-zinc-400" />
                 </div>
               </button>
             );

@@ -828,15 +828,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
   return (
     <div className="space-y-3.5 pb-2 select-none">
       {/* ── 1. Minimalist Compact Header ── */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between gap-3">
+      <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative shrink-0">
             {companyForm.logoUrl ? (
-              <div className="w-11 h-11 rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center p-0.5">
+              <div className="app-subtle-surface w-11 h-11 rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center p-0.5">
                 <img src={companyForm.logoUrl} alt="Logo" className="w-full h-full object-contain" />
               </div>
             ) : (
-              <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
+              <div className="app-subtle-surface app-accent-text w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
                 <Building2 className="w-5 h-5" />
               </div>
             )}
@@ -845,7 +845,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => logoInputRef.current?.click()}
-                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center shadow-xs cursor-pointer active:scale-90 transition-transform"
+                className="app-primary-btn absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center shadow-xs cursor-pointer active:scale-90 transition-transform"
                 title="Upload Logo"
               >
                 <Upload className="w-2.5 h-2.5" />
@@ -884,31 +884,31 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       </div>
 
       {/* ── 2. Streamlined 5-Tab Segmented / Scroll Bar ── */}
-      <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-2xl border border-zinc-200/60 dark:border-zinc-800 overflow-x-auto no-scrollbar">
+      <div className="app-subtle-surface flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-2xl border border-zinc-200/60 dark:border-zinc-800 overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab('profile')}
           className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'profile'
-            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-600 dark:text-zinc-300 font-medium hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
         >
           <Building2 className="w-3.5 h-3.5 shrink-0" />
           <span>Profile</span>
-          {isProfileDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />}
+          {isProfileDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />}
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('payroll')}
           className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'payroll'
-            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-600 dark:text-zinc-300 font-medium hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
         >
           <Sliders className="w-3.5 h-3.5 shrink-0" />
           <span>Payroll &amp; Tax</span>
-          {isPayrollDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />}
+          {isPayrollDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />}
           {!isAllowanceValid && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />}
         </button>
 
@@ -916,11 +916,11 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           type="button"
           onClick={() => setActiveTab('excel')}
           className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'excel'
-            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-600 dark:text-zinc-300 font-medium hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
         >
-          <FileSpreadsheet className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <FileSpreadsheet className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'excel' ? '' : 'text-emerald-600 dark:text-emerald-400'}`} />
           <span>Excel Sync</span>
         </button>
 
@@ -929,13 +929,13 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             type="button"
             onClick={() => setActiveTab('email')}
             className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'email'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-              : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+              ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+              : 'text-zinc-600 dark:text-zinc-300 font-medium hover:text-zinc-900 dark:hover:text-zinc-100'
               }`}
           >
-            <Mail className="w-3.5 h-3.5 shrink-0 text-sky-600 dark:text-sky-400" />
+            <Mail className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'email' ? '' : 'text-sky-600 dark:text-sky-400'}`} />
             <span>Email</span>
-            {isEmailDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />}
+            {isEmailDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />}
           </button>
         )}
 
@@ -944,13 +944,13 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             type="button"
             onClick={() => setActiveTab('whatsapp')}
             className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'whatsapp'
-              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-              : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+              ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+              : 'text-zinc-600 dark:text-zinc-300 font-medium hover:text-zinc-900 dark:hover:text-zinc-100'
               }`}
           >
-            <MessageCircle className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <MessageCircle className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'whatsapp' ? '' : 'text-emerald-600 dark:text-emerald-400'}`} />
             <span>WhatsApp</span>
-            {isWhatsAppDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />}
+            {isWhatsAppDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />}
           </button>
         )}
 
@@ -958,11 +958,11 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           type="button"
           onClick={() => setActiveTab('audit')}
           className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'audit'
-            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-600 dark:text-zinc-300 font-medium hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
         >
-          <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
+          <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'audit' ? '' : 'text-indigo-600 dark:text-indigo-400'}`} />
           <span>Audit Trail</span>
         </button>
 
@@ -970,8 +970,8 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           type="button"
           onClick={() => setActiveTab('backup')}
           className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs transition-all cursor-pointer shrink-0 whitespace-nowrap ${activeTab === 'backup'
-            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
-            : 'text-zinc-500 dark:text-zinc-400 font-medium hover:text-zinc-800 dark:hover:text-zinc-200'
+            ? 'app-active-tab bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 font-bold shadow-xs'
+            : 'text-zinc-600 dark:text-zinc-300 font-medium hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
         >
           <RotateCcw className="w-3.5 h-3.5 shrink-0" />
@@ -986,9 +986,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         <div className="space-y-3 animate-in fade-in duration-150">
 
           {/* Card 1: Corporate Identity */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
-            <div className="px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+            <div className="app-subtle-surface px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Corporate Identity
               </span>
             </div>
@@ -1043,9 +1043,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Card 2: Contact Information */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
-            <div className="px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+            <div className="app-subtle-surface px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Direct Contact
               </span>
             </div>
@@ -1084,10 +1084,10 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Card 3: Departments & Organizational Divisions */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs space-y-3 p-3.5">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs space-y-3 p-3.5">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
                   Departments &amp; Divisions
                 </span>
                 <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
@@ -1103,12 +1103,12 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 value={newDeptInput}
                 onChange={(e) => setNewDeptInput(e.target.value)}
                 placeholder="New department name..."
-                className="flex-1 h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="app-subtle-surface flex-1 h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
               <button
                 type="submit"
                 disabled={!newDeptInput.trim()}
-                className="h-9 px-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 font-bold text-xs flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer active:scale-95 shrink-0"
+                className="app-primary-btn h-9 px-3.5 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold text-xs flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer active:scale-95 shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add</span>
@@ -1118,7 +1118,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             {/* List of Departments */}
             <div className="space-y-1.5 pt-1">
               {departments.length === 0 ? (
-                <p className="text-[11px] text-zinc-400 text-center py-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl">
+                <p className="app-subtle-surface text-[11px] text-zinc-500 dark:text-zinc-400 text-center py-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl">
                   No departments created yet. Add one above.
                 </p>
               ) : (
@@ -1131,7 +1131,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                   return (
                     <div
                       key={dept}
-                      className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2"
+                      className="app-subtle-surface p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2"
                     >
                       {isEditing ? (
                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -1206,7 +1206,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         <div className="space-y-3.5 animate-in fade-in duration-150">
 
           {/* Section 0: Salary Calculation Mode */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-2.5">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-2.5">
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                 Salary Calculation Mode
@@ -1262,7 +1262,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Mid-Month Proration */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
             <div className="flex items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1.5">
@@ -1294,7 +1294,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Section 1: Salary Allocation Matrix */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
@@ -1400,7 +1400,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Section 2: Statutory Pension Rates (PRA 2014) */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
@@ -1454,7 +1454,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Section 3: PITA Tax Relief Parameters & Caps */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                 PITA Tax Relief Parameters
@@ -1573,7 +1573,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Section 4: Progressive PAYE Tax Brackets (Sixth Schedule) */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
@@ -1658,7 +1658,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Section 5: Employment Demarcation Category Rules */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
@@ -1790,7 +1790,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Section 5b: Staff Contribution & Welfare Schemes */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
@@ -1992,9 +1992,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             <button
               type="button"
               onClick={handleResetTaxDefaults}
-              className="w-full h-10 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all cursor-pointer"
+              className="app-subtle-surface w-full h-10 rounded-xl bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-zinc-500" />
+              <RotateCcw className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
               <span>Reset to Statutory Defaults</span>
             </button>
           </div>
@@ -2007,7 +2007,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         <div className="space-y-3.5 animate-in fade-in duration-150">
 
           {/* Card 1: Export to Excel */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <FileSpreadsheet className="w-5 h-5" />
@@ -2033,7 +2033,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleOpenExportModal}
-                className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98] cursor-pointer"
+                className="app-primary-btn w-full h-10 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98] cursor-pointer"
               >
                 <Sliders className="w-4 h-4" />
                 <span>Configure &amp; Export Workbook...</span>
@@ -2043,18 +2043,18 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={handleQuickExportMonth}
-                  className="h-10 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95"
+                  className="app-subtle-surface h-10 px-3 rounded-xl border bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
                 >
-                  <Download className="w-3.5 h-3.5 text-zinc-500" />
+                  <Download className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
                   <span>{monthLabel} Register</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleQuickExportYear}
-                  className="h-10 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95"
+                  className="app-subtle-surface h-10 px-3 rounded-xl border bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
                 >
-                  <Download className="w-3.5 h-3.5 text-zinc-500" />
+                  <Download className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
                   <span>Annual {year} Matrix</span>
                 </button>
               </div>
@@ -2062,7 +2062,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Card 2: Import Staff Directory */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                 <Upload className="w-5 h-5" />
@@ -2096,7 +2096,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               {!isWriteDisabled && (
                 <label
                   htmlFor="mobile-excel-import-file"
-                  className="h-10 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 text-center"
+                  className="app-primary-btn h-10 px-3 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 text-center"
                 >
                   <Upload className="w-3.5 h-3.5 shrink-0" />
                   <span>Upload File</span>
@@ -2106,9 +2106,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleDownloadTemplate}
-                className="h-10 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95 text-center"
+                className="app-subtle-surface h-10 px-3 rounded-xl border bg-zinc-100 hover:opacity-85 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 text-center"
               >
-                <Download className="w-3.5 h-3.5 shrink-0 text-zinc-500" />
+                <Download className="w-3.5 h-3.5 shrink-0 text-zinc-500 dark:text-zinc-400" />
                 <span>Template (.xlsx)</span>
               </button>
             </div>
@@ -2121,7 +2121,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {activeTab === 'audit' && (
         <div className="space-y-3.5 animate-in fade-in duration-150">
 
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             {/* Header & Count Badge */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2172,7 +2172,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 placeholder="Search audit actions, operators..."
                 value={logSearchQuery}
                 onChange={(e) => setLogSearchQuery(e.target.value)}
-                className="w-full h-10 pl-9 pr-9 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition"
+                className="app-subtle-surface w-full h-10 pl-9 pr-9 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-400 transition"
               />
               {logSearchQuery && (
                 <button
@@ -2186,7 +2186,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             </div>
 
             {/* Audit Log Entries List */}
-            <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800/80 bg-zinc-50/40 dark:bg-zinc-950/40">
+            <div className="app-subtle-surface rounded-xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800/80 bg-zinc-50/40 dark:bg-zinc-950/40">
               {isLoadingLogs ? (
                 <div className="py-12 flex flex-col items-center justify-center text-zinc-400 text-xs gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin text-emerald-500" />
@@ -2261,7 +2261,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {activeTab === 'backup' && (
         <div className="space-y-3.5 animate-in fade-in duration-150">
 
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-1.5 border-b border-zinc-100 dark:border-zinc-800">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
@@ -2277,14 +2277,14 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60">
-                <span className="text-[10px] text-zinc-400 block font-medium">Enrolled Staff</span>
+              <div className="app-subtle-surface p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60">
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-medium">Enrolled Staff</span>
                 <span className="text-sm font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5 block">
                   {employees.length}
                 </span>
               </div>
-              <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60">
-                <span className="text-[10px] text-zinc-400 block font-medium">Departments</span>
+              <div className="app-subtle-surface p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60">
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-medium">Departments</span>
                 <span className="text-sm font-bold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5 block">
                   {departments.length}
                 </span>
@@ -2294,7 +2294,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             <button
               type="button"
               onClick={handleExportBackup}
-              className="w-full h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98] cursor-pointer"
+              className="app-primary-btn w-full h-10 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98] cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>Download JSON Backup</span>
@@ -2303,7 +2303,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
           {/* Danger Zone: Selective System Reset */}
           {isAdmin && (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-rose-200/70 dark:border-rose-900/60 shadow-xs space-y-3">
+            <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-rose-200/70 dark:border-rose-900/60 shadow-xs space-y-3">
               <div className="flex items-center justify-between pb-1.5 border-b border-rose-100 dark:border-rose-950/60">
                 <div className="flex items-center gap-2">
                   <AlertOctagon className="w-4 h-4 text-rose-500 shrink-0" />
@@ -2350,9 +2350,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             )}
 
           {/* Card 1: Dispatch Provider Architecture */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
-            <div className="px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+            <div className="app-subtle-surface px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Delivery Provider
               </span>
               <span className="text-[10px] font-semibold text-sky-600 dark:text-sky-400">
@@ -2366,7 +2366,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 onClick={() => setEmailForm(prev => ({ ...prev, provider: 'smtp' }))}
                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${emailForm.provider === 'smtp'
                   ? 'border-sky-500 bg-sky-50/60 dark:bg-sky-950/40 text-sky-900 dark:text-sky-100 shadow-2xs font-bold'
-                  : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
+                  : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-300'
                   }`}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -2376,7 +2376,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     {emailForm.provider === 'smtp' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                 </div>
-                <p className="text-[10px] text-zinc-400 font-normal leading-tight">
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal leading-tight">
                   Gmail, Outlook 365, Zoho, or corporate host
                 </p>
               </button>
@@ -2386,7 +2386,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 onClick={() => setEmailForm(prev => ({ ...prev, provider: 'resend' }))}
                 className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${emailForm.provider === 'resend'
                   ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 text-purple-900 dark:text-purple-100 shadow-2xs font-bold'
-                  : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
+                  : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-300'
                   }`}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -2396,7 +2396,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     {emailForm.provider === 'resend' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                 </div>
-                <p className="text-[10px] text-zinc-400 font-normal leading-tight">
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal leading-tight">
                   Cloud REST API with zero SMTP setup
                 </p>
               </button>
@@ -2405,15 +2405,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
           {/* Card 2: Server Credentials according to Provider */}
           {emailForm.provider === 'smtp' ? (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
-              <div className="px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+            <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+              <div className="app-subtle-surface px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   SMTP Server Configuration
                 </span>
               </div>
 
               {/* Presets Bar */}
-              <div className="p-3 bg-zinc-50/30 dark:bg-zinc-850/30">
+              <div className="p-3 bg-black/[0.02] dark:bg-white/[0.02]">
                 <span className="text-[10px] font-semibold text-zinc-400 block mb-1.5 uppercase tracking-wider">
                   One-Tap Provider Presets
                 </span>
@@ -2583,9 +2583,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               </div>
             </div>
           ) : (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
-              <div className="px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+            <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+              <div className="app-subtle-surface px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   Resend Cloud API Credentials
                 </span>
               </div>
@@ -2649,9 +2649,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           )}
 
           {/* Card 3: Template & Attachment Defaults */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
-            <div className="px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+            <div className="app-subtle-surface px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Default Template &amp; PDF
               </span>
             </div>
@@ -2718,15 +2718,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Card 4: Connection Diagnostics & Handshake Test */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
-            <div className="px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+            <div className="app-subtle-surface px-3.5 py-2 bg-zinc-50/60 dark:bg-zinc-800/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 Connection Diagnostics
               </span>
             </div>
 
             <div className="p-3 space-y-2.5">
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Perform an instant handshake test to verify mail server reachability and credential authorization.
               </p>
 
@@ -2734,7 +2734,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 type="button"
                 onClick={handleTestEmailConnection}
                 disabled={isTestingEmail}
-                className="w-full h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98] cursor-pointer disabled:opacity-40"
+                className="app-primary-btn w-full h-10 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98] cursor-pointer disabled:opacity-40"
               >
                 {isTestingEmail ? (
                   <>
@@ -2786,8 +2786,8 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 }
               }}
               className={`w-full h-11 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer ${isEmailDirty
-                ? 'bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 ring-2 ring-blue-500/30'
-                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
+                ? 'app-primary-btn bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                : 'app-subtle-surface bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
                 }`}
             >
               <Save className="w-4 h-4" />
@@ -2803,15 +2803,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
         <div className="space-y-3 animate-in fade-in duration-150">
 
           {/* Main Activation Card */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
-            <div className="px-3.5 py-2.5 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+            <div className="app-subtle-surface px-3.5 py-2.5 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <MessageCircle className="w-4 h-4" />
                 </div>
                 <div>
                   <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block">WhatsApp Dispatch</span>
-                  <span className="text-[10px] text-zinc-400">Direct or automated payslip messaging</span>
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Direct or automated payslip messaging</span>
                 </div>
               </div>
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
@@ -2829,7 +2829,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
             {/* Provider Grid */}
             <div className="p-3 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1">
                 Dispatch Method / Provider
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -2847,7 +2847,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                       onClick={() => setWhatsAppForm(prev => ({ ...prev, provider: p.id }))}
                       className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${isSelected
                         ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 font-bold shadow-2xs'
-                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 text-zinc-600 dark:text-zinc-400'
+                        : 'app-subtle-surface border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-300'
                         }`}
                     >
                       <div className="flex items-center justify-between mb-0.5">
@@ -2867,12 +2867,12 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
           {/* Provider Credentials Card */}
           {whatsAppForm.provider === 'cloud_api' && (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-3 shadow-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+            <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-3 shadow-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
                 Meta Cloud API Credentials
               </span>
               <div>
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                   Phone Number ID
                 </label>
                 <input
@@ -2883,19 +2883,19 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     ...prev,
                     cloudApi: { ...(prev.cloudApi || { phoneNumberId: '', accessToken: '' }), phoneNumberId: e.target.value }
                   }))}
-                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="app-subtle-surface w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+                  <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                     Permanent Access Token
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowWhatsAppSecret(prev => !prev)}
-                    className="text-[10px] text-zinc-400 hover:text-zinc-600 flex items-center gap-1"
+                    className="text-[10px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center gap-1"
                   >
                     {showWhatsAppSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                     <span>{showWhatsAppSecret ? 'Hide' : 'Show'}</span>
@@ -2909,19 +2909,19 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     ...prev,
                     cloudApi: { ...(prev.cloudApi || { phoneNumberId: '', accessToken: '' }), accessToken: e.target.value }
                   }))}
-                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="app-subtle-surface w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
           )}
 
           {whatsAppForm.provider === 'ultramsg' && (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-3 shadow-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+            <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-3 shadow-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
                 UltraMsg Gateway Configuration
               </span>
               <div>
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                   Instance ID
                 </label>
                 <input
@@ -2932,11 +2932,11 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     ...prev,
                     ultramsg: { ...(prev.ultramsg || { instanceId: '', token: '' }), instanceId: e.target.value }
                   }))}
-                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="app-subtle-surface w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                   Token
                 </label>
                 <input
@@ -2947,19 +2947,19 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     ...prev,
                     ultramsg: { ...(prev.ultramsg || { instanceId: '', token: '' }), token: e.target.value }
                   }))}
-                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="app-subtle-surface w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
           )}
 
           {whatsAppForm.provider === 'termii' && (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-3 shadow-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+            <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-3 shadow-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
                 Termii Nigeria API Configuration
               </span>
               <div>
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                   API Key
                 </label>
                 <input
@@ -2970,11 +2970,11 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     ...prev,
                     termii: { ...(prev.termii || { apiKey: '', deviceId: '' }), apiKey: e.target.value }
                   }))}
-                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="app-subtle-surface w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                   Device ID
                 </label>
                 <input
@@ -2985,7 +2985,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                     ...prev,
                     termii: { ...(prev.termii || { apiKey: '', deviceId: '' }), deviceId: e.target.value }
                   }))}
-                  className="w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="app-subtle-surface w-full h-9 px-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-mono font-medium text-zinc-900 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -3004,9 +3004,9 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           )}
 
           {/* Message Template Editor */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-2.5 shadow-xs">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-2.5 shadow-xs">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">
+              <label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
                 Message Template
               </label>
               <div className="flex items-center gap-1 overflow-x-auto text-[9px]">
@@ -3020,7 +3020,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                         defaultMessageTemplate: `${prev.defaultMessageTemplate} {{${t}}}`
                       }));
                     }}
-                    className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-mono hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    className="app-subtle-surface px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-mono hover:opacity-85"
                   >
                     +{t}
                   </button>
@@ -3032,7 +3032,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               rows={4}
               value={whatsAppForm.defaultMessageTemplate}
               onChange={(e) => setWhatsAppForm(prev => ({ ...prev, defaultMessageTemplate: e.target.value }))}
-              className="w-full text-xs font-mono text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl p-2.5 border border-zinc-200/60 dark:border-zinc-700/60 outline-none leading-relaxed resize-y focus:ring-1 focus:ring-emerald-500"
+              className="app-subtle-surface w-full text-xs font-mono text-zinc-900 dark:text-zinc-100 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl p-2.5 border border-zinc-200/60 dark:border-zinc-700/60 outline-none leading-relaxed resize-y focus:ring-1 focus:ring-emerald-500"
             />
 
             <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
@@ -3063,15 +3063,15 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
           </div>
 
           {/* Connection Test */}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-2.5 shadow-xs">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-2.5 shadow-xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
               Connection Diagnostics
             </span>
             <button
               type="button"
               onClick={handleTestWhatsAppConnection}
               disabled={isTestingWhatsApp}
-              className="w-full h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98] cursor-pointer disabled:opacity-40"
+              className="app-primary-btn w-full h-10 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs active:scale-[0.98] cursor-pointer disabled:opacity-40"
             >
               {isTestingWhatsApp ? (
                 <>
@@ -3080,7 +3080,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 </>
               ) : (
                 <>
-                  <MessageCircle className="w-4 h-4 text-emerald-500" />
+                  <MessageCircle className="w-4 h-4" />
                   <span>Test WhatsApp Connection</span>
                 </>
               )}
@@ -3122,8 +3122,8 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
                 }
               }}
               className={`w-full h-11 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98] cursor-pointer ${isWhatsAppDirty
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-500/30'
-                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
+                ? 'app-primary-btn bg-emerald-600 text-white'
+                : 'app-subtle-surface bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-60'
                 }`}
             >
               <Save className="w-4 h-4" />
@@ -3151,7 +3151,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {/* ── Excel Staff Import Confirmation Modal ── */}
       {isImportModalOpen && parsedData && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-3xl max-w-sm w-full p-4 space-y-3.5 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-3xl max-w-sm w-full p-4 space-y-3.5 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
@@ -3255,7 +3255,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmImport}
-                className="flex-1 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-md"
+                className="app-primary-btn flex-1 h-10 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer shadow-md"
               >
                 <Check className="w-4 h-4" />
                 <span>Import Staff</span>
@@ -3268,7 +3268,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
       {/* ── System Reset Confirmation Modal ── */}
       {isResetModalOpen && isAdmin && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-[#121215] border border-rose-300 dark:border-rose-900 rounded-3xl max-w-sm w-full p-4 space-y-3.5 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="app-surface-card bg-white dark:bg-[#121215] border border-rose-300 dark:border-rose-900 rounded-3xl max-w-sm w-full p-4 space-y-3.5 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-rose-100 dark:border-rose-950/60">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center">
@@ -3363,17 +3363,17 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
       {/* ── 4. Floating Thumb-Zone Save Bar (Floats Safely Above Bottom Nav) ── */}
       {isAnyDirty && !isWriteDisabled && (
-        <div className="fixed bottom-[80px] left-4 right-4 z-50 max-w-md mx-auto p-2.5 px-3 rounded-2xl bg-zinc-900/95 dark:bg-zinc-100/95 text-white dark:text-zinc-900 shadow-2xl backdrop-blur-md border border-zinc-700/60 dark:border-zinc-300/60 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-3 duration-200">
+        <div className="app-surface-card fixed bottom-[80px] left-4 right-4 z-50 max-w-md mx-auto p-2.5 px-3 rounded-2xl bg-white/95 dark:bg-[#121215]/95 text-zinc-900 dark:text-zinc-100 shadow-2xl backdrop-blur-md border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 animate-pulse" />
-            <span className="text-xs font-medium truncate">Unsaved changes</span>
+            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+            <span className="text-xs font-semibold truncate">Unsaved changes</span>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handleDiscardAll}
-              className="px-2.5 py-1.5 rounded-xl bg-zinc-800 dark:bg-zinc-200 text-xs font-medium text-zinc-300 dark:text-zinc-700 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+              className="app-subtle-surface px-2.5 py-1.5 rounded-xl border bg-zinc-100 dark:bg-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
             >
               Reset
             </button>
@@ -3381,7 +3381,7 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
             <button
               type="button"
               onClick={handleSaveAll}
-              className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold shadow-md flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+              className="app-primary-btn px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-md flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save</span>
@@ -3392,8 +3392,8 @@ export const MobileSettingsView: React.FC<MobileSettingsViewProps> = ({
 
       {/* ── 5. Toast Notification ── */}
       {savedToast && (
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-semibold flex items-center gap-1.5 shadow-xl animate-in fade-in duration-200">
-          <Check className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+        <div className="app-primary-btn fixed bottom-28 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-semibold flex items-center gap-1.5 shadow-xl animate-in fade-in duration-200">
+          <Check className="w-4 h-4" />
           <span>Settings saved!</span>
         </div>
       )}

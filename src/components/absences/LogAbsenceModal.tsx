@@ -245,7 +245,7 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
       className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
       <div 
-        className="relative bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+        className="app-surface-card relative bg-white dark:bg-[#121215] border-t sm:border border-zinc-200/90 dark:border-zinc-800/90 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
       >
         {/* Mobile Pull Handle */}
         <div className="sm:hidden pt-3 pb-1 flex justify-center">
@@ -263,7 +263,7 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
                 <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
                   {existingAbsence ? 'Edit Absence' : 'Log Employee Absence'}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 shrink-0">
+                <span className="app-subtle-surface px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 shrink-0">
                   {monthLabel} {selectedYear}
                 </span>
               </div>
@@ -285,7 +285,7 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
               value={employeeId}
               disabled={Boolean(existingAbsence) || isReadOnly}
               onChange={(e) => setEmployeeId(e.target.value)}
-              className="w-full bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs disabled:opacity-60"
+              className="app-subtle-surface w-full bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs disabled:opacity-60"
             >
               {employees.map(emp => (
                 <option key={emp.id} value={emp.id}>
@@ -297,7 +297,7 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
 
           {/* Schedule & Daily Rate Info Strip */}
           {selectedEmployee && (
-            <div className="p-3 rounded-xl bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800/60 flex items-center justify-between text-xs">
+            <div className="app-subtle-surface p-3 rounded-xl bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800/60 flex items-center justify-between text-xs">
               <div className="space-y-0.5">
                 <span className="text-[10px] uppercase font-semibold tracking-wider text-zinc-400 dark:text-zinc-500 block">
                   Schedule & Workdays
@@ -337,12 +337,12 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
               )}
             </div>
 
-            <div className="p-3 rounded-xl bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/70 space-y-2.5">
+            <div className="app-subtle-surface p-3 rounded-xl bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/70 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-zinc-700 dark:text-zinc-300">
                   {selectedMonth} {selectedYear}
                 </span>
-                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-zinc-200/60 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
+                <span className="app-surface-card text-[11px] font-mono font-bold px-2 py-0.5 rounded-md border border-zinc-200/70 dark:border-zinc-700/70 text-zinc-800 dark:text-zinc-200">
                   {daysAbsent} {daysAbsent === 1 ? 'day' : 'days'} absent
                 </span>
               </div>
@@ -377,7 +377,7 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
                       title={`${calDay.dayOfWeekName}, ${calDay.dateStr}${calDay.isWeekend ? ' (Weekend / Non-working day)' : ''}`}
                       className={`h-7 rounded-lg text-xs font-mono transition flex items-center justify-center cursor-pointer select-none ${
                         isSelected
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold shadow-xs scale-[0.98]'
+                          ? 'app-active-tab font-bold shadow-xs scale-[0.98]'
                           : calDay.isWeekend
                           ? 'text-zinc-300 dark:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
                           : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 font-medium'
@@ -403,7 +403,7 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
                 value={absenceType}
                 disabled={isReadOnly}
                 onChange={(e) => setAbsenceType(e.target.value as AbsenceType)}
-                className="w-full bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs"
+                className="app-subtle-surface w-full bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs"
               >
                 <option value="unauthorized_absence">Unauthorized Absence (100% Unpaid)</option>
                 <option value="unpaid_leave">Authorized Unpaid Leave</option>
@@ -438,7 +438,7 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
                   value={customDeductionAmount || ''}
                   disabled={isReadOnly}
                   onChange={(e) => setCustomDeductionAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="w-full pl-7 pr-3 py-2 bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs"
+                  className="app-subtle-surface w-full pl-7 pr-3 py-2 bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs"
                 />
               </div>
             )}
@@ -455,12 +455,12 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
               value={notes}
               disabled={isReadOnly}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs"
+              className="app-subtle-surface w-full bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 shadow-2xs"
             />
           </div>
 
           {/* Minimalist Statutory Computation Preview */}
-          <div className="p-3.5 rounded-xl bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800/60 space-y-2 text-xs">
+          <div className="app-subtle-surface p-3.5 rounded-xl bg-zinc-50/70 dark:bg-zinc-900/50 border border-zinc-200/60 dark:border-zinc-800/60 space-y-2 text-xs">
             <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400">
               <span>Contractual Monthly Gross</span>
               <span className="font-mono">{formatNaira(contractualGross)}</span>
@@ -477,7 +477,7 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
         </div>
 
         {/* Sticky / Fixed Footer Action Buttons */}
-        <div className="shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800/80 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 z-10 select-none">
+        <div className="app-subtle-surface shrink-0 bg-white dark:bg-[#121215] border-t border-zinc-100 dark:border-zinc-800/80 px-4 sm:px-5 py-3 flex items-center justify-between gap-2 z-10 select-none">
             {existingAbsence?.id && !isReadOnly ? (
               <button
                 type="button"
@@ -493,14 +493,14 @@ export const LogAbsenceModal: React.FC<LogAbsenceModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                className="app-surface-card px-4 py-2 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:opacity-90 transition cursor-pointer"
               >
                 Cancel
               </button>
               {!isReadOnly && (
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 active:scale-95 transition shadow-sm cursor-pointer"
+                  className="app-primary-btn px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-90 active:scale-95 transition shadow-sm cursor-pointer"
                 >
                   Save Record
                 </button>

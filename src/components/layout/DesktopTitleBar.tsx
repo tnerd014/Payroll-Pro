@@ -634,16 +634,19 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
   return (
     <>
       <header 
-        className="no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-3 select-none relative z-[9999] shrink-0 transition-colors"
+        className="app-header app-titlebar no-print h-9 bg-white dark:bg-[#09090b] border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-3 select-none relative z-[9999] shrink-0 transition-colors"
         style={{ WebkitAppRegion: "drag" } as any}
       >
       {/* Left: Brand + Native Dropdown Menus */}
       <div className="flex items-center gap-1" ref={menuRef} style={{ WebkitAppRegion: "no-drag" } as any}>
         
         {/* Brand Label */}
-        <div className="flex items-center gap-2 pr-2.5 mr-1 border-r border-zinc-200 dark:border-zinc-800">
+        <div
+          className="flex items-center gap-2 pr-2.5 mr-1 border-r border-zinc-200 dark:border-zinc-800"
+          style={{ borderColor: 'var(--theme-header-border)' }}
+        >
           <img src={appLogo} alt="Payroll Pro Logo" className="w-4 h-4 rounded-xs object-contain" />
-          <span className="font-semibold text-xs tracking-tight text-zinc-900 dark:text-zinc-100">
+          <span className="app-header-text font-semibold text-xs tracking-tight text-zinc-900 dark:text-zinc-100">
             Payroll Pro
           </span>
         </div>
@@ -654,7 +657,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             onClick={() => setActiveMenu(activeMenu === 'file' ? null : 'file')}
             className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
               activeMenu === 'file' 
-                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
+                ? 'app-header-pill bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
             }`}
           >
@@ -662,7 +665,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           </button>
 
           {activeMenu === 'file' && (
-            <div className="absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
+            <div className="app-surface-card absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
               {!isAuditor && (
                 <button
                   onClick={() => { onTriggerAddEmployee?.(); setActiveMenu(null); }}
@@ -726,7 +729,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             onClick={() => setActiveMenu(activeMenu === 'payroll' ? null : 'payroll')}
             className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
               activeMenu === 'payroll' 
-                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
+                ? 'app-header-pill bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
             }`}
           >
@@ -734,7 +737,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           </button>
 
           {activeMenu === 'payroll' && (
-            <div className="absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
+            <div className="app-surface-card absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
               <button
                 onClick={() => { onNavigate('payroll'); setActiveMenu(null); }}
                 className="w-full text-left px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 flex items-center justify-between cursor-pointer rounded-xs transition-colors"
@@ -786,7 +789,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             onClick={() => setActiveMenu(activeMenu === 'view' ? null : 'view')}
             className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
               activeMenu === 'view' 
-                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
+                ? 'app-header-pill bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
             }`}
           >
@@ -794,7 +797,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           </button>
 
           {activeMenu === 'view' && (
-            <div className="absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
+            <div className="app-surface-card absolute left-0 top-full mt-1 w-56 bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
               <button
                 onClick={() => { handleReload(); setActiveMenu(null); }}
                 className="w-full flex items-center justify-between px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer rounded-xs transition-colors"
@@ -856,7 +859,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             onClick={() => setActiveMenu(activeMenu === 'help' ? null : 'help')}
             className={`px-2 py-1 rounded text-xs font-medium transition cursor-pointer ${
               activeMenu === 'help' 
-                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
+                ? 'app-header-pill bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' 
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
             }`}
           >
@@ -864,7 +867,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           </button>
 
           {activeMenu === 'help' && (
-            <div className="absolute left-0 top-full mt-1 w-60 bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
+            <div className="app-surface-card absolute left-0 top-full mt-1 w-60 bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 text-xs z-[10000] animate-in fade-in duration-100">
               <button
                 onClick={() => {
                   handleCheckForUpdates();
@@ -985,22 +988,22 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
           onClick={() => setWorkspaceDropdownOpen(o => !o)}
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition text-xs font-semibold tracking-tight cursor-pointer group ${
             workspaceDropdownOpen 
-              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs' 
+              ? 'app-header-pill bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-2xs' 
               : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
           }`}
           title="Switch workspace / company"
         >
-          <Home className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200" />
-          <span className="truncate max-w-[260px] lg:max-w-[380px]">{company?.name ?? 'Select Workspace'}</span>
-          <ChevronDown className={`w-3 h-3 text-zinc-400 transition-transform duration-150 ${workspaceDropdownOpen ? 'rotate-180' : ''}`} />
+          <Home className="w-3.5 h-3.5 app-header-subtext" />
+          <span className="app-header-text truncate max-w-[260px] lg:max-w-[380px]">{company?.name ?? 'Select Workspace'}</span>
+          <ChevronDown className={`w-3 h-3 app-header-subtext transition-transform duration-150 ${workspaceDropdownOpen ? 'rotate-180' : ''}`} />
         </button>
 
         {workspaceDropdownOpen && companies.length > 0 && (
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-80 sm:w-96 max-w-[92vw] bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl text-xs z-[10000] animate-in fade-in flex flex-col overflow-hidden">
+          <div className="app-surface-card absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-80 sm:w-96 max-w-[92vw] bg-white dark:bg-[#121215] text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl text-xs z-[10000] animate-in fade-in flex flex-col overflow-hidden">
             
             {/* Header & Search */}
-            <div className="p-2.5 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40 space-y-2">
-              <div className="flex items-center justify-between px-1 text-[10px] uppercase tracking-wider font-semibold text-zinc-400 dark:text-zinc-500">
+            <div className="app-subtle-surface p-2.5 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40 space-y-2">
+              <div className="flex items-center justify-between px-1 text-[10px] uppercase tracking-wider font-semibold text-zinc-500 dark:text-zinc-400">
                 <span>Select Workspace</span>
                 <span className="font-mono">{companies.length} {companies.length === 1 ? 'account' : 'accounts'}</span>
               </div>
@@ -1014,7 +1017,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
                     value={workspaceSearch}
                     onChange={e => setWorkspaceSearch(e.target.value)}
                     placeholder="Search workspaces by name..."
-                    className="w-full pl-8 pr-7 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 shadow-2xs"
+                    className="app-surface-card w-full pl-8 pr-7 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 shadow-2xs"
                   />
                   {workspaceSearch && (
                     <button
@@ -1046,15 +1049,15 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
                     }}
                     className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-left transition cursor-pointer group ${
                       isActive
-                        ? 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 font-medium'
+                        ? 'app-subtle-surface bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 font-medium'
                         : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 border transition ${
                         isActive 
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100' 
-                          : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 border-zinc-200 dark:border-zinc-700/60'
+                          ? 'app-primary-btn bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100' 
+                          : 'app-subtle-surface bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 border-zinc-200 dark:border-zinc-700/60'
                       }`}>
                         <Home className="w-3 h-3" />
                       </div>
@@ -1071,7 +1074,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
                       )}
                     </div>
                     {isActive && (
-                      <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100 shrink-0 ml-2" />
+                      <Check className="w-3.5 h-3.5 app-accent-text text-zinc-900 dark:text-zinc-100 shrink-0 ml-2" />
                     )}
                   </button>
                 );
@@ -1085,7 +1088,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             </div>
 
             {/* Footer with switch/manage button */}
-            <div className="p-2 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30">
+            <div className="app-subtle-surface p-2 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30">
               <button
                 type="button"
                 onClick={() => {
@@ -1093,7 +1096,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
                   setWorkspaceSearch('');
                   onLockOrSwitchCompany?.();
                 }}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-[11px] font-medium transition cursor-pointer"
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-[11px] font-medium transition cursor-pointer"
               >
                 <ExternalLink className="w-3 h-3" />
                 <span>Manage Workspaces / Switch Account (Ctrl+L)</span>
@@ -1112,9 +1115,9 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             type="button"
             title={updateBadgeTitle}
             onClick={handleInstallPendingUpdate}
-            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-500/10 dark:text-emerald-300"
+            className="app-header-pill app-header-text inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold shadow-sm transition cursor-pointer"
           >
-            <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+            <RefreshCw className="h-2.5 w-2.5 animate-spin text-emerald-400" />
             <span>{updateState.downloadPercent}%</span>
           </button>
         )}
@@ -1124,9 +1127,9 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             type="button"
             title={updateBadgeTitle}
             onClick={handleInstallPendingUpdate}
-            className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm transition hover:border-amber-300 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-500/10 dark:text-amber-300"
+            className="app-header-pill app-header-text inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold shadow-sm transition cursor-pointer"
           >
-            <Download className="h-2.5 w-2.5" />
+            <Download className="h-2.5 w-2.5 text-amber-400" />
             <span>Restart to install</span>
           </button>
         )}
@@ -1135,31 +1138,31 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         {!getSavedCloudConfig().isEnabled ? (
           <div 
             title="Local Database — records are stored privately on this device"
-            className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 select-none px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-700/60"
+            className="app-header-pill app-header-text flex items-center gap-1.5 text-[11px] font-medium select-none px-2 py-0.5 rounded-md border"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 shrink-0" />
             <span>Local Database</span>
           </div>
         ) : !isOnline ? (
           <div 
             title="Offline — changes saved locally and will sync when reconnected"
-            className="flex items-center gap-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 select-none px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/20 shadow-xs"
+            className="app-header-pill app-header-text flex items-center gap-1.5 text-[11px] font-medium select-none px-2 py-0.5 rounded-md border shadow-xs"
           >
-            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 animate-pulse" />
             <span>{hasPendingSync ? 'Offline (pending sync)' : 'Offline'}</span>
           </div>
         ) : hasPendingSync ? (
           <div 
             title="Syncing changes to cloud server..."
-            className="flex items-center gap-1.5 text-[11px] font-medium text-sky-700 dark:text-sky-300 select-none px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-500/10 border border-sky-200/80 dark:border-sky-500/20 shadow-xs"
+            className="app-header-pill app-header-text flex items-center gap-1.5 text-[11px] font-medium select-none px-2 py-0.5 rounded-md border shadow-xs"
           >
-            <RefreshCw className="w-2.5 h-2.5 text-sky-500 shrink-0 animate-spin" />
+            <RefreshCw className="w-2.5 h-2.5 text-sky-400 shrink-0 animate-spin" />
             <span>Syncing to Cloud</span>
           </div>
         ) : (
           <div 
             title="Online — workspace synced with cloud server"
-            className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 select-none px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/80 dark:border-emerald-500/20"
+            className="app-header-pill app-header-text flex items-center gap-1.5 text-[11px] font-medium select-none px-2 py-0.5 rounded-md border"
           >
             <span className="relative flex w-2 h-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>
@@ -1174,9 +1177,9 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
             type="button"
             title={updateBadgeTitle}
             onClick={handleCheckForUpdates}
-            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-100 px-2.5 py-0.5 text-[10px] font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-200/70 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:bg-zinc-700 cursor-pointer"
+            className="app-header-pill app-header-text inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-medium transition cursor-pointer"
           >
-            <RefreshCw className="h-2.5 w-2.5 text-zinc-500 dark:text-zinc-400" />
+            <RefreshCw className="h-2.5 w-2.5 app-header-subtext" />
             <span>Update v{updateState.latestVersion || ''} available</span>
           </button>
         )}
@@ -1187,13 +1190,15 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
               type="button"
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               title={`${currentUser.name} (${currentUser.role})`}
-              className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition cursor-pointer"
+              className={`w-6 h-6 rounded-md flex items-center justify-center transition cursor-pointer ${
+                userMenuOpen ? 'app-header-pill' : ''
+              }`}
             >
               <User className="w-3.5 h-3.5" />
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+              <div className="app-surface-card absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl p-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
                   <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 truncate">
                     {currentUser.name || currentUser.username || currentUser.email}
@@ -1208,7 +1213,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
                     }}
                     className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200 flex items-center gap-2 cursor-pointer font-medium"
                   >
-                    <UserCircle className="w-3.5 h-3.5 text-emerald-500" />
+                    <UserCircle className="w-3.5 h-3.5 app-accent-text text-emerald-500" />
                     <span>Profile</span>
                   </button>
                 )}
@@ -1232,31 +1237,34 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({
         <button
           onClick={onToggleTheme}
           title={isDarkTheme ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          className="p-1 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+          className="p-1 rounded transition cursor-pointer"
         >
           {isDarkTheme ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
         </button>
 
         {/* Native Window Controls - Only shown when running in Electron desktop */}
         {Boolean((window as any).electronAPI) && (
-          <div className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1" style={{ WebkitAppRegion: "no-drag" } as any}>
+          <div
+            className="flex items-center ml-1 border-l border-zinc-200 dark:border-zinc-800 pl-1"
+            style={{ WebkitAppRegion: "no-drag", borderColor: 'var(--theme-header-border)' } as any}
+          >
             <button 
               onClick={() => (window as any).electronAPI?.windowMinimize?.()}
-              className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition"
+              className="w-6 h-6 flex items-center justify-center rounded transition cursor-pointer"
               title="Minimize"
             >
               <Minus className="w-3 h-3" />
             </button>
             <button 
               onClick={() => (window as any).electronAPI?.windowMaximize?.()}
-              className="w-6 h-6 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition"
+              className="w-6 h-6 flex items-center justify-center rounded transition cursor-pointer"
               title="Maximize"
             >
               <Square className="w-2.5 h-2.5" />
             </button>
             <button 
               onClick={() => (window as any).electronAPI?.windowClose?.()}
-              className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white text-zinc-400 transition"
+              className="w-6 h-6 flex items-center justify-center rounded hover:bg-rose-500 hover:text-white transition cursor-pointer"
               title="Close"
             >
               <X className="w-3 h-3" />

@@ -98,10 +98,10 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 sm:p-6 animate-in fade-in duration-150 overflow-y-auto"
     >
       <div
-        className="relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto flex flex-col max-h-[calc(100vh-3rem)]"
+        className="app-surface-card relative bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto flex flex-col max-h-[calc(100vh-3rem)]"
       >
         {/* ── Landscape Header ── */}
-        <div className="px-6 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 shrink-0">
+        <div className="app-subtle-surface px-6 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 shrink-0">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0">
               {/* Avatar */}
@@ -115,7 +115,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
                   </h3>
                   <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
                     emp.status === 'Active'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                      ? 'app-positive-badge bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                       : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 border-zinc-500/20'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${emp.status === 'Active' ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
@@ -149,7 +149,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 
             {/* ── Left Column: Unified Profile & Statutory Details (50%) ── */}
-            <div className="bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 flex flex-col justify-between space-y-5">
+            <div className="app-subtle-surface bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 flex flex-col justify-between space-y-5">
               
               {/* Section 1: Employment & Tenure */}
               <div className="space-y-3">
@@ -234,7 +234,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
             </div>
 
             {/* ── Right Column: Compensation & 12-Month Schedule (50%) ── */}
-            <div className="bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+            <div className="app-subtle-surface bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 flex flex-col justify-between space-y-4">
               
               {/* Header with Year Selector */}
               <div className="flex items-center justify-between pb-3 border-b border-zinc-200/60 dark:border-zinc-800/60">
@@ -244,7 +244,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
                     <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
                       12-Month Remuneration Schedule
                     </h4>
-                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                       Gross salary distribution for {selectedYear}
                     </p>
                   </div>
@@ -254,20 +254,20 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
                   <select
                     value={selectedYear}
                     onChange={e => setSelectedYear(Number(e.target.value))}
-                    className="appearance-none bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-200 pl-3 pr-8 py-1.5 focus:outline-none cursor-pointer shadow-xs"
+                    className="app-surface-card appearance-none bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-200 pl-3 pr-8 py-1.5 focus:outline-none cursor-pointer shadow-xs"
                   >
                     {yearOptions.map(y => (
-                      <option key={y} value={y}>{y}</option>
+                      <option key={y} value={y} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">{y}</option>
                     ))}
                   </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400 absolute right-2.5 pointer-events-none" />
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 absolute right-2.5 pointer-events-none" />
                 </div>
               </div>
 
               {/* Key Metrics Strip */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-3 shadow-xs">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-0.5">
+                <div className="app-surface-card bg-white dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-3 shadow-xs">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-0.5">
                     {selectedYear} Annual Gross
                   </span>
                   <span className="text-xs sm:text-sm font-bold font-mono text-zinc-900 dark:text-zinc-100 truncate block">
@@ -275,8 +275,8 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
                   </span>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-3 shadow-xs">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-0.5">
+                <div className="app-surface-card bg-white dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-3 shadow-xs">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-0.5">
                     Monthly Base
                   </span>
                   <span className="text-xs sm:text-sm font-bold font-mono text-zinc-900 dark:text-zinc-100 truncate block">
@@ -284,8 +284,8 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
                   </span>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-3 shadow-xs col-span-2 sm:col-span-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-0.5">
+                <div className="app-surface-card bg-white dark:bg-zinc-950/80 border border-zinc-200/70 dark:border-zinc-800/70 rounded-xl p-3 shadow-xs col-span-2 sm:col-span-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-0.5">
                     Payroll Cycle
                   </span>
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 pt-0.5">
@@ -307,15 +307,15 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
                       key={key}
                       className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between ${
                         isCurrentMonth
-                          ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm'
+                          ? 'app-active-tab bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm'
                           : isOverridden
                           ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800 text-zinc-900 dark:text-zinc-100'
-                          : 'bg-white dark:bg-zinc-950/70 border-zinc-200/70 dark:border-zinc-800/70 text-zinc-900 dark:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-700'
+                          : 'app-surface-card bg-white dark:bg-zinc-950/70 border-zinc-200/70 dark:border-zinc-800/70 text-zinc-900 dark:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-700'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                          isCurrentMonth ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-400 dark:text-zinc-500'
+                          isCurrentMonth ? 'text-current opacity-80' : 'text-zinc-500 dark:text-zinc-400'
                         }`}>
                           {label}
                         </span>
@@ -328,7 +328,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
                         ) : null}
                       </div>
                       <div className={`text-[11px] font-mono font-bold leading-tight ${
-                        isCurrentMonth ? 'text-white dark:text-zinc-900' : 'text-zinc-800 dark:text-zinc-200'
+                        isCurrentMonth ? 'text-current' : 'text-zinc-800 dark:text-zinc-200'
                       }`}>
                         {formatNaira(gross)}
                       </div>
@@ -354,16 +354,16 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
         </div>
 
         {/* ── Landscape Footer ── */}
-        <div className="px-6 py-3.5 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/50 flex items-center justify-between gap-3 shrink-0">
-          <div className="text-[11px] text-zinc-400 dark:text-zinc-500 hidden sm:block">
-            Viewing comprehensive staff record &bull; <span className="font-mono text-zinc-600 dark:text-zinc-400 font-medium">[{emp.code}]</span>
+        <div className="app-subtle-surface px-6 py-3.5 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/50 flex items-center justify-between gap-3 shrink-0">
+          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 hidden sm:block">
+            Viewing comprehensive staff record &bull; <span className="font-mono text-zinc-600 dark:text-zinc-300 font-medium">[{emp.code}]</span>
           </div>
           <div className="flex items-center gap-2 ml-auto">
             {!isReadOnly && (
               <button
                 type="button"
                 onClick={() => onEdit(emp)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold transition cursor-pointer shadow-xs"
+                className="app-surface-card flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold transition cursor-pointer shadow-xs"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>Edit Profile</span>
@@ -372,7 +372,7 @@ const EmployeeViewModal: React.FC<EmployeeViewModalProps> = ({ emp, currentMonth
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 text-xs font-semibold transition cursor-pointer shadow-xs"
+              className="app-primary-btn px-4 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 text-xs font-semibold transition cursor-pointer shadow-xs"
             >
               Close
             </button>
@@ -414,7 +414,7 @@ const ExitEmployeeModal: React.FC<ExitEmployeeModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-up">
+      <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-up">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="flex items-center gap-2.5">
@@ -503,7 +503,7 @@ const ExitEmployeeModal: React.FC<ExitEmployeeModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-3 bg-zinc-50 dark:bg-zinc-900/40 border-t border-zinc-100 dark:border-zinc-800/80">
+        <div className="app-subtle-surface flex items-center justify-end gap-2 p-3 bg-zinc-50 dark:bg-zinc-900/40 border-t border-zinc-100 dark:border-zinc-800/80">
           <button
             type="button"
             onClick={onClose}
@@ -552,7 +552,7 @@ const ReactivateEmployeeModal: React.FC<ReactivateEmployeeModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-up">
+      <div className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full shadow-2xl overflow-hidden animate-scale-up">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="flex items-center gap-2.5">
@@ -619,7 +619,7 @@ const ReactivateEmployeeModal: React.FC<ReactivateEmployeeModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-3 bg-zinc-50 dark:bg-zinc-900/40 border-t border-zinc-100 dark:border-zinc-800/80">
+        <div className="app-subtle-surface flex items-center justify-end gap-2 p-3 bg-zinc-50 dark:bg-zinc-900/40 border-t border-zinc-100 dark:border-zinc-800/80">
           <button
             type="button"
             onClick={onClose}
@@ -957,7 +957,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
               <button
                 onClick={() => { setEditingEmp(null); setModalTab('quick'); setIsModalOpen(true); }}
                 disabled={isWriteDisabled}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none cursor-pointer"
+                className="app-primary-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 transition-colors shadow-none cursor-pointer"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>Add Employee</span>
@@ -970,19 +970,19 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
       {/* Overview Stat Badges */}
       {showStats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
             <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Total Staff</span>
             <p className="text-lg font-semibold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5">
               {employees.length}
             </p>
           </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3">
             <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Active Staff</span>
             <p className="text-lg font-semibold font-mono text-zinc-900 dark:text-zinc-100 mt-0.5">
               {employees.filter(e => e.status === 'Active').length}
             </p>
           </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 col-span-2">
+          <div className="app-surface-card bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 col-span-2">
             <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
               {salaryCalculationMode === 'net-to-gross' ? 'Monthly Target Net Commitment' : 'Monthly Gross Commitment'}
             </span>
@@ -996,19 +996,19 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
       {/* Search & Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search by name, code, dept, PAYE ID, or RSA PIN..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded pl-8 pr-7 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
+            className="app-subtle-surface w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded pl-8 pr-7 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
           />
           {searchTerm && (
             <button
               type="button"
               onClick={() => setSearchTerm('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition p-0.5 rounded cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition p-0.5 rounded cursor-pointer"
               title="Clear search"
             >
               <X className="w-3.5 h-3.5" />
@@ -1017,20 +1017,20 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5">
-            <Filter className="w-3.5 h-3.5 text-zinc-400" />
+          <div className="app-subtle-surface flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5">
+            <Filter className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
             <select
               value={selectedDept}
               onChange={e => setSelectedDept(e.target.value)}
               className="bg-transparent text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer"
             >
               {departments.map(d => (
-                <option key={d} value={d}>{d === 'ALL' ? 'All Departments' : d}</option>
+                <option key={d} value={d} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">{d === 'ALL' ? 'All Departments' : d}</option>
               ))}
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5">
+          <div className="app-subtle-surface flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5">
             <select
               value={selectedType}
               onChange={e => setSelectedType(e.target.value)}
@@ -1038,21 +1038,21 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
               title="Filter by Employment Type"
             >
               {employmentTypes.map(t => (
-                <option key={t} value={t}>{t === 'ALL' ? 'All Employment Types' : t}</option>
+                <option key={t} value={t} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">{t === 'ALL' ? 'All Employment Types' : t}</option>
               ))}
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5">
+          <div className="app-subtle-surface flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5">
             <select
               value={selectedStatus}
               onChange={e => setSelectedStatus(e.target.value as 'ALL' | 'Active' | 'Inactive')}
               className="bg-transparent text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none cursor-pointer font-medium"
               title="Filter by Status"
             >
-              <option value="ALL">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="ALL" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">All Statuses</option>
+              <option value="Active" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Active</option>
+              <option value="Inactive" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">Inactive</option>
             </select>
           </div>
 
@@ -1062,8 +1062,8 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
             onClick={toggleCompactMode}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium border transition cursor-pointer shadow-2xs shrink-0 ${
               isCompactMode 
-                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent shadow-xs' 
-                : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                ? 'app-active-tab bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent shadow-xs' 
+                : 'app-surface-card bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
             }`}
             title={isCompactMode ? "Compact table density active (Click for comfortable)" : "Comfortable table density active (Click for compact)"}
           >
@@ -1075,7 +1075,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
           <button
             type="button"
             onClick={() => setShowStats(!showStats)}
-            className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs shrink-0"
+            className="app-surface-card flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded px-2.5 py-1.5 text-xs font-medium transition cursor-pointer shadow-2xs shrink-0"
             title={showStats ? "Hide summary stats to maximize table room" : "Show summary stats"}
           >
             {showStats ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -1085,12 +1085,12 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
       </div>
 
       {/* Employees Table Card */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-xs">
+      <div className="app-surface-card bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden shadow-xs">
         <div className={`overflow-x-auto overflow-y-auto ${showStats ? 'max-h-[calc(100vh-285px)]' : 'max-h-[calc(100vh-185px)]'}`}>
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[11px] font-semibold shadow-xs">
+            <thead className="app-subtle-surface sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 uppercase tracking-wider text-[11px] font-semibold shadow-xs">
             <tr>
-              <th className={`${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 rounded-tl-lg`}>
+              <th className={`app-subtle-surface ${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 rounded-tl-lg`}>
                 <SortableHeader
                   label="Full Name"
                   field="name"
@@ -1100,7 +1100,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                   align="left"
                 />
               </th>
-              <th className={`${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
+              <th className={`app-subtle-surface ${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
                 <SortableHeader
                   label="Department & Role"
                   field="department"
@@ -1110,7 +1110,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                   align="left"
                 />
               </th>
-              <th className={`${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-right bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
+              <th className={`app-subtle-surface ${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-right bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
                 <SortableHeader
                   label={salaryCalculationMode === 'net-to-gross' ? 'Target Net Pay' : 'Monthly Gross'}
                   field="gross"
@@ -1120,7 +1120,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                   align="right"
                 />
               </th>
-              <th className={`${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-right bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
+              <th className={`app-subtle-surface ${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-right bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
                 <SortableHeader
                   label="Annual Rent"
                   field="rent"
@@ -1130,7 +1130,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                   align="right"
                 />
               </th>
-              <th className={`${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
+              <th className={`app-subtle-surface ${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
                 <SortableHeader
                   label="Bank Account"
                   field="bank"
@@ -1140,7 +1140,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                   align="left"
                 />
               </th>
-              <th className={`${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-center bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
+              <th className={`app-subtle-surface ${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-center bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
                 <SortableHeader
                   label="Type"
                   field="type"
@@ -1150,7 +1150,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                   align="center"
                 />
               </th>
-              <th className={`${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-center bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
+              <th className={`app-subtle-surface ${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-center bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800`}>
                 <SortableHeader
                   label="Status"
                   field="status"
@@ -1160,7 +1160,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                   align="center"
                 />
               </th>
-              <th className={`${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-right font-semibold uppercase tracking-wider text-[10px] text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 rounded-tr-lg`}>
+              <th className={`app-subtle-surface ${isCompactMode ? 'py-1.5' : 'py-2.5'} px-3.5 text-right font-semibold uppercase tracking-wider text-[10px] text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 rounded-tr-lg`}>
                 Actions
               </th>
             </tr>
@@ -1234,7 +1234,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                             isWriteDisabled ? 'cursor-default opacity-90' : 'cursor-pointer'
                           } ${
                             emp.status === 'Active' 
-                              ? `bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ${!isWriteDisabled ? 'hover:bg-emerald-500/20' : ''} border-emerald-500/20` 
+                              ? `app-positive-badge bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ${!isWriteDisabled ? 'hover:bg-emerald-500/20' : ''} border-emerald-500/20` 
                               : `bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 ${!isWriteDisabled ? 'hover:bg-zinc-500/20' : ''} border-zinc-500/20`
                           }`}
                           title={isWriteDisabled ? `Status: ${emp.status}` : (emp.status === 'Active' ? 'Click to mark as inactive / exited' : 'Click to re-activate / re-hire')}
@@ -1282,7 +1282,7 @@ export const EmployeeListView: React.FC<EmployeeListViewProps> = ({
                                 bottom: menuCoords.bottom !== undefined ? `${menuCoords.bottom}px` : undefined,
                                 right: `${menuCoords.right}px` 
                               }}
-                              className="fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left employee-actions-dropdown"
+                              className="app-surface-card fixed w-48 bg-white dark:bg-[#18181d] border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-2xl py-1 text-xs z-[9999] animate-in fade-in text-left employee-actions-dropdown"
                             >
                               <button
                                 type="button"

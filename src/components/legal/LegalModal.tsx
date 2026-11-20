@@ -56,10 +56,10 @@ export const LegalModal: React.FC<LegalModalProps> = ({
       className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4 sm:p-6 animate-in fade-in duration-100"
     >
       <div 
-        className="w-full max-w-4xl h-[88vh] max-h-[760px] bg-white dark:bg-[#111113] text-zinc-900 dark:text-zinc-100 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-col overflow-hidden animate-in zoom-in-[0.98] duration-100"
+        className="app-surface-card w-full max-w-4xl h-[88vh] max-h-[760px] bg-white dark:bg-[#111113] text-zinc-900 dark:text-zinc-100 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl flex flex-col overflow-hidden animate-in zoom-in-[0.98] duration-100"
       >
         {/* Minimalist Header */}
-        <div className="no-print h-12 px-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#111113]">
+        <div className="no-print app-surface-card h-12 px-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#111113]">
           
           {/* Subtle Tabs */}
           <div className="flex items-center gap-6">
@@ -68,7 +68,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               onClick={() => setActiveTab('privacy')}
               className={`text-xs transition-colors cursor-pointer pb-0.5 border-b-2 font-medium ${
                 activeTab === 'privacy'
-                  ? 'text-zinc-900 dark:text-zinc-100 border-zinc-900 dark:border-zinc-100'
+                  ? 'app-accent-text border-current font-semibold'
                   : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 border-transparent'
               }`}
             >
@@ -80,7 +80,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               onClick={() => setActiveTab('terms')}
               className={`text-xs transition-colors cursor-pointer pb-0.5 border-b-2 font-medium ${
                 activeTab === 'terms'
-                  ? 'text-zinc-900 dark:text-zinc-100 border-zinc-900 dark:border-zinc-100'
+                  ? 'app-accent-text border-current font-semibold'
                   : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 border-transparent'
               }`}
             >
@@ -102,7 +102,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               type="button"
               onClick={onClose}
               title="Close (Esc)"
-              className="px-2.5 py-1 text-xs font-medium border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition cursor-pointer ml-1"
+              className="app-subtle-surface px-2.5 py-1 text-xs font-medium border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:opacity-90 rounded transition cursor-pointer ml-1"
             >
               Close
             </button>
@@ -113,7 +113,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
         <div className="flex-1 flex overflow-hidden">
           
           {/* Minimal Table of Contents (Desktop sidebar) */}
-          <aside className="no-print hidden md:block w-56 border-r border-zinc-100 dark:border-zinc-800/60 p-5 overflow-y-auto shrink-0 select-none">
+          <aside className="no-print app-subtle-surface hidden md:block w-56 border-r border-zinc-100 dark:border-zinc-800/60 p-5 overflow-y-auto shrink-0 select-none">
             <div className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 mb-3">
               Contents
             </div>
@@ -125,7 +125,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                   onClick={() => scrollToSection(sec.id)}
                   className={`w-full text-left text-[12px] py-1 transition-colors cursor-pointer block truncate ${
                     activeSectionId === sec.id
-                      ? 'text-zinc-900 dark:text-zinc-100 font-medium'
+                      ? 'app-accent-text font-semibold'
                       : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
                   }`}
                 >

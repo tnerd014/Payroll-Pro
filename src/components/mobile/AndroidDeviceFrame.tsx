@@ -12,7 +12,7 @@ export const AndroidDeviceFrame: React.FC<AndroidDeviceFrameProps> = ({
   if (!isFramed) {
     // Standard 100% responsive mobile layout
     return (
-      <div className="w-full h-full flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden">
+      <div className="app-shell-bg w-full h-full flex flex-col bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden">
         {children}
       </div>
     );
@@ -31,7 +31,7 @@ export const AndroidDeviceFrame: React.FC<AndroidDeviceFrameProps> = ({
         </div>
 
         {/* Screen Glass Viewport */}
-        <div id="android-screen-viewport" className="relative w-full h-full bg-[#fbfbfb] dark:bg-[#09090b] rounded-[38px] overflow-hidden flex flex-col border border-zinc-800 [transform:translateZ(0)]">
+        <div id="android-screen-viewport" className="app-shell-bg relative w-full h-full bg-[#fbfbfb] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 rounded-[38px] overflow-hidden flex flex-col border border-zinc-800 [transform:translateZ(0)]">
           {children}
         </div>
 

@@ -42,16 +42,16 @@ export const FinalizeLockModal: React.FC<FinalizeLockModalProps> = ({
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150"
     >
       <div 
-        className="bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+        className="app-surface-card bg-white dark:bg-[#121215] border border-zinc-200 dark:border-zinc-800 rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
       >
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-zinc-200/80 dark:border-zinc-800 shrink-0">
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             Finalize &amp; Lock Payroll (Version {nextVersion})
           </h3>
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+            <span className="app-subtle-surface px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
               v{nextVersion}
             </span>
           </div>
@@ -72,17 +72,17 @@ export const FinalizeLockModal: React.FC<FinalizeLockModalProps> = ({
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder={`e.g. Finalized ${monthLabel} ${year} (v${nextVersion})`}
-              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400"
+              className="app-subtle-surface w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400"
             />
           </div>
         </div>
 
         {/* Action Buttons (Always Fixed Footer) */}
-        <div className="flex items-center justify-end gap-2 p-3.5 px-4 sm:px-5 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
+        <div className="app-subtle-surface flex items-center justify-end gap-2 p-3.5 px-4 sm:px-5 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition border border-zinc-200 dark:border-zinc-800 cursor-pointer"
+            className="app-surface-card px-3 py-1.5 rounded-md text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition border border-zinc-200 dark:border-zinc-800 cursor-pointer"
           >
             Cancel
           </button>
@@ -92,7 +92,7 @@ export const FinalizeLockModal: React.FC<FinalizeLockModalProps> = ({
               onConfirm(notes.trim() || `Finalized ${monthLabel} ${year} (v${nextVersion})`);
               onClose();
             }}
-            className="px-3.5 py-1.5 rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition shadow-xs cursor-pointer"
+            className="app-primary-btn px-3.5 py-1.5 rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:opacity-90 font-medium text-xs transition shadow-xs cursor-pointer"
           >
             Confirm &amp; Lock v{nextVersion}
           </button>
